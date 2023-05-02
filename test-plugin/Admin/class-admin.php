@@ -5,11 +5,11 @@
  * @link       http://example.com
  * @since      1.0.0
  *
- * @package    BH_WP_Emails
- * @subpackage BH_WP_Emails/admin
+ * @package    BH_WP_Mailboxes_Test_Plugin
+ * @subpackage BH_WP_Mailboxes_Test_Plugin/admin
  */
 
-namespace BH_WP_Emails\Admin;
+namespace BrianHenryIE\WP_Mailboxes_Test_Plugin\Admin;
 
 /**
  * The admin-specific functionality of the plugin.
@@ -17,8 +17,8 @@ namespace BH_WP_Emails\Admin;
  * Defines the plugin name, version, and two examples hooks for how to
  * enqueue the admin-specific stylesheet and JavaScript.
  *
- * @package    BH_WP_Emails
- * @subpackage BH_WP_Emails/admin
+ * @package    BH_WP_Mailboxes_Test_Plugin
+ * @subpackage BH_WP_Mailboxes_Test_Plugin/admin
  * @author     BrianHenryIE <BrianHenryIE@gmail.com>
  */
 class Admin {
@@ -43,9 +43,9 @@ class Admin {
 		 * between the defined hooks and the functions defined in this
 		 * class.
 		 */
-		$version = defined( 'BH_WP_EMAILS_VERSION' ) ? BH_WP_EMAILS_VERSION : time();
+		$version = defined( 'BH_WP_MAILBOXES_TEST_PLUGIN_VERSION' ) ? BH_WP_MAILBOXES_TEST_PLUGIN_VERSION : time();
 
-		wp_enqueue_style( 'bh-wp-emails', plugin_dir_url( __FILE__ ) . 'css/bh-wp-emails-admin.css', array(), $version, 'all' );
+		wp_enqueue_style( 'bh-wp-mailboxes-test-plugin', plugin_dir_url( __FILE__ ) . 'css/bh-wp-mailboxes-test-plugin-admin.css', array(), $version, 'all' );
 
 	}
 
@@ -69,9 +69,9 @@ class Admin {
 		 * between the defined hooks and the functions defined in this
 		 * class.
 		 */
-		$version = defined( 'BH_WP_EMAILS_VERSION' ) ? BH_WP_EMAILS_VERSION : time();
+		$version = defined( 'BH_WP_MAILBOXES_TEST_PLUGIN_VERSION' ) ? BH_WP_MAILBOXES_TEST_PLUGIN_VERSION : time();
 
-		wp_enqueue_script( 'bh-wp-emails', plugin_dir_url( __FILE__ ) . 'js/bh-wp-emails-admin.js', array( 'jquery' ), $version, true );
+		wp_enqueue_script( 'bh-wp-mailboxes-test-plugin', plugin_dir_url( __FILE__ ) . 'js/bh-wp-mailboxes-test-plugin-admin.js', array( 'jquery' ), $version, true );
 
 	}
 

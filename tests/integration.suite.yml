@@ -17,7 +17,7 @@ modules:
             tablePrefix: "%TEST_TABLE_PREFIX%"
             domain: "%TEST_SITE_WP_DOMAIN%"
             adminEmail: "%TEST_SITE_ADMIN_EMAIL%"
-            title: "bh-wp-emails"
-            plugins: ['bh-wp-emails/bh-wp-emails.php']
-            activatePlugins: ['bh-wp-emails/bh-wp-emails.php']
+            title: "bh-wp-mailboxes"
+            plugins: ['bh-wp-mailboxes-test-plugin/bh-wp-mailboxes-test-plugin.php']
+            activatePlugins: ['bh-wp-mailboxes-test-plugin/bh-wp-mailboxes-test-plugin.php']
 bootstrap: _bootstrap.php

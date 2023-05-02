@@ -1,18 +1,48 @@
-[![WordPress tested 5.8](https://img.shields.io/badge/WordPress-v5.8%20tested-0073aa.svg)](https://wordpress.org/plugins/bh-wp-emails) [![PHPCS WPCS](https://img.shields.io/badge/PHPCS-WordPress%20Coding%20Standards-8892BF.svg)](https://github.com/WordPress-Coding-Standards/WordPress-Coding-Standards) [![PHPUnit ](.github/coverage.svg)](https://brianhenryie.github.io/bh-wp-emails/)
+[![WordPress tested 5.9](https://img.shields.io/badge/WordPress-v5.8%20tested-0073aa.svg)](https://wordpress.org/plugins/bh-wp-mailboxes) [![PHPCS WPCS](https://img.shields.io/badge/PHPCS-WordPress%20Coding%20Standards-8892BF.svg)](https://github.com/WordPress-Coding-Standards/WordPress-Coding-Standards) [![PHPUnit ](.github/coverage.svg)](https://brianhenryie.github.io/bh-wp-mailboxes/) 
 
-# BH WP Emails
+# BH WP Mailboxes
+
+Intended as a library to use in WordPress plugins that connect to email servers and process those emails.
+
+e.g.
+* Order payment receipts (Zelle, Venmo etc.)
+* Newsletter unsubscribe emails
+* Helpdesk
+* Post by email 
+
+It is not intended for a UI to be presented to the site users.
+Extensible UI is intended for site admins (shop managers etc.) to see the original emails, test account settings etc. 
+
+
+```
+{
+    "require": {
+        "google/apiclient": "^2.12.1"
+    },
+    "scripts": {
+        "pre-autoload-dump": "Google\\Task\\Composer::cleanup"
+    },
+    "extra": {
+        "google/apiclient-services": [
+            "Gmail"        
+        ]
+    }
+}
+```
+
+
 
 ## Contributing
 
 Clone this repo, open PhpStorm, then run `composer install` to install the dependencies.
 
 ```
-git clone https://github.com/brianhenryie/bh-wp-emails.git;
+git clone https://github.com/brianhenryie/bh-wp-mailboxes.git;
 open -a PhpStorm ./;
 composer install;
 ```
 
-For integration and acceptance tests, a local webserver must be running with `localhost:8080/bh-wp-emails/` pointing at the root of the repo. MySQL must also be running locally – with two databases set up with:
+For integration and acceptance tests, a local webserver must be running with `localhost:8080/bh-wp-mailboxes/` pointing at the root of the repo. MySQL must also be running locally – with two databases set up with:
 
 ```
 mysql_username="root"

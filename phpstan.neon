@@ -5,11 +5,10 @@ parameters:
     excludePaths:
         - src/strauss/*
     bootstrapFiles:
-        - src/autoload.php
         - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
     scanDirectories:
-        - src/strauss
         - wp-content/plugins
         - vendor/wp-cli
     ignoreErrors:
         - '#LoggerInterface\|null#'
+        - '#get_uploads_subdirectory_name\(\) should return string but returns string\|null#'

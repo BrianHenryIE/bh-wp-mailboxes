@@ -2,5 +2,7 @@
 /**
  * Runs after WordPress has been initialised (after plugins are loaded) and before tests are run.
  *
- * @package           BH_WP_Emails
+ * @package           brianhenryie/bh-wp-mailboxes
  */
+
+global $project_root_dir;

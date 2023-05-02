@@ -8,11 +8,11 @@
  * @link       http://example.com
  * @since      1.0.0
  *
- * @package    BH_WP_Emails
- * @subpackage BH_WP_Emails/includes
+ * @package    BH_WP_Mailboxes_Test_Plugin
+ * @subpackage BH_WP_Mailboxes_Test_Plugin/includes
  */
 
-namespace BH_WP_Emails\Includes;
+namespace BrianHenryIE\WP_Mailboxes_Test_Plugin\Includes;
 
 /**
  * Define the internationalization functionality.
@@ -21,8 +21,8 @@ namespace BH_WP_Emails\Includes;
  * so that it is ready for translation.
  *
  * @since      1.0.0
- * @package    BH_WP_Emails
- * @subpackage BH_WP_Emails/includes
+ * @package    BH_WP_Mailboxes_Test_Plugin
+ * @subpackage BH_WP_Mailboxes_Test_Plugin/includes
  * @author     BrianHenryIE <BrianHenryIE@gmail.com>
  */
 class I18n {
@@ -37,9 +37,9 @@ class I18n {
 	public function load_plugin_textdomain(): void {
 
 		load_plugin_textdomain(
-			'bh-wp-emails',
+			'bh-wp-mailboxes-test-plugin',
 			false,
-            plugin_basename( dirname( __FILE__, 2 ) ) . '/languages/'
+			plugin_basename( dirname( __FILE__, 2 ) ) . '/languages/'
 		);
 
 	}
