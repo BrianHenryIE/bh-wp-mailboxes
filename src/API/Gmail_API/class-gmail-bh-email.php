@@ -15,8 +15,6 @@ class Gmail_BH_Email extends BH_Email {
 	 * Create a new BH_Email from a newly downloaded email.
 	 *
 	 * @param array{cpt:string, headers:array, from_email:string, from_name?:string, subject:string, body_text:string, body_html:string} $new_email
-	 *
-	 * @return BH_Email
 	 */
 	public function __construct( array $new_email ) {
 

@@ -2,7 +2,7 @@
     "name": "brianhenryie/bh-wp-mailboxes",
     "description": "A library for importing emails into WordPress for further processing.",
     "type": "library",
-    "license": "GPL-2.0+-or-later",
+    "license": "GPL-2.0-or-later",
     "authors": [
         {
             "name": "BrianHenryIE",
@@ -35,14 +35,6 @@
         ]
     },
     "repositories": {
-        "brianhenryie/bh-wp-logger": {
-            "url": "https://github.com/BrianHenryIE/bh-wp-logger",
-            "type": "git"
-        },
-        "brianhenryie/bh-wp-private-uploads":{
-            "url": "https://github.com/BrianHenryIE/bh-wp-private-uploads",
-            "type": "git"
-        },
         "brianhenryie/composer-phpstorm": {
             "url": "https://github.com/BrianHenryIE/composer-phpstorm",
             "type": "git"
@@ -60,10 +52,10 @@
         "brianhenryie/bh-wp-private-uploads": "*",
         "ddeboer/imap": "^1.11",
         "ext-json": "*",
-        "google/apiclient": "^2.0",
         "php": ">=7.4",
         "psr/log": "^1.0.0",
-        "wptrt/admin-notices": "*"
+        "wptrt/admin-notices": "*",
+        "ext-imap": "*"
     },
     "require-dev": {
         "10up/wp_mock": "*",
@@ -82,6 +74,7 @@
         "cweagans/composer-patches": "*",
         "dealerdirect/phpcodesniffer-composer-installer": "*",
         "jaschilz/php-coverage-badger": "^2.0",
+        "johnpbloch/wordpress": "*",
         "kporras07/composer-symlinks": "*",
         "lucatume/wp-browser": "*",
         "phpcompatibility/phpcompatibility-wp": "*",
@@ -107,6 +100,8 @@
             "test-plugin": "wp-content/plugins/bh-wp-mailboxes-test-plugin",
             "src": "test-plugin/vendor/brianhenryie/bh-wp-mailboxes/src",
             "vendor/brianhenryie/bh-wp-logger/src": "test-plugin/vendor/brianhenryie/bh-wp-logger/src",
+            "vendor/brianhenryie/bh-wp-logger/assets": "test-plugin/vendor/brianhenryie/bh-wp-logger/assets",
+            "vendor/brianhenryie/bh-wp-private-uploads/assets": "test-plugin/vendor/brianhenryie/bh-wp-private-uploads/assets",
             "vendor/brianhenryie/bh-wp-private-uploads/src": "test-plugin/vendor/brianhenryie/bh-wp-private-uploads/src"
         },
         "phpstorm": {

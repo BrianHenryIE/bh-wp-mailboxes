@@ -127,6 +127,7 @@ function instantiate_bh_wp_mailboxes_test_plugin(): API {
 		use Mailbox_Settings_Defaults_Trait;
 
 		public function get_account_unique_friendly_name(): string {
+			return 'brianhenryie@gmail.com';
 		}
 
 		public function get_credentials(): Account_Credentials_Interface {
@@ -136,6 +137,16 @@ function instantiate_bh_wp_mailboxes_test_plugin(): API {
 				public function get_project_credentials(): array {
 					return json_decode(
 						'{
+								"web": {
+									"client_id": "329830404991-dfgnb26o7gq8v9br580k1vdr5dmk8c6e.apps.googleusercontent.com",
+								    "project_id": "linen-airway-321905",
+								    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+								    "token_uri": "https://oauth2.googleapis.com/token",
+								    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+								    "client_secret": "r4wZrJp4eQeUKlDZNvsUfd73",
+								    "redirect_uris": ["https://brianhenryie.com"],
+								    "javascript_origins": ["https://brianhenryie.com"]
+								  }
 								}',
 						true
 					);
@@ -144,6 +155,7 @@ function instantiate_bh_wp_mailboxes_test_plugin(): API {
 
 				public function get_access_token(): ?array {
 					return json_decode(
+						'{"access_token":"ya29.A0ARrdaM8qtWb89U01iYuXMcHEG9SEdhfVIpsPIi2je7K7ebpX4eJKJrOdbWpXgi9YpjtVyzVdP0kliAyEBfd_AI2nAPS7vpB1G9W68rsdoARG3kM6YtjgHOFtaLRXHrlJdJzNXgz1iRieQJ2ecouA7JrTjUNk","expires_in":3599,"scope":"https:\/\/www.googleapis.com\/auth\/gmail.readonly","token_type":"Bearer","created":1642738648,"refresh_token":"1\/\/064PmLFcRkieZCgYIARAAGAYSNwF-L9IrcTKyh7Qv5VtvFrClj1UFbYUsLPQVsx0FGoLKURPucr_4TMVsCiHIxH8ySajLmZF-tLg"}',
 						true
 					);
 				}

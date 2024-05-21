@@ -13,6 +13,8 @@ interface API_Interface {
 	 */
 	public function get_downloaded_emails( int $number ): array;
 
+	// public function get_mailboxes()
+
 	/**
 	 * @return array{success:bool}
 	 */

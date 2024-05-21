@@ -16,7 +16,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Instantiates some classes, then connects them with only `add_action` and `add_filter`.
  */
-class BH_WP_Mailboxes_Actions {
+class BH_WP_Mailboxes_Hooks {
 
 	/**
 	 * No logging is done in this class, this is purely for instantiating other classes.

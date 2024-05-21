@@ -9,7 +9,7 @@
 namespace BrianHenryIE\WP_Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\API\API;
-use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_WP_Mailboxes_Actions;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_WP_Mailboxes_Hooks;
 use BrianHenryIE\WP_Private_Uploads\BH_WP_Private_Uploads_Hooks;
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Interface;
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Trait;
@@ -30,7 +30,7 @@ class BH_WP_Mailboxes extends API {
 
 		if ( ! is_null( $settings ) ) {
 			self::$instance = new BH_WP_Mailboxes( $settings, $logger );
-			new BH_WP_Mailboxes_Actions( self::$instance, $settings, $logger );
+			new BH_WP_Mailboxes_Hooks( self::$instance, $settings, $logger );
 			return self::$instance;
 		}
 

@@ -193,7 +193,7 @@ class API implements API_Interface {
 		// Filter on the from address.
 		// Forwarded emails have the wrong email address, so null can be set to null to skip the check.
 		if ( ! is_null( $settings->get_from_email_regex() )
-			 && 1 !== preg_match( $settings->get_from_email_regex(), $email->get_from_email() ) ) {
+			&& 1 !== preg_match( $settings->get_from_email_regex(), $email->get_from_email() ) ) {
 			$this->logger->debug( "Email from {$email->get_from_email()} did not match get_from_email_regex {$settings->get_from_email_regex()}." );
 			return false;
 		}
@@ -201,8 +201,8 @@ class API implements API_Interface {
 		// Filter on the body.
 		// If we're using an identifier to filter emails, and it is not found, continue to the next email.
 		if ( ! is_null( $settings->get_identifier_regex() )
-			 && 1 !== preg_match( $settings->get_identifier_regex(), $email->get_body_plain_text() )
-			 && 1 !== preg_match( $settings->get_identifier_regex(), $email->get_body_html() ) ) {
+			&& 1 !== preg_match( $settings->get_identifier_regex(), $email->get_body_plain_text() )
+			&& 1 !== preg_match( $settings->get_identifier_regex(), $email->get_body_html() ) ) {
 			$this->logger->debug( "Email body did not match get_identifier_regex {$settings->get_identifier_regex()}." );
 			return false;
 		}
@@ -383,10 +383,8 @@ class API implements API_Interface {
 	 *
 	 * @param string             $account_name
 	 * @param ?DateTimeInterface $time
-	 *
-	 * @return void
 	 */
-	public function set_failed_login_time( string $account_name, ?DateTimeInterface $time ) {
+	public function set_failed_login_time( string $account_name, ?DateTimeInterface $time ): void {
 		$option_name = $this->get_last_failed_login_option_name( $account_name );
 		if ( is_null( $time ) ) {
 			delete_option( $option_name );

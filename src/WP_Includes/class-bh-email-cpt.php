@@ -20,8 +20,13 @@ class BH_Email_CPT {
 
 	protected BH_WP_Mailboxes_Settings_Interface $settings;
 
+	/**
+	 * Constructor
+	 *
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings for bh-wp-mailboxes.
+	 * @param LoggerInterface                    $logger PSR logger.
+	 */
 	public function __construct( BH_WP_Mailboxes_Settings_Interface $settings, LoggerInterface $logger ) {
-
 		$this->setLogger( $logger );
 		$this->settings = $settings;
 	}
@@ -100,18 +105,20 @@ class BH_Email_CPT {
 				// 'delete_post'         => 'update_core',
 				// 'read_post'           => 'edit_posts',
 				// ),
-					'menu_position'   => null,
+				'menu_position'       => null,
 				'show_in_menu'        => false,
 				'exclude_from_search' => true,
 				'show_in_rest'        => false,
-
 			)
 		);
 
+		// TODO: throw an exception... if this fails, nothing here will really work.
 		if ( is_wp_error( $registered_post_type ) ) {
 			/** @var WP_Error $registered_post_type */
 			$this->logger->error( $registered_post_type->get_error_message() );
 		}
+
+
 
 	}
 
@@ -123,7 +130,8 @@ class BH_Email_CPT {
 	public function register_mailboxes_taxonomy(): void {
 
 		// TODO: Make this unique to the plugin.
-		$t = get_taxonomy( 'bh-wp-mailbox-account' );
+		$taxonomy_name = 'bh-wp-mailbox-account';
+		$t             = get_taxonomy( $taxonomy_name );
 
 		if ( false !== $t ) {
 			// Nothing to do.

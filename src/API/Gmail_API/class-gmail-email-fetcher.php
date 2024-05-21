@@ -1,4 +1,9 @@
 <?php
+/**
+ * Fetch emails from Gmail using Google PHP SDK.
+ *
+ * @package brianhenryie/bh-wp-mailboxes
+ */
 
 namespace BrianHenryIE\WP_Mailboxes\API\Gmail_API;
 
@@ -7,6 +12,7 @@ use BrianHenryIE\WP_Mailboxes\BH_Email;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
 use DateTime;
 use DateTimeInterface;
+use Exception;
 use Google\Service\Gmail\ListMessagesResponse;
 use Google_Client;
 use Google_Service_Gmail;
@@ -14,7 +20,6 @@ use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
 class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
-
 	use LoggerAwareTrait;
 
 	protected string $cpt;
@@ -41,18 +46,25 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	/**
 	 * Returns an authorized API client.
 	 *
+	 * @uses \BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface::get_credentials()
+	 *
 	 * @see https://developers.google.com/gmail/api/quickstart/php
 	 *
-	 * @return Google_Client the authorized client object
+	 * @return ?Google_Client the authorized client object.
 	 */
-	public function getClient() {
+	public function getClient(): ?Google_Client {
 
 		/** @var Google_API_Credentials_Interface $saved_credentials */
 		$saved_credentials = $this->settings->get_credentials();
 
+		if ( is_null( $saved_credentials->get_access_token() ) ) {
+			return null;
+		}
+
 		$client = new Google_Client();
 		$client->setLogger( $this->logger );
 
+		// TODO:
 		$client->setApplicationName( 'Gmail API PHP Quickstart' );
 		$client->setScopes( Google_Service_Gmail::GMAIL_READONLY );
 
@@ -67,10 +79,8 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		// time.
 		// $tokenPath = __DIR__ . '/token.json';
 
-		if ( ! is_null( $saved_credentials->get_access_token() ) ) {
-			$access_token = $saved_credentials->get_access_token();
-			$client->setAccessToken( $access_token );
-		}
+		$access_token = $saved_credentials->get_access_token();
+		$client->setAccessToken( $access_token );
 
 		// If there is no previous token or it's expired.
 		if ( $client->isAccessTokenExpired() ) {
@@ -88,21 +98,21 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 				$authCode = trim( fgets( STDIN ) );
 
 				// Exchange authorization code for an access token.
-				$accessToken = $client->fetchAccessTokenWithAuthCode( $authCode );
-				$client->setAccessToken( $accessToken );
+				$access_token = $client->fetchAccessTokenWithAuthCode( $authCode );
+				$client->setAccessToken( $access_token );
 
 				// Check to see if there was an error.
-				if ( array_key_exists( 'error', $accessToken ) ) {
-					throw new \Exception( join( ', ', $accessToken ) );
+				if ( array_key_exists( 'error', $access_token ) ) {
+					throw new Exception( join( ', ', $access_token ) );
 				}
 			}
 
-			$tokenPath = __DIR__ . '/token.json';
+			$token_path = __DIR__ . '/token.json';
 			// Save the token to a file.
-			if ( ! file_exists( dirname( $tokenPath ) ) ) {
-				mkdir( dirname( $tokenPath ), 0700, true );
+			if ( ! file_exists( dirname( $token_path ) ) ) {
+				mkdir( dirname( $token_path ), 0700, true );
 			}
-			 file_put_contents( $tokenPath, json_encode( $client->getAccessToken() ) );
+			 file_put_contents( $token_path, json_encode( $client->getAccessToken() ) );
 		}
 		return $client;
 	}
@@ -113,7 +123,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 * @param DateTime $since_time
 	 *
 	 * @return BH_Email[]
-	 * @throws \Exception
+	 * @throws Exception
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time ): array {
 
@@ -132,6 +142,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 			// 'pageToken' =>        // string  Page token to retrieve a specific page of results in the list.
 			 'q' => 'after:' . $since_time->getTimestamp(),               // string Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, `"from:someuser@example.com rfc822msgid: is:unread"`. Parameter cannot be used when accessing the api using the gmail.metadata scope.
 		);
+		// "Invalid grant bad request"
 		/** @var ListMessagesResponse $r */
 		$r = $service->users_messages->listUsersMessages( $user, $opts );
 
@@ -198,8 +209,8 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 				}
 			}
 
-			$plain = $this->gmailBodyDecode( $b64_plain );
-			$html  = $this->gmailBodyDecode( $b64_html );
+			$plain = $this->gmail_body_decode( $b64_plain );
+			$html  = $this->gmail_body_decode( $b64_html );
 
 			$new_email['body_text'] = $plain;// $message_body_text;
 			$new_email['body_html'] = $html;// $message_body_html;
@@ -210,7 +221,6 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		}
 
 		return $emails;
-
 	}
 
 	/**
@@ -221,12 +231,13 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 *
 	 * @return false|string
 	 */
-	protected function gmailBodyDecode( $data ) {
-		// from php.net/manual/es/function.base64-decode.php#118244
+	protected function gmail_body_decode( string $data ): string {
+		// @see https://php.net/manual/es/function.base64-decode.php#118244
 		$data = base64_decode( str_replace( array( '-', '_' ), array( '+', '/' ), $data ) );
 
-		// Stackoverflow says can also use quoted_printable_decode()
+		// Stackoverflow says can also use `quoted_printable_decode()`.
 		$data = imap_qprint( $data );
-		return( $data );
+
+		return $data;
 	}
 }

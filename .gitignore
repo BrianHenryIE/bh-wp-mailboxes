@@ -62,3 +62,5 @@ docker_tag
 credentials.json
 token.json
 quickstart-cli.php
+
+*.secret.*
