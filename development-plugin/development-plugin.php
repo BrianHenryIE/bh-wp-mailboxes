@@ -45,7 +45,6 @@ if ( ! defined( 'WPINC' ) ) {
 
 require_once '/var/www/bh-wp-mailboxes/vendor/autoload.php';
 
-// The library's prefixed Autoloader is already loaded by the test-plugin's vendor autoload.
 Autoloader::generate(
 	__NAMESPACE__,
 	__DIR__,
