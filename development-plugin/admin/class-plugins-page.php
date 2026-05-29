@@ -4,6 +4,11 @@ namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin;
 
 class Plugins_Page {
 
+	public function register_hooks() {
+		$plugin_basename = BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME;
+		add_filter( "plugin_action_links_{$plugin_basename}", array( $this, 'display_plugin_action_links' ), 10, 4 );
+	}
+
 	/**
 	 * @hooked plugin_action_links_{plugin basename}
 	 * @see \WP_Plugins_List_Table::display_rows()

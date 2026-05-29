@@ -70,10 +70,8 @@ Autoloader::generate(
 
 define( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 
-$plugins_page = new Plugins_Page();
+( new Plugins_Page() )->register_hooks();
 
-$plugin_basename = BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME;
-add_filter( "plugin_action_links_{$plugin_basename}", array( $plugins_page, 'display_plugin_action_links' ), 10, 4 );
 
 
 // I think this is needed becuase we're mapping the vendor directory to wp-content/plugins/vendor, then libraries/functions
