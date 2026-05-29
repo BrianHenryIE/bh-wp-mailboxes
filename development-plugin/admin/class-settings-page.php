@@ -1,6 +1,6 @@
 <?php
 
-namespace BrianHenryIE\WP_Mailboxes_Test_Plugin\Admin;
+namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use Psr\Log\LoggerAwareTrait;
@@ -26,7 +26,6 @@ class Settings_Page {
 		$position    = null;
 
 		add_submenu_page( $parent_slug, $page_title, $menu_title, $capability, $menu_slug, $function, $position );
-
 	}
 
 	/**
@@ -36,5 +35,4 @@ class Settings_Page {
 
 		include wp_normalize_path( __DIR__ . '/partials/bh-wp-mailboxes-test-plugin-admin-display.php' );
 	}
-
 }

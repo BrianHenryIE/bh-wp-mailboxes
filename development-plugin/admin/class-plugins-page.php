@@ -1,6 +1,6 @@
 <?php
 
-namespace BrianHenryIE\WP_Mailboxes_Test_Plugin\Admin;
+namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin;
 
 class Plugins_Page {
 
@@ -26,5 +26,4 @@ class Plugins_Page {
 
 		return $action_links;
 	}
-
 }
