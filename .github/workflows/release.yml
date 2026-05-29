@@ -82,7 +82,7 @@ jobs:
             $updateChecker->getVcsApi()->enableReleaseAssets();
         run: |
           composer require yahnis-elsts/plugin-update-checker erusev/parsedown;
-          printf "$code" >> src/$PLUGIN_SLUG.php;
+          printf "$code" >> includes/$PLUGIN_SLUG.php;
 
       - name: Create wpconfig ... the composer.json creation didn't work
         run: |
@@ -91,10 +91,10 @@ jobs:
 
       - name: Create plugin archive
         run: |
-          vendor/bin/wp dist-archive src --plugin-dirname=$PLUGIN_SLUG
+          vendor/bin/wp dist-archive includes --plugin-dirname=$PLUGIN_SLUG
 
       # https://stackoverflow.com/questions/61256824/how-to-pass-the-output-of-a-bash-command-to-github-action-parameter
-      # echo "DIST_ARCHIVE_OUTPUT=$(vendor/bin/wp dist-archive src --plugin-dirname=bh-wp-account-and-login-ux) >> $GITHUB_ENV
+      # echo "DIST_ARCHIVE_OUTPUT=$(vendor/bin/wp dist-archive includes --plugin-dirname=bh-wp-account-and-login-ux) >> $GITHUB_ENV
       # echo "${{ env.DIST_ARCHIVE_OUTPUT }}"
       # Success: Created bh-wp-account-and-login-ux.0.1.1.zip
 

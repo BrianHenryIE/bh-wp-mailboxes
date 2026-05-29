@@ -21,12 +21,11 @@ params:
 coverage:
     enabled: true
     include:
-        - src/*
+        - includes/*
     exclude:
         - /*/interface*.php
         - /*/index.php
         - /*/*.txt
-        - src/autoload.php
         - /*/*.css
         - /*/*.js
 bootstrap: bootstrap.php

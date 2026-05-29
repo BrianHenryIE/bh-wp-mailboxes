@@ -1,9 +1,7 @@
 parameters:
     level: 8
     paths:
-        - src
-    excludePaths:
-        - src/strauss/*
+        - includes
     bootstrapFiles:
         - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
     scanDirectories:
