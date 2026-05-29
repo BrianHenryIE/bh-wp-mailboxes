@@ -56,5 +56,4 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 			'delete_local_emails' => 'daily',
 		);
 	}
-
 }

@@ -17,7 +17,7 @@ class Ddeboer_BH_Email_Unit_Test extends \Codeception\Test\Unit {
 	/**
 	 * Basic test to parse an email.
 	 */
-	public function test_happy():void {
+	public function test_happy(): void {
 
 		$ddeboer_email    = $this->makeEmpty(
 			BasicMessageInterface::class,

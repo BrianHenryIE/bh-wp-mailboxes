@@ -24,5 +24,4 @@ interface API_Interface {
 	 * @return array{success:bool}
 	 */
 	public function check_email(): array;
-
 }

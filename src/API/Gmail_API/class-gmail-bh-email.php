@@ -31,5 +31,4 @@ class Gmail_BH_Email extends BH_Email {
 		$this->body_html       = $new_email['body_html'];
 		$this->meta_data       = $new_email['meta_data'];
 	}
-
 }

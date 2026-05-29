@@ -23,7 +23,7 @@ class BH_Email_WPUnit_Test extends \Codeception\TestCase\WPTestCase {
 			Mailbox_Settings_Interface::class,
 			array(
 				'get_account_unique_friendly_name' => Expected::atLeastOnce(
-					function() {
+					function () {
 						return 'brianhenryie@gmail.com';
 					}
 				),
@@ -33,7 +33,7 @@ class BH_Email_WPUnit_Test extends \Codeception\TestCase\WPTestCase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_configured_mailbox_settings' => Expected::once(
-					function() use ( $mailbox ) {
+					function () use ( $mailbox ) {
 						return array( $mailbox );
 					}
 				),
@@ -69,7 +69,5 @@ class BH_Email_WPUnit_Test extends \Codeception\TestCase\WPTestCase {
 
 		$this->assertEquals( 'Test subject', $post->post_title );
 		$this->assertEquals( 'bh_wp_email', $post->post_type );
-
 	}
-
 }

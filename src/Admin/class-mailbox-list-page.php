@@ -100,7 +100,6 @@ class Mailbox_List_Page {
 			default:
 				break;
 		}
-
 	}
 
 	/**
@@ -197,10 +196,9 @@ class Mailbox_List_Page {
 
 		$handle = "{$this->settings->get_cpt_dashed()}-list-script";
 
-		 $js_file = plugin_dir_url( __FILE__ ) . 'js/bh-wp-mailboxes.js';
-		 $version = '1.0.0';
+		$js_file = plugin_dir_url( __FILE__ ) . 'js/bh-wp-mailboxes.js';
+		$version = '1.0.0';
 
-		 wp_enqueue_script( $handle, $js_file, array( 'jquery' ), $version, true );
+		wp_enqueue_script( $handle, $js_file, array( 'jquery' ), $version, true );
 	}
-
 }

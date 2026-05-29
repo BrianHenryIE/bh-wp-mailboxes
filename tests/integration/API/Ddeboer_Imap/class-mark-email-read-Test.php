@@ -68,7 +68,5 @@ class Mark_Email_Read_Test extends \Codeception\TestCase\WPTestCase {
 			$email->after_reconcile();
 
 		}
-
 	}
-
 }

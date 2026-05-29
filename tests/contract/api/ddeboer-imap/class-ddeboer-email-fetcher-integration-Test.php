@@ -213,5 +213,4 @@ EOD;
 		$this->assertNotEmpty( $exception );
 		$this->assertEquals( $exception_message, $exception->getMessage() );
 	}
-
 }

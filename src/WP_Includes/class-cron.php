@@ -101,7 +101,6 @@ class Cron {
 				wp_schedule_event( time(), $schedule, $hook );
 			}
 		}
-
 	}
 
 	/**
@@ -124,5 +123,4 @@ class Cron {
 		$this->logger->debug( 'Starting background_delete_local_emails job from cron.' );
 		$this->api->delete_old_emails();
 	}
-
 }

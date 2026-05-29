@@ -97,7 +97,6 @@ class BH_WP_Mailboxes_Hooks {
 
 		add_action( 'admin_enqueue_scripts', array( $mailbox_list_page, 'enqueue_styles' ) );
 		add_action( 'admin_enqueue_scripts', array( $mailbox_list_page, 'enqueue_scripts' ) );
-
 	}
 
 	/**

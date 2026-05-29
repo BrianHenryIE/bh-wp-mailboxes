@@ -72,7 +72,5 @@ class Gmail_Email_Fetcher_WPUnit_Test extends \Codeception\TestCase\WPTestCase {
 		$since_datetime = \DateTime::createFromFormat( 'Y-m-d', '1970-1-1' );
 
 		$result = $sut->retrieve_emails( $since_datetime );
-
 	}
-
 }

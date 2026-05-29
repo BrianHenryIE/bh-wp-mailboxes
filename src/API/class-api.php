@@ -135,7 +135,7 @@ class API implements API_Interface {
 			 */
 			$filtered_account_emails = array_filter(
 				$all_new_account_emails,
-				function( $email ) use ( $mailbox_settings ) {
+				function ( $email ) use ( $mailbox_settings ) {
 					return $this->email_filter( $email, $mailbox_settings );
 				}
 			);
@@ -229,7 +229,7 @@ class API implements API_Interface {
 		);
 
 		return array_map(
-			function( WP_Post $cpt_email ) {
+			function ( WP_Post $cpt_email ) {
 				return BH_Email::create_from_cpt( $cpt_email );
 			},
 			$query->get_posts()

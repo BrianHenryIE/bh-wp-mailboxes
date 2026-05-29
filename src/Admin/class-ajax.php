@@ -33,7 +33,7 @@ class Ajax {
 	public function check_email(): void {
 
 		if ( ! isset( $_POST['_wpnonce'], $_POST['mailboxes_cpt'] )
-			 || ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-check-email' ) ) {
+			|| ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-check-email' ) ) {
 			return;
 		}
 
@@ -49,6 +49,5 @@ class Ajax {
 		} else {
 			wp_send_json_error( $result );
 		}
-
 	}
 }

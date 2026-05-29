@@ -112,7 +112,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 			if ( ! file_exists( dirname( $token_path ) ) ) {
 				mkdir( dirname( $token_path ), 0700, true );
 			}
-			 file_put_contents( $token_path, json_encode( $client->getAccessToken() ) );
+			file_put_contents( $token_path, json_encode( $client->getAccessToken() ) );
 		}
 		return $client;
 	}
@@ -140,7 +140,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 			// 'labelIds' =>         // string  Only return messages with labels that match all of the specified label IDs.
 			// 'maxResults' =>       // string  Maximum number of messages to return. This field defaults to 100. The maximum allowed value for this field is 500.
 			// 'pageToken' =>        // string  Page token to retrieve a specific page of results in the list.
-			 'q' => 'after:' . $since_time->getTimestamp(),               // string Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, `"from:someuser@example.com rfc822msgid: is:unread"`. Parameter cannot be used when accessing the api using the gmail.metadata scope.
+			'q' => 'after:' . $since_time->getTimestamp(),               // string Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, `"from:someuser@example.com rfc822msgid: is:unread"`. Parameter cannot be used when accessing the api using the gmail.metadata scope.
 		);
 		// "Invalid grant bad request"
 		/** @var ListMessagesResponse $r */

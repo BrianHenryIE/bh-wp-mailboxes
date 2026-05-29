@@ -18,6 +18,4 @@ interface Email_Fetcher_Interface {
 	 * @return BH_Email[] Unsaved emails.
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time ): array;
-
-
 }

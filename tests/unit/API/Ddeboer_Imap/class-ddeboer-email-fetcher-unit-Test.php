@@ -22,7 +22,7 @@ use Ddeboer\Imap\ServerInterface;
  */
 class Ddeboer_Imap_Email_Fetcher_Unit_Test extends \Codeception\Test\Unit {
 
-	protected function setup() : void {
+	protected function setup(): void {
 		parent::setUp();
 		\WP_Mock::setUp();
 	}
@@ -139,7 +139,6 @@ class Ddeboer_Imap_Email_Fetcher_Unit_Test extends \Codeception\Test\Unit {
 		$emails         = $sut->retrieve_emails( $since_datetime );
 
 		$this->assertCount( 1, $emails );
-
 	}
 
 	/**
@@ -245,7 +244,5 @@ class Ddeboer_Imap_Email_Fetcher_Unit_Test extends \Codeception\Test\Unit {
 		$result = $sut->test_credentials();
 
 		$this->assertTrue( $result['succcess'] );
-
 	}
-
 }

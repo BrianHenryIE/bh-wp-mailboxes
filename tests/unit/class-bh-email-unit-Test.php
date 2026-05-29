@@ -49,6 +49,5 @@ class BH_Email_Unit_Test extends \Codeception\Test\Unit {
 		$result = \BrianHenryIE\WP_Mailboxes\BH_Email::create_from_array( $arr );
 
 		$this->assertEquals( 'brianhenryie@gmail.com', $result->get_from_email() );
-
 	}
 }

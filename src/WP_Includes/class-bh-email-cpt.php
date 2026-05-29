@@ -117,9 +117,6 @@ class BH_Email_CPT {
 			/** @var WP_Error $registered_post_type */
 			$this->logger->error( $registered_post_type->get_error_message() );
 		}
-
-
-
 	}
 
 	/**
@@ -203,5 +200,4 @@ class BH_Email_CPT {
 			}
 		}
 	}
-
 }

@@ -33,7 +33,7 @@ class AJAX_Unit_Test extends \Codeception\Test\Unit {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_cpt_underscored_20' => Expected::once(
-					function() {
+					function () {
 						return 'mailboxes_cpt'; }
 				),
 			)
@@ -42,7 +42,7 @@ class AJAX_Unit_Test extends \Codeception\Test\Unit {
 			API_Interface::class,
 			array(
 				'check_email' => Expected::once(
-					function() {
+					function () {
 						return array(
 							'success' => true,
 						);
@@ -82,7 +82,6 @@ class AJAX_Unit_Test extends \Codeception\Test\Unit {
 		);
 
 		$sut->check_email();
-
 	}
 
 	/**
@@ -95,7 +94,7 @@ class AJAX_Unit_Test extends \Codeception\Test\Unit {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_cpt_underscored_20' => Expected::once(
-					function() {
+					function () {
 						return 'mailboxes_cpt'; }
 				),
 			)
@@ -104,7 +103,7 @@ class AJAX_Unit_Test extends \Codeception\Test\Unit {
 			API_Interface::class,
 			array(
 				'check_email' => Expected::once(
-					function() {
+					function () {
 						return array(
 							'success' => false,
 						);
@@ -153,7 +152,6 @@ class AJAX_Unit_Test extends \Codeception\Test\Unit {
 		// Act.
 
 		$sut->check_email();
-
 	}
 
 
@@ -217,7 +215,6 @@ class AJAX_Unit_Test extends \Codeception\Test\Unit {
 		// Act.
 
 		$sut->check_email();
-
 	}
 
 
@@ -233,7 +230,7 @@ class AJAX_Unit_Test extends \Codeception\Test\Unit {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_cpt_underscored_20' => Expected::once(
-					function() {
+					function () {
 						return 'mailboxes_cpt'; }
 				),
 			)
@@ -284,9 +281,5 @@ class AJAX_Unit_Test extends \Codeception\Test\Unit {
 		// Act.
 
 		$sut->check_email();
-
 	}
-
-
-
 }

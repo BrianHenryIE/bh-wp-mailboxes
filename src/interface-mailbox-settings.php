@@ -58,5 +58,4 @@ interface Mailbox_Settings_Interface {
 	 * @return int|null
 	 */
 	public function get_delete_emails_days(): ?int;
-
 }

@@ -34,7 +34,7 @@ class Cron_Unit_Test extends \Codeception\Test\Unit {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_cpt_friendly_name' => Expected::once(
-					function() {
+					function () {
 						return 'Test CPT Name'; }
 				),
 			)
@@ -68,7 +68,7 @@ class Cron_Unit_Test extends \Codeception\Test\Unit {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_cpt_friendly_name' => Expected::once(
-					function() {
+					function () {
 						return 'Test CPT Name'; }
 				),
 			)
@@ -102,7 +102,7 @@ class Cron_Unit_Test extends \Codeception\Test\Unit {
 			API_Interface::class,
 			array(
 				'check_email' => Expected::once(
-					function() {
+					function () {
 						return array();}
 				),
 			)
@@ -111,7 +111,6 @@ class Cron_Unit_Test extends \Codeception\Test\Unit {
 		$sut = new Cron( $api, $settings, $logger );
 
 		$sut->background_fetch_emails();
-
 	}
 
 	/**
@@ -125,7 +124,7 @@ class Cron_Unit_Test extends \Codeception\Test\Unit {
 			API_Interface::class,
 			array(
 				'background_delete_local_emails' => Expected::once(
-					function() {
+					function () {
 						return array();}
 				),
 			)

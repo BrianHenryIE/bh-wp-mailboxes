@@ -15,7 +15,7 @@ use DateTimeInterface;
  */
 class API_Unit_Test extends \Codeception\Test\Unit {
 
-	protected function setUp() : void {
+	protected function setUp(): void {
 		parent::setUp();
 		\WP_Mock::setUp();
 	}
@@ -39,7 +39,7 @@ class API_Unit_Test extends \Codeception\Test\Unit {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_configured_mailbox_settings' => Expected::atLeastOnce(
-					function() {
+					function () {
 						return array(); }
 				),
 			)
@@ -72,11 +72,11 @@ class API_Unit_Test extends \Codeception\Test\Unit {
 				Mailbox_Settings_Interface::class,
 				array(
 					'get_account_unique_friendly_name' => Expected::atLeastOnce(
-						function() {
+						function () {
 							return 'Dummy Account';}
 					),
 					'get_credentials'                  => Expected::once(
-						function() {
+						function () {
 							return $this->makeEmpty( Account_Credentials_Interface::class ); }
 					),
 				)
@@ -88,11 +88,11 @@ class API_Unit_Test extends \Codeception\Test\Unit {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_plugin_slug'                 => Expected::atLeastOnce(
-					function() {
+					function () {
 						return 'plugin-slug';}
 				),
 				'get_configured_mailbox_settings' => Expected::atLeastOnce(
-					function() use ( $configured_mailbox_settings ) {
+					function () use ( $configured_mailbox_settings ) {
 						return $configured_mailbox_settings; }
 				),
 			)
@@ -141,14 +141,14 @@ class API_Unit_Test extends \Codeception\Test\Unit {
 	 * @covers ::set_last_fetched_time
 	 * @covers ::get_last_fetched_option_name
 	 */
-	public function test_set_last_fetched_time():void {
+	public function test_set_last_fetched_time(): void {
 
 		$logger   = new ColorLogger();
 		$settings = $this->makeEmpty(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_plugin_slug' => Expected::atLeastOnce(
-					function() {
+					function () {
 						return 'plugin-slug';
 					}
 				),
@@ -181,7 +181,6 @@ class API_Unit_Test extends \Codeception\Test\Unit {
 		);
 
 		$sut->set_last_fetched_time( 'brianhenryie@gmail.com', $datetime );
-
 	}
 
 	/**
@@ -203,7 +202,7 @@ class API_Unit_Test extends \Codeception\Test\Unit {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_plugin_slug'                 => Expected::atLeastOnce(
-					function() {
+					function () {
 						return 'plugin-slug';
 					}
 				),
@@ -262,7 +261,7 @@ class API_Unit_Test extends \Codeception\Test\Unit {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_plugin_slug' => Expected::atLeastOnce(
-					function() {
+					function () {
 						return 'plugin-slug';
 					}
 				),
@@ -309,7 +308,7 @@ class API_Unit_Test extends \Codeception\Test\Unit {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_plugin_slug' => Expected::atLeastOnce(
-					function() {
+					function () {
 						return 'plugin-slug';
 					}
 				),
@@ -359,7 +358,7 @@ class API_Unit_Test extends \Codeception\Test\Unit {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_plugin_slug' => Expected::atLeastOnce(
-					function() {
+					function () {
 						return 'plugin-slug';
 					}
 				),
