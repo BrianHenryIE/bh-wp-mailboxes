@@ -1,0 +1,18 @@
+{
+  "name": "bh-wp-mailboxes",
+  "private": true,
+  "description": "Development tooling (wp-env + Playwright) for bh-wp-mailboxes.",
+  "scripts": {
+    "wp-env": "wp-env",
+    "wp-env:start": "wp-env start --xdebug",
+    "wp-env:stop": "wp-env stop",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58",
+    "@wordpress/e2e-test-utils-playwright": "^1.0.0",
+    "@wordpress/env": "^10.0.0",
+    "dotenv": "^17.3"
+  }
+}

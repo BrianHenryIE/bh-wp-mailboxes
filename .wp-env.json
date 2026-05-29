@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/wp-env.json",
+  "config": {
+    "WP_DEBUG": true,
+    "WP_DEBUG_LOG": "/var/www/html/wp-content/debug.log",
+    "WP_DEBUG_DISPLAY": false
+  },
+  "mappings": {
+    "wp-content/plugins/development-plugin": "./development-plugin",
+    "wp-content/plugins/vendor": "./vendor"
+  },
+  "env": {
+    "tests": {
+      "mysqlPort": 33066
+    }
+  },
+  "lifecycleScripts": {
+    "afterStart": "wp-env run cli wp plugin activate development-plugin"
+  },
+  "phpVersion": "8.4"
+}

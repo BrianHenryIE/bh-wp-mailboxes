@@ -71,7 +71,6 @@
         "vlucas/phpdotenv": "*",
         "wordpress/wordpress": "*",
         "wp-cli/dist-archive-command": "*",
-        "wp-cli/wp-cli-bundle": "*",
         "wp-coding-standards/wpcs": "*",
         "wpackagist-theme/twentytwenty": "*"
     },
