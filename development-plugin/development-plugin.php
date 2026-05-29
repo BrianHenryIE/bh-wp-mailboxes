@@ -52,7 +52,7 @@ Autoloader::generate(
 
 Autoloader::generate(
 	'BrianHenryIE\\WP_Mailboxes',
-	'/var/www/bh-wp-mailboxes/src/', // TODO: rename to includes.
+	'/var/www/bh-wp-mailboxes/includes/',
 )->register();
 
 // This may be outated.
@@ -73,7 +73,7 @@ define( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME', plugin_basename( __FILE__
 
 
 
-// I think this is needed becuase we're mapping the vendor directory to wp-content/plugins/vendor, then libraries/functions
+// I think this is needed because we're mapping the vendor directory to wp-content/plugins/vendor, then libraries/functions
 // that use directory path to determine the current plugin, e.g. Private Uploads, cannot wo
 
 // Fix for symlinks in local dev.
