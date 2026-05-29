@@ -36,6 +36,7 @@ use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Plugins_Page;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest\Mailboxes;
+use Dotenv\Dotenv;
 
 // If this file is called directly, abort.
 if ( ! defined( 'WPINC' ) ) {
@@ -118,52 +119,72 @@ $logger_settings = new class() implements Logger_Settings_Interface {
 
 $logger = Logger::instance( $logger_settings );
 
-// $dotenv = Dotenv::createImmutable( __DIR__ . '/../', '.env.secret', true );
-// $dotenv->load();
 
-$imap_mailbox_settings = new class() implements Mailbox_Settings_Interface {
-	use Mailbox_Settings_Defaults_Trait;
+$mailboxes = array();
 
 
-	public function get_account_unique_friendly_name(): string {
-		return 'support@brianhenryie.com';
-	}
+if ( file_exists( '/var/www/test-credentials/.env.secret', ) ) {
+	$dotenv = Dotenv::createImmutable( '/var/www/test-credentials/', '.env.secret', true );
+	$dotenv->load();
 
-	public function get_credentials(): Account_Credentials_Interface {
-		return new class() implements IMAP_Credentials_Interface {
+	$imap_mailbox_settings = new class() implements Mailbox_Settings_Interface {
+		use Mailbox_Settings_Defaults_Trait;
 
-			public function get_email_imap_server(): string {
-				return $_ENV['IMAP_SERVER'];
-			}
 
-			public function get_email_account_username(): string {
-				return $_ENV['IMAP_USERNAME'];
-			}
+		public function get_account_unique_friendly_name(): string {
+			return 'support@brianhenryie.com';
+		}
 
-			public function get_email_account_password(): string {
-				return $_ENV['IMAP_PASSWORD'];
-			}
-		};
-	}
-};
+		public function get_credentials(): Account_Credentials_Interface {
+			return new class() implements IMAP_Credentials_Interface {
 
-$gmail_mailbox_settings = new class() implements Mailbox_Settings_Interface {
-	use Mailbox_Settings_Defaults_Trait;
+				public function get_email_imap_server(): string {
+					return $_ENV['IMAP_SERVER'];
+				}
 
-	public function get_account_unique_friendly_name(): string {
-		return 'brianhenryie@gmail.com';
-	}
+				public function get_email_account_username(): string {
+					return $_ENV['IMAP_USERNAME'];
+				}
 
-	public function get_credentials(): Account_Credentials_Interface {
+				public function get_email_account_password(): string {
+					return $_ENV['IMAP_PASSWORD'];
+				}
+			};
+		}
+	};
 
-		return new Google_API_Credentials( __DIR__ );
-	}
+	$mailboxes[] = $imap_mailbox_settings;
 
-};
+} else {
 
-$mailboxes   = array();
-$mailboxes[] = $imap_mailbox_settings;
-$mailboxes[] = $gmail_mailbox_settings;
+	add_action(
+		'admin_notices',
+		function () {
+			// echo NO .env.secret in test-credentials
+		}
+	);
+
+}
+
+if ( file_exists( '/var/www/test-credentials/credentials.json', ) ) {
+
+	$gmail_mailbox_settings = new class() implements Mailbox_Settings_Interface {
+		use Mailbox_Settings_Defaults_Trait;
+
+		public function get_account_unique_friendly_name(): string {
+			return 'brianhenryie@gmail.com';
+		}
+
+		public function get_credentials(): Account_Credentials_Interface {
+
+			return new Google_API_Credentials( __DIR__ );
+		}
+
+	};
+
+	$mailboxes[] = $gmail_mailbox_settings;
+}
+
 
 $mailboxes_settings = new class( $mailboxes ) implements BH_WP_Mailboxes_Settings_Interface {
 	use BH_WP_Mailboxes_Settings_Defaults_Trait;

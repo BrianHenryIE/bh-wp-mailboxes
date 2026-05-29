@@ -1,0 +1,12 @@
+# Ignore everything
+*
+
+# Particularly these
+.env.secret
+access_token.json
+credentials.json
+
+# But not these files...
+!.env.secret.example
+!.gitignore
+!README.md

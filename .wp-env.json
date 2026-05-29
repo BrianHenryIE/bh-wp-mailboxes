@@ -7,7 +7,8 @@
   },
   "mappings": {
     "wp-content/plugins/development-plugin": "./development-plugin",
-    "wp-content/plugins/vendor": "./vendor"
+    "../bh-wp-mailboxes": ".",
+    "../test-credentials": "./test-credentials"
   },
   "env": {
     "tests": {
