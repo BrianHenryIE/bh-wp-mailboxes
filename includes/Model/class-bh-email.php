@@ -188,8 +188,6 @@ class BH_Email {
 	 * TODO: CACHE!
 	 *
 	 * @param string $guid
-	 *
-	 * @return string|null
 	 */
 	protected function query_post_id_with_guid( string $guid ): ?int {
 		global $wpdb;

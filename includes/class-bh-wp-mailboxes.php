@@ -13,7 +13,6 @@ use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_WP_Mailboxes_Hooks;
 use BrianHenryIE\WP_Private_Uploads\BH_WP_Private_Uploads_Hooks;
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Interface;
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Trait;
-
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;

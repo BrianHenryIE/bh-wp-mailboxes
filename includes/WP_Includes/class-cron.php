@@ -20,7 +20,7 @@ use Psr\Log\LoggerInterface;
  * Schedules with wp-cron, messages an API instance.
  *
  * @uses wp_schedule_event()
- * @uses \BrianHenryIE\WP_Mailboxes\API\API_Interface
+ * @uses API_Interface
  */
 class Cron {
 

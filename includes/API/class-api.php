@@ -2,7 +2,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMessage_BH_Email_Adapter;
+use BrianHenryIE\WP_Mailboxes\Adapter\IMessage_BH_Email_Adapter;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Fetcher;
@@ -18,7 +18,6 @@ use DateTimeZone;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use WP_Post;
 
 class API implements API_Interface {
 
@@ -173,7 +172,7 @@ class API implements API_Interface {
 			 *
 			 * @param BH_Email[] $new_bh_emails
 			 * @param Mailbox_Settings_Interface $account
-			 * @param \BrianHenryIE\WP_Mailboxes\API\API $mailboxes
+			 * @param API $mailboxes
 			 */
 			do_action( "bh_wp_mailboxes_fetch_emails_saved_{$plugin_slug}", $new_bh_emails, $account, $mailboxes );
 

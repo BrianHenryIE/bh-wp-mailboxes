@@ -26,12 +26,10 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	/**
 	 * Email_Fetcher constructor.
 	 *
-	 * @param string                     $cpt
 	 * @param Mailbox_Settings_Interface $settings Connection settings and filters.
 	 * @param LoggerInterface            $logger Logger.
 	 */
 	public function __construct(
-		protected string $cpt,
 		protected Mailbox_Settings_Interface $settings,
 		LoggerInterface $logger
 	) {
@@ -42,7 +40,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	/**
 	 * Returns an authorized API client.
 	 *
-	 * @uses \BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface::get_credentials()
+	 * @uses Mailbox_Settings_Interface::get_credentials
 	 *
 	 * @see https://developers.google.com/gmail/api/quickstart/php
 	 *
@@ -64,7 +62,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		$client->setApplicationName( 'Gmail API PHP Quickstart' );
 		$client->setScopes( Google_Service_Gmail::GMAIL_READONLY );
 
-		$client->setAuthConfig( $saved_credentials->get_project_credentials() );
+		$client->setAuthConfig( (array) $saved_credentials->get_project_credentials() );
 
 		$client->setAccessType( 'offline' );
 		$client->setPrompt( 'select_account consent' );
@@ -161,10 +159,6 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	/**
 	 *
 	 * @see https://stackoverflow.com/questions/44218353/decode-email-body-in-php-gmail-api
-	 *
-	 * @param $data
-	 *
-	 * @return false|string
 	 */
 	protected function gmail_body_decode( string $data ): string {
 		// @see https://php.net/manual/es/function.base64-decode.php#118244

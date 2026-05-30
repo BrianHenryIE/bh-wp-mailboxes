@@ -36,7 +36,7 @@ interface Mailbox_Settings_Interface {
 	 *
 	 * Return null to match all addresses. (e.g. when emails are forwarded and do not preserve the real sender).
 	 *
-	 * @return string The pertinent email address.
+	 * @return ?string The pertinent email address.
 	 */
 	public function get_from_email_regex(): ?string;
 

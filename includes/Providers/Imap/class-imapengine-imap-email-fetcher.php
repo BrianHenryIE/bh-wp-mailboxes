@@ -28,7 +28,6 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	protected Mailbox $mailbox;
 
 	/**
-	 * @param string                     $cpt_name Unused — kept for interface compatibility with callers.
 	 * @param Mailbox_Settings_Interface $settings Connection settings.
 	 * @param LoggerInterface            $logger Logger.
 	 */
@@ -94,13 +93,13 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		}
 	}
 
-		/**
-		 * Fetches emails from INBOX since the given time.
-		 *
-		 * @param DateTimeInterface $since_time
-		 *
-		 * @return ZImessage_Collection Unsaved emails as parsed MIME messages.
-		 */
+	/**
+	 * Fetches emails from INBOX since the given time.
+	 *
+	 * @param DateTimeInterface $since_time
+	 *
+	 * @return ZImessage_Collection Unsaved emails as parsed MIME messages.
+	 */
 	public function retrieve_emails( DateTimeInterface $since_time, int $limit = 100 ): ZImessage_Collection {
 
 		// `SINCE` filters by date only — go back one extra day and filter by time in PHP.
