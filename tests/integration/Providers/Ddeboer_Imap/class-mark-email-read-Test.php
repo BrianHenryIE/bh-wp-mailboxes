@@ -6,7 +6,7 @@
  * @author     BrianHenryIE <BrianHenryIE@gmail.com>
  */
 
-namespace BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap;
+namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Defaults_Trait;
@@ -55,7 +55,7 @@ class Mark_Email_Read_Test extends \Codeception\TestCase\WPTestCase {
 
 		$cpt = '';
 
-		$sut = new Ddeboer_Imap_Email_Fetcher( $cpt, $settings, $logger );
+		$sut = new ImapEngine_Imap_Email_Fetcher( $cpt, $settings, $logger );
 
 		$since_time = ( new \DateTime() )->modify( "-{$time} seconds" );
 

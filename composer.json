@@ -56,13 +56,12 @@
         }
     },
     "require": {
-        "brianhenryie/bh-wp-private-uploads": "*",
-        "ddeboer/imap": "*",
-        "ext-json": "*",
         "php": ">=8.4",
+        "ext-json": "*",
+        "brianhenryie/bh-wp-private-uploads": "*",
+        "directorytree/imapengine": "^1.24",
         "psr/log": "*",
-        "wptrt/admin-notices": "*",
-        "ext-imap": "*"
+        "wptrt/admin-notices": "*"
     },
     "require-dev": {
         "10up/wp_mock": "*",

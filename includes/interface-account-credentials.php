@@ -2,7 +2,7 @@
 /**
  * A marker interface for credentials.
  *
- * @see \BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap\IMAP_Credentials_Interface
+ * @see \BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface
  * @see \BrianHenryIE\WP_Mailboxes\API\Gmail_API\Google_API_Credentials_Interface
  */
 

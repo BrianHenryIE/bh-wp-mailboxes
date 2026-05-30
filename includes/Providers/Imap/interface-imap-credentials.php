@@ -1,6 +1,6 @@
 <?php
 
-namespace BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap;
+namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 

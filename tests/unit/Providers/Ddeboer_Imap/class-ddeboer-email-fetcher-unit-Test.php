@@ -5,23 +5,23 @@
  * @author  BrianHenryIE <BrianHenryIE@gmail.com>
  */
 
-namespace BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap;
+namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use Codeception\Stub;
-use Ddeboer\Imap\ConnectionInterface;
-use Ddeboer\Imap\MailboxInterface;
-use Ddeboer\Imap\Message\EmailAddress;
-use Ddeboer\Imap\MessageInterface;
-use Ddeboer\Imap\MessageIteratorInterface;
-use Ddeboer\Imap\ServerInterface;
+use ImapEngine\Imap\ConnectionInterface;
+use ImapEngine\Imap\MailboxInterface;
+use ImapEngine\Imap\Message\EmailAddress;
+use ImapEngine\Imap\MessageInterface;
+use ImapEngine\Imap\MessageIteratorInterface;
+use ImapEngine\Imap\ServerInterface;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap\Ddeboer_Imap_Email_Fetcher
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher
  */
-class Ddeboer_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
+class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
 	protected function setup(): void {
 		parent::setUp();
@@ -34,7 +34,7 @@ class Ddeboer_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * @covers \BrianHenryIE\WP_Emails\API\Ddeboer_Imap\Email_Fetcher::retrieve_emails
+	 * @covers \BrianHenryIE\WP_Emails\API\ImapEngine_Imap\Email_Fetcher::retrieve_emails
 	 */
 	public function test_happy_path() {
 
@@ -132,7 +132,7 @@ class Ddeboer_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
 		$cpt = 'test-post-type-name';
 
-		$sut = new Ddeboer_Imap_Email_Fetcher( $cpt, $mailbox_settings, $logger );
+		$sut = new ImapEngine_Imap_Email_Fetcher( $cpt, $mailbox_settings, $logger );
 
 		$b = \DateTime::createFromFormat( 'U', 0 );
 
@@ -240,7 +240,7 @@ class Ddeboer_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
 		$cpt = 'test-post-type-name';
 
-		$sut = new Ddeboer_Imap_Email_Fetcher( $cpt, $mailbox_settings, $logger );
+		$sut = new ImapEngine_Imap_Email_Fetcher( $cpt, $mailbox_settings, $logger );
 
 		$result = $sut->test_credentials();
 

@@ -8,24 +8,24 @@
  * @package    brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap;
+namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
 
 use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
 use DateTime;
 use DateTimeInterface;
-use Ddeboer\Imap\Exception\InvalidDateHeaderException;
-use Ddeboer\Imap\Search\Date\Since;
-use Ddeboer\Imap\Server;
-use Ddeboer\Imap\ServerInterface;
+use ImapEngine\Imap\Exception\InvalidDateHeaderException;
+use ImapEngine\Imap\Search\Date\Since;
+use ImapEngine\Imap\Server;
+use ImapEngine\Imap\ServerInterface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
 /**
- * Uses Ddeboer library to fetch emails since last run.
+ * Uses ImapEngine library to fetch emails since last run.
  */
-class Ddeboer_Imap_Email_Fetcher implements Email_Fetcher_Interface {
+class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 
 	use LoggerAwareTrait;
 
@@ -52,14 +52,14 @@ class Ddeboer_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	/**
 	 * Email_Fetcher constructor.
 	 *
-	 * @param string                     $cpt
+	 * @param string                     $cpt_name
 	 * @param Mailbox_Settings_Interface $settings Connection settings and filters.
 	 * @param LoggerInterface            $logger Logger.
 	 */
-	public function __construct( string $cpt, Mailbox_Settings_Interface $settings, LoggerInterface $logger ) {
+	public function __construct( string $cpt_name, Mailbox_Settings_Interface $settings, LoggerInterface $logger ) {
 		$this->setLogger( $logger );
 		$this->settings = $settings;
-		$this->cpt      = $cpt;
+		$this->cpt      = $cpt_name;
 
 		if ( ! ( $settings->get_credentials() instanceof IMAP_Credentials_Interface ) ) {
 			$this->logger->error( 'not IMAP credentials' );
@@ -69,7 +69,7 @@ class Ddeboer_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		$this->new_server = new class() implements Server_Container_Interface {
 
 			/**
-			 * Returns a new Ddeboer\Imap\Server.
+			 * Returns a new ImapEngine\Imap\Server.
 			 *
 			 * @param string $url_or_ip The IMAP server address, with optional :port.
 			 * @return ServerInterface
@@ -99,7 +99,7 @@ class Ddeboer_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 
 		$this->imap_server = $this->new_server->get_server( $server_url_or_ip );
 
-		// \Ddeboer\Imap\Exception\AuthenticationFailedException
+		// \ImapEngine\Imap\Exception\AuthenticationFailedException
 		$this->connection = $this->imap_server->authenticate( $username, $password );
 
 		$account_category_slug = sanitize_title( $this->settings->get_account_unique_friendly_name() );
@@ -141,7 +141,7 @@ class Ddeboer_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 			)
 		);
 
-		/** @var \Ddeboer\Imap\MessageIterator $emails */
+		/** @var \ImapEngine\Imap\MessageIterator $emails */
 		$emails = $mailbox->getMessages( $search_condition );
 
 		$this->logger->debug( count( $emails ) . ' found since ' . $previous_day->format( 'j-M-Y' ) );
@@ -151,33 +151,33 @@ class Ddeboer_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		 *
 		 * @see https://stackoverflow.com/questions/32698415/php-imap-search-unseen-since-date-with-time
 		 */
-		$new_ddeboer_emails = array();
-		foreach ( $emails as $ddeboer_email ) {
+		$new_imapengine_emails = array();
+		foreach ( $emails as $imapengine_email ) {
 			try {
-				$email_datetime = $ddeboer_email->getDate();
+				$email_datetime = $imapengine_email->getDate();
 			} catch ( InvalidDateHeaderException $exception ) {
 				// If the date is invalid... let's save it anyway.
 				// We may have to deal with this exception again later.
-				$new_ddeboer_emails[] = $ddeboer_email;
+				$new_imapengine_emails[] = $imapengine_email;
 				continue;
 			}
 			if ( $email_datetime < $since_time ) {
 				continue;
 			}
-			$new_ddeboer_emails[] = $ddeboer_email;
+			$new_imapengine_emails[] = $imapengine_email;
 		}
 
 		$this->logger->debug(
-			count( $new_ddeboer_emails ) . ' emails found in inbox since last run.',
+			count( $new_imapengine_emails ) . ' emails found in inbox since last run.',
 			array(
-				'new_email_count' => count( $new_ddeboer_emails ),
+				'new_email_count' => count( $new_imapengine_emails ),
 				'since'           => $since_time,
 			)
 		);
 
 		$new_emails = array();
-		foreach ( $new_ddeboer_emails as $ddeboer_email ) {
-			$new_emails[ $ddeboer_email->getId() ] = new Ddeboer_BH_Email( $ddeboer_email, $this->cpt, $this->mailbox_category_term_id );
+		foreach ( $new_imapengine_emails as $imapengine_email ) {
+			$new_emails[ $imapengine_email->getId() ] = new ImapEngine_BH_Email( $imapengine_email, $this->cpt, $this->mailbox_category_term_id );
 		}
 
 		return $new_emails;

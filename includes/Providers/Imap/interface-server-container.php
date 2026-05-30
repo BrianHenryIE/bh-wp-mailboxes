@@ -8,9 +8,9 @@
  * @package    brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap;
+namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
 
-use Ddeboer\Imap\ServerInterface;
+use ImapEngine\Imap\ServerInterface;
 
 interface Server_Container_Interface {
 

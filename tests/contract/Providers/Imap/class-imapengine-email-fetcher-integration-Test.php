@@ -6,22 +6,23 @@
  * @author     BrianHenryIE <BrianHenryIE@gmail.com>
  */
 
-namespace BrianHenryIE\WP_Emails\API\Ddeboer_Imap;
+namespace BrianHenryIE\WP_Emails\API\ImapEngine_Imap;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap\Ddeboer_Imap_Email_Fetcher;
-use BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap\IMAP_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
+use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
+use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use DateTime;
+use Dotenv\Dotenv;
 
 /**
  * Username and password are read from `.env.secrets`.
  */
-class Ddeboer_Email_Fetcher_Integration_Test extends \Codeception\TestCase\WPTestCase {
+class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
 	protected Mailbox_Settings_Interface $settings;
 
@@ -31,7 +32,15 @@ class Ddeboer_Email_Fetcher_Integration_Test extends \Codeception\TestCase\WPTes
 	public function setUp(): void {
 		parent::setUp();
 
-		$logger   = new ColorLogger();
+		global $project_root_dir;
+
+		if ( ! file_exists( $project_root_dir . '/test-credentials/.env.secret', ) ) {
+			$this->fail('Please configure: test-credentials/.env.secret');
+		}
+		$dotenv = Dotenv::createImmutable( $project_root_dir . '/test-credentials/', '.env.secret', true );
+		$dotenv->load();
+
+
 		$mailbox  = $this->makeEmpty(
 			Mailbox_Settings_Interface::class,
 			array(
@@ -46,10 +55,12 @@ class Ddeboer_Email_Fetcher_Integration_Test extends \Codeception\TestCase\WPTes
 			)
 		);
 
-		$bh_email_cpt = new BH_Email_CPT( $settings, $logger );
-		$bh_email_cpt->register_cpt();
-		$bh_email_cpt->register_mailboxes_taxonomy();
-		$bh_email_cpt->register_mailbox();
+		$cpt_name = 'Email Test CPT';
+
+//		$bh_email_cpt = new BH_Email_CPT( $settings, $logger );
+//		$bh_email_cpt->register_cpt();
+//		$bh_email_cpt->register_mailboxes_taxonomy();
+//		$bh_email_cpt->register_mailbox();
 
 		/** @var Mailbox_Settings_Interface $settings */
 		$this->settings = new class() implements Mailbox_Settings_Interface {
@@ -83,14 +94,13 @@ class Ddeboer_Email_Fetcher_Integration_Test extends \Codeception\TestCase\WPTes
 	 */
 	public function test_download_emails_for_tests() {
 
-		$this->markTestIncomplete();
+		$logger = $this->logger;
 
-		$logger = new ColorLogger();
 		$cpt    = 'email_test_cpt';
 
 		try {
-			$sut = new Ddeboer_Imap_Email_Fetcher( $cpt, $this->settings, $logger );
-		} catch ( \Ddeboer\Imap\Exception\AuthenticationFailedException $e ) {
+			$sut = new ImapEngine_Imap_Email_Fetcher( $cpt, $this->settings, $logger );
+		} catch ( \ImapEngine\Imap\Exception\AuthenticationFailedException $e ) {
 			// When the server or user/password are bad.
 			$exception = $e;
 		}
@@ -154,8 +164,8 @@ EOD;
 		};
 
 		try {
-			new Ddeboer_Imap_Email_Fetcher( $cpt, $settings, $logger );
-		} catch ( \Ddeboer\Imap\Exception\AuthenticationFailedException $e ) {
+			new ImapEngine_Imap_Email_Fetcher( $cpt, $settings, $logger );
+		} catch ( \ImapEngine\Imap\Exception\AuthenticationFailedException $e ) {
 			$exception = $e;
 		}
 
@@ -205,8 +215,8 @@ EOD;
 		};
 
 		try {
-			new Ddeboer_Imap_Email_Fetcher( $cpt, $settings, $logger );
-		} catch ( \Ddeboer\Imap\Exception\AuthenticationFailedException $e ) {
+			new ImapEngine_Imap_Email_Fetcher( $cpt, $settings, $logger );
+		} catch ( \ImapEngine\Imap\Exception\AuthenticationFailedException $e ) {
 			$exception = $e;
 		}
 

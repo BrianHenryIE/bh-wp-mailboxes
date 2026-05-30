@@ -2,8 +2,8 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
-use BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap\Ddeboer_Imap_Email_Fetcher;
-use BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap\IMAP_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
+use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Gmail_API\Gmail_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\API\Gmail_API\Google_API_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email;
@@ -85,7 +85,7 @@ class API implements API_Interface {
 
 			try {
 				if ( $credentials instanceof IMAP_Credentials_Interface ) {
-					$fetcher = new Ddeboer_Imap_Email_Fetcher( $this->settings->get_cpt_underscored_20(), $mailbox_settings, $this->logger );
+					$fetcher = new ImapEngine_Imap_Email_Fetcher( $this->settings->get_cpt_underscored_20(), $mailbox_settings, $this->logger );
 				} elseif ( $credentials instanceof Google_API_Credentials_Interface ) {
 					$fetcher = new Gmail_Email_Fetcher( $this->settings->get_cpt_underscored_20(), $mailbox_settings, $this->logger );
 				} else {
