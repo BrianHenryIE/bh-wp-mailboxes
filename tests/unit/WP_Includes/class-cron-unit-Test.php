@@ -4,6 +4,7 @@ namespace BrianHenryIE\BH_WP_Mailboxes;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\Cron;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 
@@ -12,7 +13,7 @@ use Codeception\Stub\Expected;
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\WP_Includes\Cron
  */
-class Cron_Unit_Test extends \Codeception\Test\Unit {
+class Cron_Unit_Test extends Unit_Testcase {
 
 	protected function setUp(): void {
 		parent::setUp();

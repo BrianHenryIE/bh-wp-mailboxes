@@ -5,12 +5,13 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use Codeception\Stub\Expected;
 
 /**
  * @coversDefaultClass  \BrianHenryIE\WP_Mailboxes\Admin\Ajax
  */
-class AJAX_Unit_Test extends \Codeception\Test\Unit {
+class AJAX_Unit_Test extends Unit_Testcase {
 
 	protected function setup(): void {
 		parent::setup();

@@ -4,6 +4,7 @@
 namespace BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap;
 
 use BrianHenryIE\WP_Mailboxes\BH_Email;
+use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use Ddeboer\Imap\Message\BasicMessageInterface;
 use Ddeboer\Imap\Message\EmailAddress;
 use Ddeboer\Imap\Message\Headers;
@@ -11,7 +12,7 @@ use Ddeboer\Imap\Message\Headers;
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap\Ddeboer_BH_Email
  */
-class Ddeboer_BH_Email_Unit_Test extends \Codeception\Test\Unit {
+class Ddeboer_BH_Email_Unit_Test extends Unit_Testcase {
 
 
 	/**

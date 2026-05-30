@@ -6,6 +6,7 @@ use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use Codeception\Stub\Expected;
 use DateTime;
 use DateTimeInterface;
@@ -13,7 +14,7 @@ use DateTimeInterface;
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\API
  */
-class API_Unit_Test extends \Codeception\Test\Unit {
+class API_Unit_Test extends Unit_Testcase {
 
 	protected function setUp(): void {
 		parent::setUp();

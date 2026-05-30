@@ -9,7 +9,7 @@ use Codeception\Stub\Expected;
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\BH_Email
  */
-class BH_Email_WPUnit_Test extends \Codeception\TestCase\WPTestCase {
+class BH_Email_WPUnit_Test extends WPUnit_Testcase {
 
 	/**
 	 * @covers ::save

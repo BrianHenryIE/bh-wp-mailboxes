@@ -30,6 +30,21 @@
             "includes/"
         ]
     },
+    "autoload-dev": {
+        "psr-4": {
+            "BrianHenryIE\\WP_Mailboxes\\": [
+                "tests/unit",
+                "tests/wpunit",
+                "tests/integration"
+            ]
+        },
+        "classmap": [
+            "tests/unit",
+            "tests/wpunit",
+            "tests/integration",
+            "tests/_support"
+        ]
+    },
     "repositories": {
         "composer/composer": {
             "type": "composer",

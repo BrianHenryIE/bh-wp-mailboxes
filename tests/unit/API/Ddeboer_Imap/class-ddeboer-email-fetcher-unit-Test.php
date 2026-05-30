@@ -9,6 +9,7 @@ namespace BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use Codeception\Stub;
 use Ddeboer\Imap\ConnectionInterface;
 use Ddeboer\Imap\MailboxInterface;
@@ -20,7 +21,7 @@ use Ddeboer\Imap\ServerInterface;
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\Ddeboer_Imap\Ddeboer_Imap_Email_Fetcher
  */
-class Ddeboer_Imap_Email_Fetcher_Unit_Test extends \Codeception\Test\Unit {
+class Ddeboer_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
 	protected function setup(): void {
 		parent::setUp();

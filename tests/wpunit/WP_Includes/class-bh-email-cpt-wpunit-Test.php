@@ -5,12 +5,13 @@ namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Codeception\Stub\Expected;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT
  */
-class BH_Email_CPT_WPUnit_Test extends \Codeception\TestCase\WPTestCase {
+class BH_Email_CPT_WPUnit_Test extends WPUnit_Testcase {
 
 	/**
 	 * Check the post type is registered.

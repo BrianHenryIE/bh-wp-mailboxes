@@ -5,7 +5,7 @@ namespace BrianHenryIE\WP_Mailboxes;
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\BH_Email
  */
-class BH_Email_Unit_Test extends \Codeception\Test\Unit {
+class BH_Email_Unit_Test extends Unit_Testcase {
 
 	/**
 	 */

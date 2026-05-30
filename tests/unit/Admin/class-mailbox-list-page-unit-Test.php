@@ -13,12 +13,13 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 
 /**
  *
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Admin\Mailbox_List_Page
  */
-class Mailbox_List_Page_Test extends \Codeception\Test\Unit {
+class Mailbox_List_Page_Test extends Unit_Testcase {
 
 	protected function setup(): void {
 		parent::setup();

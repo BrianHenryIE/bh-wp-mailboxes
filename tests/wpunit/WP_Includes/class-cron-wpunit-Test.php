@@ -5,12 +5,12 @@ namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\API\API;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use Codeception\TestCase\WPTestCase;
+use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\WP_Includes\Cron
  */
-class Cron_WPUnit_Test extends WPTestCase {
+class Cron_WPUnit_Test extends WPUnit_Testcase {
 
 	/**
 	 * @covers ::add_cron_jobs
