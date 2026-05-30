@@ -15,8 +15,15 @@ use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
 
 class Gmail_API {
 
+	public function is_credentials_present(): bool {
+		return file_exists( '/var/www/test-credentials/credentials.json' )
+			&& file_exists( '/var/www/test-credentials/access_token.json' );
+	}
+
+
 	public function get_mailbox_settings(): ?Mailbox_Settings_Interface {
-		if ( ! file_exists( '/var/www/test-credentials/credentials.json', ) ) {
+
+		if ( ! $this->is_credentials_present() ) {
 			return null;
 		}
 
