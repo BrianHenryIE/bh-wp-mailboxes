@@ -68,7 +68,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		$client->setApplicationName( 'Gmail API PHP Quickstart' );
 		$client->setScopes( Google_Service_Gmail::GMAIL_READONLY );
 
-		$client->setAuthConfig( $saved_credentials->get_project_credentials() );
+		$client->setAuthConfig( $saved_credentials->get_project_credentials());
 
 		$client->setAccessType( 'offline' );
 		$client->setPrompt( 'select_account consent' );
@@ -235,7 +235,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		// @see https://php.net/manual/es/function.base64-decode.php#118244
 		$data = base64_decode( str_replace( array( '-', '_' ), array( '+', '/' ), $data ) );
 
-		// Stackoverflow says can also use `quoted_printable_decode()`.
+		// Stack Overflow says can also use `quoted_printable_decode()`.
 		$data = imap_qprint( $data );
 
 		return $data;

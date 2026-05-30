@@ -42,7 +42,7 @@ interface BH_WP_Mailboxes_Settings_Interface {
 
 	/**
 	 * Email attachments are stored in a subfolder of the wp-content/uploads directory. What name should be given to
-	 * the folder? e.g. my-helpdesk-attachments. (use hyphenated name for WordPress standard)
+	 * the folder? e.g. my-helpdesk-attachments. (use hyphenated name for WordPress convention)
 	 *
 	 * If this is null, no directory will be created and no attachments will be saved.
 	 *
