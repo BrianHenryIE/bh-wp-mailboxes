@@ -39,7 +39,7 @@ if ( ! defined( 'WPINC' ) ) {
 	return;
 }
 
-require_once '/var/www/bh-wp-mailboxes/vendor/autoload.php';
+require_once '/var/www/html/bh-wp-mailboxes/vendor/autoload.php';
 
 Autoloader::generate(
 	__NAMESPACE__,
@@ -48,7 +48,7 @@ Autoloader::generate(
 
 Autoloader::generate(
 	'BrianHenryIE\\WP_Mailboxes',
-	'/var/www/bh-wp-mailboxes/includes/',
+	'/var/www/html/bh-wp-mailboxes/includes/',
 )->register();
 
 // This may be outated.
@@ -77,16 +77,13 @@ add_filter(
 	'plugins_url',
 	function ( $url, $path, $plugin ) {
 
-		$project_root_dir = dirname( __DIR__ );
-
-		if ( ! str_contains( (string) $path, $project_root_dir ) ) {
-			return $url;
-		}
-
-		$url = str_replace( $project_root_dir, '', $url );
-		$url = str_replace( 'wp-content/plugins/vendor', 'vendor', $url );
-
-		return $url;
+		/**
+		 * We have mapped the entire project to `localhost:8888/bh-wp-mailboxes/`
+		 *
+		 * E.g. http://localhost:8888/wp-content/plugins/var/www/html/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
+		 * http://localhost:8888/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
+		 */
+		return str_replace( 'wp-content/plugins/var/www/html/','', $url );
 	},
 	10,
 	3
