@@ -1,6 +1,6 @@
 # BH WP Mailboxes Test Credentials
 
-This directory is for saving credentials for testing locally with `wp-env`.
+This directory is for saving credentials for testing locally with `wp-env` and in `tests/contract` live tests.
 
 This directory is mapped (in `.wp-env.json`) to `/var/www/test-credentials/` in the container and if the files are present, the development plugin will use them to configure mailboxes.
 

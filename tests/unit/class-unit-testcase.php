@@ -13,10 +13,24 @@ class Unit_Testcase extends Unit {
 	protected LoggerInterface $logger;
 
 	protected function setup(): void {
+		parent::setup();
+
+		WP_Mock::setUsePatchwork( true );
 		WP_Mock::setUp();
 
-		// Use the Strauss-prefixed logger interface for this project.
+		WP_Mock::passthruFunction( 'sanitize_title' );
+
 		$this->logger = new ColorLogger();
+
+		// YEAR_IN_SECONDS
+		\Patchwork\redefine(
+			'constant',
+			function ( string $constant_name ) {
+				return 'YEAR_IN_SECONDS' === $constant_name
+					? 60 * 60 * 365
+					: \Patchwork\relay( func_get_args() );
+			}
+		);
 	}
 
 	protected function tearDown(): void {
