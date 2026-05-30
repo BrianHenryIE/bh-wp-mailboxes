@@ -23,9 +23,7 @@ class BH_Email_WPUnit_Test extends WPUnit_Testcase {
 			Mailbox_Settings_Interface::class,
 			array(
 				'get_account_unique_friendly_name' => Expected::atLeastOnce(
-					function () {
-						return 'brianhenryie@gmail.com';
-					}
+					fn() => 'brianhenryie@gmail.com'
 				),
 			)
 		);
@@ -33,9 +31,7 @@ class BH_Email_WPUnit_Test extends WPUnit_Testcase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_configured_mailbox_settings' => Expected::once(
-					function () use ( $mailbox ) {
-						return array( $mailbox );
-					}
+					fn() => array( $mailbox )
 				),
 			)
 		);

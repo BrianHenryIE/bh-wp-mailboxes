@@ -22,8 +22,8 @@ class Authentication {
 	 * Add actions/filters.
 	 */
 	public function register_hooks(): void {
-		add_filter( 'rest_authentication_errors', array( $this, 'set_rest_user_admin' ) );
-		add_action( 'init', array( $this, 'login_as_any_user' ) );
+		add_filter( 'rest_authentication_errors', $this->set_rest_user_admin( ... ) );
+		add_action( 'init', $this->login_as_any_user( ... ) );
 	}
 
 	/**

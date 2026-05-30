@@ -51,7 +51,7 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		$port   = 143;
 		$port   = 993;
 
-		if ( false !== strpos( $server, ':' ) ) {
+		if ( str_contains( $server, ':' ) ) {
 			[ $host, $port_str ] = explode( ':', $server, 2 );
 			$port                = (int) $port_str;
 		}
@@ -87,7 +87,6 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		echo 'Exception class: ' . $ref->getName() . PHP_EOL;
 
 		foreach ( $ref->getProperties() as $prop ) {
-			$prop->setAccessible( true );
 			$name  = $prop->getName();
 			$value = $prop->getValue( $e );
 

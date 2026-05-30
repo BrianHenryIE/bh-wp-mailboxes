@@ -35,8 +35,7 @@ class Cron_Unit_Test extends Unit_Testcase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_cpt_friendly_name' => Expected::once(
-					function () {
-						return 'Test CPT Name'; }
+					fn() => 'Test CPT Name'
 				),
 			)
 		);
@@ -69,8 +68,7 @@ class Cron_Unit_Test extends Unit_Testcase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_cpt_friendly_name' => Expected::once(
-					function () {
-						return 'Test CPT Name'; }
+					fn() => 'Test CPT Name'
 				),
 			)
 		);
@@ -103,8 +101,7 @@ class Cron_Unit_Test extends Unit_Testcase {
 			API_Interface::class,
 			array(
 				'check_email' => Expected::once(
-					function () {
-						return array();}
+					fn() => array()
 				),
 			)
 		);
@@ -125,8 +122,7 @@ class Cron_Unit_Test extends Unit_Testcase {
 			API_Interface::class,
 			array(
 				'background_delete_local_emails' => Expected::once(
-					function () {
-						return array();}
+					fn() => array()
 				),
 			)
 		);

@@ -18,17 +18,17 @@ class BH_Email_CPT {
 
 	use LoggerAwareTrait;
 
-	protected BH_WP_Mailboxes_Settings_Interface $settings;
-
 	/**
 	 * Constructor
 	 *
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings for bh-wp-mailboxes.
 	 * @param LoggerInterface                    $logger PSR logger.
 	 */
-	public function __construct( BH_WP_Mailboxes_Settings_Interface $settings, LoggerInterface $logger ) {
+	public function __construct(
+		protected BH_WP_Mailboxes_Settings_Interface $settings,
+		LoggerInterface $logger
+	) {
 		$this->setLogger( $logger );
-		$this->settings = $settings;
 	}
 
 	/**

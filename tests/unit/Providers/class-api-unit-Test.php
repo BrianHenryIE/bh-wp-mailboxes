@@ -40,8 +40,7 @@ class API_Unit_Test extends Unit_Testcase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_configured_mailbox_settings' => Expected::atLeastOnce(
-					function () {
-						return array(); }
+					fn() => array()
 				),
 			)
 		);
@@ -73,12 +72,10 @@ class API_Unit_Test extends Unit_Testcase {
 				Mailbox_Settings_Interface::class,
 				array(
 					'get_account_unique_friendly_name' => Expected::atLeastOnce(
-						function () {
-							return 'Dummy Account';}
+						fn() => 'Dummy Account'
 					),
 					'get_credentials'                  => Expected::once(
-						function () {
-							return $this->makeEmpty( Account_Credentials_Interface::class ); }
+						fn() => $this->makeEmpty( Account_Credentials_Interface::class )
 					),
 				)
 			),
@@ -89,12 +86,10 @@ class API_Unit_Test extends Unit_Testcase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_plugin_slug'                 => Expected::atLeastOnce(
-					function () {
-						return 'plugin-slug';}
+					fn() => 'plugin-slug'
 				),
 				'get_configured_mailbox_settings' => Expected::atLeastOnce(
-					function () use ( $configured_mailbox_settings ) {
-						return $configured_mailbox_settings; }
+					fn() => $configured_mailbox_settings
 				),
 			)
 		);
@@ -112,7 +107,7 @@ class API_Unit_Test extends Unit_Testcase {
 			'get_option',
 			array(
 				'args'   => array( 'plugin-slug_mailbox_last_fetched_Dummy Account', null ),
-				'return' => ( new DateTime() )->format( DateTime::ATOM ),
+				'return' => new DateTime()->format( DateTime::ATOM ),
 			)
 		);
 
@@ -120,7 +115,7 @@ class API_Unit_Test extends Unit_Testcase {
 			'get_option',
 			array(
 				'args'   => array( 'plugin-slug_mailbox_last_failure_Dummy Account', null ),
-				'return' => ( new DateTime() )->format( DateTime::ATOM ),
+				'return' => new DateTime()->format( DateTime::ATOM ),
 			)
 		);
 
@@ -149,9 +144,7 @@ class API_Unit_Test extends Unit_Testcase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_plugin_slug' => Expected::atLeastOnce(
-					function () {
-						return 'plugin-slug';
-					}
+					fn() => 'plugin-slug'
 				),
 			)
 		);
@@ -203,9 +196,7 @@ class API_Unit_Test extends Unit_Testcase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_plugin_slug'                 => Expected::atLeastOnce(
-					function () {
-						return 'plugin-slug';
-					}
+					fn() => 'plugin-slug'
 				),
 				'get_configured_mailbox_settings' => array(
 					$account,
@@ -262,9 +253,7 @@ class API_Unit_Test extends Unit_Testcase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_plugin_slug' => Expected::atLeastOnce(
-					function () {
-						return 'plugin-slug';
-					}
+					fn() => 'plugin-slug'
 				),
 			)
 		);
@@ -309,9 +298,7 @@ class API_Unit_Test extends Unit_Testcase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_plugin_slug' => Expected::atLeastOnce(
-					function () {
-						return 'plugin-slug';
-					}
+					fn() => 'plugin-slug'
 				),
 			)
 		);
@@ -359,9 +346,7 @@ class API_Unit_Test extends Unit_Testcase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_plugin_slug' => Expected::atLeastOnce(
-					function () {
-						return 'plugin-slug';
-					}
+					fn() => 'plugin-slug'
 				),
 			)
 		);
@@ -379,7 +364,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$expected_key = 'plugin-slug_mailbox_last_failure_account';
 
 		// One month in the past.
-		$return = ( new DateTime() )->sub( new \DateInterval( 'P1D' ) )->format( DateTime::ATOM );
+		$return = new DateTime()->sub( new \DateInterval( 'P1D' ) )->format( DateTime::ATOM );
 		\WP_Mock::userFunction(
 			'get_option',
 			array(

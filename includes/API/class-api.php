@@ -24,21 +24,15 @@ class API implements API_Interface {
 
 	use LoggerAwareTrait;
 
-	protected BH_WP_Mailboxes_Settings_Interface $settings;
-
-	/**
-	 * If this is null, attachments will not be saved.
-	 *
-	 * @var Private_Uploads|null
-	 */
-	protected ?Private_Uploads $private_uploads;
-
-	public function __construct( BH_WP_Mailboxes_Settings_Interface $settings, ?Private_Uploads $private_uploads, ?LoggerInterface $logger = null ) {
-
+	public function __construct(
+		protected BH_WP_Mailboxes_Settings_Interface $settings,
+		/**
+		 * If this is null, attachments will not be saved.
+		 */
+		protected ?Private_Uploads $private_uploads,
+		?LoggerInterface $logger = null
+	) {
 		$this->logger = $logger ?? new NullLogger();
-
-		$this->settings        = $settings;
-		$this->private_uploads = $private_uploads;
 	}
 
 	/**
@@ -148,9 +142,7 @@ class API implements API_Interface {
 			 */
 			$filtered_account_emails = array_filter(
 				$all_new_account_bh_emails,
-				function ( BH_Email $email ) use ( $mailbox_settings ): bool {
-					return $this->email_filter( $email, $mailbox_settings );
-				}
+				fn( BH_Email $email ): bool => $this->email_filter( $email, $mailbox_settings )
 			);
 
 			/**
@@ -197,9 +189,8 @@ class API implements API_Interface {
 
 	/**
 	 * TODO: This should be done when querying the server. i.e. a search during fetch.
-	 *
-	 * @deprecated
 	 */
+	#[\Deprecated]
 	protected function email_filter( BH_Email $email, Mailbox_Settings_Interface $settings ): bool {
 
 		// Filter on the from address.
@@ -241,9 +232,7 @@ class API implements API_Interface {
 		);
 
 		return array_map(
-			function ( WP_Post $cpt_email ) {
-				return BH_Email::create_from_cpt( $cpt_email );
-			},
+			BH_Email::create_from_cpt( ... ),
 			$query->get_posts()
 		);
 	}
@@ -300,7 +289,7 @@ class API implements API_Interface {
 			try { // catch this exception in case the option has been manually, incorrectly modified.
 				$since_datetime          = DateTime::createFromFormat( DateTime::ATOM, $last_fetched, new DateTimeZone( 'UTC' ) );
 				$result[ $account_name ] = $since_datetime ?: null;
-			} catch ( \Exception $exception ) {
+			} catch ( \Exception ) {
 				$this->logger->warning(
 					'Could not parse date from option key ' . $last_fetched_option_name . ' with value ' . $last_fetched . '. Possibly manually edited in database. Deleting option.',
 					array(
@@ -372,10 +361,10 @@ class API implements API_Interface {
 			return null;
 		}
 
-		$retry_expiry_seconds = $retry_expiry_seconds ?? HOUR_IN_SECONDS * 6;
-		$interval             = new \DateInterval( 'PT' . $retry_expiry_seconds . 'S' );
-		$now                  = new DateTime( 'now', new DateTimeZone( 'UTC' ) );
-		$now_sub_interval     = $now->sub( $interval );
+		$retry_expiry_seconds ??= HOUR_IN_SECONDS * 6;
+		$interval               = new \DateInterval( 'PT' . $retry_expiry_seconds . 'S' );
+		$now                    = new DateTime( 'now', new DateTimeZone( 'UTC' ) );
+		$now_sub_interval       = $now->sub( $interval );
 
 		$last_failed_datetime = DateTime::createFromFormat( DateTime::ATOM, $atom_time, new DateTimeZone( 'UTC' ) );
 

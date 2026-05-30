@@ -22,7 +22,10 @@ class BH_WP_Mailboxes extends API {
 
 	protected static BH_WP_Mailboxes $instance;
 
-	public static function instance( ?BH_WP_Mailboxes_Settings_Interface $settings = null, ?LoggerInterface $logger = null ): BH_WP_Mailboxes {
+	public static function instance(
+		?BH_WP_Mailboxes_Settings_Interface $settings = null,
+		?LoggerInterface $logger = null
+	): BH_WP_Mailboxes {
 
 		if ( ! empty( self::$instance ) ) {
 			return self::$instance;
@@ -39,7 +42,7 @@ class BH_WP_Mailboxes extends API {
 
 	protected function __construct( BH_WP_Mailboxes_Settings_Interface $settings, ?LoggerInterface $logger = null ) {
 
-		$logger = $logger ?? new NullLogger();
+		$logger ??= new NullLogger();
 
 		$private_uploads = null;
 
@@ -48,10 +51,7 @@ class BH_WP_Mailboxes extends API {
 			$private_uploads_settings = new class( $settings ) implements Private_Uploads_Settings_Interface {
 				use Private_Uploads_Settings_Trait;
 
-				protected BH_WP_Mailboxes_Settings_Interface $mailboxes_settings;
-
-				public function __construct( BH_WP_Mailboxes_Settings_Interface $mailboxes_settings ) {
-					$this->mailboxes_settings = $mailboxes_settings;
+				public function __construct( protected BH_WP_Mailboxes_Settings_Interface $mailboxes_settings ) {
 				}
 
 				public function get_plugin_slug(): string {

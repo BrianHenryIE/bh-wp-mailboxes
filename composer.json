@@ -76,6 +76,7 @@
         "phpcompatibility/phpcompatibility-wp": "*",
         "phpstan/extension-installer": "*",
         "phpunit/phpcov": "*",
+        "rector/rector": "^2.4",
         "squizlabs/php_codesniffer": "*",
         "szepeviktor/phpstan-wordpress": "*",
         "vlucas/phpdotenv": "*",

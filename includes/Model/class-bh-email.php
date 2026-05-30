@@ -50,7 +50,7 @@ class BH_Email {
 	 * The name part of `Brian Henry <brianhenryie@gmail.com>`.
 	 * Sometimes there is only the email address.
 	 */
-	protected ?string $from_name;
+	protected ?string $from_name = null;
 
 	protected string $subject;
 

@@ -23,13 +23,6 @@ use Psr\Log\LoggerInterface;
 class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	use LoggerAwareTrait;
 
-	protected string $cpt;
-
-	/**
-	 *
-	 */
-	protected Mailbox_Settings_Interface $settings;
-
 	/**
 	 * Email_Fetcher constructor.
 	 *
@@ -37,10 +30,12 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 * @param Mailbox_Settings_Interface $settings Connection settings and filters.
 	 * @param LoggerInterface            $logger Logger.
 	 */
-	public function __construct( string $cpt, Mailbox_Settings_Interface $settings, LoggerInterface $logger ) {
-		$this->cpt      = $cpt;
-		$this->logger   = $logger;
-		$this->settings = $settings;
+	public function __construct(
+		protected string $cpt,
+		protected Mailbox_Settings_Interface $settings,
+		LoggerInterface $logger
+	) {
+		$this->logger = $logger;
 	}
 
 

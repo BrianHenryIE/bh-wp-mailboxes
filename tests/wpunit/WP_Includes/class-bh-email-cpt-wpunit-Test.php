@@ -26,14 +26,10 @@ class BH_Email_CPT_WPUnit_Test extends WPUnit_Testcase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_cpt_friendly_name'  => Expected::atLeastOnce(
-					function () {
-						return 'my-plugin-emails';
-					}
+					fn() => 'my-plugin-emails'
 				),
 				'get_cpt_underscored_20' => Expected::once(
-					function () {
-						return 'my_plugin_emails';
-					}
+					fn() => 'my_plugin_emails'
 				),
 			)
 		);
@@ -80,9 +76,7 @@ class BH_Email_CPT_WPUnit_Test extends WPUnit_Testcase {
 			Mailbox_Settings_Interface::class,
 			array(
 				'get_account_unique_friendly_name' => Expected::atLeastOnce(
-					function () {
-						return 'brianhenryie@gmail.com';
-					}
+					fn() => 'brianhenryie@gmail.com'
 				),
 			)
 		);
@@ -91,19 +85,13 @@ class BH_Email_CPT_WPUnit_Test extends WPUnit_Testcase {
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
 				'get_cpt_friendly_name'           => Expected::atLeastOnce(
-					function () {
-						return 'Test Plugin Email';
-					}
+					fn() => 'Test Plugin Email'
 				),
 				'get_cpt_underscored'             => Expected::once(
-					function () {
-						return 'test_plugin_email';
-					}
+					fn() => 'test_plugin_email'
 				),
 				'get_configured_mailbox_settings' => Expected::once(
-					function () use ( $mailbox ) {
-						return array( $mailbox );
-					}
+					fn() => array( $mailbox )
 				),
 			)
 		);

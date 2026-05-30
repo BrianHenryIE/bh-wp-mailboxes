@@ -57,7 +57,7 @@ class Mark_Email_Read_Test extends \Codeception\TestCase\WPTestCase {
 
 		$sut = new ImapEngine_Imap_Email_Fetcher( $settings, $logger );
 
-		$since_time = ( new \DateTime() )->modify( "-{$time} seconds" );
+		$since_time = new \DateTime()->modify( "-{$time} seconds" );
 
 		$emails = $sut->retrieve_emails( $since_time );
 

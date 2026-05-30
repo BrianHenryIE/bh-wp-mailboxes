@@ -25,14 +25,13 @@ class Unit_Testcase extends Unit {
 		// YEAR_IN_SECONDS
 		\Patchwork\redefine(
 			'constant',
-			function ( string $constant_name ) {
-				return 'YEAR_IN_SECONDS' === $constant_name
+			fn( string $constant_name ) => 'YEAR_IN_SECONDS' === $constant_name
 					? 60 * 60 * 365
-					: \Patchwork\relay( func_get_args() );
-			}
+					: \Patchwork\relay( func_get_args() )
 		);
 	}
 
+	#[\Override]
 	protected function tearDown(): void {
 		parent::_tearDown();
 		WP_Mock::tearDown();

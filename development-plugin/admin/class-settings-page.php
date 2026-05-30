@@ -22,7 +22,7 @@ class Settings_Page {
 		$menu_title  = 'Settings';
 		$capability  = '';
 		$menu_slug   = '';
-		$function    = array( $this, 'display_page' );
+		$function    = $this->display_page( ... );
 		$position    = null;
 
 		add_submenu_page( $parent_slug, $page_title, $menu_title, $capability, $menu_slug, $function, $position );

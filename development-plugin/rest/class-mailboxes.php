@@ -33,7 +33,7 @@ class Mailboxes {
 	 * Register the REST routes.
 	 */
 	public function register_hooks(): void {
-		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+		add_action( 'rest_api_init', $this->register_routes( ... ) );
 	}
 
 	/**
@@ -46,7 +46,7 @@ class Mailboxes {
 			'/status',
 			array(
 				'methods'             => 'GET',
-				'callback'            => array( $this, 'get_status' ),
+				'callback'            => $this->get_status( ... ),
 				'permission_callback' => '__return_true',
 			)
 		);
@@ -56,7 +56,7 @@ class Mailboxes {
 			'/emails',
 			array(
 				'methods'             => 'POST',
-				'callback'            => array( $this, 'create_email' ),
+				'callback'            => $this->create_email( ... ),
 				'permission_callback' => '__return_true',
 				'args'                => array(
 					'subject' => array(

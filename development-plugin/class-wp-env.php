@@ -31,10 +31,10 @@ class WP_Env {
 	 * Hook the URL filters.
 	 */
 	public function register_hooks(): void {
-		add_filter( 'site_url', array( $this, 'wpenv_fix_url' ), 1, 2 );
-		add_filter( 'home_url', array( $this, 'wpenv_fix_url' ), 1, 2 );
-		add_filter( 'wp_login_url', array( $this, 'wpenv_fix_url' ), 1, 2 );
-		add_filter( 'admin_url', array( $this, 'wpenv_fix_url' ), 1, 2 );
+		add_filter( 'site_url', $this->wpenv_fix_url( ... ), 1, 2 );
+		add_filter( 'home_url', $this->wpenv_fix_url( ... ), 1, 2 );
+		add_filter( 'wp_login_url', $this->wpenv_fix_url( ... ), 1, 2 );
+		add_filter( 'admin_url', $this->wpenv_fix_url( ... ), 1, 2 );
 	}
 
 	/**

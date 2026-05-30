@@ -53,19 +53,19 @@ Autoloader::generate(
 
 // This may be outated.
 // wp-env fixes (cron / self-referential URLs).
-( new WP_Env() )->register_hooks();
+new WP_Env()->register_hooks();
 
 // Authentication shortcuts for e2e arrangement (login-as-user, treat REST callers as admin).
-( new Authentication() )->register_hooks();
+new Authentication()->register_hooks();
 
 // Custom REST endpoints for arranging/asserting e2e tests.
-( new Mailboxes() )->register_hooks();
+new Mailboxes()->register_hooks();
 
 
 
 define( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 
-( new Plugins_Page() )->register_hooks();
+new Plugins_Page()->register_hooks();
 
 
 
@@ -79,7 +79,7 @@ add_filter(
 
 		$project_root_dir = dirname( __DIR__ );
 
-		if ( ! str_contains( $path, $project_root_dir ) ) {
+		if ( ! str_contains( (string) $path, $project_root_dir ) ) {
 			return $url;
 		}
 

@@ -17,15 +17,12 @@ class Mailbox_List_Page {
 
 	use LoggerAwareTrait;
 
-	protected BH_WP_Mailboxes_Settings_Interface $settings;
-
-	protected API_Interface $api;
-
-	public function __construct( API_Interface $api, BH_WP_Mailboxes_Settings_Interface $settings, LoggerInterface $logger ) {
-
+	public function __construct(
+		protected API_Interface $api,
+		protected BH_WP_Mailboxes_Settings_Interface $settings,
+		LoggerInterface $logger
+	) {
 		$this->setLogger( $logger );
-		$this->settings = $settings;
-		$this->api      = $api;
 	}
 
 	// Add New button is based on

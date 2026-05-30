@@ -27,30 +27,17 @@ class Cron {
 	use LoggerAwareTrait;
 
 	/**
-	 * Settings for configuring cron jobs.
-	 *
-	 * @uses BH_WP_Mailboxes_Settings_Interface::get_cron_schedules()
-	 */
-	protected BH_WP_Mailboxes_Settings_Interface $settings;
-
-	/**
-	 * Instance to invoke functions on.
-	 *
-	 * @uses \BrianHenryIE\WP_Mailboxes\API\API_Interface::check_email()
-	 * @uses \BrianHenryIE\WP_Mailboxes\API\API_Interface::delete_old_emails()
-	 */
-	protected API_Interface $api;
-
-	/**
 	 * @param API_Interface                      $api BH_WP_Mailboxes main functions.
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings Settings for mailboxes and behaviour.
 	 * @param LoggerInterface                    $logger A PSR logger.
 	 */
-	public function __construct( API_Interface $api, BH_WP_Mailboxes_Settings_Interface $settings, LoggerInterface $logger ) {
+	public function __construct(
+		protected API_Interface $api,
+		protected BH_WP_Mailboxes_Settings_Interface $settings,
+		LoggerInterface $logger
+	) {
 
 		$this->setLogger( $logger );
-		$this->settings = $settings;
-		$this->api      = $api;
 	}
 
 	/**
