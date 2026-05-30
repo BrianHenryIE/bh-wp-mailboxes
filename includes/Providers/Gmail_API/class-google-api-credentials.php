@@ -1,9 +1,9 @@
 <?php
 
-namespace BrianHenryIE\WP_Mailboxes\API\Gmail_API;
+namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
 
-use BrianHenryIE\WP_Mailboxes\API\Gmail_API\Model\Access_Token;
-use BrianHenryIE\WP_Mailboxes\API\Gmail_API\Model\Credentials_Web;
+use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token;
+use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Credentials_Web;
 
 class Google_API_Credentials implements Google_API_Credentials_Interface {
 

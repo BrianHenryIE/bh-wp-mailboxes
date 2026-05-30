@@ -5,7 +5,7 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\API\Gmail_API;
+namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
 
 use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;

@@ -1,6 +1,6 @@
 <?php
 
-namespace BrianHenryIE\WP_Mailboxes\API\Gmail_API;
+namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;

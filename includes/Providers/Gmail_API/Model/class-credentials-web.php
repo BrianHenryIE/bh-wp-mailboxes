@@ -1,6 +1,6 @@
 <?php
 
-namespace BrianHenryIE\WP_Mailboxes\API\Gmail_API\Model;
+namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model;
 
 use stdClass;
 
