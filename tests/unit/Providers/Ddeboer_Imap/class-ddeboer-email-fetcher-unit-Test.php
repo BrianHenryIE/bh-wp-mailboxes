@@ -132,7 +132,7 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
 		$cpt = 'test-post-type-name';
 
-		$sut = new ImapEngine_Imap_Email_Fetcher( $cpt, $mailbox_settings, $logger );
+		$sut = new ImapEngine_Imap_Email_Fetcher( $mailbox_settings, $logger );
 
 		$b = \DateTime::createFromFormat( 'U', 0 );
 
@@ -240,7 +240,7 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
 		$cpt = 'test-post-type-name';
 
-		$sut = new ImapEngine_Imap_Email_Fetcher( $cpt, $mailbox_settings, $logger );
+		$sut = new ImapEngine_Imap_Email_Fetcher( $mailbox_settings, $logger );
 
 		$result = $sut->test_credentials();
 

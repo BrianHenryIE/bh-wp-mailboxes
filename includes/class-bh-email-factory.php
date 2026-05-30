@@ -7,6 +7,7 @@ namespace BrianHenryIE\WP_Mailboxes;
 
 use DateTime;
 use WP_Post;
+use ZBateson\MailMimeParser\IMessage;
 
 class BH_Email_Factory {
 

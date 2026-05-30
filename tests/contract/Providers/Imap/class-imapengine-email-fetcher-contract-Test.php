@@ -15,8 +15,10 @@ use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use DateTime;
+use DirectoryTree\ImapEngine\Exceptions\Exception as ImapEngineException;
+use DirectoryTree\ImapEngine\Exceptions\ImapCommandException;
+use DirectoryTree\ImapEngine\Exceptions\ImapConnectionFailedException;
 use Dotenv\Dotenv;
 
 /**
@@ -26,41 +28,16 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
 	protected Mailbox_Settings_Interface $settings;
 
-	/**
-	 * Register the cpt, category type, and mailbox category
-	 */
 	public function setUp(): void {
 		parent::setUp();
 
 		global $project_root_dir;
 
-		if ( ! file_exists( $project_root_dir . '/test-credentials/.env.secret', ) ) {
-			$this->fail('Please configure: test-credentials/.env.secret');
+		if ( ! file_exists( $project_root_dir . '/test-credentials/.env.secret' ) ) {
+			$this->fail( 'Please configure: test-credentials/.env.secret' );
 		}
 		$dotenv = Dotenv::createImmutable( $project_root_dir . '/test-credentials/', '.env.secret', true );
 		$dotenv->load();
-
-
-		$mailbox  = $this->makeEmpty(
-			Mailbox_Settings_Interface::class,
-			array(
-				'get_account_unique_friendly_name' => 'support@brianhenryie.com',
-			)
-		);
-		$settings = $this->makeEmpty(
-			BH_WP_Mailboxes_Settings_Interface::class,
-			array(
-				'get_cpt_friendly_name' => 'Email Test CPT',
-				'get_mailboxes'         => array( $mailbox ),
-			)
-		);
-
-		$cpt_name = 'Email Test CPT';
-
-//		$bh_email_cpt = new BH_Email_CPT( $settings, $logger );
-//		$bh_email_cpt->register_cpt();
-//		$bh_email_cpt->register_mailboxes_taxonomy();
-//		$bh_email_cpt->register_mailbox();
 
 		/** @var Mailbox_Settings_Interface $settings */
 		$this->settings = new class() implements Mailbox_Settings_Interface {
@@ -84,6 +61,10 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 					public function get_email_account_password(): string {
 						return $_ENV['IMAP_PASSWORD'];
 					}
+
+					public function get_encryption(): string {
+						return $_ENV['IMAP_ENCRYPTION'];
+					}
 				};
 			}
 		};
@@ -94,48 +75,25 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 	 */
 	public function test_download_emails_for_tests() {
 
-		$logger = $this->logger;
-
-		$cpt    = 'email_test_cpt';
-
 		try {
-			$sut = new ImapEngine_Imap_Email_Fetcher( $cpt, $this->settings, $logger );
-		} catch ( \ImapEngine\Imap\Exception\AuthenticationFailedException $e ) {
-			// When the server or user/password are bad.
-			$exception = $e;
+			$sut = new ImapEngine_Imap_Email_Fetcher( $this->settings, $this->logger );
+		} catch ( ImapEngineException $e ) {
+			// * When the server or user/password are bad.
+			// * DirectoryTree\ImapEngine\Exceptions\ImapStreamException : Unexpected end of stream while trying to fill the buffer
+			$this->fail( $e->getMessage() );
 		}
 
-		$since_unix_time = time() - YEAR_IN_SECONDS;
+		$year_in_seconds = 365 * 24 * 60 * 60;
+		$since_unix_time = time() - $year_in_seconds;
 		$since_time      = DateTime::createFromFormat( 'U', $since_unix_time );
 		$emails          = $sut->retrieve_emails( $since_time );
 
-		foreach ( $emails as $email ) {
-			$post_id = $email->save();
-
-		}
-
-		$a_post = get_post( $post_id );
-
-		$args  = array( 'post_type' => 'email_test_cpt' );
-		$query = new \WP_Query( $args );
-		$posts = $query->get_posts();
-		foreach ( $posts as $post ) {
-			$a = $post->post_title;
-		}
+		$this->assertNotEmpty( $emails->count() );
 	}
-
 
 	public function test_bad_server(): void {
 
-		$exception_message = <<<'EOD'
-[E_WARNING] Authentication failed for user "supportbrianhenryiecom@brianhenryie.com": imap_open(): Couldn't open stream {imap.example.com/imap/ssl/novalidate-cert}
-imap_alerts (0):
-imap_errors (1):
-- No such host as imap.example.com
-EOD;
-
 		$logger = new ColorLogger();
-		$cpt    = 'email_test_cpt';
 
 		/** @var Mailbox_Settings_Interface $settings */
 		$settings = new class() implements Mailbox_Settings_Interface {
@@ -159,18 +117,24 @@ EOD;
 					public function get_email_account_password(): string {
 						return $_ENV['IMAP_PASSWORD'];
 					}
+
+					public function get_encryption(): string {
+						return '';
+					}
 				};
 			}
 		};
 
 		try {
-			new ImapEngine_Imap_Email_Fetcher( $cpt, $settings, $logger );
-		} catch ( \ImapEngine\Imap\Exception\AuthenticationFailedException $e ) {
+			$imap = new ImapEngine_Imap_Email_Fetcher( $settings, $logger );
+			$imap->retrieve_emails( DateTime::createFromFormat( 'U', time() - YEAR_IN_SECONDS ) );
+		} catch ( ImapConnectionFailedException $e ) {
+			$exception = $e;
+		} catch ( ImapEngineException $e ) {
 			$exception = $e;
 		}
 
 		$this->assertNotEmpty( $exception );
-		$this->assertEquals( $exception_message, $exception->getMessage() );
 	}
 
 	/**
@@ -178,15 +142,7 @@ EOD;
 	 */
 	public function test_bad_password(): void {
 
-		$exception_message = <<<'EOD'
-[E_WARNING] Authentication failed for user "supportbrianhenryiecom@brianhenryie.com": imap_open(): Couldn't open stream {epsilon.hostineer.com/imap/ssl/novalidate-cert}
-imap_alerts (0):
-imap_errors (1):
-- Can not authenticate to IMAP server: [AUTHENTICATIONFAILED] Authentication failed.
-EOD;
-
 		$logger = new ColorLogger();
-		$cpt    = 'email_test_cpt';
 
 		/** @var Mailbox_Settings_Interface $settings */
 		$settings = new class() implements Mailbox_Settings_Interface {
@@ -210,17 +166,23 @@ EOD;
 					public function get_email_account_password(): string {
 						return 'bad-password';
 					}
+
+					public function get_encryption(): string {
+						return '';
+					}
 				};
 			}
 		};
 
 		try {
-			new ImapEngine_Imap_Email_Fetcher( $cpt, $settings, $logger );
-		} catch ( \ImapEngine\Imap\Exception\AuthenticationFailedException $e ) {
-			$exception = $e;
+			$fetcher = new ImapEngine_Imap_Email_Fetcher( $settings, $logger );
+		} catch ( ImapCommandException $e ) {
+			$imapCommandException = $e;
+		} catch ( ImapEngineException $e ) {
+			$imapEngineException = $e;
 		}
 
-		$this->assertNotEmpty( $exception );
-		$this->assertEquals( $exception_message, $exception->getMessage() );
+		throw $e;
+		// $this->assertNotEmpty( $exception );
 	}
 }

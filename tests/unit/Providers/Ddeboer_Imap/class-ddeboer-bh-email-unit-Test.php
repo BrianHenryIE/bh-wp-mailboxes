@@ -10,7 +10,7 @@ use ImapEngine\Imap\Message\EmailAddress;
 use ImapEngine\Imap\Message\Headers;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_BH_Email
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Providers\Imap\IMessage_BH_Email_Adapter
  */
 class ImapEngine_BH_Email_Unit_Test extends Unit_Testcase {
 
@@ -20,7 +20,7 @@ class ImapEngine_BH_Email_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_happy(): void {
 
-		$imapengine_email    = $this->makeEmpty(
+		$imapengine_email = $this->makeEmpty(
 			BasicMessageInterface::class,
 			array(
 				'getId'       => '<CAHHEuQd+-K=UQmg_zNR_Y+NBT8qL3ctHWdzAWOJb7egaK4E-Qg@mail.gmail.com>',
@@ -93,7 +93,7 @@ class ImapEngine_BH_Email_Unit_Test extends Unit_Testcase {
 		$cpt                      = 'test';
 		$mailbox_category_term_id = 123;
 
-		$result = new \BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_BH_Email( $imapengine_email, $cpt, $mailbox_category_term_id );
+		$result = new \BrianHenryIE\WP_Mailboxes\Providers\Imap\IMessage_BH_Email_Adapter( $imapengine_email, $cpt, $mailbox_category_term_id );
 
 		$this->assertInstanceOf( BH_Email::class, $result );
 	}

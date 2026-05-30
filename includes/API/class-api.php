@@ -2,6 +2,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
+use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMessage_BH_Email_Adapter;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Gmail_API\Gmail_Email_Fetcher;
@@ -53,6 +54,7 @@ class API implements API_Interface {
 
 		$this->logger->debug( 'Starting check_email() for ' . count( $mailboxes ) . ' mailbox(es).' );
 
+		/** @var BH_Email[] $all_new_emails */
 		$all_new_emails     = array();
 		$saved_emails       = array();
 		$last_fetched_times = $this->get_last_fetched_times();
@@ -85,9 +87,9 @@ class API implements API_Interface {
 
 			try {
 				if ( $credentials instanceof IMAP_Credentials_Interface ) {
-					$fetcher = new ImapEngine_Imap_Email_Fetcher( $this->settings->get_cpt_underscored_20(), $mailbox_settings, $this->logger );
+					$fetcher = new ImapEngine_Imap_Email_Fetcher( $mailbox_settings, $this->logger );
 				} elseif ( $credentials instanceof Google_API_Credentials_Interface ) {
-					$fetcher = new Gmail_Email_Fetcher( $this->settings->get_cpt_underscored_20(), $mailbox_settings, $this->logger );
+					$fetcher = new Gmail_Email_Fetcher( $mailbox_settings, $this->logger );
 				} else {
 					// TODO filter?
 					$this->logger->warning( 'No email fetcher found for credentials' );
@@ -126,7 +128,18 @@ class API implements API_Interface {
 			// TODO: Filter email content, from address, ... here?? (filter could be done in IMAP/Gmail search) (maybe not if it's regex).
 			// TODO: Or maybe retrieve_emails() should be a concrete implementation on an abstract class
 
-			$all_new_emails = array_merge( $all_new_emails, $all_new_account_emails );
+			// Convert New_Emails<IMessage> → BH_Email[] domain objects.
+			$cpt                   = $this->settings->get_cpt_underscored_20();
+			$account_category_slug = sanitize_title( $account_name );
+			$mailbox_category      = get_term_by( 'slug', $account_category_slug, 'bh-wp-mailbox-account' );
+			$term_id               = $mailbox_category instanceof \WP_Term ? $mailbox_category->term_id : 0;
+
+			$all_new_account_bh_emails = array();
+			foreach ( $all_new_account_emails as $imessage ) {
+				$all_new_account_bh_emails[] = new IMessage_BH_Email_Adapter( $imessage, $cpt, $term_id );
+			}
+
+			$all_new_emails = array_merge( $all_new_emails, $all_new_account_bh_emails );
 
 			/**
 			 * TODO: this should be done as a search in the inbox.
@@ -134,13 +147,12 @@ class API implements API_Interface {
 			 * @var BH_Email[] $filtered_account_emails
 			 */
 			$filtered_account_emails = array_filter(
-				$all_new_account_emails,
-				function ( $email ) use ( $mailbox_settings ) {
+				$all_new_account_bh_emails,
+				function ( BH_Email $email ) use ( $mailbox_settings ): bool {
 					return $this->email_filter( $email, $mailbox_settings );
 				}
 			);
 
-			$cpt = $this->settings->get_cpt_underscored_20();
 			/**
 			 * Allow a WordPress filter to remove emails before they are saved.
 			 *

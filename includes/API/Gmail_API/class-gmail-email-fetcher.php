@@ -8,14 +8,15 @@
 namespace BrianHenryIE\WP_Mailboxes\API\Gmail_API;
 
 use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
-use BrianHenryIE\WP_Mailboxes\BH_Email;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Model\ZImessage_Collection;
 use DateTime;
 use DateTimeInterface;
 use Exception;
 use Google\Service\Gmail\ListMessagesResponse;
 use Google_Client;
 use Google_Service_Gmail;
+use ZBateson\MailMimeParser\MailMimeParser;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
@@ -68,7 +69,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		$client->setApplicationName( 'Gmail API PHP Quickstart' );
 		$client->setScopes( Google_Service_Gmail::GMAIL_READONLY );
 
-		$client->setAuthConfig( $saved_credentials->get_project_credentials());
+		$client->setAuthConfig( $saved_credentials->get_project_credentials() );
 
 		$client->setAccessType( 'offline' );
 		$client->setPrompt( 'select_account consent' );
@@ -122,102 +123,41 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 *
 	 * @param DateTime $since_time
 	 *
-	 * @return BH_Email[]
+	 * @return ZImessage_Collection
 	 * @throws Exception
 	 */
-	public function retrieve_emails( DateTimeInterface $since_time ): array {
+	public function retrieve_emails( DateTimeInterface $since_time ): ZImessage_Collection {
 
-		$emails = array();
+		$emails = new ZImessage_Collection();
 
 		/** @var Google_Client $client */
 		$client  = $this->getClient();
 		$service = new Google_Service_Gmail( $client );
 
-		$user = 'me';
-
 		$opts = array(
-			// 'includeSpamTrash' => // bool  Include messages from `SPAM` and `TRASH` in the results.
-			// 'labelIds' =>         // string  Only return messages with labels that match all of the specified label IDs.
-			// 'maxResults' =>       // string  Maximum number of messages to return. This field defaults to 100. The maximum allowed value for this field is 500.
-			// 'pageToken' =>        // string  Page token to retrieve a specific page of results in the list.
-			'q' => 'after:' . $since_time->getTimestamp(),               // string Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, `"from:someuser@example.com rfc822msgid: is:unread"`. Parameter cannot be used when accessing the api using the gmail.metadata scope.
+			// 'includeSpamTrash' => // bool
+			// 'labelIds' =>         // string
+			// 'maxResults' =>       // string
+			// 'pageToken' =>        // string
+			'q' => 'after:' . $since_time->getTimestamp(),
 		);
-		// "Invalid grant bad request"
 		/** @var ListMessagesResponse $r */
-		$r = $service->users_messages->listUsersMessages( $user, $opts );
+		$r = $service->users_messages->listUsersMessages( 'me', $opts );
 
-		$account_category_slug = sanitize_title( $this->settings->get_account_unique_friendly_name() );
-		$mailbox_category      = get_term_by( 'slug', $account_category_slug, 'bh-wp-mailbox-account' );
-
-		if ( false === $mailbox_category ) {
-			$this->logger->error( 'Mailbox category not found. fetch emails probably run before post types registered' );
-		}
-
+		$parser   = new MailMimeParser();
 		$messages = $r->getMessages();
 		foreach ( $messages as $message ) {
 
-			$single_message = $service->users_messages->get( 'me', $message->id ); // , $optParamsGet2);
+			// Request format=raw to receive the full RFC 2822 message (base64url-encoded).
+			$single_message = $service->users_messages->get( 'me', $message->id, array( 'format' => 'raw' ) );
 
-			$raw                = $single_message->getRaw();
-			$message_id         = $single_message->getId();
-			$message_history_id = $single_message->getHistoryId();
-			$thread_id          = $single_message->getThreadId();
-			$internal_date      = $single_message->getInternalDate();
-			$label_ids          = $single_message->getLabelIds();
-
-			$message_payload = $single_message->getPayload();
-
-			$new_email = array();
-
-			$gmail_message_headers = $message_payload->getHeaders();
-
-			$headers = array();
-			foreach ( $gmail_message_headers as $gmail_message_header ) {
-				$headers[ $gmail_message_header->getName() ] = $gmail_message_header->getValue();
+			$raw = $single_message->getRaw();
+			if ( empty( $raw ) ) {
+				continue;
 			}
 
-			$new_email['cpt'] = $this->cpt;
-
-			$new_email['account_category_id'] = $mailbox_category->term_id;
-
-			$new_email['headers']   = $headers;
-			$new_email['subject']   = $headers['Subject'];
-			$new_email['from']      = $headers['From'];
-			$new_email['meta_data'] = array();
-
-			$message_body = $message_payload->getBody()->getData();
-
-			$b64_plain = '';
-			$b64_html  = '';
-
-			// If this is null,.... is this always null?
-			if ( is_null( $message_body ) ) {
-
-				foreach ( $message_payload->getParts() as $part ) {
-
-					switch ( $part->getMimeType() ) {
-						case 'text/plain':
-							$b64_plain .= $part->getBody()->getData();
-							break;
-						case 'text/html':
-							$b64_html .= $part->getBody()->getData();
-							break;
-						default:
-							$mime = $part->getMimeType();
-							break;
-					}
-				}
-			}
-
-			$plain = $this->gmail_body_decode( $b64_plain );
-			$html  = $this->gmail_body_decode( $b64_html );
-
-			$new_email['body_text'] = $plain;// $message_body_text;
-			$new_email['body_html'] = $html;// $message_body_html;
-
-			$bh_email = new Gmail_BH_Email( $new_email );
-
-			$emails[] = $bh_email;
+			$rfc2822 = base64_decode( strtr( $raw, '-_', '+/' ) );
+			$emails->add( $parser->parse( $rfc2822, false ) );
 		}
 
 		return $emails;

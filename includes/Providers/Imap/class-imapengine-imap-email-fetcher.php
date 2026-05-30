@@ -11,14 +11,10 @@
 namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
 
 use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
-use BrianHenryIE\WP_Mailboxes\BH_Email;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
-use DateTime;
+use BrianHenryIE\WP_Mailboxes\Model\ZImessage_Collection;
 use DateTimeInterface;
-use ImapEngine\Imap\Exception\InvalidDateHeaderException;
-use ImapEngine\Imap\Search\Date\Since;
-use ImapEngine\Imap\Server;
-use ImapEngine\Imap\ServerInterface;
+use DirectoryTree\ImapEngine\Mailbox;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
@@ -29,156 +25,125 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 
 	use LoggerAwareTrait;
 
-	protected string $cpt;
+	protected Mailbox $mailbox;
 
 	/**
-	 * Server settings: DNS/IP, username, password, filters.
-	 */
-	protected Mailbox_Settings_Interface $settings;
-
-	/**
-	 * server instances.
-	 *
-	 * @var Server_Container_Interface
-	 */
-	protected Server_Container_Interface $new_server;
-
-	protected $imap_server;
-
-	protected $connection;
-
-	protected int $mailbox_category_term_id;
-
-	/**
-	 * Email_Fetcher constructor.
-	 *
-	 * @param string                     $cpt_name
-	 * @param Mailbox_Settings_Interface $settings Connection settings and filters.
+	 * @param string                     $cpt_name Unused — kept for interface compatibility with callers.
+	 * @param Mailbox_Settings_Interface $settings Connection settings.
 	 * @param LoggerInterface            $logger Logger.
 	 */
-	public function __construct( string $cpt_name, Mailbox_Settings_Interface $settings, LoggerInterface $logger ) {
+	public function __construct(
+		protected Mailbox_Settings_Interface $settings,
+		LoggerInterface $logger
+	) {
 		$this->setLogger( $logger );
-		$this->settings = $settings;
-		$this->cpt      = $cpt_name;
 
 		if ( ! ( $settings->get_credentials() instanceof IMAP_Credentials_Interface ) ) {
 			$this->logger->error( 'not IMAP credentials' );
 			throw new \Exception();
 		}
 
-		$this->new_server = new class() implements Server_Container_Interface {
+		/** @var IMAP_Credentials_Interface $credentials */
+		$credentials = $this->settings->get_credentials();
 
-			/**
-			 * Returns a new ImapEngine\Imap\Server.
-			 *
-			 * @param string $url_or_ip The IMAP server address, with optional :port.
-			 * @return ServerInterface
-			 */
-			public function get_server( string $url_or_ip ): ServerInterface {
-				$port = '';
+		$server = $credentials->get_email_imap_server();
+		$host   = $server;
+		$port   = 143;
+		$port   = 993;
 
-				if ( false !== strpos( ':', $url_or_ip ) ) {
-					$parts     = explode( ':', $url_or_ip );
-					$url_or_ip = $parts[0];
-					$port      = $parts[1];
-				}
-
-				// TODO: Add option in settings.
-				$flags = '/imap/ssl/novalidate-cert';
-
-				return new Server( $url_or_ip, $port, $flags );
-			}
-		};
-
-		/** @var IMAP_Credentials_Interface $server_settings */
-		$server_settings = $this->settings->get_credentials();
-
-		$server_url_or_ip = $server_settings->get_email_imap_server();
-		$username         = $server_settings->get_email_account_username();
-		$password         = $server_settings->get_email_account_password();
-
-		$this->imap_server = $this->new_server->get_server( $server_url_or_ip );
-
-		// \ImapEngine\Imap\Exception\AuthenticationFailedException
-		$this->connection = $this->imap_server->authenticate( $username, $password );
-
-		$account_category_slug = sanitize_title( $this->settings->get_account_unique_friendly_name() );
-		$mailbox_category      = get_term_by( 'slug', $account_category_slug, 'bh-wp-mailbox-account' );
-
-		if ( ! ( $mailbox_category instanceof \WP_Term ) ) {
-			$this->logger->error( 'Mailbox category not found. fetch emails probably run before post types registered' );
-			throw new \Exception();
+		if ( false !== strpos( $server, ':' ) ) {
+			[ $host, $port_str ] = explode( ':', $server, 2 );
+			$port                = (int) $port_str;
 		}
 
-		$this->mailbox_category_term_id = $mailbox_category->term_id;
+		$this->mailbox = Mailbox::make(
+			array(
+				'host'          => $host,
+				// 'port'          => $port, // gets determined by encryption value.
+				// 'port' => 993,
+					'username'  => $credentials->get_email_account_username(),
+				'password'      => $credentials->get_email_account_password(),
+				// 'encryption'                           => $credentials->get_encryption(),
+												'encryption' => 'tls',
+				'validate_cert' => false,
+			)
+		);
+
+		try {
+			// Connect eagerly so authentication failures surface here in the constructor.
+			$this->mailbox->connect();
+
+		} catch ( \Throwable $t ) {
+
+			$this->dumpExceptionProperties( $t, $this->logger );
+
+			throw $t;
+		}
 	}
 
-	/**
-	 * Connects to the IMAP server and returns the Email objects.
-	 *
-	 * @param DateTime $since_time Time to fetch emails since, i.e. when the reconciliation was last run. (NOT the date of the last email, which could be older than the delete frequency).
-	 *
-	 * @return array<string, BH_Email> where string is MessageInterface::getId() (BasicMessageInterface::getId()).
-	 */
-	public function retrieve_emails( DateTimeInterface $since_time ): array {
+	function dumpExceptionProperties( \Throwable $e, LoggerInterface $logger ): void {
+		$ref = new \ReflectionClass( $e );
 
-		$mailbox_name = 'INBOX';
+		echo 'Exception class: ' . $ref->getName() . PHP_EOL;
 
-		$mailbox = $this->connection->getMailbox( $mailbox_name );
+		foreach ( $ref->getProperties() as $prop ) {
+			$prop->setAccessible( true );
+			$name  = $prop->getName();
+			$value = $prop->getValue( $e );
 
-		// `Since` converts the datetime into a day.
-		// Since discards the timezone. Servers use their own timezone for IMAP. Safe option is the fetch back a little
-		// further. This code may not be necessary.
-		$previous_day     = ( clone $since_time )->sub( new \DateInterval( 'P1D' ) );
-		$search_condition = new Since( $previous_day );
+			$logger->error( "$name: " . print_r( $value, true ) );
+		}
+	}
+
+		/**
+		 * Fetches emails from INBOX since the given time.
+		 *
+		 * @param DateTimeInterface $since_time
+		 *
+		 * @return ZImessage_Collection Unsaved emails as parsed MIME messages.
+		 */
+	public function retrieve_emails( DateTimeInterface $since_time, int $limit = 100 ): ZImessage_Collection {
+
+		// `SINCE` filters by date only — go back one extra day and filter by time in PHP.
+		$previous_day = ( clone $since_time )->sub( new \DateInterval( 'P1D' ) );
 
 		$this->logger->debug(
 			'Fetching IMAP emails',
 			array(
-				'mailbox'          => $mailbox_name,
-				'search_condition' => $search_condition,
-				'since'            => $previous_day->format( 'j-M-Y' ),
+				'mailbox' => 'INBOX',
+				'since'   => $previous_day->format( 'j-M-Y' ),
 			)
 		);
 
-		/** @var \ImapEngine\Imap\MessageIterator $emails */
-		$emails = $mailbox->getMessages( $search_condition );
+		$messages = $this->mailbox
+			->inbox()
+			->messages()
+			->since( $previous_day )
+			->limit( $limit )
+			->withHeaders()
+			->withBody()
+			->get();
 
-		$this->logger->debug( count( $emails ) . ' found since ' . $previous_day->format( 'j-M-Y' ) );
+		$this->logger->debug( $messages->count() . ' found since ' . $previous_day->format( 'j-M-Y' ) );
 
 		/**
-		 * We cannot search IMAP with a time, only a date, so we must filter by time afterwards.
+		 * IMAP SINCE only filters by date, not time — filter by exact time here.
 		 *
 		 * @see https://stackoverflow.com/questions/32698415/php-imap-search-unseen-since-date-with-time
 		 */
-		$new_imapengine_emails = array();
-		foreach ( $emails as $imapengine_email ) {
-			try {
-				$email_datetime = $imapengine_email->getDate();
-			} catch ( InvalidDateHeaderException $exception ) {
-				// If the date is invalid... let's save it anyway.
-				// We may have to deal with this exception again later.
-				$new_imapengine_emails[] = $imapengine_email;
+		$new_emails = new ZImessage_Collection();
+		foreach ( $messages as $message ) {
+			$date = $message->date();
+			if ( $date !== null && $date->getTimestamp() < $since_time->getTimestamp() ) {
 				continue;
 			}
-			if ( $email_datetime < $since_time ) {
-				continue;
-			}
-			$new_imapengine_emails[] = $imapengine_email;
+			$new_emails->add( $message->parse() );
 		}
 
 		$this->logger->debug(
-			count( $new_imapengine_emails ) . ' emails found in inbox since last run.',
-			array(
-				'new_email_count' => count( $new_imapengine_emails ),
-				'since'           => $since_time,
-			)
+			$new_emails->count() . ' emails found in inbox since last run.',
+			array( 'since' => $since_time )
 		);
-
-		$new_emails = array();
-		foreach ( $new_imapengine_emails as $imapengine_email ) {
-			$new_emails[ $imapengine_email->getId() ] = new ImapEngine_BH_Email( $imapengine_email, $this->cpt, $this->mailbox_category_term_id );
-		}
 
 		return $new_emails;
 	}
