@@ -8,7 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
-use BrianHenryIE\WP_Mailboxes\BH_Email;
+use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;

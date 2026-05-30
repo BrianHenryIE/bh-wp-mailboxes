@@ -1,13 +1,16 @@
 <?php
 
-namespace BrianHenryIE\WP_Mailboxes;
+namespace BrianHenryIE\WP_Mailboxes\Model;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
+use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
+use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Codeception\Stub\Expected;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\BH_Email
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Model\BH_Email
  */
 class BH_Email_WPUnit_Test extends WPUnit_Testcase {
 

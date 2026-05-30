@@ -7,7 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\Adapter;
 
-use BrianHenryIE\WP_Mailboxes\BH_Email;
+use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
 use ZBateson\MailMimeParser\Header\AddressHeader;
 use ZBateson\MailMimeParser\IMessage;
 

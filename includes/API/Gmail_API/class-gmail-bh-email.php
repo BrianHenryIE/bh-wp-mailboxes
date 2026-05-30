@@ -7,7 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Gmail_API;
 
-use BrianHenryIE\WP_Mailboxes\BH_Email;
+use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
 
 class Gmail_BH_Email extends BH_Email {
 

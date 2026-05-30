@@ -7,7 +7,7 @@
  * TODO: attachments.
  */
 
-namespace BrianHenryIE\WP_Mailboxes;
+namespace BrianHenryIE\WP_Mailboxes\Model;
 
 use DateTime;
 use WP_Post;

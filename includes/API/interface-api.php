@@ -2,7 +2,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
-use BrianHenryIE\WP_Mailboxes\BH_Email;
+use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
 
 interface API_Interface {
 
