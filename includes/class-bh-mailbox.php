@@ -20,7 +20,7 @@ class BH_Mailbox {
 
 		$wp_posts = get_posts( $args );
 
-		$bh_emails = array_map( array( \BrianHenryIE\WP_Mailboxes\BH_Email::class, 'create_from_cpt' ), $wp_posts );
+		$bh_emails = array_map( array( \BrianHenryIE\WP_Mailboxes\Model\BH_Email::class, 'create_from_cpt' ), $wp_posts );
 
 		return $bh_emails;
 	}
