@@ -85,7 +85,7 @@
         "wpackagist-theme/twentytwenty": "*"
     },
     "scripts": {
-        "coverage-tests": [
+        "test-coverage": [
             "vendor/bin/codecept run unit --coverage unit.cov",
             "vendor/bin/codecept run wpunit --coverage wpunit.cov",
             "vendor/bin/phpcov merge --clover tests/_output/clover.xml --html tests/_output/html tests/_output;",
