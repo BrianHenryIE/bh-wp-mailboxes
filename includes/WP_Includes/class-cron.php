@@ -23,7 +23,6 @@ use Psr\Log\LoggerInterface;
  * @uses API_Interface
  */
 class Cron {
-
 	use LoggerAwareTrait;
 
 	/**

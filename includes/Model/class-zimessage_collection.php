@@ -19,7 +19,7 @@ use ZBateson\MailMimeParser\IMessage;
 class ZImessage_Collection implements Countable, IteratorAggregate {
 
 	/** @var IMessage[] */
-	private array $messages = array();
+	protected array $messages = array();
 
 	public function add( IMessage $message ): void {
 		$this->messages[] = $message;

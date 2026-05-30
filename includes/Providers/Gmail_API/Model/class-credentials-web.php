@@ -5,6 +5,7 @@ namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model;
 use stdClass;
 
 readonly class Credentials_Web {
+
 	public function __construct(
 		public string $client_id,
 		public string $project_id,
@@ -16,7 +17,6 @@ readonly class Credentials_Web {
 		public array $javascript_origins,
 	) {
 	}
-
 
 	public static function from_file( string $file_path ): Credentials_Web {
 		$json_string = file_get_contents( $file_path );

@@ -5,6 +5,8 @@
 
 namespace BrianHenryIE\WP_Mailboxes;
 
+use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
+
 class BH_Mailbox {
 
 	protected BH_WP_Mailboxes_Settings_Interface $settings;
@@ -20,6 +22,6 @@ class BH_Mailbox {
 
 		$wp_posts = get_posts( $args );
 
-		return array_map( array( \BrianHenryIE\WP_Mailboxes\Model\BH_Email::class, 'create_from_cpt' ), $wp_posts );
+		return array_map( array( BH_Email::class, 'create_from_cpt' ), $wp_posts );
 	}
 }

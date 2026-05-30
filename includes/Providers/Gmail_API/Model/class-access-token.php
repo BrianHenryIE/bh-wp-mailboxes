@@ -2,7 +2,6 @@
 
 namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model;
 
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interface;
 use stdClass;
 
 readonly class Access_Token {

@@ -125,20 +125,20 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		$this->logger->debug( $messages->count() . ' found since ' . $previous_day->format( 'j-M-Y' ) );
 
 		/**
-		 * IMAP SINCE only filters by date, not time — filter by exact time here.
+		 * IMAP `SINCE` only filters by date, not time — filter by exact time here.
 		 *
 		 * @see https://stackoverflow.com/questions/32698415/php-imap-search-unseen-since-date-with-time
 		 */
 		$new_emails = new ZImessage_Collection();
 		foreach ( $messages as $message ) {
 			$date = $message->date();
-			if ( $date !== null && $date->getTimestamp() < $since_time->getTimestamp() ) {
+			if ( ! is_null( $date ) && $date->getTimestamp() < $since_time->getTimestamp() ) {
 				continue;
 			}
 			$new_emails->add( $message->parse() );
 		}
 
-		$this->logger->debug(
+		$this->logger->info(
 			$new_emails->count() . ' emails found in inbox since last run.',
 			array( 'since' => $since_time )
 		);
