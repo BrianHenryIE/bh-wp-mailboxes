@@ -36,7 +36,7 @@ Anti-goals:
         "google/apiclient": "^2.12.1"
     },
     "scripts": {
-        "pre-autoload-dump": "Google\\Task\\Composer::cleanup"
+        "pre-autoload-dump": ["Google\\Task\\Composer::cleanup"]
     },
     "extra": {
         "google/apiclient-services": [
@@ -46,6 +46,11 @@ Anti-goals:
 }
 ```
 
+```bash
+jq '.scripts["pre-autoload-dump"] = ["Google\\Task\\Composer::cleanup"]' composer.json | sponge composer.json
+jq '.extra["google/apiclient-services"] = ["Gmail"]' composer.json | sponge composer.json
+composer require google/apiclient
+```
 
 
 ### More Information
