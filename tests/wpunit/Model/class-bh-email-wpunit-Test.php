@@ -14,9 +14,6 @@ use Codeception\Stub\Expected;
  */
 class BH_Email_WPUnit_Test extends WPUnit_Testcase {
 
-	/**
-	 * @covers ::save
-	 */
 	public function test_save_email(): void {
 
 		$this->markTestSkipped();
