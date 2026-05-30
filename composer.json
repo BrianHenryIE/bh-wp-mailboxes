@@ -71,6 +71,7 @@
         "brianhenryie/bh-wp-logger": "*",
         "brianhenryie/color-logger": "*",
         "dealerdirect/phpcodesniffer-composer-installer": "*",
+        "google/apiclient": "^2.19",
         "johnpbloch/wordpress": "*",
         "lucatume/wp-browser": "*",
         "phpcompatibility/phpcompatibility-wp": "*",
@@ -106,8 +107,16 @@
             "vendor/bin/wp i18n make-pot includes languages/$(basename \"$PWD\").pot --domain=$(basename \"$PWD\")",
             "vendor/bin/wp dist-archive . ./dist-archive --plugin-dirname=$(basename \"$PWD\") --create-target-dir"
         ],
-        "github-actions":  [
+        "github-actions": [
             "act -P ubuntu-latest=shivammathur/node:latest"
+        ],
+        "pre-autoload-dump": [
+            "Google\\Task\\Composer::cleanup"
+        ]
+    },
+    "extra": {
+        "google/apiclient-services": [
+            "Gmail"
         ]
     }
 }
