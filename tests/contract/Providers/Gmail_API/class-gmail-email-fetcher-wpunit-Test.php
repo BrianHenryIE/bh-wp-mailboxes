@@ -5,12 +5,13 @@ namespace BrianHenryIE\WP_Mailboxes\API\Gmail_API;
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Defaults_Trait;
+use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 
-class Gmail_Email_Fetcher_WPUnit_Test extends \Codeception\TestCase\WPTestCase {
+class Gmail_Email_Fetcher_WPUnit_Test extends Unit_Testcase {
 
 	protected Mailbox_Settings_Interface $mailbox_settings;
 
@@ -52,11 +53,11 @@ class Gmail_Email_Fetcher_WPUnit_Test extends \Codeception\TestCase\WPTestCase {
 		$logger      = new ColorLogger();
 		$credentials = new class() implements Google_API_Credentials_Interface {
 
-			public function get_project_credentials(): array {
+			public function get_project_credentials(): Model\Credentials_Web {
 				return json_decode( file_get_contents( __DIR__ . '/credentials.json' ), true );
 			}
 
-			public function get_access_token(): ?array {
+			public function get_access_token(): ?Model\Access_Token {
 				return json_decode( file_get_contents( __DIR__ . '/token.json' ), true );
 			}
 		};
