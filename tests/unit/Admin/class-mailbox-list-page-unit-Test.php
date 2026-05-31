@@ -17,7 +17,7 @@ use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 
 /**
  *
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Admin\Mailbox_List_Page
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page
  */
 class Mailbox_List_Page_Test extends Unit_Testcase {
 
@@ -66,7 +66,7 @@ class Mailbox_List_Page_Test extends Unit_Testcase {
 		$settings = $this->makeEmpty( Mailbox_Settings_Interface::class );
 		$logger   = new ColorLogger();
 
-		$sut = new Mailbox_List_Page( $api, $settings, $logger );
+		$sut = new Emails_List_Page( $api, $settings, $logger );
 
 		$sut->enqueue_styles();
 
@@ -112,7 +112,7 @@ class Mailbox_List_Page_Test extends Unit_Testcase {
 		$settings = $this->makeEmpty( Mailbox_Settings_Interface::class );
 		$logger   = new ColorLogger();
 
-		$sut = new Mailbox_List_Page( $api, $settings, $logger );
+		$sut = new Emails_List_Page( $api, $settings, $logger );
 
 		$sut->enqueue_scripts();
 

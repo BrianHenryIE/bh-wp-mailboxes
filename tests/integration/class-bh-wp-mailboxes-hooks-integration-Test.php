@@ -8,7 +8,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes;
 
-use BrianHenryIE\WP_Mailboxes\Admin\Mailbox_List_Page;
+use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page;
 
 /**
  * Class Develop_Test
@@ -17,7 +17,7 @@ class BH_WP_Mailboxes_Hooks_Integration_Test extends \Codeception\TestCase\WPTes
 
 	public function hooks() {
 		$hooks = array(
-			array( 'admin_enqueue_scripts', Mailbox_List_Page::class, 'enqueue_styles' ),
+			array( 'admin_enqueue_scripts', Emails_List_Page::class, 'enqueue_styles' ),
 		);
 		return $hooks;
 	}

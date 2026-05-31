@@ -8,7 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
 use BrianHenryIE\WP_Mailboxes\Admin\Ajax;
-use BrianHenryIE\WP_Mailboxes\Admin\Mailbox_List_Page;
+use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use Psr\Log\LoggerInterface;
@@ -75,7 +75,7 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function define_admin_ui_hooks(): void {
 
-		$mailbox_list_page = new Mailbox_List_Page( $this->api, $this->settings, $this->logger );
+		$mailbox_list_page = new Emails_List_Page( $this->api, $this->settings, $this->logger );
 
 		$post_type = str_replace( '-', '_', sanitize_title( $this->settings->get_cpt_friendly_name() ) );
 

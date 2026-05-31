@@ -2,6 +2,8 @@
 /**
  * The full page that displays the list of emails, with UI controls.
  *
+ * Implements various `WP_List_Table` hooks to customise the view.
+ *
  * @see WP_List_Table
  */
 
@@ -13,7 +15,7 @@ use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
-class Mailbox_List_Page {
+class Emails_List_Page {
 
 	use LoggerAwareTrait;
 
