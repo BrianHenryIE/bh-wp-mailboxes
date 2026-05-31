@@ -83,7 +83,7 @@ add_filter(
 		 * E.g. http://localhost:8888/wp-content/plugins/var/www/html/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
 		 * http://localhost:8888/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
 		 */
-		return str_replace( 'wp-content/plugins/var/www/html/','', $url );
+		return str_replace( 'wp-content/plugins/var/www/html/', '', $url );
 	},
 	10,
 	3
