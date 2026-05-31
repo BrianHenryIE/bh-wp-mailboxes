@@ -9,10 +9,11 @@
 
 namespace BrianHenryIE\WP_Mailboxes\Model;
 
+use BrianHenryIE\WP_Mailboxes\Repository\Saved_Post;
 use DateTime;
 use WP_Post;
 
-class BH_Email {
+class BH_Email implements Saved_Post {
 
 	protected ?int $post_id = null;
 
@@ -22,7 +23,7 @@ class BH_Email {
 	 */
 	protected string $post_type;
 
-	protected string $post_status = 'publish'; // | saved | linked ... what ???
+	protected string $post_status = 'publish'; // | saved | linked ... what ??? // read | unread?
 
 	/**
 	 * A custom taxonomy is used to distinguish multiple email accounts.
@@ -208,4 +209,7 @@ class BH_Email {
 	 * TODO: Flag/list of posts the email was used for. e.g. do not delete this email/cpt-post if it is in use.
 	 */
 	// array linked_posts
+	public function get_post_id() {
+		// TODO: Implement get_post_id() method.
+	}
 }

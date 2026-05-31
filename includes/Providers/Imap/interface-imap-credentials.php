@@ -27,5 +27,8 @@ interface IMAP_Credentials_Interface extends Account_Credentials_Interface {
 	 */
 	public function get_email_account_password(): string;
 
+	/**
+	 * TLS, STARTTLS, '' empty string for none.
+	 */
 	public function get_encryption(): string;
 }

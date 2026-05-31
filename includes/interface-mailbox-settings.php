@@ -12,6 +12,9 @@ namespace BrianHenryIE\WP_Mailboxes;
 
 interface Mailbox_Settings_Interface {
 
+	// Allow deactivating a mailbox without deleting the settings, so it is no longer automatically checked.
+	// public function is_active(): bool
+
 	/**
 	 * The friendly account name to display.
 	 *

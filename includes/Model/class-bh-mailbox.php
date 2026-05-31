@@ -6,8 +6,9 @@
 namespace BrianHenryIE\WP_Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\Repository\Saved_Post;
 
-class BH_Mailbox {
+class BH_Mailbox implements Saved_Post {
 
 	protected BH_WP_Mailboxes_Settings_Interface $settings;
 
@@ -23,5 +24,9 @@ class BH_Mailbox {
 		$wp_posts = get_posts( $args );
 
 		return array_map( array( BH_Email::class, 'create_from_cpt' ), $wp_posts );
+	}
+
+	public function get_post_id(): int {
+		return $this->post_id;
 	}
 }

@@ -33,11 +33,11 @@ trait Mailbox_Settings_Defaults_Trait {
 	}
 
 	/**
-	 * Delete emails after 30 days.
+	 * Delete emails after 7 days.
 	 *
 	 * @return int|null
 	 */
 	public function get_delete_emails_days(): ?int {
-		return 30;
+		return 7;
 	}
 }

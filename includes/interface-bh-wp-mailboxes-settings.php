@@ -38,7 +38,7 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	 *
 	 * @return Mailbox_Settings_Interface[]
 	 */
-	public function get_configured_mailbox_settings(): array;
+//	public function get_configured_mailbox_settings(): array;
 
 	/**
 	 * Email attachments are stored in a subfolder of the wp-content/uploads directory. What name should be given to
