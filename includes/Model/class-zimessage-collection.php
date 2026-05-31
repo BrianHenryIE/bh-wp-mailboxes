@@ -1,5 +1,13 @@
 <?php
 /**
+ * @used-by \BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface
+ *
+ * `IMessage` is a well implemented PHP interface for emails.
+ *
+ * @see \ZBateson\MailMimeParser\IMessage
+ * @see https://github.com/zbateson/mail-mime-parser
+ * @see https://mail-mime-parser.org
+ *
  * @package brianhenryie/bh-wp-mailboxes
  */
 
