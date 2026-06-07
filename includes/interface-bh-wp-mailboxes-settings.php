@@ -38,7 +38,7 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	 *
 	 * @return Mailbox_Settings_Interface[]
 	 */
-//	public function get_configured_mailbox_settings(): array;
+	public function get_configured_mailbox_settings(): array;
 
 	/**
 	 * Email attachments are stored in a subfolder of the wp-content/uploads directory. What name should be given to
@@ -51,17 +51,18 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	public function get_private_uploads_directory_name(): ?string;
 
 	/**
+	 * The custom post type name used when registering
 	 *
-	 * @return string
-	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_cpt_dashed()
-	 */
-	public function get_cpt_dashed(): string;
-
-	/**
-	 * @return string
 	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_cpt_underscored()
 	 */
 	public function get_cpt_underscored_20(): string;
+
+	/**
+	 * CPT name used in script handles.
+	 *
+	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_cpt_dashed()
+	 */
+	public function get_cpt_dashed(): string;
 
 	/**
 	 * Set how often the emails should be fetched, and how often locally saved emails should be deleted.

@@ -46,7 +46,7 @@ class BH_Email_CPT {
 			'singular_name'            => 'Email',
 			'add_new'                  => 'Add New',
 			'add_new_item'             => 'Add New Email',
-			'edit_item'                => 'Edit Email',
+			'edit_item'                => 'Email',
 			'new_item'                 => 'New Email',
 			'view_item'                => 'View Email',
 			'view_items'               => 'View Emails',
@@ -88,9 +88,6 @@ class BH_Email_CPT {
 				'rewrite'             => array( 'slug' => sanitize_title( $this->settings->get_cpt_friendly_name() ) ),
 				'supports'            => array(
 					'title',
-					'editor',
-					'thumbnail',
-					'excerpt',
 					'comments',
 				),
 				'public'              => false, // This is required to have the edit.php page.
@@ -145,6 +142,54 @@ class BH_Email_CPT {
 				'label'        => __( 'Mailboxes' ),
 				'rewrite'      => array( 'slug' => 'mailbox-account' ),
 				'hierarchical' => true,
+			)
+		);
+	}
+
+	/**
+	 * Register custom post statuses for emails.
+	 *
+	 * - bh_email_new:       Freshly downloaded, not yet acted on.
+	 * - bh_email_processed: Has been processed by the plugin/hook.
+	 * - bh_email_saved:     Explicitly kept; exempt from automatic cron deletion.
+	 *
+	 * @hooked init
+	 */
+	public function register_post_statuses(): void {
+
+		register_post_status(
+			'bh_email_new',
+			array(
+				'label'                     => _x( 'New', 'email status' ),
+				'public'                    => false,
+				'show_in_admin_all_list'    => true,
+				'show_in_admin_status_list' => true,
+				/* translators: %s: count of emails with this status */
+				'label_count'               => _n_noop( 'New <span class="count">(%s)</span>', 'New <span class="count">(%s)</span>' ),
+			)
+		);
+
+		register_post_status(
+			'bh_email_processed',
+			array(
+				'label'                     => _x( 'Processed', 'email status' ),
+				'public'                    => false,
+				'show_in_admin_all_list'    => true,
+				'show_in_admin_status_list' => true,
+				/* translators: %s: count of emails with this status */
+				'label_count'               => _n_noop( 'Processed <span class="count">(%s)</span>', 'Processed <span class="count">(%s)</span>' ),
+			)
+		);
+
+		register_post_status(
+			'bh_email_saved',
+			array(
+				'label'                     => _x( 'Saved', 'email status' ),
+				'public'                    => false,
+				'show_in_admin_all_list'    => true,
+				'show_in_admin_status_list' => true,
+				/* translators: %s: count of emails with this status */
+				'label_count'               => _n_noop( 'Saved <span class="count">(%s)</span>', 'Saved <span class="count">(%s)</span>' ),
 			)
 		);
 	}

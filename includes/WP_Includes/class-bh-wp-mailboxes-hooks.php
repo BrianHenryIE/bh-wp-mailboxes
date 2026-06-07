@@ -9,8 +9,10 @@ namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
 use BrianHenryIE\WP_Mailboxes\Admin\Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page;
+use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Repository\Email_WP_Post_Repository;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -19,25 +21,31 @@ use Psr\Log\LoggerInterface;
 class BH_WP_Mailboxes_Hooks {
 
 	/**
-	 * Instance of the main bh-wp-mailboxes utility class.
-	 * BH_WP_Mailboxes extends API (i.e. implements API_Interface).
+	 * Email repository shared across hooks that need post persistence.
+	 *
+	 * @var Email_WP_Post_Repository
 	 */
+	protected Email_WP_Post_Repository $email_wp_post_repository;
+
 	/**
-	 * The settings provided by the plugin defining the mailboxes and the behaviour (e.g. delete schedule).
-	 */
-	/**
-	 * No logging is done in this class, this is purely for instantiating other classes.
+	 * Constructor.
+	 *
+	 * @param API_Interface                      $api      Main API / BH_WP_Mailboxes instance.
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings.
+	 * @param LoggerInterface                    $logger   PSR-3 logger.
 	 */
 	public function __construct(
 		protected API_Interface $api,
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		protected LoggerInterface $logger
 	) {
+		$this->email_wp_post_repository = new Email_WP_Post_Repository( $this->settings->get_cpt_underscored_20(), $this->logger );
 
 		$this->define_cpt_hooks();
 		$this->define_cron_hooks();
 
 		$this->define_admin_ui_hooks();
+		$this->define_single_email_view_hooks();
 		$this->define_ajax_hooks();
 	}
 
@@ -49,6 +57,7 @@ class BH_WP_Mailboxes_Hooks {
 		$cpt = new BH_Email_CPT( $this->settings, $this->logger );
 
 		add_action( 'init', $cpt->register_cpt( ... ) );
+		add_action( 'init', $cpt->register_post_statuses( ... ) );
 		add_action( 'init', $cpt->register_mailboxes_taxonomy( ... ) );
 
 		add_action( 'init', $cpt->register_mailbox( ... ) );
@@ -75,7 +84,7 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function define_admin_ui_hooks(): void {
 
-		$mailbox_list_page = new Emails_List_Page( $this->api, $this->settings, $this->logger );
+		$mailbox_list_page = new Emails_List_Page( $this->email_wp_post_repository, $this->api, $this->settings, $this->logger );
 
 		$post_type = str_replace( '-', '_', sanitize_title( $this->settings->get_cpt_friendly_name() ) );
 
@@ -87,6 +96,24 @@ class BH_WP_Mailboxes_Hooks {
 
 		add_action( 'admin_enqueue_scripts', $mailbox_list_page->enqueue_styles( ... ) );
 		add_action( 'admin_enqueue_scripts', $mailbox_list_page->enqueue_scripts( ... ) );
+	}
+
+	/**
+	 * Hooks for the single email edit/view screen.
+	 */
+	protected function define_single_email_view_hooks(): void {
+
+		$view      = new Single_Email_View( $this->settings, $this->api, $this->email_wp_post_repository, $this->logger );
+		$post_type = $this->settings->get_cpt_underscored_20();
+
+		add_action( "add_meta_boxes_{$post_type}", $view->add_meta_boxes( ... ) );
+		add_action( 'admin_enqueue_scripts', $view->enqueue_scripts( ... ) );
+		add_filter( 'wp_insert_post_data', $view->prevent_content_edits( ... ), 10, 2 );
+		add_action( 'post_updated', $view->log_status_change( ... ), 10, 3 );
+
+		add_action( 'wp_ajax_bh_wp_mailboxes_mark_read', $view->ajax_mark_read( ... ) );
+		add_action( 'wp_ajax_bh_wp_mailboxes_mark_unread', $view->ajax_mark_unread( ... ) );
+		add_action( 'wp_ajax_bh_wp_mailboxes_delete_on_server', $view->ajax_delete_on_server( ... ) );
 	}
 
 	/**

@@ -1,0 +1,146 @@
+/* Single email view — loaded only on the email CPT edit screen. */
+
+/* Hide the "Add New Email" button in the page heading. */
+.page-title-action {
+	display: none !important;
+}
+
+/* Hide the media upload button below the title. */
+#media-buttons {
+	display: none !important;
+}
+
+/* Make the subject (title) input read-only in appearance. */
+#title {
+	background: transparent;
+	box-shadow: none;
+	cursor: default;
+	pointer-events: none;
+	color: #1d2327;
+	font-size: 1.5em;
+	font-weight: 600;
+	padding-left: 0;
+}
+
+#title-prompt-text {
+	display: none !important;
+}
+
+/* Headers table */
+#bh-email-headers .inside {
+	padding-left: 0;
+}
+
+.bh-email-headers-table {
+	overflow-x: auto;
+	display: block;
+	border: 0;
+}
+
+.bh-email-headers-table th {
+	font-weight: 600;
+	white-space: nowrap;
+	width: 1%;
+	padding-right: 12px;
+	vertical-align: top;
+}
+
+.bh-email-headers-table td {
+	word-break: break-all;
+}
+
+/* Plain text body */
+.bh-email-plain-text {
+	white-space: pre-wrap;
+	word-break: break-word;
+	font-family: monospace;
+	font-size: 0.9em;
+	background: #f6f7f7;
+	padding: 12px;
+	border: 1px solid #dcdcde;
+	border-radius: 2px;
+	max-height: 500px;
+	overflow-y: auto;
+}
+
+/* Remote status badges */
+.bh-email-remote-status {
+	margin: 8px 0;
+}
+
+.bh-email-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 0.8em;
+	font-weight: 600;
+}
+
+.bh-email-badge--read {
+	background: #d7e8f2;
+	color: #0a4b78;
+}
+
+.bh-email-badge--unread {
+	background: #fcf9e8;
+	color: #7a5c00;
+}
+
+.bh-email-badge--deleted {
+	background: #fde8e8;
+	color: #8a1f1f;
+}
+
+/* Attachment list */
+.bh-email-attachments-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bh-email-attachments-list li {
+	padding: 4px 0;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.bh-email-attachments-list li:last-child {
+	border-bottom: none;
+}
+
+/* Email log notes — WooCommerce order-note style, right column */
+.bh-email-log-notes {
+	list-style: none;
+	margin: 0 0 12px;
+	padding: 0;
+}
+
+.bh-email-log-note {
+	border-left: 4px solid #72aee6;
+	margin-bottom: 8px;
+	padding: 6px 10px;
+	background: #f6f7f7;
+	border-radius: 0 2px 2px 0;
+}
+
+.bh-email-log-note__content p {
+	margin: 0 0 4px;
+	font-size: 13px;
+}
+
+.bh-email-log-note__meta {
+	margin: 0;
+	font-size: 11px;
+	color: #757575;
+}
+
+.bh-email-log-note--empty {
+	color: #757575;
+	font-style: italic;
+	padding: 4px 0;
+}
+
+/* Status metabox save button row */
+#publishing-action {
+	margin-top: 12px;
+	text-align: right;
+}

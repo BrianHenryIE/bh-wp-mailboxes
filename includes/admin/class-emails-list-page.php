@@ -12,6 +12,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Repository\Email_WP_Post_Repository;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
@@ -20,9 +21,10 @@ class Emails_List_Page {
 	use LoggerAwareTrait;
 
 	public function __construct(
+		protected Email_WP_Post_Repository $email_wp_post_repository,
 		protected API_Interface $api,
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
-		LoggerInterface $logger
+		LoggerInterface $logger,
 	) {
 		$this->setLogger( $logger );
 	}
@@ -89,8 +91,7 @@ class Emails_List_Page {
 		$post = get_post( $post_id );
 
 		// check post-type.
-
-		$email = BH_Email::create_from_cpt( $post );
+		$email = $this->email_wp_post_repository->find_by_post_id($post_id);
 
 		switch ( $column_name ) {
 			case 'from':

@@ -10,9 +10,9 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58",
-    "@wordpress/e2e-test-utils-playwright": "^1.0.0",
-    "@wordpress/env": "^10.0.0",
-    "dotenv": "^17.3"
+    "@playwright/test": "*",
+    "@wordpress/e2e-test-utils-playwright": "*",
+    "@wordpress/env": "*",
+    "dotenv": "*"
   }
 }

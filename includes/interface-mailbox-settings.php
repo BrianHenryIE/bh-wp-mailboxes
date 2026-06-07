@@ -61,4 +61,14 @@ interface Mailbox_Settings_Interface {
 	 * @return int|null
 	 */
 	public function get_delete_emails_days(): ?int;
+
+	/**
+	 * Whether this mailbox supports marking emails as read/unread on the remote server.
+	 */
+	public function can_mark_read(): bool;
+
+	/**
+	 * Whether this mailbox supports deleting emails on the remote server.
+	 */
+	public function can_delete_on_server(): bool;
 }

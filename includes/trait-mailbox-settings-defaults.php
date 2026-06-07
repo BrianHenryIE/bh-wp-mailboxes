@@ -40,4 +40,18 @@ trait Mailbox_Settings_Defaults_Trait {
 	public function get_delete_emails_days(): ?int {
 		return 7;
 	}
+
+	/**
+	 * Whether this mailbox supports marking emails as read/unread on the server.
+	 */
+	public function can_mark_read(): bool {
+		return false;
+	}
+
+	/**
+	 * Whether this mailbox supports deleting emails on the server.
+	 */
+	public function can_delete_on_server(): bool {
+		return false;
+	}
 }

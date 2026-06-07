@@ -39,7 +39,7 @@ if ( ! defined( 'WPINC' ) ) {
 	return;
 }
 
-require_once '/var/www/html/bh-wp-mailboxes/vendor/autoload.php';
+require_once '/var/www/html/wp-content/uploads/bh-wp-mailboxes/vendor/autoload.php';
 
 Autoloader::generate(
 	__NAMESPACE__,
@@ -48,7 +48,7 @@ Autoloader::generate(
 
 Autoloader::generate(
 	'BrianHenryIE\\WP_Mailboxes',
-	'/var/www/html/bh-wp-mailboxes/includes/',
+	'/var/www/html/wp-content/uploads/bh-wp-mailboxes/includes/',
 )->register();
 
 // This may be outated.
@@ -83,6 +83,15 @@ add_filter(
 		 * E.g. http://localhost:8888/wp-content/plugins/var/www/html/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
 		 * http://localhost:8888/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
 		 */
+		if(str_contains($url, 'wp-content/plugins/var/www/html/' )){
+			$a = 'b';
+		}
+		// http://localhost:8888/bh-wp-mailboxes/includes/admin/js/bh-wp-mailboxes.js?ver=1.0.0
+		if(str_contains($url, '.css' )){
+			// http://localhost:8888/wp-content/plugins/var/www/html/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
+			// vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
+			$a = 'b';
+		}
 		return str_replace( 'wp-content/plugins/var/www/html/', '', $url );
 	},
 	10,

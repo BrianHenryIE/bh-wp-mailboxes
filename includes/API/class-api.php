@@ -10,6 +10,7 @@ use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interfa
 use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Repository\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads;
 use DateTime;
 use DateTimeImmutable;
@@ -23,6 +24,9 @@ class API implements API_Interface {
 
 	use LoggerAwareTrait;
 
+	/** @var ?Email_WP_Post_Repository Instantiated lazily on first use. */
+	protected ?Email_WP_Post_Repository $email_repository = null;
+
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		/**
@@ -32,6 +36,17 @@ class API implements API_Interface {
 		?LoggerInterface $logger = null
 	) {
 		$this->logger = $logger ?? new NullLogger();
+	}
+
+	/** @return Email_WP_Post_Repository */
+	protected function get_email_repository(): Email_WP_Post_Repository {
+		if ( is_null( $this->email_repository ) ) {
+			$this->email_repository = new Email_WP_Post_Repository(
+				$this->settings->get_cpt_underscored_20(),
+				$this->logger
+			);
+		}
+		return $this->email_repository;
 	}
 
 	/**
@@ -56,7 +71,6 @@ class API implements API_Interface {
 		$now_time           = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
 		$interval_one_week  = new \DateInterval( 'P1W' );
 		$first_run_datetime = $now_time->sub( $interval_one_week );
-		// $now_time           = new DateTime( 'now', new DateTimeZone( 'UTC' ) );
 
 		foreach ( $mailboxes as $mailbox_settings ) {
 			$account_name = $mailbox_settings->get_account_unique_friendly_name();
@@ -65,9 +79,6 @@ class API implements API_Interface {
 			// Check if we have recently had a failed login.
 			// Do not retry: some servers rate limit bad auth attempts and blacklist IPs.
 			// TODO: Clear this option when settings are saved.
-			// $account_name = $mailbox_settings->get_account_unique_friendly_name();
-
-			// If there is a recorded failed login.
 			if ( ! is_null( $this->get_last_failed_login_time( $account_name ) ) ) {
 				$this->logger->info(
 					'Too soon after failed login, please check your password and save settings to try again.',
@@ -79,14 +90,22 @@ class API implements API_Interface {
 			}
 
 			try {
-				if ( $credentials instanceof IMAP_Credentials_Interface ) {
-					$fetcher = new ImapEngine_Imap_Email_Fetcher( $mailbox_settings, $this->logger );
-				} elseif ( $credentials instanceof Google_API_Credentials_Interface ) {
-					$fetcher = new Gmail_Email_Fetcher( $mailbox_settings, $this->logger );
-				} else {
-					// TODO filter?
-					$this->logger->warning( 'No email fetcher found for credentials' );
-					continue;
+				// Filter: bh_wp_mailboxes_fetcher_for_credentials( null, Account_Credentials_Interface, Mailbox_Settings_Interface, LoggerInterface ).
+				// Return a non-null Email_Fetcher_Interface to supply a custom fetcher (e.g. a test stub).
+				$fetcher = apply_filters( 'bh_wp_mailboxes_fetcher_for_credentials', null, $credentials, $mailbox_settings, $this->logger );
+
+				if ( is_null( $fetcher ) ) {
+					if ( $credentials instanceof IMAP_Credentials_Interface ) {
+						$fetcher = new ImapEngine_Imap_Email_Fetcher( $mailbox_settings, $this->logger );
+					} elseif ( $credentials instanceof Google_API_Credentials_Interface ) {
+						$fetcher = new Gmail_Email_Fetcher( $mailbox_settings, $this->logger );
+					} else {
+						$this->logger->warning(
+							'No email fetcher found for credentials type.',
+							array( 'credentials_class' => get_class( $credentials ) )
+						);
+						continue;
+					}
 				}
 			} catch ( \Exception $exception ) {
 				$this->logger->error(
@@ -118,10 +137,6 @@ class API implements API_Interface {
 
 			$this->set_last_fetched_time( $account_name, $now_time );
 
-			// TODO: Filter email content, from address, ... here?? (filter could be done in IMAP/Gmail search) (maybe not if it's regex).
-			// TODO: Or maybe retrieve_emails() should be a concrete implementation on an abstract class
-
-			// Convert New_Emails<IMessage> → BH_Email[] domain objects.
 			$cpt                   = $this->settings->get_cpt_underscored_20();
 			$account_category_slug = sanitize_title( $account_name );
 			$mailbox_category      = get_term_by( 'slug', $account_category_slug, 'bh-wp-mailbox-account' );
@@ -129,7 +144,7 @@ class API implements API_Interface {
 
 			$all_new_account_bh_emails = array();
 			foreach ( $all_new_account_emails as $imessage ) {
-				$all_new_account_bh_emails[] = new IMessage_BH_Email_Adapter( $imessage, $cpt, $term_id );
+				$all_new_account_bh_emails[] = IMessage_BH_Email_Adapter::adapt( $imessage, $cpt, $term_id );
 			}
 
 			$all_new_emails = array_merge( $all_new_emails, $all_new_account_bh_emails );
@@ -144,15 +159,11 @@ class API implements API_Interface {
 				fn( BH_Email $email ): bool => $this->email_filter( $email, $mailbox_settings )
 			);
 
-			/**
-			 * Allow a WordPress filter to remove emails before they are saved.
-			 *
-			 * @param BH_Email[] $filtered_account_emails The emails filtered according to the settings.
-			 */
+			// Filter: bh_wp_mailboxes_fetch_emails_complete( BH_Email[] $emails, string $cpt, string $account_name ).
 			$filtered_account_emails = apply_filters( 'bh_wp_mailboxes_fetch_emails_complete', $filtered_account_emails, $cpt, $account_name );
 
 			foreach ( $filtered_account_emails as $filtered_email ) {
-				$filtered_email->save();
+				$this->get_email_repository()->save( $filtered_email );
 				$saved_emails[] = $filtered_email;
 			}
 
@@ -175,7 +186,6 @@ class API implements API_Interface {
 			 * @param API $mailboxes
 			 */
 			do_action( "bh_wp_mailboxes_fetch_emails_saved_{$plugin_slug}", $new_bh_emails, $account, $mailboxes );
-
 		}
 
 		return array(
@@ -185,23 +195,18 @@ class API implements API_Interface {
 		);
 	}
 
-
 	/**
 	 * TODO: This should be done when querying the server. i.e. a search during fetch.
 	 */
 	#[\Deprecated]
 	protected function email_filter( BH_Email $email, Mailbox_Settings_Interface $settings ): bool {
 
-		// Filter on the from address.
-		// Forwarded emails have the wrong email address, so null can be set to null to skip the check.
 		if ( ! is_null( $settings->get_from_email_regex() )
 			&& 1 !== preg_match( $settings->get_from_email_regex(), $email->get_from_email() ) ) {
 			$this->logger->debug( "Email from {$email->get_from_email()} did not match get_from_email_regex {$settings->get_from_email_regex()}." );
 			return false;
 		}
 
-		// Filter on the body.
-		// If we're using an identifier to filter emails, and it is not found, continue to the next email.
 		if ( ! is_null( $settings->get_identifier_regex() )
 			&& 1 !== preg_match( $settings->get_identifier_regex(), $email->get_body_plain_text() )
 			&& 1 !== preg_match( $settings->get_identifier_regex(), $email->get_body_html() ) ) {
@@ -220,48 +225,183 @@ class API implements API_Interface {
 	 * @return BH_Email[]
 	 */
 	public function get_downloaded_emails( int $number = 200 ): array {
+		return $this->get_email_repository()->find_recent( $number );
+	}
 
-		$post_type = $this->settings->get_cpt_underscored_20();
+	/**
+	 * Delete locally-stored emails older than the configured retention period.
+	 *
+	 * @return array{success:bool, deleted:int}
+	 */
+	public function delete_old_emails(): array {
 
-		$query = new \WP_Query(
-			array(
-				'post_type'      => $post_type,
-				'posts_per_page' => $number,
-			)
-		);
+		$mailboxes = $this->settings->get_configured_mailbox_settings();
 
-		return array_map(
-			BH_Email::create_from_cpt( ... ),
-			$query->get_posts()
+		$min_days = null;
+		foreach ( $mailboxes as $mailbox ) {
+			$days = $mailbox->get_delete_emails_days();
+			if ( ! is_null( $days ) && $days > 0 ) {
+				$min_days = is_null( $min_days ) ? $days : min( $min_days, $days );
+			}
+		}
+
+		if ( is_null( $min_days ) ) {
+			$this->logger->debug( 'Email deletion is not configured for any mailbox.' );
+			return array(
+				'success' => true,
+				'deleted' => 0,
+			);
+		}
+
+		$cutoff  = new DateTimeImmutable( "now - {$min_days} days", new DateTimeZone( 'UTC' ) );
+		$deleted = $this->get_email_repository()->delete_older_than( $cutoff );
+
+		$this->logger->info( "Deleted {$deleted} emails older than {$min_days} days." );
+
+		return array(
+			'success' => true,
+			'deleted' => $deleted,
 		);
 	}
 
-	// local
-	public function delete_old_emails(): array {
-		// TODO: Implement delete_old_emails() method.
+	/**
+	 * Mark the email as read on its remote server and update local post meta.
+	 *
+	 * Dispatches via filter `bh_wp_mailboxes_mark_email_read` so providers can handle it.
+	 * Returns true if a listener handled the action.
+	 */
+	public function mark_email_read( BH_Email $email ): void {
+		$this->perform_remote_email_action( 'mark_read', $email );
+	}
 
-		return array(
-			'success' => false,
-			'message' => 'not yet implemented',
+	/**
+	 * Mark the email as unread on its remote server and update local post meta.
+	 */
+	public function mark_email_unread( BH_Email $email ): void {
+		$this->perform_remote_email_action( 'mark_unread', $email );
+	}
+
+	/**
+	 * Delete the email on its remote server and update local post meta.
+	 */
+	public function delete_email_on_server( BH_Email $email ): void {
+		$this->perform_remote_email_action( 'delete_on_server', $email );
+	}
+
+	/**
+	 * Shared implementation for the three remote email actions.
+	 *
+	 * Fires filter `bh_wp_mailboxes_remote_email_action_{$action}` with the email and resolved mailbox
+	 * settings. A returning value of true signals that the action was handled.
+	 * Regardless, updates the relevant post meta and inserts a log comment.
+	 *
+	 * @param string   $action One of: mark_read, mark_unread, delete_on_server.
+	 * @param BH_Email $email  The email to act on.
+	 */
+	protected function perform_remote_email_action( string $action, BH_Email $email ): void {
+
+		$mailbox_settings = $this->resolve_mailbox_for_email( $email );
+
+		/**
+		 * Filter: bh_wp_mailboxes_remote_email_action_{$action}
+		 *
+		 * Provider implementations should hook here to perform the remote operation.
+		 * Return true to signal success, false/null to signal failure/unhandled.
+		 *
+		 * @param bool|null                 $handled          Start null; return true on success.
+		 * @param BH_Email                  $email            The email to act on.
+		 * @param ?Mailbox_Settings_Interface $mailbox_settings The resolved mailbox config, or null.
+		 * @param LoggerInterface           $logger
+		 */
+		$handled = apply_filters( "bh_wp_mailboxes_remote_email_action_{$action}", null, $email, $mailbox_settings, $this->logger );
+
+		$post_id = $email->get_post_id();
+
+		if ( true !== $handled ) {
+			$this->logger->warning(
+				"No handler for remote email action '{$action}'.",
+				array(
+					'post_id'  => $post_id,
+					'email_id' => $email->get_email_id(),
+				)
+			);
+		}
+
+		// Update post meta to reflect the new remote state.
+		switch ( $action ) {
+			case 'mark_read':
+				update_post_meta( $post_id, 'bh_email_is_read', '1' );
+				break;
+			case 'mark_unread':
+				update_post_meta( $post_id, 'bh_email_is_read', '0' );
+				break;
+			case 'delete_on_server':
+				update_post_meta( $post_id, 'bh_email_deleted_on_server', '1' );
+				break;
+		}
+
+		$action_label = match ( $action ) {
+			'mark_read'       => 'Marked as read on server',
+			'mark_unread'     => 'Marked as unread on server',
+			'delete_on_server' => 'Deleted on server',
+			default           => $action,
+		};
+
+		$this->insert_email_log_note( $post_id, $action_label . ( true !== $handled ? ' (no remote handler found)' : '' ) );
+	}
+
+	/**
+	 * Find the Mailbox_Settings_Interface for the email's account taxonomy term.
+	 *
+	 * Returns null when the account cannot be matched (e.g. term was deleted).
+	 */
+	protected function resolve_mailbox_for_email( BH_Email $email ): ?Mailbox_Settings_Interface {
+
+		$term_id = $email->get_account_category_id();
+
+		foreach ( $this->settings->get_configured_mailbox_settings() as $mailbox ) {
+			$slug            = sanitize_title( $mailbox->get_account_unique_friendly_name() );
+			$term            = get_term_by( 'slug', $slug, 'bh-wp-mailbox-account' );
+			$mailbox_term_id = $term instanceof \WP_Term ? $term->term_id : 0;
+			if ( $mailbox_term_id === $term_id ) {
+				return $mailbox;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Insert a WooCommerce-style log note (wp comment) on the email post.
+	 *
+	 * @param int    $post_id The email CPT post ID.
+	 * @param string $message The note text.
+	 */
+	public function insert_email_log_note( int $post_id, string $message ): void {
+
+		wp_insert_comment(
+			array(
+				'comment_post_ID'    => $post_id,
+				'comment_content'    => wp_kses_post( $message ),
+				'comment_agent'      => 'bh-wp-mailboxes',
+				'comment_type'       => 'bh_email_log',
+				'comment_author'     => 'bh-wp-mailboxes',
+				'comment_author_url' => '',
+				'user_id'            => get_current_user_id(),
+				'comment_approved'   => 1,
+			)
 		);
 	}
 
 	/**
 	 * Return the settings used to configure the instance.
-	 *
-	 * @return BH_WP_Mailboxes_Settings_Interface
 	 */
 	public function get_settings(): BH_WP_Mailboxes_Settings_Interface {
 		return $this->settings;
 	}
 
 	/**
-	 * Option name format is: "%s_mailbox_last_fetched_%s".
-	 * e.g. "my-plugin-slug_mailbox_last_fetched_account-name".
-	 *
-	 * @param string $account_name The friendly account name.
-	 *
-	 * @return string
+	 * Option name format: "%s_mailbox_last_fetched_%s".
 	 */
 	protected function get_last_fetched_option_name( string $account_name ): string {
 		$plugin_slug = $this->settings->get_plugin_slug();
@@ -277,7 +417,6 @@ class API implements API_Interface {
 		foreach ( $this->settings->get_configured_mailbox_settings() as $mailbox_settings ) {
 			$account_name = $mailbox_settings->get_account_unique_friendly_name();
 
-			// Should this be tied to the taxonomy somehow? (i.e. the account id should be the taxonomy id).
 			$last_fetched_option_name = $this->get_last_fetched_option_name( $account_name );
 
 			$last_fetched = get_option( $last_fetched_option_name, null );
@@ -285,9 +424,9 @@ class API implements API_Interface {
 				$result[ $account_name ] = null;
 				continue;
 			}
-			try { // catch this exception in case the option has been manually, incorrectly modified.
+			try {
 				$since_datetime          = DateTime::createFromFormat( DateTime::ATOM, $last_fetched, new DateTimeZone( 'UTC' ) );
-				$result[ $account_name ] = $since_datetime ?: null;
+				$result[ $account_name ] = false !== $since_datetime ? $since_datetime : null;
 			} catch ( \Exception ) {
 				$this->logger->warning(
 					'Could not parse date from option key ' . $last_fetched_option_name . ' with value ' . $last_fetched . '. Possibly manually edited in database. Deleting option.',
@@ -305,17 +444,11 @@ class API implements API_Interface {
 
 	/**
 	 * Save the last fetched time for this account in wp_options.
-	 *
-	 * @param string            $account_name The account friendly name.
-	 * @param DateTimeInterface $time The time of the last successful download of emails.
-	 *
-	 * @return void
 	 */
 	public function set_last_fetched_time( string $account_name, DateTimeInterface $time ): void {
 
 		$last_fetched_option_name = $this->get_last_fetched_option_name( $account_name );
-
-		$atom_time = $time->format( DateTime::ATOM );
+		$atom_time                = $time->format( DateTime::ATOM );
 
 		update_option( $last_fetched_option_name, $atom_time );
 
@@ -330,10 +463,6 @@ class API implements API_Interface {
 
 	/**
 	 * Format: "%s_mailbox_last_failure_%s".
-	 *
-	 * @param string $account_name Friendly account name.
-	 *
-	 * @return string
 	 */
 	protected function get_last_failed_login_option_name( string $account_name ): string {
 		$plugin_slug = $this->settings->get_plugin_slug();
@@ -341,8 +470,7 @@ class API implements API_Interface {
 	}
 
 	/**
-	 * Return the last time the login failed, null if none, null if longer than the $retry_expiry_seconds, which
-	 * defaults to six hours.
+	 * Return the last time the login failed. Returns null if none, or if older than $retry_expiry_seconds (default 6h).
 	 *
 	 * @param string $account_name
 	 * @param ?int   $retry_expiry_seconds
@@ -352,10 +480,8 @@ class API implements API_Interface {
 	public function get_last_failed_login_time( string $account_name, ?int $retry_expiry_seconds = null ): ?DateTime {
 
 		$option_name = $this->get_last_failed_login_option_name( $account_name );
+		$atom_time   = get_option( $option_name, null );
 
-		$atom_time = get_option( $option_name, null );
-
-		// No recorded failed login.
 		if ( is_null( $atom_time ) ) {
 			return null;
 		}
@@ -367,22 +493,16 @@ class API implements API_Interface {
 
 		$last_failed_datetime = DateTime::createFromFormat( DateTime::ATOM, $atom_time, new DateTimeZone( 'UTC' ) );
 
-		// Recorded failed login is longer than six_hours ago so we don't care.
 		if ( $last_failed_datetime < $now_sub_interval ) {
-			// Delete the expired time.
 			$this->set_failed_login_time( $account_name, null );
 			return null;
 		}
 
-		return $last_failed_datetime ?: null;
+		return false !== $last_failed_datetime ? $last_failed_datetime : null;
 	}
 
 	/**
-	 *
-	 * Set to null to clear the value... i.e. after it is successful.
-	 *
-	 * @param string             $account_name
-	 * @param ?DateTimeInterface $time
+	 * Set to null to clear (after a successful login).
 	 */
 	public function set_failed_login_time( string $account_name, ?DateTimeInterface $time ): void {
 		$option_name = $this->get_last_failed_login_option_name( $account_name );

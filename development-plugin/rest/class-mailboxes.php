@@ -37,6 +37,8 @@ class Mailboxes {
 	}
 
 	/**
+	 * Register REST routes.
+	 *
 	 * @hooked rest_api_init
 	 */
 	public function register_routes(): void {
@@ -59,8 +61,32 @@ class Mailboxes {
 				'callback'            => $this->create_email( ... ),
 				'permission_callback' => '__return_true',
 				'args'                => array(
-					'subject' => array(
+					'subject'           => array(
 						'type'     => 'string',
+						'required' => false,
+					),
+					'body_plain'        => array(
+						'type'     => 'string',
+						'required' => false,
+					),
+					'body_html'         => array(
+						'type'     => 'string',
+						'required' => false,
+					),
+					'post_status'       => array(
+						'type'     => 'string',
+						'required' => false,
+					),
+					'is_read'           => array(
+						'type'     => 'boolean',
+						'required' => false,
+					),
+					'deleted_on_server' => array(
+						'type'     => 'boolean',
+						'required' => false,
+					),
+					'has_attachment'    => array(
+						'type'     => 'boolean',
 						'required' => false,
 					),
 				),
@@ -87,7 +113,14 @@ class Mailboxes {
 	}
 
 	/**
-	 * Create a fixture email post so a test can assert it appears in the admin list.
+	 * Create a fixture email post so a test can assert it appears in the admin.
+	 *
+	 * Supported body params: subject, body_plain, body_html, post_status,
+	 * is_read (bool), deleted_on_server (bool), has_attachment (bool).
+	 *
+	 * Returns { post_id: int } with HTTP 201.
+	 *
+	 * @param WP_REST_Request $request The REST request object.
 	 */
 	public function create_email( WP_REST_Request $request ): WP_REST_Response {
 
@@ -95,11 +128,20 @@ class Mailboxes {
 			? sanitize_text_field( $request->get_param( 'subject' ) )
 			: 'E2E fixture email';
 
+		$body_plain = is_string( $request->get_param( 'body_plain' ) )
+			? sanitize_textarea_field( $request->get_param( 'body_plain' ) )
+			: '';
+
+		$post_status = is_string( $request->get_param( 'post_status' ) )
+			? sanitize_key( $request->get_param( 'post_status' ) )
+			: 'publish';
+
 		$post_id = wp_insert_post(
 			array(
-				'post_type'   => self::EMAIL_POST_TYPE,
-				'post_status' => 'publish',
-				'post_title'  => $subject,
+				'post_type'    => self::EMAIL_POST_TYPE,
+				'post_status'  => $post_status,
+				'post_title'   => $subject,
+				'post_content' => $body_plain,
 			),
 			true
 		);
@@ -108,6 +150,34 @@ class Mailboxes {
 			return new WP_REST_Response( array( 'error' => $post_id->get_error_message() ), 500 );
 		}
 
-		return new WP_REST_Response( array( 'id' => $post_id ), 201 );
+		$body_html = $request->get_param( 'body_html' );
+		if ( is_string( $body_html ) && '' !== $body_html ) {
+			update_post_meta( $post_id, 'bh_email_body_html', wp_kses_post( $body_html ) );
+		}
+
+		$is_read = $request->get_param( 'is_read' );
+		if ( null !== $is_read ) {
+			update_post_meta( $post_id, 'bh_email_is_read', true === $is_read ? '1' : '0' );
+		}
+
+		$deleted_on_server = $request->get_param( 'deleted_on_server' );
+		if ( true === $deleted_on_server ) {
+			update_post_meta( $post_id, 'bh_email_deleted_on_server', '1' );
+		}
+
+		$has_attachment = $request->get_param( 'has_attachment' );
+		if ( true === $has_attachment ) {
+			wp_insert_post(
+				array(
+					'post_type'      => 'attachment',
+					'post_status'    => 'inherit',
+					'post_title'     => 'test-attachment.txt',
+					'post_parent'    => $post_id,
+					'post_mime_type' => 'text/plain',
+				)
+			);
+		}
+
+		return new WP_REST_Response( array( 'post_id' => $post_id ), 201 );
 	}
 }
