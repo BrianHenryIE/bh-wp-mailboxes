@@ -64,3 +64,4 @@ token.json
 quickstart-cli.php
 
 *.secret.*
+/playwright-report
