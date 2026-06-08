@@ -10,6 +10,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\Repository\Email_WP_Post_Repository;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -56,6 +57,10 @@ class Single_Email_View {
 	 */
 	public function add_meta_boxes( WP_Post $post ): void {
 
+		/** @var BH_Email $email */
+		$email = $this->email_wp_post_repository->find_by_post_id( $post->ID );
+		unset( $post );
+
 		remove_meta_box( 'submitdiv', $this->post_type, 'side' );
 		remove_meta_box( 'slugdiv', $this->post_type, 'normal' );
 		remove_meta_box( 'postcustom', $this->post_type, 'normal' );
@@ -82,7 +87,7 @@ class Single_Email_View {
 			'high'
 		);
 
-		$body_html = get_post_meta( $post->ID, 'bh_email_body_html', true );
+		$body_html = $email->get_body_html();
 		if ( is_string( $body_html ) && '' !== $body_html ) {
 			add_meta_box(
 				'bh-email-content-html',
@@ -94,7 +99,8 @@ class Single_Email_View {
 			);
 		}
 
-		if ( '' !== $post->post_content ) {
+		$body_text = $email->get_body_plain_text();
+		if ( '' !== $body_text ) {
 			add_meta_box(
 				'bh-email-content-plain',
 				__( 'Email Content – Plain Text', 'bh-wp-mailboxes' ),
@@ -105,25 +111,26 @@ class Single_Email_View {
 			);
 		}
 
-		$attachments = get_posts(
-			array(
-				'post_type'   => 'attachment',
-				'post_parent' => $post->ID,
-				'post_status' => 'any',
-				'numberposts' => -1,
-				'fields'      => 'ids',
-			)
-		);
-		if ( ! empty( $attachments ) ) {
-			add_meta_box(
-				'bh-email-attachments',
-				__( 'Attachments', 'bh-wp-mailboxes' ),
-				$this->render_attachments_metabox( ... ),
-				$this->post_type,
-				'side',
-				'default'
-			);
-		}
+		// $email->get_attachment_ids()
+		// $attachments = get_posts(
+		// array(
+		// 'post_type'   => 'attachment',
+		// 'post_parent' => $post->ID,
+		// 'post_status' => 'any',
+		// 'numberposts' => -1,
+		// 'fields'      => 'ids',
+		// )
+		// );
+		// if ( ! empty( $attachments ) ) {
+		// add_meta_box(
+		// 'bh-email-attachments',
+		// __( 'Attachments', 'bh-wp-mailboxes' ),
+		// $this->render_attachments_metabox( ... ),
+		// $this->post_type,
+		// 'side',
+		// 'default'
+		// );
+		// }
 
 		add_meta_box(
 			'bh-email-log-notes',
@@ -338,9 +345,25 @@ class Single_Email_View {
 
 		echo '<div class="submitbox" id="bh-email-status-box">';
 
-		// Received at date.
-		$date = (string) mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $post->post_date );
-		echo '<p><strong>' . esc_html__( 'Received at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( $date ) . '</p>';
+		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
+
+		// Received at: parsed from the email's Date header.
+		$date_header = get_post_meta( $post->ID, 'Date', true );
+		if ( is_string( $date_header ) && '' !== $date_header ) {
+			$parsed = date_create( $date_header );
+			if ( false !== $parsed ) {
+				$received = wp_date( $date_format, $parsed->getTimestamp() );
+				echo '<p><strong>' . esc_html__( 'Received at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( (string) $received ) . '</p>';
+			}
+		}
+
+		// Downloaded at: when the email was fetched into WordPress (post_date).
+		$downloaded = (string) mysql2date( $date_format, $post->post_date );
+		echo '<p><strong>' . esc_html__( 'Downloaded at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( $downloaded ) . '</p>';
+
+		// Updated at: last time the post record was modified (post_modified).
+		$updated = (string) mysql2date( $date_format, $post->post_modified );
+		echo '<p><strong>' . esc_html__( 'Updated at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( $updated ) . '</p>';
 
 		// Local status selector.
 		echo '<p><label for="bh-post-status"><strong>' . esc_html__( 'Status:', 'bh-wp-mailboxes' ) . '</strong></label></p>';
@@ -437,7 +460,8 @@ class Single_Email_View {
 			return;
 		}
 
-		echo '<pre class="bh-email-plain-text">' . esc_html( $post->post_content ) . '</pre>';
+		$srcdoc = '<pre style="white-space:pre-wrap;word-break:break-word;font-family:monospace;margin:0;padding:12px;">' . esc_html( $post->post_content ) . '</pre>';
+		echo '<iframe class="bh-email-plain-body" srcdoc="' . esc_attr( $srcdoc ) . '" sandbox="allow-same-origin" style="width:100%;border:0;min-height:200px;" title="' . esc_attr__( 'Email plain text content', 'bh-wp-mailboxes' ) . '"></iframe>';
 	}
 
 	/**
@@ -493,11 +517,16 @@ class Single_Email_View {
 			)
 		);
 
+		$notes = is_array( $notes ) ? $notes : array();
+
 		echo '<ul class="bh-email-log-notes">';
 		if ( empty( $notes ) ) {
 			echo '<li class="bh-email-log-note--empty">' . esc_html__( 'No log entries yet.', 'bh-wp-mailboxes' ) . '</li>';
 		}
 		foreach ( $notes as $note ) {
+			if ( ! ( $note instanceof \WP_Comment ) ) {
+				continue;
+			}
 			$date_formatted = mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $note->comment_date );
 			echo '<li class="bh-email-log-note">';
 			echo '<div class="bh-email-log-note__content"><p>' . wp_kses_post( $note->comment_content ) . '</p></div>';

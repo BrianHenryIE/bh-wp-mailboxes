@@ -89,6 +89,10 @@ class Mailboxes {
 						'type'     => 'boolean',
 						'required' => false,
 					),
+					'date_header'       => array(
+						'type'     => 'string',
+						'required' => false,
+					),
 				),
 			)
 		);
@@ -176,6 +180,17 @@ class Mailboxes {
 					'post_mime_type' => 'text/plain',
 				)
 			);
+		}
+
+		$date_header = $request->get_param( 'date_header' );
+		if ( is_string( $date_header ) && '' !== $date_header ) {
+			$existing = get_post_meta( $post_id, 'headers', true );
+			$headers  = is_array( $existing ) ? $existing : array();
+			if ( ! in_array( 'Date', $headers, true ) ) {
+				$headers[] = 'Date';
+			}
+			update_post_meta( $post_id, 'headers', $headers );
+			update_post_meta( $post_id, 'Date', sanitize_text_field( $date_header ) );
 		}
 
 		return new WP_REST_Response( array( 'post_id' => $post_id ), 201 );

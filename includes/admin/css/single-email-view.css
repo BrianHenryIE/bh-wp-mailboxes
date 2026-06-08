@@ -46,21 +46,7 @@
 }
 
 .bh-email-headers-table td {
-	word-break: break-all;
-}
-
-/* Plain text body */
-.bh-email-plain-text {
-	white-space: pre-wrap;
 	word-break: break-word;
-	font-family: monospace;
-	font-size: 0.9em;
-	background: #f6f7f7;
-	padding: 12px;
-	border: 1px solid #dcdcde;
-	border-radius: 2px;
-	max-height: 500px;
-	overflow-y: auto;
 }
 
 /* Remote status badges */

@@ -64,12 +64,12 @@ test.describe( 'Single email view', () => {
 		await expect( page.locator( '#bh-email-content-html iframe.bh-email-html-body' ) ).toBeAttached();
 	} );
 
-	test( 'plain-text content metabox shows when email has plain text body', async ( { admin, page, request } ) => {
+	test( 'plain-text content metabox shows an iframe when email has plain text body', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request, { body_plain: 'Hello plain text.' } );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
 		await expect( page.locator( '#bh-email-content-plain' ) ).toBeVisible();
-		await expect( page.locator( '#bh-email-content-plain pre.bh-email-plain-text' ) ).toBeVisible();
+		await expect( page.locator( '#bh-email-content-plain iframe.bh-email-plain-body' ) ).toBeAttached();
 	} );
 
 	test( 'title input is readonly (no editor toolbar, readonly attribute set by JS)', async ( { admin, page, request } ) => {
@@ -141,16 +141,39 @@ test.describe( 'Single email view', () => {
 	} );
 
 	// -------------------------------------------------------------------------
-	// Requirement 6: "Received at" label instead of "Published on"
+	// Requirement 6: Date labels in Email Status metabox
 	// -------------------------------------------------------------------------
 
-	test( 'status metabox shows "Received at:" label, not "Published on"', async ( { admin, page, request } ) => {
+	test( 'status metabox shows "Downloaded at:" label, not "Published on"', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
 		const statusBox = page.locator( '#bh-email-status' );
-		await expect( statusBox ).toContainText( 'Received at:' );
+		await expect( statusBox ).toContainText( 'Downloaded at:' );
 		await expect( statusBox ).not.toContainText( 'Published on' );
+	} );
+
+	test( 'status metabox shows "Received at:" from the email Date header when present', async ( { admin, page, request } ) => {
+		const dateHeader = 'Mon, 01 Jan 2024 10:30:00 +0000';
+		const postId = await createEmail( request, { date_header: dateHeader } );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		const statusBox = page.locator( '#bh-email-status' );
+		await expect( statusBox ).toContainText( 'Received at:' );
+	} );
+
+	test( 'status metabox does not show "Received at:" when email has no Date header', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		await expect( page.locator( '#bh-email-status' ) ).not.toContainText( 'Received at:' );
+	} );
+
+	test( 'status metabox always shows "Updated at:"', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		await expect( page.locator( '#bh-email-status' ) ).toContainText( 'Updated at:' );
 	} );
 
 	// -------------------------------------------------------------------------
@@ -215,6 +238,40 @@ test.describe( 'Single email view', () => {
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
 		await expect( page.locator( '#bh-email-content-plain' ) ).toHaveClass( /postbox/ );
+	} );
+
+	// -------------------------------------------------------------------------
+	// iframe resize on postbox toggle
+	// -------------------------------------------------------------------------
+
+	test( 'HTML iframe height is recalculated after collapsing and re-expanding the postbox', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request, { body_html: '<p>Hello HTML</p>' } );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		const iframe = page.locator( '#bh-email-content-html iframe.bh-email-html-body' );
+		await expect( iframe ).toBeAttached();
+
+		// Collapse then re-expand the postbox.
+		await page.locator( '#bh-email-content-html .toggle-indicator' ).click();
+		await page.locator( '#bh-email-content-html .toggle-indicator' ).click();
+
+		// After re-expanding the iframe should have a positive height set inline.
+		const height = await iframe.evaluate( ( el ) => ( el as HTMLIFrameElement ).style.height );
+		expect( parseInt( height, 10 ) ).toBeGreaterThan( 0 );
+	} );
+
+	test( 'plain-text iframe height is recalculated after collapsing and re-expanding the postbox', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request, { body_plain: 'Hello plain text.' } );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		const iframe = page.locator( '#bh-email-content-plain iframe.bh-email-plain-body' );
+		await expect( iframe ).toBeAttached();
+
+		await page.locator( '#bh-email-content-plain .toggle-indicator' ).click();
+		await page.locator( '#bh-email-content-plain .toggle-indicator' ).click();
+
+		const height = await iframe.evaluate( ( el ) => ( el as HTMLIFrameElement ).style.height );
+		expect( parseInt( height, 10 ) ).toBeGreaterThan( 0 );
 	} );
 
 	// -------------------------------------------------------------------------

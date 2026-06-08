@@ -43,16 +43,35 @@
 			remoteAction( 'bh_wp_mailboxes_delete_on_server', $( this ) );
 		} );
 
-		// Auto-resize HTML iframe to its content height.
-		$( 'iframe.bh-email-html-body' ).each( function () {
+		function resizeIframe( iframe ) {
+			try {
+				iframe.style.height = iframe.contentDocument.documentElement.scrollHeight + 'px';
+			} catch ( e ) {
+				// Cross-origin content blocked; leave default height.
+			}
+		}
+
+		// Auto-resize email body iframes to their content height on initial load.
+		$( 'iframe.bh-email-html-body, iframe.bh-email-plain-body' ).each( function () {
 			var iframe = this;
 			$( iframe ).on( 'load', function () {
-				try {
-					iframe.style.height = iframe.contentDocument.documentElement.scrollHeight + 'px';
-				} catch ( e ) {
-					// Cross-origin content blocked; leave default height.
-				}
+				resizeIframe( iframe );
 			} );
+		} );
+
+		// Re-run resize when a postbox is expanded, since the iframe may have
+		// loaded while the box was collapsed (scrollHeight === 0 when hidden).
+		$( document ).on( 'click', '.postbox .toggle-indicator, .postbox .hndle', function () {
+			var $postbox = $( this ).closest( '.postbox' );
+			// WordPress toggles the 'closed' class synchronously on click,
+			// so a zero-delay timeout lets us read the final state.
+			setTimeout( function () {
+				if ( ! $postbox.hasClass( 'closed' ) ) {
+					$postbox.find( 'iframe.bh-email-html-body, iframe.bh-email-plain-body' ).each( function () {
+						resizeIframe( this );
+					} );
+				}
+			}, 0 );
 		} );
 	} );
 
