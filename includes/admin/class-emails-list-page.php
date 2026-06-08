@@ -91,7 +91,7 @@ class Emails_List_Page {
 		$post = get_post( $post_id );
 
 		// check post-type.
-		$email = $this->email_wp_post_repository->find_by_post_id($post_id);
+		$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
 
 		switch ( $column_name ) {
 			case 'from':

@@ -83,11 +83,11 @@ add_filter(
 		 * E.g. http://localhost:8888/wp-content/plugins/var/www/html/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
 		 * http://localhost:8888/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
 		 */
-		if(str_contains($url, 'wp-content/plugins/var/www/html/' )){
+		if ( str_contains( $url, 'wp-content/plugins/var/www/html/' ) ) {
 			$a = 'b';
 		}
 		// http://localhost:8888/bh-wp-mailboxes/includes/admin/js/bh-wp-mailboxes.js?ver=1.0.0
-		if(str_contains($url, '.css' )){
+		if ( str_contains( $url, '.css' ) ) {
 			// http://localhost:8888/wp-content/plugins/var/www/html/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
 			// vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
 			$a = 'b';

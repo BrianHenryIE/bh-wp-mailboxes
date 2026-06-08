@@ -16,8 +16,6 @@ use WP_Post;
 
 /**
  * WordPress post repository for email CPT records.
- *
- * @package brianhenryie/bh-wp-mailboxes
  */
 class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 
