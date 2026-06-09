@@ -44,7 +44,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 
 		$sut = new Email_WP_Post_Repository( $post_type, $bh_email_factory );
 
-		$email_filepath = codecept_root_dir( 'tests/_data/wpunit/MDEwMTAxOTg1OTY4YTZkNC01MmJlNzJjYy1hZmI1LTQ5OTAtYmJhNy0xMDhjZWRjMDA4ODUtMDAwMDAwQHVzLXdlc3QtMi5hbWF6b25zZXMuY29t.eml' );
+		$email_filepath = codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' );
 		$email_contents = file_get_contents( $email_filepath );
 		$parser         = new MailMimeParser();
 		/** @var IMessage $email */
@@ -60,5 +60,8 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		);
 
 		$this->assertEquals( '[Wordfence Alert] Problems found on bhwp.ie', $result->get_subject() );
+
+		// "Date: Wed, 30 Jul 2025 03:38:07 +0000".
+		$this->assertEquals( '2025-07-30 03:38:07', $result->get_sent_at()->format( 'Y-m-d H:i:s' ) );
 	}
 }
