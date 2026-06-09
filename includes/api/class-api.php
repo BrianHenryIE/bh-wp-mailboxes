@@ -2,7 +2,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
-use BrianHenryIE\WP_Mailboxes\Adapter\IMessage_BH_Email_Adapter;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Fetcher;
@@ -21,6 +21,7 @@ use Exception;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use ZBateson\MailMimeParser\IMessage;
 
 class API implements API_Interface {
 
@@ -45,6 +46,7 @@ class API implements API_Interface {
 		if ( is_null( $this->email_repository ) ) {
 			$this->email_repository = new Email_WP_Post_Repository(
 				$this->settings->get_cpt_underscored_20(),
+				new BH_Email_Factory( $this->logger ),
 				$this->logger
 			);
 		}
@@ -150,23 +152,27 @@ class API implements API_Interface {
 
 			$all_new_emails = array_merge( $all_new_emails, $all_new_account_bh_emails );
 
+			continue;
 			/**
-			 * TODO: this should be done as a search in the inbox.
+			 * TODO:
+			 * Filter the emails before saving them. E.g. don't save known irrelevant senders.
 			 *
 			 * @var BH_Email[] $filtered_account_emails
 			 */
-			$filtered_account_emails = array_filter(
-				$all_new_account_bh_emails,
-				fn( BH_Email $email ): bool => $this->email_filter( $email, $email_account )
-			);
+			// $filtered_account_emails = array_filter(
+			// $all_new_account_bh_emails,
+			// fn( IMessage $email ): bool => $this->email_filter( $email, $email_account )
+			// );
 
 			// Filter: bh_wp_mailboxes_fetch_emails_complete( BH_Email[] $emails, string $cpt, string $account_name ).
-			$filtered_account_emails = apply_filters( 'bh_wp_mailboxes_fetch_emails_complete', $filtered_account_emails, $cpt, $account_name );
+			// $filtered_account_emails = apply_filters( 'bh_wp_mailboxes_fetch_emails_complete', $filtered_account_emails, $cpt, $account_name );
+			//
+			// foreach ( $filtered_account_emails as $filtered_email ) {
+			// $this->get_email_repository()->save_new( $filtered_email );
+			// $saved_emails[] = $filtered_email;
+			// }
 
-			foreach ( $filtered_account_emails as $filtered_email ) {
-				$this->get_email_repository()->save( $filtered_email );
-				$saved_emails[] = $filtered_email;
-			}
+			$saved_emails = array();
 
 			if ( empty( $filtered_account_emails ) ) {
 				continue;
@@ -201,23 +207,23 @@ class API implements API_Interface {
 	 *
 	 * @deprecated
 	 */
-	protected function email_filter( BH_Email $email, Email_Account_Settings_Interface $settings ): bool {
-
-		if ( ! is_null( $settings->get_from_email_regex() )
-			&& 1 !== preg_match( $settings->get_from_email_regex(), $email->get_from_email() ) ) {
-			$this->logger->debug( "Email from {$email->get_from_email()} did not match get_from_email_regex {$settings->get_from_email_regex()}." );
-			return false;
-		}
-
-		if ( ! is_null( $settings->get_identifier_regex() )
-			&& 1 !== preg_match( $settings->get_identifier_regex(), $email->get_body_plain_text() )
-			&& 1 !== preg_match( $settings->get_identifier_regex(), $email->get_body_html() ) ) {
-			$this->logger->debug( "Email body did not match get_identifier_regex {$settings->get_identifier_regex()}." );
-			return false;
-		}
-
-		return true;
-	}
+	// protected function email_filter( IMessage $email, Email_Account_Settings_Interface $settings ): bool {
+	//
+	// if ( ! is_null( $settings->get_from_email_regex() )
+	// && 1 !== preg_match( $settings->get_from_email_regex(), $email->get_from_email() ) ) {
+	// $this->logger->debug( "Email from {$email->get_from_email()} did not match get_from_email_regex {$settings->get_from_email_regex()}." );
+	// return false;
+	// }
+	//
+	// if ( ! is_null( $settings->get_identifier_regex() )
+	// && 1 !== preg_match( $settings->get_identifier_regex(), $email->body_plain_text )
+	// && 1 !== preg_match( $settings->get_identifier_regex(), $email->get_body_html() ) ) {
+	// $this->logger->debug( "Email body did not match get_identifier_regex {$settings->get_identifier_regex()}." );
+	// return false;
+	// }
+	//
+	// return true;
+	// }
 
 	/**
 	 * Return the most recently downloaded emails.

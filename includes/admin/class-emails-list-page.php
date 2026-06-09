@@ -145,6 +145,23 @@ class Emails_List_Page {
 	}
 
 	/**
+	 * Show all post statuses on the emails list table.
+	 *
+	 * @hooked pre_get_posts
+	 *
+	 * @param \WP_Query $query
+	 */
+	public function show_all_post_statuses( \WP_Query $query ): void {
+		if ( ! is_admin() || ! $query->is_main_query() ) {
+			return;
+		}
+		if ( $query->get( 'post_type' ) !== $this->settings->get_cpt_underscored_20() ) {
+			return;
+		}
+		$query->set( 'post_status', 'any' );
+	}
+
+	/**
 	 * Register the stylesheets for the logs page.
 	 *
 	 * @hooked admin_enqueue_scripts

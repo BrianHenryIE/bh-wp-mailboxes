@@ -6,9 +6,10 @@
     "WP_DEBUG_DISPLAY": true
   },
   "mappings": {
+    "../test-credentials": "./test-credentials",
     "wp-content/plugins/development-plugin": "./development-plugin",
-    "wp-content/uploads/bh-wp-mailboxes": ".",
-    "../test-credentials": "./test-credentials"
+    "wp-content/plugins/wp-crontrol": "./wp-content/plugins/wp-crontrol",
+    "wp-content/uploads/bh-wp-mailboxes": "."
   },
   "env": {
     "tests": {
@@ -18,5 +19,6 @@
   "lifecycleScripts": {
     "afterStart": "wp-env run cli wp plugin activate development-plugin"
   },
-  "phpVersion": "8.4"
+  "phpVersion": "8.4",
+  "core": "WordPress/WordPress#7.0"
 }

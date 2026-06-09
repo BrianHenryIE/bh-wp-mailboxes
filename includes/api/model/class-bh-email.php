@@ -76,25 +76,8 @@ readonly class BH_Email implements Saved_Post {
 		return $this->from_email;
 	}
 
-	public function get_from_name(): ?string {
-		return $this->from_name;
-	}
-
 	public function get_subject(): string {
 		return $this->subject;
-	}
-
-	public function get_body_plain_text(): string {
-		return $this->body_plain_text;
-	}
-
-	public function get_body_html(): string {
-		return $this->body_html;
-	}
-
-	/** @return array<string, mixed> */
-	public function get_meta_data(): array {
-		return $this->meta_data;
 	}
 
 	public function get_sent_at(): ?DateTimeInterface {
@@ -107,9 +90,5 @@ readonly class BH_Email implements Saved_Post {
 
 	public function get_post_status(): string {
 		return $this->post_status;
-	}
-
-	public function get_is_read(): ?bool {
-		return $this->is_read;
 	}
 }

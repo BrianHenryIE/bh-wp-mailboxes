@@ -40,10 +40,11 @@ class BH_Email_Factory {
 		$is_read_raw = get_post_meta( $post_id, 'is_read_remote', true );
 		$is_read     = '' !== $is_read_raw ? (bool) $is_read_raw : null;
 
-		// Date: Wed, 30 Jul 2025 03:38:07 +0000
+		// "Date: Wed, 30 Jul 2025 03:38:07 +0000";
 		$date_header = $message->getHeader( 'Date' );
 		$date_header = str_replace( 'Date: ', '', $date_header );
-		$sent_at     = DateTime::createFromFormat( DateTime::RFC2822, $date_header );
+		// 29 May 2026 06:36:13 -0700
+		$sent_at = DateTime::createFromFormat( DateTime::RFC2822, $date_header ) ?: null;
 
 		$attachment_ids = get_post_meta( $post_id, 'attachment_ids', true );
 		$attachment_ids = (array) json_decode( $attachment_ids );

@@ -203,7 +203,9 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	}
 
 	/**
-	 * @return BH_Email[]
+	 * @param Collection<IMessage> $all_new_account_emails
+	 *
+	 * @return array
 	 * @throws \Exception
 	 */
 	public function save_all(
@@ -214,7 +216,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 
 		return array_map(
 			fn( $new_email ) => $this->save_new( $new_email, $mailboxes, $email_account ),
-			(array) $all_new_account_emails
+			$all_new_account_emails->all()
 		);
 	}
 }

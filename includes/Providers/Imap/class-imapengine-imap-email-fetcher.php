@@ -138,10 +138,13 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 				return ! is_null( $date ) && $date->getTimestamp() >= $since_time->getTimestamp();
 			}
 		);
+
 		/** @var Collection<IMessage> $messages */
-		$messages = $messages->map(
-			fn( Message $message ) => $message->parse()
+		$messages = array_map(
+			fn( Message $message ) => $message->parse(),
+			$messages->all()
 		);
+		$messages = new Collection( $messages );
 
 		$this->logger->info(
 			$messages->count() . ' emails found in inbox since last run.',

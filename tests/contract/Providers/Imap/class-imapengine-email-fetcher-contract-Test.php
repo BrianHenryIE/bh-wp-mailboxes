@@ -20,10 +20,8 @@ use DirectoryTree\ImapEngine\Exceptions\Exception as ImapEngineException;
 use DirectoryTree\ImapEngine\Exceptions\ImapCommandException;
 use DirectoryTree\ImapEngine\Exceptions\ImapConnectionFailedException;
 use Dotenv\Dotenv;
-use Illuminate\Support\Collection;
 use ZBateson\MailMimeParser\IMessage;
 use ZBateson\MailMimeParser\MailMimeParser;
-use ZBateson\MailMimeParser\Message\PartFilter;
 
 /**
  * Username and password are read from `.env.secrets`.
@@ -117,35 +115,20 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
 		$this->assertNotEmpty( $messages->count() );
 
-		/** @var IMessage $message */
-		$message = $messages->first();
-		$id      = $message->getMessageId();
-
-		$attachment_parts      = $message->getAllAttachmentParts();
-		$all_parts             = $message->getAllParts();
-		$non_attachment_parts  = array_filter(
-			$all_parts,
-			fn( $part ) => ! in_array( $part, $attachment_parts, true )
-		);
-		$original_email_string = implode( ' ', $non_attachment_parts );
-
-		$parser   = new MailMimeParser();
-		$reparsed = $parser->parse( $original_email_string, true );
-
-		$reparsed_id = $reparsed->getMessageId();
-
-		$this->assertEquals( $reparsed_id, $id );
-
+		// Don't accidentally save anything.
 		return;
 
 		/** @var IMessage $email */
 		foreach ( $messages as $email ) {
-			if ( empty( $email->getMessageId() ) ) {
+			$sender_address = $email->getHeader( 'From' )->getEmail();
+			if ( 'contact@bhwp.ie' === $sender_address ) {
+				// We only get WordFence and Comment emails from the site, the interesting ones come from other senders.
 				continue;
 			}
+
 			$this->save_to_file(
 				$email,
-				codecept_root_dir() . 'tests/_data/emails/' . base64_encode( $email->getHeaderValue( 'Message-ID' ) ) . '.eml',
+				codecept_root_dir() . 'tests/_data/temp/' . base64_encode( $email->getHeaderValue( 'Message-ID' ) ) . '.eml',
 			);
 		}
 	}

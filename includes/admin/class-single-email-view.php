@@ -97,7 +97,7 @@ class Single_Email_View {
 			'high'
 		);
 
-		$body_html = $email->get_body_html();
+		$body_html = $email->body_html;
 		if ( is_string( $body_html ) && '' !== $body_html ) {
 			add_meta_box(
 				'bh-email-content-html',
@@ -109,7 +109,7 @@ class Single_Email_View {
 			);
 		}
 
-		$body_text = $email->get_body_plain_text();
+		$body_text = $email->body_plain_text;
 		if ( '' !== $body_text ) {
 			add_meta_box(
 				'bh-email-content-plain',
