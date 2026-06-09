@@ -126,7 +126,6 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		return $count;
 	}
 
-
 	/**
 	 * Query the WordPress posts table for a post with the given guid.
 	 *
@@ -139,30 +138,6 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM $wpdb->posts WHERE guid=%s", $guid ) );
 		return is_numeric( $result ) ? (int) $result : null;
-	}
-
-	/**
-	 * Determine the post_date to use when inserting the email CPT record.
-	 *
-	 * @param BH_Email $email The email being saved.
-	 *
-	 * @return string MySQL datetime string (UTC).
-	 */
-	protected function resolve_received_at( BH_Email $email ): string {
-
-		if ( ! is_null( $email->get_received_at() ) ) {
-			return gmdate( 'Y-m-d H:i:s', $email->get_received_at()->getTimestamp() );
-		}
-
-		$date_header = $email->get_headers()['Date'] ?? null;
-		if ( ! is_null( $date_header ) ) {
-			$parsed = date_create( $date_header );
-			if ( false !== $parsed ) {
-				return gmdate( 'Y-m-d H:i:s', $parsed->getTimestamp() );
-			}
-		}
-
-		return gmdate( 'Y-m-d H:i:s' );
 	}
 
 	public function save_new(
@@ -181,7 +156,6 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		);
 		$original_email_no_attachments_string = implode( ' ', $non_attachment_parts );
 
-		$eid    = $email->getMessageId();
 		$sender = $email->getHeader( 'From' )?->getEmail() ?? '';
 
 		$query = new BH_Email_Query(
@@ -205,7 +179,14 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		global $wp_filter;
 		$hook             = $wp_filter[ $filter_name ] ?? null;
 		$callbacks_before = $hook->callbacks;
-		$hook->callbacks  = array();
+		/**
+		 * Avoid modifying the original email content during save. Otherwise, the Message-id header value is removed
+		 * and parsing the email fails later.
+		 *
+		 * The following were removed in WordPress 7.0:  `wp_strip_custom_css_from_blocks`,
+		 * `wp_filter_global_styles_post`, `convert_invalid_entities`, `wp_filter_post_kses`.
+		 */
+		$hook->callbacks = array();
 
 		$post_id = wp_insert_post( $args, true );
 
