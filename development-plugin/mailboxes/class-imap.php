@@ -9,8 +9,8 @@ namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Defaults_Trait;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use Dotenv\Dotenv;
 
 class Imap {
@@ -19,7 +19,7 @@ class Imap {
 		return file_exists( '/var/www/test-credentials/.env.secret' );
 	}
 
-	public function get_mailbox_settings(): ?Mailbox_Settings_Interface {
+	public function get_mailbox_settings(): ?Email_Account_Settings_Interface {
 
 		if ( ! $this->is_credentials_present() ) {
 			return null;
@@ -28,8 +28,8 @@ class Imap {
 		$dotenv = Dotenv::createImmutable( '/var/www/test-credentials/', '.env.secret', true );
 		$dotenv->load();
 
-		$imap_mailbox_settings = new class() implements Mailbox_Settings_Interface {
-			use Mailbox_Settings_Defaults_Trait;
+		$imap_mailbox_settings = new class() implements Email_Account_Settings_Interface {
+			use Email_Account_Settings_Defaults_Trait;
 
 			public function get_account_unique_friendly_name(): string {
 				return 'support@brianhenryie.com';

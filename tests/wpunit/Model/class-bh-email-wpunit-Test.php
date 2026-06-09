@@ -4,7 +4,7 @@ namespace BrianHenryIE\WP_Mailboxes\Model;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Codeception\Stub\Expected;
@@ -20,7 +20,7 @@ class BH_Email_WPUnit_Test extends WPUnit_Testcase {
 
 		$logger   = new ColorLogger();
 		$mailbox  = $this->makeEmpty(
-			Mailbox_Settings_Interface::class,
+			Email_Account_Settings_Interface::class,
 			array(
 				'get_account_unique_friendly_name' => Expected::atLeastOnce(
 					fn() => 'brianhenryie@gmail.com'

@@ -9,8 +9,8 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
-use BrianHenryIE\WP_Mailboxes\Model\ZImessage_Collection;
 use DateTimeInterface;
+use Illuminate\Support\Collection;
 
 interface Email_Fetcher_Interface {
 
@@ -19,9 +19,9 @@ interface Email_Fetcher_Interface {
 	 *
 	 * @param DateTimeInterface $since_time
 	 *
-	 * @return ZImessage_Collection Unsaved emails.
+	 * @return Collection Unsaved emails.
 	 */
-	public function retrieve_emails( DateTimeInterface $since_time ): ZImessage_Collection;
+	public function retrieve_emails( DateTimeInterface $since_time ): Collection;
 
 	// public function test_connection();
 }

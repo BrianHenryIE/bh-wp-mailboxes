@@ -1,6 +1,6 @@
 <?php
 /**
- * A mailbox is a server connection and settings.
+ * A mailbox is a collection of email_accounts
  */
 
 namespace BrianHenryIE\WP_Mailboxes;

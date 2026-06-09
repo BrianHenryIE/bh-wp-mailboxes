@@ -12,7 +12,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 
 /**
@@ -63,7 +63,7 @@ class Mailbox_List_Page_Test extends Unit_Testcase {
 		);
 
 		$api      = $this->makeEmpty( API_Interface::class );
-		$settings = $this->makeEmpty( Mailbox_Settings_Interface::class );
+		$settings = $this->makeEmpty( Email_Account_Settings_Interface::class );
 		$logger   = new ColorLogger();
 
 		$sut = new Emails_List_Page( $api, $settings, $logger );
@@ -109,7 +109,7 @@ class Mailbox_List_Page_Test extends Unit_Testcase {
 		);
 
 		$api      = $this->makeEmpty( API_Interface::class );
-		$settings = $this->makeEmpty( Mailbox_Settings_Interface::class );
+		$settings = $this->makeEmpty( Email_Account_Settings_Interface::class );
 		$logger   = new ColorLogger();
 
 		$sut = new Emails_List_Page( $api, $settings, $logger );

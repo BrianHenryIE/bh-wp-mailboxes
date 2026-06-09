@@ -10,8 +10,8 @@ namespace BrianHenryIE\WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page;
 
 /**
- * @see Mailbox_Settings_Interface
+ * @see Email_Account_Settings_Interface
  */
-class BH_Mailbox_CPT {
+class BH_Email_Account_CPT {
 
 }

@@ -9,8 +9,8 @@
 namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Defaults_Trait;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use Psr\Log\NullLogger;
 
 class Mark_Email_Read_Test extends \Codeception\TestCase\WPTestCase {
@@ -24,9 +24,9 @@ class Mark_Email_Read_Test extends \Codeception\TestCase\WPTestCase {
 
 		$time = HOUR_IN_SECONDS * 3;
 
-		/** @var Mailbox_Settings_Interface $settings */
-		$settings = new class() implements Mailbox_Settings_Interface {
-			use Mailbox_Settings_Defaults_Trait;
+		/** @var Email_Account_Settings_Interface $settings */
+		$settings = new class() implements Email_Account_Settings_Interface {
+			use Email_Account_Settings_Defaults_Trait;
 
 			public function get_account_unique_friendly_name(): string {
 				return 'support@brianhenryie.com';

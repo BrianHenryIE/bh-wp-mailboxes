@@ -10,7 +10,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Repository\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
@@ -524,7 +524,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$post = get_post( $post_id );
 
 		$mailbox_settings = $this->makeEmpty(
-			Mailbox_Settings_Interface::class,
+			Email_Account_Settings_Interface::class,
 			array(
 				'get_account_unique_friendly_name' => fn() => 'My Test Mailbox',
 				'can_mark_read'                    => fn() => true,
@@ -593,7 +593,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$post = get_post( $post_id );
 
 		$mailbox_settings = $this->makeEmpty(
-			Mailbox_Settings_Interface::class,
+			Email_Account_Settings_Interface::class,
 			array(
 				'get_account_unique_friendly_name' => fn() => 'Deletable Mailbox',
 				'can_mark_read'                    => fn() => false,

@@ -13,6 +13,7 @@ use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use WP_Post;
+use ZBateson\MailMimeParser\IMessage;
 
 /**
  * WordPress post repository for email CPT records.
@@ -61,15 +62,14 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		}
 
 		$args = array(
-			'post_title'    => $email->get_subject(),
-			'post_name'     => sanitize_title( $email->get_subject() ),
-			'post_content'  => $email->get_body_plain_text(),
-			'post_date'     => $this->resolve_post_date( $email ),
-			'post_status'   => $email->get_post_status(),
-			'post_type'     => $email->get_post_type(),
-			'post_category' => array( $email->get_account_category_id() ),
-			'meta_input'    => $meta,
-			'guid'          => $guid,
+			'post_title'   => $email->get_subject(),
+			'post_name'    => sanitize_title( $email->get_subject() ),
+			'post_content' => $email->get_body_plain_text(),
+			'post_date'    => $this->resolve_post_date( $email ),
+			'post_status'  => $email->get_post_status(),
+			'post_type'    => $email->get_post_type(),
+			'meta_input'   => $meta,
+			'guid'         => $guid,
 		);
 
 		if ( ! is_null( $existing_id ) ) {
@@ -273,5 +273,18 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		}
 
 		return gmdate( 'Y-m-d H:i:s' );
+	}
+
+	public function save_new( IMessage $message, string $post_type ): BH_Email {
+
+		$message->getAllAttachmentParts();
+	}
+
+	public function save_all( \Illuminate\Support\Collection $all_new_account_emails, string $post_type ): BH_Email {
+
+		return array_map(
+			fn( $new_email ) => $this->save_new( $new_email, $post_type ),
+			(array) $all_new_account_emails
+		);
 	}
 }

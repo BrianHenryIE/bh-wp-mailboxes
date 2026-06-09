@@ -8,14 +8,16 @@ use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Repository\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads;
+use DateInterval;
 use DateTime;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
+use Exception;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -58,9 +60,9 @@ class API implements API_Interface {
 	 */
 	public function check_email(): array {
 
-		$mailboxes = $this->settings->get_configured_mailbox_settings();
+		$bh_wp_mailboxes_api = $this->settings->get_configured_mailbox_settings();
 
-		$this->logger->debug( 'Starting check_email() for ' . count( $mailboxes ) . ' mailbox(es).' );
+		$this->logger->debug( 'Starting check_email() for ' . count( $bh_wp_mailboxes_api ) . ' mailbox(es).' );
 
 		/** @var BH_Email[] $all_new_emails */
 		$all_new_emails     = array();
@@ -69,10 +71,10 @@ class API implements API_Interface {
 
 		// The first time we run, we'll look back over one week of emails.
 		$now_time           = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
-		$interval_one_week  = new \DateInterval( 'P1W' );
+		$interval_one_week  = new DateInterval( 'P1W' );
 		$first_run_datetime = $now_time->sub( $interval_one_week );
 
-		foreach ( $mailboxes as $mailbox_settings ) {
+		foreach ( $bh_wp_mailboxes_api as $mailbox_settings ) {
 			$account_name = $mailbox_settings->get_account_unique_friendly_name();
 			$credentials  = $mailbox_settings->get_credentials();
 
@@ -107,7 +109,7 @@ class API implements API_Interface {
 						continue;
 					}
 				}
-			} catch ( \Exception $exception ) {
+			} catch ( Exception $exception ) {
 				$this->logger->error(
 					'Failed login.',
 					array(
@@ -123,7 +125,7 @@ class API implements API_Interface {
 
 			try {
 				$all_new_account_emails = $fetcher->retrieve_emails( $since_datetime );
-			} catch ( \Exception $exception ) {
+			} catch ( Exception $exception ) {
 				$this->logger->error(
 					'Error fetching emails for ' . $account_name . '. ' . $exception->getMessage(),
 					array(
@@ -137,15 +139,13 @@ class API implements API_Interface {
 
 			$this->set_last_fetched_time( $account_name, $now_time );
 
-			$cpt                   = $this->settings->get_cpt_underscored_20();
-			$account_category_slug = sanitize_title( $account_name );
-			$mailbox_category      = get_term_by( 'slug', $account_category_slug, 'bh-wp-mailbox-account' );
-			$term_id               = $mailbox_category instanceof \WP_Term ? $mailbox_category->term_id : 0;
+			$cpt = $this->settings->get_cpt_underscored_20();
+			// $account_category_slug = sanitize_title( $account_name );
+			// $mailbox_category      = get_term_by( 'slug', $account_category_slug, 'bh-wp-mailbox-account' );
+			// $term_id               = $mailbox_category instanceof \WP_Term ? $mailbox_category->term_id : 0;
 
-			$all_new_account_bh_emails = array();
-			foreach ( $all_new_account_emails as $imessage ) {
-				$all_new_account_bh_emails[] = IMessage_BH_Email_Adapter::adapt( $imessage, $cpt, $term_id );
-			}
+			/** @var BH_Email[] $new_account_emails */
+			$all_new_account_bh_emails = $this->email_repository->save_all( $all_new_account_emails );
 
 			$all_new_emails = array_merge( $all_new_emails, $all_new_account_bh_emails );
 
@@ -171,10 +171,10 @@ class API implements API_Interface {
 				continue;
 			}
 
-			$plugin_slug   = $this->settings->get_plugin_slug();
-			$mailboxes     = $this;
-			$account       = $mailbox_settings;
-			$new_bh_emails = $filtered_account_emails;
+			$plugin_slug         = $this->settings->get_plugin_slug();
+			$bh_wp_mailboxes_api = $this;
+			$account             = $mailbox_settings;
+			$new_bh_emails       = $filtered_account_emails;
 
 			$this->logger->debug( "Firing action `bh_wp_mailboxes_fetch_emails_saved_{$plugin_slug}` with " . count( $new_bh_emails ) . ' new emails' );
 
@@ -182,10 +182,10 @@ class API implements API_Interface {
 			 * Action fires with all new emails found.
 			 *
 			 * @param BH_Email[] $new_bh_emails
-			 * @param Mailbox_Settings_Interface $account
-			 * @param API $mailboxes
+			 * @param Email_Account_Settings_Interface $account
+			 * @param API $bh_wp_mailboxes_api
 			 */
-			do_action( "bh_wp_mailboxes_fetch_emails_saved_{$plugin_slug}", $new_bh_emails, $account, $mailboxes );
+			do_action( "bh_wp_mailboxes_fetch_emails_saved_{$plugin_slug}", $new_bh_emails, $account, $bh_wp_mailboxes_api );
 		}
 
 		return array(
@@ -197,9 +197,10 @@ class API implements API_Interface {
 
 	/**
 	 * TODO: This should be done when querying the server. i.e. a search during fetch.
+	 *
+	 * @deprecated
 	 */
-	#[\Deprecated]
-	protected function email_filter( BH_Email $email, Mailbox_Settings_Interface $settings ): bool {
+	protected function email_filter( BH_Email $email, Email_Account_Settings_Interface $settings ): bool {
 
 		if ( ! is_null( $settings->get_from_email_regex() )
 			&& 1 !== preg_match( $settings->get_from_email_regex(), $email->get_from_email() ) ) {
@@ -235,11 +236,11 @@ class API implements API_Interface {
 	 */
 	public function delete_old_emails(): array {
 
-		$mailboxes = $this->settings->get_configured_mailbox_settings();
+		$email_accounts = $this->settings->get_configured_mailbox_settings();
 
 		$min_days = null;
-		foreach ( $mailboxes as $mailbox ) {
-			$days = $mailbox->get_delete_emails_days();
+		foreach ( $email_accounts as $email_account ) {
+			$days = $email_account->get_delete_emails_days();
 			if ( ! is_null( $days ) && $days > 0 ) {
 				$min_days = is_null( $min_days ) ? $days : min( $min_days, $days );
 			}
@@ -300,7 +301,7 @@ class API implements API_Interface {
 	 */
 	protected function perform_remote_email_action( string $action, BH_Email $email ): void {
 
-		$mailbox_settings = $this->resolve_mailbox_for_email( $email );
+		$mailbox_settings = $this->resolve_email_account_for_email( $email );
 
 		/**
 		 * Filter: bh_wp_mailboxes_remote_email_action_{$action}
@@ -310,7 +311,7 @@ class API implements API_Interface {
 		 *
 		 * @param bool|null                 $handled          Start null; return true on success.
 		 * @param BH_Email                  $email            The email to act on.
-		 * @param ?Mailbox_Settings_Interface $mailbox_settings The resolved mailbox config, or null.
+		 * @param ?Email_Account_Settings_Interface $mailbox_settings The resolved mailbox config, or null.
 		 * @param LoggerInterface           $logger
 		 */
 		$handled = apply_filters( "bh_wp_mailboxes_remote_email_action_{$action}", null, $email, $mailbox_settings, $this->logger );
@@ -355,7 +356,7 @@ class API implements API_Interface {
 	 *
 	 * Returns null when the account cannot be matched (e.g. term was deleted).
 	 */
-	protected function resolve_mailbox_for_email( BH_Email $email ): ?Mailbox_Settings_Interface {
+	protected function resolve_email_account_for_email( BH_Email $email ): ?Email_Account_Settings_Interface {
 
 		$term_id = $email->get_account_category_id();
 
@@ -427,7 +428,7 @@ class API implements API_Interface {
 			try {
 				$since_datetime          = DateTime::createFromFormat( DateTime::ATOM, $last_fetched, new DateTimeZone( 'UTC' ) );
 				$result[ $account_name ] = false !== $since_datetime ? $since_datetime : null;
-			} catch ( \Exception ) {
+			} catch ( Exception ) {
 				$this->logger->warning(
 					'Could not parse date from option key ' . $last_fetched_option_name . ' with value ' . $last_fetched . '. Possibly manually edited in database. Deleting option.',
 					array(
@@ -487,7 +488,7 @@ class API implements API_Interface {
 		}
 
 		$retry_expiry_seconds ??= HOUR_IN_SECONDS * 6;
-		$interval               = new \DateInterval( 'PT' . $retry_expiry_seconds . 'S' );
+		$interval               = new DateInterval( 'PT' . $retry_expiry_seconds . 'S' );
 		$now                    = new DateTime( 'now', new DateTimeZone( 'UTC' ) );
 		$now_sub_interval       = $now->sub( $interval );
 

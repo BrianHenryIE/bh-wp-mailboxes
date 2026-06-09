@@ -36,7 +36,7 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	/**
 	 * The settings for the mailboxes to be checked.
 	 *
-	 * @return Mailbox_Settings_Interface[]
+	 * @return Email_Account_Settings_Interface[]
 	 */
 	public function get_configured_mailbox_settings(): array;
 

@@ -18,7 +18,6 @@ class BH_Email implements Saved_Post {
 	 * Constructor.
 	 *
 	 * @param string                $post_type           The CPT slug.
-	 * @param int                   $account_category_id The mailbox taxonomy term ID.
 	 * @param string                $email_id            The server-assigned message UID.
 	 * @param string                $subject             Email subject.
 	 * @param string                $from_email          Sender email address.
@@ -33,20 +32,22 @@ class BH_Email implements Saved_Post {
 	 * @param ?bool                 $is_read             Whether the email has been read on the remote server (null = unknown).
 	 */
 	public function __construct(
+		protected int $post_id,
 		protected string $post_type,
-		protected int $account_category_id,
 		protected string $email_id,
 		protected string $subject,
 		protected string $from_email,
 		protected ?string $from_name = null,
-		protected string $body_plain_text = '',
-		protected string $body_html = '',
+		protected string $original_mime_message = '',
+		protected array $attachment_ids = array(),
 		protected array $headers = array(),
 		protected array $meta_data = array(),
 		protected ?DateTimeInterface $received_at = null,
-		protected ?int $post_id = null,
-		protected string $post_status = 'publish',
-		protected ?bool $is_read = null,
+		protected ?DateTimeInterface $downloaded_at = null,
+		protected ?DateTimeInterface $last_updated = null,
+		protected string $post_status = 'unread',
+		protected ?bool $is_remote_read = null,
+		protected ?bool $is_remote_deleted = null,
 	) {}
 
 	public function get_post_type(): string {
@@ -133,7 +134,6 @@ class BH_Email implements Saved_Post {
 
 		return new self(
 			post_type:           $cpt_email->post_type,
-			account_category_id: 0,
 			email_id:            is_string( $email_id ) ? $email_id : '',
 			subject:             $cpt_email->post_title,
 			from_email:          is_string( $from_email ) ? $from_email : '',

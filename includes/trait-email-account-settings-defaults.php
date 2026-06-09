@@ -1,13 +1,13 @@
 <?php
 /**
- * Defaults to accompany Mailbox_Settings_Interface.
+ * Defaults to accompany Email_Account_Settings_Interface.
  *
- * `class My_Mailbox implements Mailbox_Settings_Interface { use Mailbox_Settings_Trait ...`
+ * `class My_Email_Account implements Email_Account_Settings_Interface { use Email_Account_Settings_Defaults_Trait ...`
  */
 
 namespace BrianHenryIE\WP_Mailboxes;
 
-trait Mailbox_Settings_Defaults_Trait {
+trait Email_Account_Settings_Defaults_Trait {
 
 	public function after_download_email_action(): string {
 		return 'nothing';

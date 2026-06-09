@@ -2,17 +2,16 @@
 /**
  * The connection settings, from/body filter, and post-reconciliation action.
  *
- * @link       https://GitHub.com/BrianHenryIE/bh-wp-mailboxes
- * @since      1.0.0
+ * @see \BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait
  *
  * @package    brianhenryie/bh-wp-mailboxes
  */
 
 namespace BrianHenryIE\WP_Mailboxes;
 
-interface Mailbox_Settings_Interface {
+interface Email_Account_Settings_Interface {
 
-	// Allow deactivating a mailbox without deleting the settings, so it is no longer automatically checked.
+	// Allow deactivating an email account without deleting the settings, so it is no longer automatically checked.
 	// public function is_active(): bool
 
 	/**

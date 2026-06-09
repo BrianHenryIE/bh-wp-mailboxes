@@ -201,9 +201,9 @@ class BH_Email_CPT {
 	 */
 	public function register_mailbox(): void {
 
-		foreach ( $this->settings->get_configured_mailbox_settings() as $mailbox ) {
+		foreach ( $this->settings->get_configured_mailbox_settings() as $email_account ) {
 
-			$account_category_slug = sanitize_title( $mailbox->get_account_unique_friendly_name() );
+			$account_category_slug = sanitize_title( $email_account->get_account_unique_friendly_name() );
 
 			// false when it does not exist.
 			$mailbox_category = get_term_by( 'slug', $account_category_slug, 'bh-wp-mailbox-account' );
@@ -226,11 +226,11 @@ class BH_Email_CPT {
 			// $new_category_id = \wp_insert_category( $category_spec_array, true );
 
 			// TODO: Check does the term exist.
-			if ( ! is_null( term_exists( $mailbox->get_account_unique_friendly_name() ) ) ) {
+			if ( ! is_null( term_exists( $email_account->get_account_unique_friendly_name() ) ) ) {
 				continue;
 			}
 
-			$term = wp_insert_term( $mailbox->get_account_unique_friendly_name(), 'bh-wp-mailbox-account', $category_spec_array );
+			$term = wp_insert_term( $email_account->get_account_unique_friendly_name(), 'bh-wp-mailbox-account', $category_spec_array );
 
 			if ( is_wp_error( $term ) ) {
 				$this->logger->error( $term->get_error_message() );

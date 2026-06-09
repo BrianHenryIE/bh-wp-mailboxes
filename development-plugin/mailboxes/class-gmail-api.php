@@ -10,8 +10,8 @@ namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Defaults_Trait;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 
 class Gmail_API {
 
@@ -21,14 +21,14 @@ class Gmail_API {
 	}
 
 
-	public function get_mailbox_settings(): ?Mailbox_Settings_Interface {
+	public function get_mailbox_settings(): ?Email_Account_Settings_Interface {
 
 		if ( ! $this->is_credentials_present() ) {
 			return null;
 		}
 
-		$gmail_mailbox_settings = new class() implements Mailbox_Settings_Interface {
-			use Mailbox_Settings_Defaults_Trait;
+		$gmail_mailbox_settings = new class() implements Email_Account_Settings_Interface {
+			use Email_Account_Settings_Defaults_Trait;
 
 			public function get_account_unique_friendly_name(): string {
 				return 'brianhenryie@gmail.com';

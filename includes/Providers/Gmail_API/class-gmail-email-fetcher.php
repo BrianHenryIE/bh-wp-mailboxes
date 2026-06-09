@@ -8,14 +8,14 @@
 namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
 
 use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Model\ZImessage_Collection;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTime;
 use DateTimeInterface;
 use Exception;
 use Google\Service\Gmail\ListMessagesResponse;
 use Google_Client;
 use Google_Service_Gmail;
+use Illuminate\Support\Collection;
 use ZBateson\MailMimeParser\MailMimeParser;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -26,11 +26,11 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	/**
 	 * Email_Fetcher constructor.
 	 *
-	 * @param Mailbox_Settings_Interface $settings Connection settings and filters.
-	 * @param LoggerInterface            $logger Logger.
+	 * @param Email_Account_Settings_Interface $settings Connection settings and filters.
+	 * @param LoggerInterface                  $logger Logger.
 	 */
 	public function __construct(
-		protected Mailbox_Settings_Interface $settings,
+		protected Email_Account_Settings_Interface $settings,
 		LoggerInterface $logger
 	) {
 		$this->logger = $logger;
@@ -40,11 +40,10 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	/**
 	 * Returns an authorized API client.
 	 *
-	 * @uses Mailbox_Settings_Interface::get_credentials
-	 *
+	 * @return ?Google_Client the authorized client object.
 	 * @see https://developers.google.com/gmail/api/quickstart/php
 	 *
-	 * @return ?Google_Client the authorized client object.
+	 * @uses Email_Account_Settings_Interface::get_credentials
 	 */
 	public function getClient(): ?Google_Client {
 
@@ -116,12 +115,11 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 *
 	 * @param DateTime $since_time
 	 *
-	 * @return ZImessage_Collection
 	 * @throws Exception
 	 */
-	public function retrieve_emails( DateTimeInterface $since_time ): ZImessage_Collection {
+	public function retrieve_emails( DateTimeInterface $since_time ): Collection {
 
-		$emails = new ZImessage_Collection();
+		$emails = new Collection();
 
 		/** @var Google_Client $client */
 		$client  = $this->getClient();

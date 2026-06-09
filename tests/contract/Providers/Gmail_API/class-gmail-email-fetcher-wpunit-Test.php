@@ -7,13 +7,13 @@ use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Defaults_Trait;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 
 class Gmail_Email_Fetcher_WPUnit_Test extends Unit_Testcase {
 
-	protected Mailbox_Settings_Interface $mailbox_settings;
+	protected Email_Account_Settings_Interface $mailbox_settings;
 
 	protected BH_WP_Mailboxes_Settings_Interface $settings;
 
@@ -22,7 +22,7 @@ class Gmail_Email_Fetcher_WPUnit_Test extends Unit_Testcase {
 		$logger = new ColorLogger();
 
 		$this->mailbox_settings = $this->makeEmpty(
-			Mailbox_Settings_Interface::class,
+			Email_Account_Settings_Interface::class,
 			array( 'get_account_friendly_name' => 'brianhenryie@gmail.com' )
 		);
 		$this->settings         = $this->makeEmpty(

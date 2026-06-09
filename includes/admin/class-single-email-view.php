@@ -9,7 +9,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\Repository\Email_WP_Post_Repository;
 use Psr\Log\LoggerAwareTrait;
@@ -573,9 +573,9 @@ class Single_Email_View {
 	 *
 	 * @param int $post_id The email CPT post ID.
 	 *
-	 * @return ?Mailbox_Settings_Interface
+	 * @return ?Email_Account_Settings_Interface
 	 */
-	protected function resolve_mailbox_for_post( int $post_id ): ?Mailbox_Settings_Interface {
+	protected function resolve_mailbox_for_post( int $post_id ): ?Email_Account_Settings_Interface {
 
 		$terms = wp_get_post_terms( $post_id, 'bh-wp-mailbox-account' );
 		if ( ! is_array( $terms ) || empty( $terms ) ) {

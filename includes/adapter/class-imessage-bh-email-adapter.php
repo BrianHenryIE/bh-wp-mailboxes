@@ -21,7 +21,15 @@ class IMessage_BH_Email_Adapter {
 	 * @param string   $cpt_name            The custom post type to save as.
 	 * @param int      $mailbox_term_id     The mailbox taxonomy term ID.
 	 */
-	public static function adapt( IMessage $message, string $cpt_name, int $mailbox_term_id ): BH_Email {
+	public static function adapt( IMessage $message, string $cpt_name ): BH_Email {
+
+		$attachment_parts      = $message->getAllAttachmentParts();
+		$all_parts             = $message->getAllParts();
+		$non_attachment_parts  = array_filter(
+			$all_parts,
+			fn( $part ) => ! in_array( $part, $attachment_parts, true )
+		);
+		$original_email_string = implode( ' ', $non_attachment_parts );
 
 		$headers = array();
 		foreach ( $message->getAllHeaders() as $header ) {
@@ -40,26 +48,25 @@ class IMessage_BH_Email_Adapter {
 			$from_name  = ( '' !== (string) $person ) ? $person : null;
 		}
 
-		$received_at = null;
-		$date_value  = $message->getHeaderValue( 'Date' );
+		$downloaded_at = null;
+		$date_value    = $message->getHeaderValue( 'Date' );
 		if ( ! is_null( $date_value ) ) {
 			$parsed = date_create( $date_value );
 			if ( false !== $parsed ) {
-				$received_at = $parsed;
+				$downloaded_at = $parsed;
 			}
 		}
 
+		// Downloaded at.
+
 		return new BH_Email(
 			post_type:           $cpt_name,
-			account_category_id: $mailbox_term_id,
 			email_id:            $message->getMessageId() ?? '',
 			subject:             $message->getSubject() ?? '',
 			from_email:          $from_email,
 			from_name:           $from_name,
-			body_plain_text:     $message->getTextContent() ?? '',
-			body_html:           $message->getHtmlContent() ?? '',
 			headers:             $headers,
-			received_at:         $received_at,
+			downloaded_at:       $downloaded_at,
 		);
 	}
 }

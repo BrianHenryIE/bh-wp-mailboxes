@@ -11,10 +11,11 @@
 namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
 
 use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
-use BrianHenryIE\WP_Mailboxes\Mailbox_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Model\ZImessage_Collection;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTimeInterface;
 use DirectoryTree\ImapEngine\Mailbox;
+use DirectoryTree\ImapEngine\Message;
+use Illuminate\Support\Collection;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
@@ -28,11 +29,11 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	protected Mailbox $mailbox;
 
 	/**
-	 * @param Mailbox_Settings_Interface $settings Connection settings.
-	 * @param LoggerInterface            $logger Logger.
+	 * @param Email_Account_Settings_Interface $settings Connection settings.
+	 * @param LoggerInterface                  $logger Logger.
 	 */
 	public function __construct(
-		protected Mailbox_Settings_Interface $settings,
+		protected Email_Account_Settings_Interface $settings,
 		LoggerInterface $logger
 	) {
 		$this->setLogger( $logger );
@@ -98,9 +99,9 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	 *
 	 * @param DateTimeInterface $since_time
 	 *
-	 * @return ZImessage_Collection Unsaved emails as parsed MIME messages.
+	 * @return Collection<\DirectoryTree\ImapEngine\Message> Unsaved, unparsed emails
 	 */
-	public function retrieve_emails( DateTimeInterface $since_time, int $limit = 100 ): ZImessage_Collection {
+	public function retrieve_emails( DateTimeInterface $since_time, int $limit = 100 ): Collection {
 
 		// `SINCE` filters by date only — go back one extra day and filter by time in PHP.
 		$previous_day = ( clone $since_time )->sub( new \DateInterval( 'P1D' ) );
@@ -113,6 +114,7 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 			)
 		);
 
+		/** @var Collection<Message> $messages */
 		$messages = $this->mailbox
 			->inbox()
 			->messages()
@@ -129,20 +131,18 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		 *
 		 * @see https://stackoverflow.com/questions/32698415/php-imap-search-unseen-since-date-with-time
 		 */
-		$new_emails = new ZImessage_Collection();
-		foreach ( $messages as $message ) {
-			$date = $message->date();
-			if ( ! is_null( $date ) && $date->getTimestamp() < $since_time->getTimestamp() ) {
-				continue;
+		$messages = $messages->filter(
+			function ( Message $message ) use ( $since_time ) {
+				$date = $message->date();
+				return ! is_null( $date ) && $date->getTimestamp() >= $since_time->getTimestamp();
 			}
-			$new_emails->add( $message->parse() );
-		}
+		);
 
 		$this->logger->info(
-			$new_emails->count() . ' emails found in inbox since last run.',
+			$messages->count() . ' emails found in inbox since last run.',
 			array( 'since' => $since_time )
 		);
 
-		return $new_emails;
+		return $messages;
 	}
 }
