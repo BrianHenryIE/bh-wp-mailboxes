@@ -1,6 +1,6 @@
 <?php
 
-namespace BrianHenryIE\WP_Mailboxes\Repository;
+namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
 /**
  * Subclasses should implement: (no generics in PHP!)

@@ -7,10 +7,9 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Repository\Queries;
+namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Queries;
 
 /**
- * @see Post_BH_Bitcoin_Address
  */
 readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 

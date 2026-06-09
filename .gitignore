@@ -66,3 +66,4 @@ quickstart-cli.php
 *.secret.*
 /playwright-report
 /tests/_data/emails
+/tests/_data/temp

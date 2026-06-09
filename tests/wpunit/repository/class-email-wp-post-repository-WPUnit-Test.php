@@ -3,18 +3,18 @@
  * TODO: move to integration test?
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Repository;
+namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Repository\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use Mockery;
 use ZBateson\MailMimeParser\IMessage;
 use ZBateson\MailMimeParser\MailMimeParser;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Repository\Email_WP_Post_Repository
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository
  */
 class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WPUnit_Testcase {
 

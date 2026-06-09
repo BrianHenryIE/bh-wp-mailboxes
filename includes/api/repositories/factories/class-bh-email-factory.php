@@ -1,9 +1,8 @@
 <?php
 
-namespace BrianHenryIE\WP_Mailboxes\Repository\Factories;
+namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Factories;
 
-use BrianHenryIE\WP_Mailboxes\Adapter\IMessage_BH_Email_Adapter;
-use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use DateTime;
 use DateTimeZone;
 use Psr\Log\LoggerAwareTrait;
@@ -29,6 +28,7 @@ class BH_Email_Factory {
 
 		$from_header = $message->getHeader( 'From' );
 		$from_email  = '';
+		$from_name   = null;
 		if ( $from_header instanceof AddressHeader ) {
 			$from_email = $from_header->getEmail() ?? '';
 			$person     = $from_header->getPersonName();

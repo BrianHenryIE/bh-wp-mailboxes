@@ -2,6 +2,7 @@
 /**
  * A custom post type for saving mailbox settings. Used in emails as post_parent for filtering to mailbox.
  *
+ *
  * Use comments to log changes. Use md5 on credentials to watch for changes.
  */
 

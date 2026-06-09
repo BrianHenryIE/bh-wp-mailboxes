@@ -7,9 +7,9 @@
  * TODO: attachments.
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Model;
+namespace BrianHenryIE\WP_Mailboxes\API\Model;
 
-use BrianHenryIE\WP_Mailboxes\Repository\Saved_Post;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Saved_Post;
 use DateTimeInterface;
 use ZBateson\MailMimeParser\IMessage;
 

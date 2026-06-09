@@ -5,13 +5,13 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Repository;
+namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
-use BrianHenryIE\WP_Mailboxes\Repository\Factories\BH_Email_Factory;
-use BrianHenryIE\WP_Mailboxes\Repository\Queries\BH_Email_Query;
+use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Query;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;

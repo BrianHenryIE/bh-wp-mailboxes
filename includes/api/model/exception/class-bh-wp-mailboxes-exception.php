@@ -5,7 +5,7 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Model\Exception;
+namespace BrianHenryIE\WP_Mailboxes\API\Model\Exception;
 
 use Exception;
 
