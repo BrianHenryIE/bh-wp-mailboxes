@@ -7,8 +7,14 @@
 
 namespace BrianHenryIE\WP_Mailboxes\Repository;
 
+use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\Repository\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\Repository\Queries\BH_Email_Query;
 use DateTimeInterface;
+use Illuminate\Support\Collection;
+use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -17,6 +23,8 @@ use ZBateson\MailMimeParser\IMessage;
 
 /**
  * WordPress post repository for email CPT records.
+ *
+ * @phpstan-type WpUpdatePostArray array{ID?: int, post_author?: int, post_date?: string, post_date_gmt?: string, post_content?: string, post_content_filtered?: string, post_title?: string, post_excerpt?: string}
  */
 class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 
@@ -30,71 +38,10 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 */
 	public function __construct(
 		protected string $post_type,
+		protected BH_Email_Factory $bh_email_factory,
 		?LoggerInterface $logger = null
 	) {
 		$this->logger = $logger ?? new NullLogger();
-	}
-
-	/**
-	 * Save a new email or update an existing one (guid-based deduplication).
-	 *
-	 * @param BH_Email $email The email to persist.
-	 *
-	 * @return int The WordPress post ID, or 0 on failure.
-	 */
-	public function save( BH_Email $email ): int {
-
-		$guid        = $this->guid_for( $email );
-		$existing_id = $this->find_post_id_by_guid( $guid );
-
-		$meta                       = $email->get_meta_data();
-		$meta['email_id']           = $email->get_email_id();
-		$meta['from_email']         = $email->get_from_email();
-		$meta['from_name']          = $email->get_from_name();
-		$meta['headers']            = array_keys( $email->get_headers() );
-		$meta['bh_email_body_html'] = $email->get_body_html();
-		if ( ! is_null( $email->get_is_read() ) ) {
-			$meta['bh_email_is_read'] = $email->get_is_read() ? '1' : '0';
-		}
-
-		foreach ( $email->get_headers() as $name => $value ) {
-			$meta[ $name ] = $value;
-		}
-
-		$args = array(
-			'post_title'   => $email->get_subject(),
-			'post_name'    => sanitize_title( $email->get_subject() ),
-			'post_content' => $email->get_body_plain_text(),
-			'post_date'    => $this->resolve_post_date( $email ),
-			'post_status'  => $email->get_post_status(),
-			'post_type'    => $email->get_post_type(),
-			'meta_input'   => $meta,
-			'guid'         => $guid,
-		);
-
-		if ( ! is_null( $existing_id ) ) {
-			$args['ID'] = $existing_id;
-		}
-
-		$post_id = wp_insert_post( $args );
-
-		if ( 0 === $post_id ) {
-			$this->logger->error(
-				'Failed to save email.',
-				array( 'email_id' => $email->get_email_id() )
-			);
-			return 0;
-		}
-
-		$this->logger->debug(
-			is_null( $existing_id ) ? 'Saved new email.' : 'Updated existing email.',
-			array(
-				'post_id'  => $post_id,
-				'email_id' => $email->get_email_id(),
-			)
-		);
-
-		return $post_id;
 	}
 
 	/**
@@ -105,11 +52,11 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @return BH_Email
 	 */
 	public function find_by_post_id( int $post_id ): BH_Email {
-		$cpt = get_post( $post_id );
-		if ( ! ( $cpt instanceof WP_Post ) ) {
-			throw new \InvalidArgumentException( "No post found with ID {$post_id}." );
+		$post = get_post( $post_id );
+		if ( ! ( $post instanceof WP_Post ) ) {
+			throw new InvalidArgumentException( "No post found with ID {$post_id}." );
 		}
-		return $this->hydrate_from_wp_post( $cpt );
+		return $this->bh_email_factory->from_wp_post( $post );
 	}
 
 	/**
@@ -131,7 +78,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		$emails = array();
 		foreach ( $query->get_posts() as $post ) {
 			if ( $post instanceof WP_Post ) {
-				$emails[] = $this->hydrate_from_wp_post( $post );
+				$emails[] = $this->bh_email_factory->from_wp_post( $post );
 			}
 		}
 		return $emails;
@@ -179,63 +126,6 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		return $count;
 	}
 
-	/**
-	 * Build a BH_Email from a WP_Post and its meta.
-	 *
-	 * @param WP_Post $cpt The email CPT post.
-	 *
-	 * @return BH_Email
-	 */
-	protected function hydrate_from_wp_post( WP_Post $cpt ): BH_Email {
-
-		$post_id = $cpt->ID;
-
-		$email_id   = get_post_meta( $post_id, 'email_id', true );
-		$from_email = get_post_meta( $post_id, 'from_email', true );
-		$from_name  = get_post_meta( $post_id, 'from_name', true );
-
-		$headers      = array();
-		$header_names = get_post_meta( $post_id, 'headers', true );
-		if ( is_array( $header_names ) ) {
-			foreach ( $header_names as $header_name ) {
-				$header_value = get_post_meta( $post_id, $header_name, true );
-				if ( ! empty( $header_value ) ) {
-					$headers[ $header_name ] = $header_value;
-				}
-			}
-		}
-
-		$body_html   = get_post_meta( $post_id, 'bh_email_body_html', true );
-		$is_read_raw = get_post_meta( $post_id, 'bh_email_is_read', true );
-		$is_read     = '' !== $is_read_raw ? (bool) $is_read_raw : null;
-
-		return new BH_Email(
-			post_type:           $cpt->post_type,
-			account_category_id: 0,
-			email_id:            is_string( $email_id ) ? $email_id : '',
-			subject:             $cpt->post_title,
-			from_email:          is_string( $from_email ) ? $from_email : '',
-			from_name:           is_string( $from_name ) && '' !== $from_name ? $from_name : null,
-			body_plain_text:     $cpt->post_content,
-			body_html:           is_string( $body_html ) ? $body_html : '',
-			headers:             $headers,
-			post_id:             $post_id,
-			post_status:         $cpt->post_status,
-			is_read:             $is_read,
-		);
-	}
-
-	/**
-	 * Build the WordPress guid for deduplication.
-	 *
-	 * @param BH_Email $email The email to build a guid for.
-	 *
-	 * @return string
-	 */
-	protected function guid_for( BH_Email $email ): string {
-		$site_url = get_site_url();
-		return "{$site_url}|" . sanitize_key( $email->get_email_id() );
-	}
 
 	/**
 	 * Query the WordPress posts table for a post with the given guid.
@@ -258,7 +148,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 *
 	 * @return string MySQL datetime string (UTC).
 	 */
-	protected function resolve_post_date( BH_Email $email ): string {
+	protected function resolve_received_at( BH_Email $email ): string {
 
 		if ( ! is_null( $email->get_received_at() ) ) {
 			return gmdate( 'Y-m-d H:i:s', $email->get_received_at()->getTimestamp() );
@@ -275,15 +165,74 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		return gmdate( 'Y-m-d H:i:s' );
 	}
 
-	public function save_new( IMessage $message, string $post_type ): BH_Email {
+	public function save_new(
+		IMessage $email,
+		BH_WP_Mailboxes_Settings_Interface $mailboxes,
+		Email_Account_Settings_Interface $email_account
+	): BH_Email {
 
-		$message->getAllAttachmentParts();
+		$post_type = $mailboxes->get_cpt_underscored_20();
+
+		$attachment_parts                     = $email->getAllAttachmentParts();
+		$all_parts                            = $email->getAllParts();
+		$non_attachment_parts                 = array_filter(
+			$all_parts,
+			fn( $part ) => ! in_array( $part, $attachment_parts, true )
+		);
+		$original_email_no_attachments_string = implode( ' ', $non_attachment_parts );
+
+		$eid    = $email->getMessageId();
+		$sender = $email->getHeader( 'From' )?->getEmail() ?? '';
+
+		$query = new BH_Email_Query(
+			post_type: $post_type,
+			account_email_address: $email_account->get_account_email_address(),
+			email_id: $email->getMessageId(),
+			subject: $email->getSubject(),
+			from_address: $sender, // We'll save this in meta because if it matches a user account it is relevant.
+			original_email: $original_email_no_attachments_string,
+			local_status: 'new', /** @see BH_Email_CPT::register_post_statuses() */
+			is_read_remote: false, // TODO: how to determine is is already read?
+			is_deleted_remote: false, // We may immediately delete the email, but the fact it exists in save_new means it exists remotely.
+			attachment_ids: array(),
+		);
+
+		/** @var WpUpdatePostArray $args */
+		$args = $query->to_query_array();
+
+		$filter_name = 'content_save_pre';
+		/** @var \WP_Hook[] $wp_filter */
+		global $wp_filter;
+		$hook             = $wp_filter[ $filter_name ] ?? null;
+		$callbacks_before = $hook->callbacks;
+		$hook->callbacks  = array();
+
+		$post_id = wp_insert_post( $args, true );
+
+		$hook->callbacks = $callbacks_before;
+
+		if ( is_wp_error( $post_id ) ) {
+			// TODO Log.
+			throw new \Exception( 'WordPress failed to create a ' . $post_type . ' for the email.' );
+		}
+
+		// TODO: save attachments.
+
+		return $this->find_by_post_id( $post_id );
 	}
 
-	public function save_all( \Illuminate\Support\Collection $all_new_account_emails, string $post_type ): BH_Email {
+	/**
+	 * @return BH_Email[]
+	 * @throws \Exception
+	 */
+	public function save_all(
+		Collection $all_new_account_emails,
+		BH_WP_Mailboxes_Settings_Interface $mailboxes,
+		Email_Account_Settings_Interface $email_account
+	): array {
 
 		return array_map(
-			fn( $new_email ) => $this->save_new( $new_email, $post_type ),
+			fn( $new_email ) => $this->save_new( $new_email, $mailboxes, $email_account ),
 			(array) $all_new_account_emails
 		);
 	}

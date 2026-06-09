@@ -18,6 +18,7 @@ use DirectoryTree\ImapEngine\Message;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
+use ZBateson\MailMimeParser\IMessage;
 
 /**
  * Uses ImapEngine library to fetch emails since last run.
@@ -99,7 +100,7 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	 *
 	 * @param DateTimeInterface $since_time
 	 *
-	 * @return Collection<\DirectoryTree\ImapEngine\Message> Unsaved, unparsed emails
+	 * @return Collection<IMessage> Unsaved, unparsed emails
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time, int $limit = 100 ): Collection {
 
@@ -136,6 +137,10 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 				$date = $message->date();
 				return ! is_null( $date ) && $date->getTimestamp() >= $since_time->getTimestamp();
 			}
+		);
+		/** @var Collection<IMessage> $messages */
+		$messages = $messages->map(
+			fn( Message $message ) => $message->parse()
 		);
 
 		$this->logger->info(

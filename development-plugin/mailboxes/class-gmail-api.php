@@ -30,7 +30,7 @@ class Gmail_API {
 		$gmail_mailbox_settings = new class() implements Email_Account_Settings_Interface {
 			use Email_Account_Settings_Defaults_Trait;
 
-			public function get_account_unique_friendly_name(): string {
+			public function get_account_email_address(): string {
 				return 'brianhenryie@gmail.com';
 			}
 

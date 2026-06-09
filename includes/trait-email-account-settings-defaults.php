@@ -7,7 +7,14 @@
 
 namespace BrianHenryIE\WP_Mailboxes;
 
+/**
+ * @see Email_Account_Settings_Interface
+ */
 trait Email_Account_Settings_Defaults_Trait {
+
+	public function get_account_unique_friendly_name(): string {
+		return $this->get_account_email_address();
+	}
 
 	public function after_download_email_action(): string {
 		return 'nothing';

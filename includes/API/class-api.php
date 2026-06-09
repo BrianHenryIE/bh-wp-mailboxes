@@ -60,9 +60,10 @@ class API implements API_Interface {
 	 */
 	public function check_email(): array {
 
-		$bh_wp_mailboxes_api = $this->settings->get_configured_mailbox_settings();
+		/** @var Email_Account_Settings_Interface[] $email_accounts */
+		$email_accounts = $this->settings->get_configured_mailbox_settings();
 
-		$this->logger->debug( 'Starting check_email() for ' . count( $bh_wp_mailboxes_api ) . ' mailbox(es).' );
+		$this->logger->debug( 'Starting check_email() for ' . count( $email_accounts ) . ' email address(es).' );
 
 		/** @var BH_Email[] $all_new_emails */
 		$all_new_emails     = array();
@@ -74,9 +75,9 @@ class API implements API_Interface {
 		$interval_one_week  = new DateInterval( 'P1W' );
 		$first_run_datetime = $now_time->sub( $interval_one_week );
 
-		foreach ( $bh_wp_mailboxes_api as $mailbox_settings ) {
-			$account_name = $mailbox_settings->get_account_unique_friendly_name();
-			$credentials  = $mailbox_settings->get_credentials();
+		foreach ( $email_accounts as $email_account ) {
+			$account_name = $email_account->get_account_unique_friendly_name();
+			$credentials  = $email_account->get_credentials();
 
 			// Check if we have recently had a failed login.
 			// Do not retry: some servers rate limit bad auth attempts and blacklist IPs.
@@ -94,13 +95,13 @@ class API implements API_Interface {
 			try {
 				// Filter: bh_wp_mailboxes_fetcher_for_credentials( null, Account_Credentials_Interface, Mailbox_Settings_Interface, LoggerInterface ).
 				// Return a non-null Email_Fetcher_Interface to supply a custom fetcher (e.g. a test stub).
-				$fetcher = apply_filters( 'bh_wp_mailboxes_fetcher_for_credentials', null, $credentials, $mailbox_settings, $this->logger );
+				$fetcher = apply_filters( 'bh_wp_mailboxes_fetcher_for_credentials', null, $credentials, $email_account, $this->logger );
 
 				if ( is_null( $fetcher ) ) {
 					if ( $credentials instanceof IMAP_Credentials_Interface ) {
-						$fetcher = new ImapEngine_Imap_Email_Fetcher( $mailbox_settings, $this->logger );
+						$fetcher = new ImapEngine_Imap_Email_Fetcher( $email_account, $this->logger );
 					} elseif ( $credentials instanceof Google_API_Credentials_Interface ) {
-						$fetcher = new Gmail_Email_Fetcher( $mailbox_settings, $this->logger );
+						$fetcher = new Gmail_Email_Fetcher( $email_account, $this->logger );
 					} else {
 						$this->logger->warning(
 							'No email fetcher found for credentials type.',
@@ -131,7 +132,7 @@ class API implements API_Interface {
 					array(
 						'exception'        => $exception,
 						'account'          => $account_name,
-						'mailbox_settings' => $mailbox_settings,
+						'mailbox_settings' => $email_account,
 					)
 				);
 				continue;
@@ -145,7 +146,7 @@ class API implements API_Interface {
 			// $term_id               = $mailbox_category instanceof \WP_Term ? $mailbox_category->term_id : 0;
 
 			/** @var BH_Email[] $new_account_emails */
-			$all_new_account_bh_emails = $this->email_repository->save_all( $all_new_account_emails );
+			$all_new_account_bh_emails = $this->get_email_repository()->save_all( $all_new_account_emails, $this->settings, $email_account );
 
 			$all_new_emails = array_merge( $all_new_emails, $all_new_account_bh_emails );
 
@@ -156,7 +157,7 @@ class API implements API_Interface {
 			 */
 			$filtered_account_emails = array_filter(
 				$all_new_account_bh_emails,
-				fn( BH_Email $email ): bool => $this->email_filter( $email, $mailbox_settings )
+				fn( BH_Email $email ): bool => $this->email_filter( $email, $email_account )
 			);
 
 			// Filter: bh_wp_mailboxes_fetch_emails_complete( BH_Email[] $emails, string $cpt, string $account_name ).
@@ -173,7 +174,7 @@ class API implements API_Interface {
 
 			$plugin_slug         = $this->settings->get_plugin_slug();
 			$bh_wp_mailboxes_api = $this;
-			$account             = $mailbox_settings;
+			$account             = $email_account;
 			$new_bh_emails       = $filtered_account_emails;
 
 			$this->logger->debug( "Firing action `bh_wp_mailboxes_fetch_emails_saved_{$plugin_slug}` with " . count( $new_bh_emails ) . ' new emails' );

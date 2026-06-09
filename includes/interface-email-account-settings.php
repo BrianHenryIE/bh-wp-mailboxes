@@ -15,11 +15,14 @@ interface Email_Account_Settings_Interface {
 	// public function is_active(): bool
 
 	/**
+	 * The email address.
+	 *
+	 * You'd think this is the same as the credentials username, but it is not always.
+	 */
+	public function get_account_email_address();
+
+	/**
 	 * The friendly account name to display.
-	 *
-	 * This will be used to create a category for the CPT.
-	 *
-	 * @return string
 	 */
 	public function get_account_unique_friendly_name(): string;
 

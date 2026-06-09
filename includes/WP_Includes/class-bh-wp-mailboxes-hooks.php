@@ -13,6 +13,7 @@ use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Repository\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\Repository\Factories\BH_Email_Factory;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -26,6 +27,7 @@ class BH_WP_Mailboxes_Hooks {
 	 * @var Email_WP_Post_Repository
 	 */
 	protected Email_WP_Post_Repository $email_wp_post_repository;
+	protected BH_Email_Factory $bh_email_factory;
 
 	/**
 	 * Constructor.
@@ -39,7 +41,8 @@ class BH_WP_Mailboxes_Hooks {
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		protected LoggerInterface $logger
 	) {
-		$this->email_wp_post_repository = new Email_WP_Post_Repository( $this->settings->get_cpt_underscored_20(), $this->logger );
+		$this->bh_email_factory         = new BH_Email_Factory( $this->logger );
+		$this->email_wp_post_repository = new Email_WP_Post_Repository( $this->settings->get_cpt_underscored_20(), $this->bh_email_factory, $this->logger );
 
 		$this->define_cpt_hooks();
 		$this->define_cron_hooks();

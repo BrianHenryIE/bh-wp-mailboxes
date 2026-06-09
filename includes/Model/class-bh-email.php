@@ -11,34 +11,43 @@ namespace BrianHenryIE\WP_Mailboxes\Model;
 
 use BrianHenryIE\WP_Mailboxes\Repository\Saved_Post;
 use DateTimeInterface;
+use ZBateson\MailMimeParser\IMessage;
 
 class BH_Email implements Saved_Post {
 
 	/**
 	 * Constructor.
 	 *
+	 * @param int                   $post_id             WP Posts table saved id.
 	 * @param string                $post_type           The CPT slug.
 	 * @param string                $email_id            The server-assigned message UID.
 	 * @param string                $subject             Email subject.
 	 * @param string                $from_email          Sender email address.
 	 * @param ?string               $from_name           Sender display name.
-	 * @param string                $body_plain_text      Plain-text body.
+	 * @param string                $original_mime_message The original raw MIME message as a string, excluding attachments.
+	 * @param string                $body_plain_text     Plain-text body.
 	 * @param string                $body_html           HTML body.
+	 * @param array<int>            $attachment_ids      Post IDs of attachments.
 	 * @param array<string, string> $headers             All parsed headers.
 	 * @param array<string, mixed>  $meta_data           Provider-specific metadata.
 	 * @param ?DateTimeInterface    $received_at         When the email was received/sent.
-	 * @param ?int                  $post_id             WordPress post ID once saved.
+	 * @param ?DateTimeInterface    $downloaded_at       Aka. post publish time.
+	 * @param ?DateTimeInterface    $last_updated
 	 * @param string                $post_status         WordPress post status.
-	 * @param ?bool                 $is_read             Whether the email has been read on the remote server (null = unknown).
+	 * @param ?bool                 $is_remote_read      Whether the email has been read on the remote server (null = unknown).
+	 * @param ?bool                 $is_remote_deleted   Whether the email has been read on the remote server (null = unknown).
 	 */
 	public function __construct(
 		protected int $post_id,
 		protected string $post_type,
+		protected IMessage $imessage,
 		protected string $email_id,
 		protected string $subject,
 		protected string $from_email,
 		protected ?string $from_name = null,
 		protected string $original_mime_message = '',
+		protected ?string $body_plain_text = '',
+		protected ?string $body_html = '',
 		protected array $attachment_ids = array(),
 		protected array $headers = array(),
 		protected array $meta_data = array(),
@@ -54,9 +63,9 @@ class BH_Email implements Saved_Post {
 		return $this->post_type;
 	}
 
-	public function get_account_category_id(): int {
-		return $this->account_category_id;
-	}
+	// public function get_account_category_id(): int {
+	// return $this->account_category_id;
+	// }
 
 	public function get_email_id(): string {
 		return $this->email_id;
@@ -133,15 +142,15 @@ class BH_Email implements Saved_Post {
 		}
 
 		return new self(
-			post_type:           $cpt_email->post_type,
-			email_id:            is_string( $email_id ) ? $email_id : '',
-			subject:             $cpt_email->post_title,
-			from_email:          is_string( $from_email ) ? $from_email : '',
-			from_name:           is_string( $from_name ) && '' !== $from_name ? $from_name : null,
-			body_plain_text:     $cpt_email->post_content,
-			headers:             $headers,
-			post_id:             $post_id,
-			post_status:         $cpt_email->post_status,
+			post_id: $post_id,
+			post_type: $cpt_email->post_type,
+			email_id: is_string( $email_id ) ? $email_id : '',
+			subject: $cpt_email->post_title,
+			from_email: is_string( $from_email ) ? $from_email : '',
+			from_name: is_string( $from_name ) && '' !== $from_name ? $from_name : null,
+			body_plain_text: $cpt_email->post_content,
+			headers: $headers,
+			post_status: $cpt_email->post_status,
 		);
 	}
 }
