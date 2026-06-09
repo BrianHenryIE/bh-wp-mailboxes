@@ -14,18 +14,6 @@ class BH_Mailbox implements Saved_Post {
 
 	protected int $post_id;
 
-	public function get_downloaded_emails( array $args ): array {
-
-		$args['post_parent'] = $this->post_id;
-		$args['post_type']   = $this->settings->get_cpt_underscored_20();
-
-		// wp_parse_args( defaults )
-
-		$wp_posts = get_posts( $args );
-
-		return array_map( array( BH_Email::class, 'create_from_cpt' ), $wp_posts );
-	}
-
 	public function get_post_id(): int {
 		return $this->post_id;
 	}
