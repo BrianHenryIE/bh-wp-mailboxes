@@ -30,6 +30,9 @@ class Single_Email_View {
 	 */
 	protected string $post_type;
 
+	/** @var array<int, BH_Email> */
+	protected array $emails = array();
+
 	/**
 	 * Constructor.
 	 *
@@ -46,6 +49,13 @@ class Single_Email_View {
 	) {
 		$this->setLogger( $logger );
 		$this->post_type = $this->settings->get_cpt_underscored_20();
+	}
+
+	private function get_email_for_post( WP_Post $post ): BH_Email {
+		if ( ! isset( $this->emails[ $post->ID ] ) ) {
+			$this->emails[ $post->ID ] = $this->email_wp_post_repository->find_by_post_id( $post->ID );
+		}
+		return $this->emails[ $post->ID ];
 	}
 
 	/**
@@ -352,8 +362,8 @@ class Single_Email_View {
 		if ( is_string( $date_header ) && '' !== $date_header ) {
 			$parsed = date_create( $date_header );
 			if ( false !== $parsed ) {
-				$received = wp_date( $date_format, $parsed->getTimestamp() );
-				echo '<p><strong>' . esc_html__( 'Received at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( (string) $received ) . '</p>';
+				$sent = wp_date( $date_format, $parsed->getTimestamp() );
+				echo '<p><strong>' . esc_html__( 'Received at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( (string) $sent ) . '</p>';
 			}
 		}
 
@@ -409,8 +419,12 @@ class Single_Email_View {
 	 */
 	public function render_headers_metabox( WP_Post $post ): void {
 
-		$header_names = get_post_meta( $post->ID, 'headers', true );
-		if ( ! is_array( $header_names ) || empty( $header_names ) ) {
+		$email = $this->get_email_for_post( $post );
+		unset( $post );
+
+		$headers = $email->imessage->getAllHeaders();
+
+		if ( empty( $headers ) ) {
 			echo '<p>' . esc_html__( 'No headers found.', 'bh-wp-mailboxes' ) . '</p>';
 			return;
 		}
@@ -418,8 +432,12 @@ class Single_Email_View {
 		echo '<table class="widefat bh-email-headers-table">';
 		echo '<tbody>';
 
-		foreach ( $header_names as $name ) {
-			$value = get_post_meta( $post->ID, $name, true );
+		foreach ( $headers as $header ) {
+
+			$parts = explode( ':', (string) $header, 2 );
+			$name  = $parts[0];
+			$value = $parts[1];
+
 			if ( is_string( $value ) && '' !== $value ) {
 				echo '<tr>';
 				echo '<th scope="row">' . esc_html( $name ) . '</th>';
@@ -439,7 +457,11 @@ class Single_Email_View {
 	 */
 	public function render_html_content_metabox( WP_Post $post ): void {
 
-		$body_html = get_post_meta( $post->ID, 'bh_email_body_html', true );
+		$email = $this->get_email_for_post( $post );
+		unset( $post );
+
+		$body_html = $email->body_html;
+
 		if ( ! is_string( $body_html ) || '' === $body_html ) {
 			echo '<p>' . esc_html__( 'No HTML content.', 'bh-wp-mailboxes' ) . '</p>';
 			return;
@@ -455,12 +477,17 @@ class Single_Email_View {
 	 */
 	public function render_plain_content_metabox( WP_Post $post ): void {
 
-		if ( '' === $post->post_content ) {
+		$email = $this->get_email_for_post( $post );
+		unset( $post );
+
+		$body_plain_text = $email->body_plain_text;
+
+		if ( '' === $body_plain_text ) {
 			echo '<p>' . esc_html__( 'No plain text content.', 'bh-wp-mailboxes' ) . '</p>';
 			return;
 		}
 
-		$srcdoc = '<pre style="white-space:pre-wrap;word-break:break-word;font-family:monospace;margin:0;padding:12px;">' . esc_html( $post->post_content ) . '</pre>';
+		$srcdoc = '<pre style="white-space:pre-wrap;word-break:break-word;font-family:monospace;margin:0;padding:12px;">' . esc_html( $body_plain_text ) . '</pre>';
 		echo '<iframe class="bh-email-plain-body" srcdoc="' . esc_attr( $srcdoc ) . '" sandbox="allow-same-origin" style="width:100%;border:0;min-height:200px;" title="' . esc_attr__( 'Email plain text content', 'bh-wp-mailboxes' ) . '"></iframe>';
 	}
 
@@ -471,24 +498,30 @@ class Single_Email_View {
 	 */
 	public function render_attachments_metabox( WP_Post $post ): void {
 
-		$attachments = get_posts(
-			array(
-				'post_type'   => 'attachment',
-				'post_parent' => $post->ID,
-				'post_status' => 'any',
-				'numberposts' => -1,
-			)
-		);
+		$email = $this->get_email_for_post( $post );
+		unset( $post );
 
-		if ( empty( $attachments ) ) {
+		$attachment_ids = $email->attachment_ids;
+		// The post type of the private uploads attachments is not `attachments`
+		// $attachments = get_posts(
+		// array(
+		// 'post_type'   => 'attachment',
+		// 'post_parent' => $post->ID,
+		// 'post_status' => 'any',
+		// 'numberposts' => -1,
+		// )
+		// );
+
+		if ( empty( $attachment_ids ) ) {
 			echo '<p>' . esc_html__( 'No attachments.', 'bh-wp-mailboxes' ) . '</p>';
 			return;
 		}
 
 		echo '<ul class="bh-email-attachments-list">';
-		foreach ( $attachments as $attachment ) {
-			$url           = wp_get_attachment_url( $attachment->ID );
-			$attached_file = get_attached_file( $attachment->ID );
+		foreach ( $attachment_ids as $attachment_id ) {
+			$url           = wp_get_attachment_url( $attachment_id );
+			$attached_file = get_attached_file( $attachment_id );
+			$attachment    = get_post( $attachment_id );
 			$filename      = basename( $attached_file ? $attached_file : $attachment->post_title );
 			echo '<li>';
 			if ( $url ) {
