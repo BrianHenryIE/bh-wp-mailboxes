@@ -4,6 +4,8 @@ namespace BrianHenryIE\WP_Mailboxes\Repository\Factories;
 
 use BrianHenryIE\WP_Mailboxes\Adapter\IMessage_BH_Email_Adapter;
 use BrianHenryIE\WP_Mailboxes\Model\BH_Email;
+use DateTime;
+use DateTimeZone;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WP_Post;
@@ -38,19 +40,32 @@ class BH_Email_Factory {
 		$is_read_raw = get_post_meta( $post_id, 'is_read_remote', true );
 		$is_read     = '' !== $is_read_raw ? (bool) $is_read_raw : null;
 
+		// Date: Wed, 30 Jul 2025 03:38:07 +0000
+		$date_header = $message->getHeader( 'Date' );
+		$date_header = str_replace( 'Date: ', '', $date_header );
+		$sent_at     = DateTime::createFromFormat( DateTime::RFC2822, $date_header );
+
+		$attachment_ids = get_post_meta( $post_id, 'attachment_ids', true );
+		$attachment_ids = (array) json_decode( $attachment_ids );
+
 		return new BH_Email(
 			post_id: $post_id,
 			post_type: $post->post_type,
-			email_id: $message->getMessageId(),
+			imessage: $message,
+			message_id: $message->getMessageId(),
 			subject: $post->post_title,
 			from_email: $from_email,
 			from_name: $from_name,
+			original_mime_message: $post->post_content,
 			body_plain_text: $message->getTextContent(),
 			body_html: $message->getHtmlContent(),
+			attachment_ids: $attachment_ids,
+			sent_at: $sent_at,
+			downloaded_at: new DateTime( $post->post_date, new DateTimeZone( 'UTC' ) ),
+			last_updated: new DateTime( $post->post_modified, new DateTimeZone( 'UTC' ) ),
 			post_status: $post->post_status,
 			is_remote_read: $is_read,
 			is_remote_deleted: $is_read,
-			imessage: $message
 		);
 	}
 }
