@@ -6,7 +6,6 @@ actor: WpunitTester
 modules:
     enabled:
         - lucatume\WPBrowser\Module\WPLoader
-        - \Helper\Wpunit
     config:
         lucatume\WPBrowser\Module\WPLoader:
             loadOnly: false
@@ -16,7 +15,7 @@ modules:
             domain: "%TEST_SITE_WP_DOMAIN%"
             adminEmail: "%TEST_SITE_ADMIN_EMAIL%"
             title: "bh-wp-mailboxes"
-            plugins: []
+            plugins: [] # Do not activate the plugin being tested in unit tests.
             activatePlugins: []
             WP_CONTENT_DIR: wp-content
 bootstrap: _bootstrap.php

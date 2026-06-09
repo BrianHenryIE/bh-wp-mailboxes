@@ -21,11 +21,15 @@ params:
 coverage:
     enabled: true
     include:
-        - includes/*
+        - /includes/*
     exclude:
-        - /*/interface*.php
-        - /*/index.php
-        - /*/*.txt
-        - /*/*.css
-        - /*/*.js
+        - /vendor/*
+        - /dist-archive/*
+        - /tests/*
+        - /scratch/*
+        - /wordpress/*
+        - /vendor-prefixed/*
+        - /autoload.php
+        - /*/interface-*.*
+#        - /*/index.php
 bootstrap: bootstrap.php
