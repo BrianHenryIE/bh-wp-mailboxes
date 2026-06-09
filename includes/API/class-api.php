@@ -324,7 +324,7 @@ class API implements API_Interface {
 				"No handler for remote email action '{$action}'.",
 				array(
 					'post_id'  => $post_id,
-					'email_id' => $email->get_email_id(),
+					'email_id' => $email->message_id,
 				)
 			);
 		}
