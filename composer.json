@@ -84,6 +84,7 @@
         "wordpress/wordpress": "*",
         "wp-cli/dist-archive-command": "*",
         "wp-coding-standards/wpcs": "*",
+        "wpackagist-plugin/wp-crontrol": "^1.21",
         "wpackagist-theme/twentytwenty": "*"
     },
     "scripts": {
@@ -113,6 +114,9 @@
         ],
         "pre-autoload-dump": [
             "Google\\Task\\Composer::cleanup"
+        ],
+        "post-autoload-dump": [
+            "php ./bin/sync-composer-wpenv.php"
         ]
     },
     "extra": {

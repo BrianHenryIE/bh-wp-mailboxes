@@ -8,6 +8,8 @@
  * @package BrianHenryIE\WP_Mailboxes
  */
 
+// TODO: How to map WP CLI?
+
 $project_dir = is_file( dirname( __DIR__ ) . '/.wp-env.json' )
 	? dirname( __DIR__ )
 	: getcwd();

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1896ab9225bfb2d557d8124124e37c2d",
+    "content-hash": "7642e281fa60c9a7b8e34c67e84124e5",
     "packages": [
         {
             "name": "brianhenryie/bh-wp-private-uploads",
@@ -9989,6 +9989,24 @@
             "time": "2025-11-25T12:08:04+00:00"
         },
         {
+            "name": "wpackagist-plugin/wp-crontrol",
+            "version": "1.21.0",
+            "source": {
+                "type": "svn",
+                "url": "https://plugins.svn.wordpress.org/wp-crontrol/",
+                "reference": "tags/1.21.0"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://downloads.wordpress.org/plugin/wp-crontrol.1.21.0.zip"
+            },
+            "require": {
+                "composer/installers": "^1.0 || ^2.0"
+            },
+            "type": "wordpress-plugin",
+            "homepage": "https://wordpress.org/plugins/wp-crontrol/"
+        },
+        {
             "name": "wpackagist-theme/twentytwenty",
             "version": "3.1",
             "source": {
@@ -10016,7 +10034,9 @@
         "php": ">=8.4",
         "ext-json": "*"
     },
-    "platform-dev": {},
+    "platform-dev": {
+        "ext-dom": "*"
+    },
     "platform-overrides": {
         "php": "8.4"
     },
