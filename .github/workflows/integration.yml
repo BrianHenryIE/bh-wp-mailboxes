@@ -35,7 +35,7 @@ jobs:
 
     strategy:
       matrix:
-        php: [ '8.4' ]
+        php: [ '8.0', '8.1', '8.2', '8.3' ,'8.4' ]
 
     steps:
 
@@ -51,6 +51,9 @@ jobs:
         uses: c-py/action-dotenv-to-setenv@v5
         with:
           env-file: .env.testing
+
+      - name: Install sponge
+        run: sudo apt-get install moreutils
 
       - name: Install PHP dependencies
         run: composer install --verbose
