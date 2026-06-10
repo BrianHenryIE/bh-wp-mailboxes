@@ -7,11 +7,11 @@
 
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
-use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Repository\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Codeception\Stub\Expected;
@@ -23,6 +23,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 	/** @var string CPT slug used across tests. */
 	private string $post_type = 'test_mailbox_emails';
+
+	protected BH_Email_Factory $bh_email_factory;
 
 	/** @return BH_WP_Mailboxes_Settings_Interface&\Codeception\Stub\StubMarshaler */
 	private function make_settings(): mixed {
@@ -44,7 +46,14 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 	/** @return Email_WP_Post_Repository */
 	private function make_repository(): Email_WP_Post_Repository {
-		return new Email_WP_Post_Repository( $this->post_type, $this->logger );
+		return new Email_WP_Post_Repository( $this->post_type, $this->get_bh_email_factory(), $this->logger );
+	}
+
+	protected function get_bh_email_factory(): BH_Email_Factory {
+		if ( ! isset( $this->bh_email_factory ) ) {
+			$this->bh_email_factory = new BH_Email_Factory( $this->logger );
+		}
+		return $this->bh_email_factory;
 	}
 
 	/** Register the CPT once per test so factory and meta operations work correctly. */
@@ -105,8 +114,18 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
-		$post    = get_post( $post_id );
+		$filepath = codecept_root_dir( 'tests/_data/emails/ISYhQUFBQUFBQUFBQUFZQUFBQUFBQUFBQ2pkT3FMd3RNeE1yTWlxN1JTTnFFZkNnQUFBRUFBQUFPalRwMG02VDVORGxJK0MwSXM0dHVBQkFBQUFBQT09QHNoaW5ldGVjaHNlcnZlLmNvbQ==.eml' );
+
+		if ( ! file_exists( $filepath ) ) {
+			$this->fail();
+		}
+
+		$post_id = $this->create_post_from_fixture(
+			$filepath,
+			'tests'
+		);
+
+		$post = get_post( $post_id );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 		$sut->add_meta_boxes( $post );
