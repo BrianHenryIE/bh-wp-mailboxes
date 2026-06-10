@@ -67,11 +67,6 @@ readonly class BH_Email implements Saved_Post {
 	// return $this->account_category_id;
 	// }
 
-	/** @return array<string, string> */
-	public function get_headers(): array {
-		return $this->headers;
-	}
-
 	public function get_from_email(): string {
 		return $this->from_email;
 	}

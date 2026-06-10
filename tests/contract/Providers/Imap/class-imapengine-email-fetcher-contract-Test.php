@@ -96,6 +96,33 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 	}
 
 	/**
+	 * Mark the most-recently fetched email as read on the server, then unread.
+	 *
+	 * Ported from the removed Ddeboer_Imap integration test (tests/integration/Providers/Ddeboer_Imap/class-mark-email-read-Test.php).
+	 * The Ddeboer provider is gone; ImapEngine's Message object exposes flag() / unflag() for this purpose.
+	 */
+	public function test_mark_email_read_on_server(): void {
+
+		try {
+			$sut = new ImapEngine_Imap_Email_Fetcher( $this->settings, $this->logger );
+		} catch ( ImapEngineException $e ) {
+			$this->fail( $e->getMessage() );
+		}
+
+		$since_time = DateTime::createFromFormat( 'U', (string) ( time() - 30 * 24 * 60 * 60 ) );
+		$messages   = $sut->retrieve_emails( $since_time, 1 );
+
+		if ( $messages->isEmpty() ) {
+			$this->markTestSkipped( 'No emails found in inbox to test mark-read.' );
+		}
+
+		// The IMessage returned by retrieve_emails() is a parsed snapshot; to mark read on the
+		// server we need the underlying ImapEngine Message. That requires accessing the mailbox
+		// directly — this test serves as a living specification for the work tracked in Phase 2.
+		$this->markTestIncomplete( 'ImapEngine_Imap_Email_Fetcher does not yet expose a mark-read method. Implement per Phase 2.' );
+	}
+
+	/**
 	 * Dumps the emails from the past [time] into /tests/_data/emails
 	 */
 	public function test_download_emails_for_tests() {

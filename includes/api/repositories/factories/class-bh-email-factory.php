@@ -53,7 +53,7 @@ class BH_Email_Factory {
 			post_id: $post_id,
 			post_type: $post->post_type,
 			imessage: $message,
-			message_id: $message->getMessageId(),
+			message_id: $message->getMessageId() ?? '',
 			subject: $post->post_title,
 			from_email: $from_email,
 			from_name: $from_name,
