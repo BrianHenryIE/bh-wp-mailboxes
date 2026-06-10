@@ -10,14 +10,22 @@ e.g.
 * Helpdesk
 * Post by email 
 
+A plugin user should be able to configure an inbox in the plugin settings, the library will download emails on a cron schedule, the library will filter emails to a predicate (e.g. only emails sent by @venmo.com, or a negative filter excluding known irrelevant subjects), the emails are saved to log, then the library fires an action for each new email downloaded. The parent plugin listens for that and acts appropriately, e.g. processes an unsubscribe request, creates a helpdesk ticket, etc.
+
 [![WP List Table of emails](.github/wp-list-table-inbox.png)]
+
+The core library this is built around is [zbateson/mail-mime-parser](https://github.com/zbateson/mail-mime-parser) – [mail-mime-parser.org](https://mail-mime-parser.org/).
+
+TODO: we should annotate PhpDoc with RFCs relevant to the functions. 
 
 ## Goals
 
-* Handle bad credentials – servers block IPs that have too many bad login attempts, so delay a few hours after each failed attempt
+* Handle bad credentials – servers block IPs that have too many bad login attempts, so delay a few hours after each failed attempt, admin_notice to alert admins of problem (warning -> error)
 * Support multiple mailboxes
 * Save emails to cpt after filtering
-* Autodelete emails
+* Autodelete email cpts locally.
+* Optionally delete emails from the server after downloading (some email services are still size limited).
+* Handle delayed emails. Maybe emails would only be delayed if the IMAP server is down. I just know email has an auto-retry mechanism to keep trying until delivered / 48 hours.
 
 It's almost supposed to be a log of emails fetched whose data is used in plugins, for debugging when downloaded emails don't trigger plugins as expected, e.g. regex no longer matches after email body changes.
 
@@ -37,9 +45,22 @@ Somewhere in your plugin's settings you'll want to add a section for email accou
 Saved mailboxes are checked on a cron job for new emails. When a new email is downloaded, the library fires an action that you can listen for. Use your own filters there and save the important information. 
 
 
-// where do credentials get saved? wp_postmeta should be discouraged but possible. ENV variable names need to be customisable.  
+// where do credentials get saved? wp_options should be discouraged but possible.
+// maybe the account details get saved to cpt and a filter is used to supply the credentials object. I.e. the library stores everything except sensitive credentials
+// ENV variable names need to be customisable.  
+
+
 ## CLI
 
+What might be useful CLI commands?
+`wp my-plugin mailboxes-group list` – shows configured email accounts, last checked time, number of current messages.
+`wp my-plugin mailboxes-group fetch` – fetch emails for all configured accounts
+`wp my-plugin mailboxes-group fetch --since 2026-06-01` – fetch emails and override saved last checked time.
+`wp my-plugin mailboxes-group fetch brianhenryie@gmail.com` fetch for specific account
+
+Should we keep a historic count of emails fetched?
+The Email_Account cpt will store when it first was added.
+Once a email_account is created, its address can never be changed.
 
 ## Privacy / GDPR
 
@@ -47,7 +68,10 @@ The default setting is to delete emails after 7 days. NB: if you're using a shar
 
 ## Extensibility
 
-// TODO: implement and document filter.
+<!-- filters -->
+// TODO: implement and document filters.
+// TODO: find a tool that documents filters and actions in the codebase. Then create a github action that updates the README with that output.
+<!-- /filters -->
 
 ### Google API client
 
@@ -82,7 +106,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details on contributing to the projec
 ## TODO:
 
 * AWS SES inbound SMTP via SNS
-
+* What Cloudflare incoming email features are there these days? I think they need a CF worker to accept the email then send a HTTP request to your server.
 
 ### More Information
 
