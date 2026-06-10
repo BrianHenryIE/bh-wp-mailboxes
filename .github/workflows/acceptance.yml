@@ -95,7 +95,7 @@ jobs:
         run: vendor/bin/codecept run acceptance
 
       - name: Save config and output on failure
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v7
         if: ${{ failure() }}
         with:
           name: acceptance-test-failure
