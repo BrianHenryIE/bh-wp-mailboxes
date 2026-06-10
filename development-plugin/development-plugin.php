@@ -23,14 +23,18 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin;
 
 use Alley_Interactive\Autoloader\Autoloader;
+use BrianHenryIE\WP_Emails\API\ImapEngine_Imap\ImapEngine_Email_Fetcher_Integration_Test;
 use BrianHenryIE\WP_Logger\Logger;
 use BrianHenryIE\WP_Logger\Logger_Settings_Interface;
 use BrianHenryIE\WP_Logger\Logger_Settings_Trait;
+use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Plugins_Page;
-use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_API;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest\Mailboxes;
 
@@ -122,46 +126,8 @@ $logger_settings = new class() implements Logger_Settings_Interface {
 
 $logger = Logger::instance( $logger_settings );
 
-
-$mailboxes = array();
-
-$imap_settings = ( new Imap() )->get_mailbox_settings();
-if ( null !== $imap_settings ) {
-	$mailboxes[] = $imap_settings;
-}
-
-$gmail_settings = ( new Gmail_API() )->get_mailbox_settings();
-if ( null !== $gmail_settings ) {
-	$mailboxes[] = $gmail_settings;
-}
-
-
-$mailboxes_settings = new class( $mailboxes ) implements BH_WP_Mailboxes_Settings_Interface {
+$mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {
 	use BH_WP_Mailboxes_Settings_Defaults_Trait;
-
-	/**
-	 * Constructor.
-	 *
-	 * @param array<mixed> $mailboxes Array of configured mailbox settings.
-	 */
-	public function __construct(
-		protected array $mailboxes = array()
-	) {
-	}
-
-	/**
-	 * Returns the CPT friendly name.
-	 */
-	public function get_cpt_friendly_name(): string {
-		return 'BH WP Mailboxes CPT';
-	}
-
-	/**
-	 * Returns the configured mailbox settings.
-	 */
-	public function get_configured_mailbox_settings(): array {
-		return $this->mailboxes;
-	}
 
 	/**
 	 * Returns the plugin slug.
@@ -170,6 +136,61 @@ $mailboxes_settings = new class( $mailboxes ) implements BH_WP_Mailboxes_Setting
 		return 'bh-wp-mailboxes-test-plugin';
 	}
 
+	public function get_emails_cpt_underscored_20(): string {
+		return 'bh_wp_mailboxes_cpt';
+	}
+
+	/**
+	 * Returns the CPT friendly name.
+	 */
+	public function get_emails_cpt_friendly_name(): string {
+		return 'BH WP Mailboxes – Emails CPT';
+	}
+
+	public function get_email_accounts_cpt_friendly_name(): string {
+		return 'BH WP Mailboxes – Email Accounts CPT';
+	}
 };
 
-BH_WP_Mailboxes::instance( $mailboxes_settings, $logger );
+$mailboxes_api = new BH_WP_Mailboxes( $mailboxes_settings, $logger );
+
+$accounts = $mailboxes_api->get_email_accounts();
+
+
+/** @var array<string, Email_Account_Settings_Interface> $mailboxes Indexed by email address. */
+$mailboxes = array();
+
+$imap          = new Imap();
+$imap_settings = $imap->get_mailbox_settings();
+if ( null !== $imap_settings ) {
+	$mailboxes[ $imap_settings->get_account_email_address() ] = $imap_settings;
+}
+
+// $gmail_settings = ( new Gmail_API() )->get_mailbox_settings();
+// if ( null !== $gmail_settings ) {
+// $mailboxes[$imap_settings->get_account_email_address()] = $gmail_settings;
+// }
+
+if ( ! isset( $accounts[ $imap_settings->get_account_email_address() ] ) ) {
+	$mailboxes_api->add_email_account(
+		email_address: $imap_settings->get_account_email_address(),
+		display_name: $imap_settings->get_account_unique_friendly_name(),
+		provider_type_class: \BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface::class,
+		from_address_regex_filter: null,
+		body_identifier_regex_filter: null,
+		after_download_email_action: null,
+		delete_emails_after_n_days: 1,
+	);
+}
+
+add_filter(
+	'bh_wp_mailboxes_credentials',
+	function ( ?Account_Credentials_Interface $value, BH_Email_Account $account ) use ( $imap, $imap_settings ) {
+		if ( $account->email_address === $imap_settings->get_account_email_address() ) {
+			return $imap->get_credentials();
+		}
+		return $value;
+	},
+	10,
+	2
+);

@@ -47,7 +47,7 @@ class Ajax {
 		}
 
 		// bh-wp-mailboxes could be hooked for many plugins.
-		if ( $this->settings->get_cpt_underscored_20() !== sanitize_key( $_POST['mailboxes_cpt'] ) ) {
+		if ( $this->settings->get_emails_cpt_underscored_20() !== sanitize_key( $_POST['mailboxes_cpt'] ) ) {
 			return;
 		}
 

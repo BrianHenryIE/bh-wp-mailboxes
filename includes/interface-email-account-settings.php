@@ -12,7 +12,7 @@ namespace BrianHenryIE\WP_Mailboxes;
 interface Email_Account_Settings_Interface {
 
 	// Allow deactivating an email account without deleting the settings, so it is no longer automatically checked.
-	// public function is_active(): bool // TODO: implement.
+	public function is_active(): bool; // TODO: implement.
 
 	/**
 	 * The email address.
@@ -25,12 +25,6 @@ interface Email_Account_Settings_Interface {
 	 * The friendly account name to display.
 	 */
 	public function get_account_unique_friendly_name(): string;
-
-
-	/**
-	 * Returns the account credentials.
-	 */
-	public function get_credentials(): Account_Credentials_Interface;
 
 	/**
 	 * Should the email be deleted after it is reconciled.
@@ -56,7 +50,7 @@ interface Email_Account_Settings_Interface {
 	 *
 	 * @return string|null
 	 */
-	public function get_identifier_regex(): ?string;
+	public function get_body_identifier_regex(): ?string;
 
 	/**
 	 * Number of days to keep the emails. i.e. number of days after which the emails should be deleted.
@@ -66,14 +60,4 @@ interface Email_Account_Settings_Interface {
 	 * @return int|null
 	 */
 	public function get_delete_emails_days(): ?int;
-
-	/**
-	 * Whether this mailbox supports marking emails as read/unread on the remote server.
-	 */
-	public function can_mark_read(): bool;
-
-	/**
-	 * Whether this mailbox supports deleting emails on the remote server.
-	 */
-	public function can_delete_on_server(): bool;
 }

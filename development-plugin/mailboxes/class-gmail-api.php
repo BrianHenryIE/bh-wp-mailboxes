@@ -54,6 +54,10 @@ class Gmail_API {
 			public function get_credentials(): Account_Credentials_Interface {
 				return new Google_API_Credentials( __DIR__ );
 			}
+
+			public function is_active(): bool {
+				return true;
+			}
 		};
 
 		return $gmail_mailbox_settings;

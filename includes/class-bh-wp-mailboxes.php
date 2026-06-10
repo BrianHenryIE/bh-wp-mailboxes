@@ -63,7 +63,9 @@ class BH_WP_Mailboxes extends API {
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings.
 	 * @param ?LoggerInterface                   $logger   PSR-3 logger.
 	 */
-	protected function __construct( BH_WP_Mailboxes_Settings_Interface $settings, ?LoggerInterface $logger = null ) {
+	public function __construct( BH_WP_Mailboxes_Settings_Interface $settings, ?LoggerInterface $logger = null ) {
+
+		$this->validate_settings( $settings );
 
 		$logger ??= new NullLogger();
 
@@ -103,5 +105,13 @@ class BH_WP_Mailboxes extends API {
 		}
 
 		parent::__construct( $settings, $private_uploads, $logger );
+
+		new BH_WP_Mailboxes_Hooks( $this, $settings, $logger );
+	}
+
+	protected function validate_settings( BH_WP_Mailboxes_Settings_Interface $settings ) {
+		if ( $settings->get_emails_cpt_underscored_20() === $settings->get_email_accounts_cpt_underscored_20() ) {
+			throw new \Exception( 'The emails CPT and email accounts CPT cannot have the same slug. Please change one of them in your settings.' );
+		}
 	}
 }

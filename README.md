@@ -107,6 +107,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details on contributing to the projec
 
 * AWS SES inbound SMTP via SNS
 * What Cloudflare incoming email features are there these days? I think they need a CF worker to accept the email then send a HTTP request to your server.
+* All exceptions should be caught and displayed as admin_notices, never thrown (never expect the plugin developer to handle exceptions from the library).
 
 ### More Information
 

@@ -52,7 +52,7 @@ class Emails_List_Page {
 
 		// Only add to our cpt edit screen.
 		$screen    = get_current_screen();
-		$post_type = $this->settings->get_cpt_underscored_20();
+		$post_type = $this->settings->get_emails_cpt_underscored_20();
 		if ( null === $screen || $screen->post_type !== $post_type ) {
 			return;
 		}
@@ -120,7 +120,7 @@ class Emails_List_Page {
 	public function table_filters(): void {
 		global $wpdb;
 		$screen    = get_current_screen();
-		$post_type = $this->settings->get_cpt_underscored_20();
+		$post_type = $this->settings->get_emails_cpt_underscored_20();
 		if ( null === $screen || $screen->post_type !== $post_type ) {
 			return;
 		}
@@ -139,7 +139,7 @@ class Emails_List_Page {
 		if ( ! is_admin() || ! $query->is_main_query() ) {
 			return;
 		}
-		if ( $query->get( 'post_type' ) !== $this->settings->get_cpt_underscored_20() ) {
+		if ( $query->get( 'post_type' ) !== $this->settings->get_emails_cpt_underscored_20() ) {
 			return;
 		}
 		$query->set( 'post_status', 'any' );
@@ -158,11 +158,11 @@ class Emails_List_Page {
 			return;
 		}
 
-		if ( $this->settings->get_cpt_underscored_20() !== $current_screen->post_type ) {
+		if ( $this->settings->get_emails_cpt_underscored_20() !== $current_screen->post_type ) {
 			return;
 		}
 
-		$handle = "{$this->settings->get_cpt_dashed()}-list-css";
+		$handle = "{$this->settings->get_emails_cpt_dashed()}-list-css";
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( ! isset( $_GET['page'] ) || $handle !== $_GET['page'] ) {
@@ -188,11 +188,11 @@ class Emails_List_Page {
 			return;
 		}
 
-		if ( $this->settings->get_cpt_underscored_20() !== $current_screen->post_type ) {
+		if ( $this->settings->get_emails_cpt_underscored_20() !== $current_screen->post_type ) {
 			return;
 		}
 
-		$handle = "{$this->settings->get_cpt_dashed()}-list-script";
+		$handle = "{$this->settings->get_emails_cpt_dashed()}-list-script";
 
 		$js_file = plugin_dir_url( __FILE__ ) . 'js/bh-wp-mailboxes.js';
 		$version = '1.0.0';

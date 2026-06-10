@@ -52,7 +52,7 @@ class Single_Email_View {
 		LoggerInterface $logger,
 	) {
 		$this->setLogger( $logger );
-		$this->post_type = $this->settings->get_cpt_underscored_20();
+		$this->post_type = $this->settings->get_emails_cpt_underscored_20();
 	}
 
 	/**

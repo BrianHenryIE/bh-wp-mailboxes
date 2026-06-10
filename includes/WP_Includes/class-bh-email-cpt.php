@@ -43,10 +43,10 @@ class BH_Email_CPT {
 	 */
 	public function register_cpt(): void {
 
-		$post_type = $this->settings->get_cpt_underscored_20();
+		$post_type = $this->settings->get_emails_cpt_underscored_20();
 
 		$labels = array(
-			'name'                     => $this->settings->get_cpt_friendly_name(),
+			'name'                     => $this->settings->get_emails_cpt_friendly_name(),
 			'singular_name'            => 'Email',
 			'add_new'                  => 'Add New',
 			'add_new_item'             => 'Add New Email',
@@ -93,7 +93,7 @@ class BH_Email_CPT {
 				'description'         => 'Store copies of emails in WordPress',
 				'labels'              => $labels,
 				'has_archive'         => false,
-				'rewrite'             => array( 'slug' => sanitize_title( $this->settings->get_cpt_friendly_name() ) ),
+				'rewrite'             => array( 'slug' => sanitize_title( $this->settings->get_emails_cpt_friendly_name() ) ),
 				'supports'            => array(
 					'title',
 					'comments',

@@ -38,28 +38,18 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	/**
 	 * Constructor.
 	 *
-	 * @param Email_Account_Settings_Interface $settings Connection settings.
-	 * @param LoggerInterface                  $logger Logger.
+	 * @param IMAP_Credentials_Interface $credentials Connection settings.
+	 * @param LoggerInterface            $logger Logger.
+	 *
 	 * @throws \Exception When credentials are not IMAP credentials.
 	 * @throws \Throwable When the IMAP connection fails.
 	 */
 	public function __construct(
 		protected Email_Account_Settings_Interface $settings,
+		protected IMAP_Credentials_Interface $credentials,
 		LoggerInterface $logger
 	) {
 		$this->setLogger( $logger );
-
-		if ( ! ( $settings->get_credentials() instanceof IMAP_Credentials_Interface ) ) {
-			$this->logger->error( 'not IMAP credentials' );
-			throw new \Exception();
-		}
-
-		/**
-		 * The IMAP credentials cast from account credentials.
-		 *
-		 * @var IMAP_Credentials_Interface $credentials
-		 */
-		$credentials = $this->settings->get_credentials();
 
 		$server = $credentials->get_email_imap_server();
 		$host   = $server;
@@ -155,4 +145,15 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 
 		return $parsed;
 	}
+
+
+	// **
+	// * Whether this mailbox supports marking emails as read/unread on the remote server.
+	// */
+	// public function can_mark_read(): bool;
+	//
+	// **
+	// * Whether this mailbox supports deleting emails on the remote server.
+	// */
+	// public function can_delete_on_server(): bool;
 }

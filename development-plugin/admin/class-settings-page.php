@@ -30,7 +30,7 @@ class Settings_Page {
 	 */
 	public function add_page(): void {
 
-		$parent_slug = $this->settings->get_cpt_underscored_20();
+		$parent_slug = $this->settings->get_emails_cpt_underscored_20();
 		$page_title  = 'Mailboxes Settings';
 		$menu_title  = 'Settings';
 		$capability  = '';

@@ -23,35 +23,56 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 	abstract public function get_plugin_slug(): string;
 
 	/**
-	 * Returns the CPT friendly name.
+	 * Returns the CPT friendly/display name for saved emails.
 	 *
-	 * @see BH_WP_Mailboxes_Settings_Interface::get_cpt_friendly_name()
+	 * @see BH_WP_Mailboxes_Settings_Interface::get_emails_cpt_friendly_name()
 	 */
-	abstract public function get_cpt_friendly_name(): string;
+	abstract public function get_emails_cpt_friendly_name(): string;
 
 	/**
-	 * Returns the CPT name in dashed format.
+	 * Returns the CPT friendly/display name for email accounts.
+	 *
+	 * @see BH_WP_Mailboxes_Settings_Interface::get_email_accounts_cpt_friendly_name()
 	 */
-	public function get_cpt_dashed(): string {
-		return sanitize_title( $this->get_cpt_friendly_name() );
+	abstract public function get_email_accounts_cpt_friendly_name(): string;
+
+	/**
+	 * Returns the emails CPT name in dashed format.
+	 *
+	 * @see BH_WP_Mailboxes_Settings_Interface::get_emails_cpt_dashed()
+	 */
+	public function get_emails_cpt_dashed(): string {
+		return sanitize_title( $this->get_emails_cpt_friendly_name() );
 	}
 
 	/**
+	 * @see BH_WP_Mailboxes_Settings_Interface::get_email_accounts_cpt_dashed()
+	 */
+	public function get_email_accounts_cpt_dashed(): string {
+		return sanitize_title( $this->get_emails_cpt_friendly_name() );
+	}
+
+	/**
+	 * CPT name emails are saved as.
+	 *
 	 * Return a sanitized custom post type name with a max length of 20.
 	 *
 	 * The custom post type key "Must not exceed 20 characters" and conventionally uses underscores for separators.
 	 *
 	 * @see https://developer.wordpress.org/reference/functions/register_post_type/
-	 *
-	 * @return string
 	 */
-	public function get_cpt_underscored_20(): string {
-		$cpt_underscored = str_replace( '-', '_', $this->get_cpt_dashed() );
+	public function get_emails_cpt_underscored_20(): string {
+		$cpt_underscored = str_replace( '-', '_', $this->get_emails_cpt_dashed() );
+		return substr( $cpt_underscored, 0, 20 );
+	}
+
+	public function get_email_accounts_cpt_underscored_20(): string {
+		$cpt_underscored = str_replace( '-', '_', $this->get_email_accounts_cpt_dashed() );
 		return substr( $cpt_underscored, 0, 20 );
 	}
 
 	/**
-	 * Returns the private uploads subdirectory name.
+	 * Returns the private uploads subdirectory name – where attachments are saved.
 	 *
 	 * @see \BrianHenryIE\WP_Private_Uploads\API\Settings_Interface
 	 */

@@ -34,6 +34,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 */
 	public function __construct(
 		protected Email_Account_Settings_Interface $settings,
+		protected Google_API_Credentials_Interface $credentials,
 		LoggerInterface $logger
 	) {
 		$this->logger = $logger;

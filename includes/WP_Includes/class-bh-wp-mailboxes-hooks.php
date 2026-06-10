@@ -48,7 +48,7 @@ class BH_WP_Mailboxes_Hooks {
 		protected LoggerInterface $logger
 	) {
 		$this->bh_email_factory         = new BH_Email_Factory( $this->logger );
-		$this->email_wp_post_repository = new Email_WP_Post_Repository( $this->settings->get_cpt_underscored_20(), $this->bh_email_factory, $this->logger );
+		$this->email_wp_post_repository = new Email_WP_Post_Repository( $this->settings->get_emails_cpt_underscored_20(), $this->bh_email_factory, $this->logger );
 
 		$this->define_cpt_hooks();
 		$this->define_cron_hooks();
@@ -92,7 +92,7 @@ class BH_WP_Mailboxes_Hooks {
 
 		$mailbox_list_page = new Emails_List_Page( $this->email_wp_post_repository, $this->api, $this->settings, $this->logger );
 
-		$post_type = str_replace( '-', '_', sanitize_title( $this->settings->get_cpt_friendly_name() ) );
+		$post_type = str_replace( '-', '_', sanitize_title( $this->settings->get_emails_cpt_friendly_name() ) );
 
 		add_action( 'manage_posts_extra_tablenav', $mailbox_list_page->print_extra_table_controls_at_top( ... ) );
 
@@ -111,7 +111,7 @@ class BH_WP_Mailboxes_Hooks {
 	protected function define_single_email_view_hooks(): void {
 
 		$view      = new Single_Email_View( $this->settings, $this->api, $this->email_wp_post_repository, $this->logger );
-		$post_type = $this->settings->get_cpt_underscored_20();
+		$post_type = $this->settings->get_emails_cpt_underscored_20();
 
 		add_action( "add_meta_boxes_{$post_type}", $view->add_meta_boxes( ... ) );
 		add_action( 'admin_enqueue_scripts', $view->enqueue_scripts( ... ) );

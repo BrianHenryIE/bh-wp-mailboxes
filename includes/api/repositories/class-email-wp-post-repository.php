@@ -159,7 +159,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		Email_Account_Settings_Interface $email_account
 	): BH_Email {
 
-		$post_type = $mailboxes->get_cpt_underscored_20();
+		$post_type = $mailboxes->get_emails_cpt_underscored_20();
 
 		$attachment_parts                     = $email->getAllAttachmentParts();
 		$all_parts                            = $email->getAllParts();
@@ -185,40 +185,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			attachment_ids: array(),
 		);
 
-		/**
-		 * The query array for wp_insert_post.
-		 *
-		 * @var WpUpdatePostArray $args
-		 */
-		$args = $query->to_query_array();
-
-		$filter_name = 'content_save_pre';
-		/**
-		 * The global WordPress filter hooks.
-		 *
-		 * @var \WP_Hook[] $wp_filter
-		 */
-		global $wp_filter;
-		$hook             = $wp_filter[ $filter_name ];
-		$callbacks_before = $hook->callbacks;
-		/**
-		 * Avoid modifying the original email content during save. Otherwise, the Message-id header value is removed
-		 * and parsing the email fails later.
-		 *
-		 * The following were removed in WordPress 7.0:  `wp_strip_custom_css_from_blocks`,
-		 * `wp_filter_global_styles_post`, `convert_invalid_entities`, `wp_filter_post_kses`.
-		 */
-		$hook->callbacks = array();
-
-		$post_id = wp_insert_post( $args, true );
-
-		$hook->callbacks = $callbacks_before;
-
-		if ( is_wp_error( $post_id ) ) {
-			// TODO Log.
-			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- CPT slug, not user input.
-			throw new \Exception( 'WordPress failed to create a ' . $post_type . ' for the email.' );
-		}
+		$post_id = $this->insert( $query );
 
 		// TODO: save attachments.
 

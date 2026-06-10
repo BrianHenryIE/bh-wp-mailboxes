@@ -66,7 +66,7 @@ class Gmail_Email_Fetcher_WPUnit_Test extends Unit_Testcase {
 
 		$mailbox_settings->method( 'get_credentials' )->willReturn( $credentials );
 
-		$cpt = $this->settings->get_cpt_underscored_20();
+		$cpt = $this->settings->get_emails_cpt_underscored_20();
 
 		$sut = new Gmail_Email_Fetcher( $cpt, $mailbox_settings, $logger );
 

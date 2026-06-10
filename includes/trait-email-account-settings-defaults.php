@@ -46,7 +46,7 @@ trait Email_Account_Settings_Defaults_Trait {
 	 *
 	 * @return string|null
 	 */
-	public function get_identifier_regex(): ?string {
+	public function get_body_identifier_regex(): ?string {
 		return null;
 	}
 

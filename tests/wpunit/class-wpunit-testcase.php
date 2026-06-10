@@ -56,7 +56,7 @@ class WPUnit_Testcase extends WPTestCase {
 
 		// BH_WP_Mailboxes_Settings_Interface $mailboxes,
 		$mailboxes = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
-		$mailboxes->expects( 'get_cpt_underscored_20' )->andReturn( $post_type );
+		$mailboxes->expects( 'get_emails_cpt_underscored_20' )->andReturn( $post_type );
 
 		// Email_Account_Settings_Interface $email_account
 		$email_account = Mockery::mock( Email_Account_Settings_Interface::class );

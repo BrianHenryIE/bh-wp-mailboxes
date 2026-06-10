@@ -7,7 +7,12 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
+use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
+use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Fetcher;
@@ -42,6 +47,8 @@ class API implements API_Interface {
 	 */
 	protected ?Email_WP_Post_Repository $email_repository = null;
 
+	protected ?Email_Account_WP_Post_Repository $email_account_repository = null;
+
 	/**
 	 * Constructor.
 	 *
@@ -61,6 +68,67 @@ class API implements API_Interface {
 	}
 
 	/**
+	 * @return BH_Email_Account[]
+	 */
+	public function get_email_accounts(): array {
+		$indexed_accounts = array();
+		foreach ( $this->get_email_account_repository()->get_all() as $account ) {
+			$indexed_accounts[ $account->email_address ] = $account;
+		}
+		return $indexed_accounts;
+	}
+
+	/**
+	 * @param string                                         $email_address
+	 * @param string                                         $display_name
+	 * @param string                                         $after_download_email_action nothing|mark_read|delete
+	 * @param class-string<Email_Account_Settings_Interface> $provider_type_class
+	 */
+	public function add_email_account(
+		string $email_address,
+		string $display_name,
+		string $provider_type_class,
+		?string $from_address_regex_filter,
+		?string $body_identifier_regex_filter,
+		?string $after_download_email_action,
+		?int $delete_emails_after_n_days,
+	): BH_Email_Account {
+		$email_accounts_repository = $this->get_email_account_repository();
+		if ( ! empty(
+			$email_accounts_repository->query(
+				email_address: $email_address
+			)
+		) ) {
+			throw new Exception( 'already exists' );
+		}
+		return $email_accounts_repository->save_new(
+			email_address: $email_address,
+			display_name: $display_name,
+			provider_type_class: $provider_type_class,
+			from_address_regex_filter: $from_address_regex_filter,
+			body_identifier_regex_filter: $body_identifier_regex_filter,
+			after_download_email_action: $after_download_email_action,
+			delete_emails_after_n_days: $delete_emails_after_n_days,
+		);
+	}
+
+	/**
+	 * Returns the email repository, creating it if it does not yet exist.
+	 *
+	 * @return Email_WP_Post_Repository
+	 */
+	protected function get_email_account_repository(): Email_Account_WP_Post_Repository {
+		if ( is_null( $this->email_account_repository ) ) {
+			$this->email_account_repository = new Email_Account_WP_Post_Repository(
+				$this->settings->get_email_accounts_cpt_underscored_20(),
+				new BH_Email_Account_Factory( $this->logger ),
+				$this->logger
+			);
+		}
+		return $this->email_account_repository;
+	}
+
+	/**
 	 * Returns the email repository, creating it if it does not yet exist.
 	 *
 	 * @return Email_WP_Post_Repository
@@ -68,7 +136,7 @@ class API implements API_Interface {
 	protected function get_email_repository(): Email_WP_Post_Repository {
 		if ( is_null( $this->email_repository ) ) {
 			$this->email_repository = new Email_WP_Post_Repository(
-				$this->settings->get_cpt_underscored_20(),
+				$this->settings->get_emails_cpt_underscored_20(),
 				new BH_Email_Factory( $this->logger ),
 				$this->logger
 			);
@@ -88,9 +156,9 @@ class API implements API_Interface {
 		/**
 		 * All configured mailbox account settings.
 		 *
-		 * @var Email_Account_Settings_Interface[] $email_accounts
+		 * @var BH_Email_Account[] $email_accounts
 		 */
-		$email_accounts = $this->settings->get_configured_mailbox_settings();
+		$email_accounts = $this->email_account_repository->get_all();
 
 		$this->logger->debug( 'Starting check_email() for ' . count( $email_accounts ) . ' email address(es).' );
 
@@ -109,20 +177,34 @@ class API implements API_Interface {
 		$first_run_datetime = $now_time->sub( $interval_one_week );
 
 		foreach ( $email_accounts as $email_account ) {
-			$account_name = $email_account->get_account_unique_friendly_name();
-			$credentials  = $email_account->get_credentials();
+
+			if ( ! $email_account->is_active() ) {
+				$this->logger->debug( 'Skipping inactive email account ' . $email_account->display_name );
+				continue;
+			}
+
+			$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $email_account );
+
+			if ( is_null( $credentials ) || ! ( $credentials instanceof Account_Credentials_Interface ) ) {
+				$this->logger->warning( 'No credentials found for ' . $email_account->display_name );
+				continue;
+			}
 
 			// Check if we have recently had a failed login.
 			// Do not retry: some servers rate limit bad auth attempts and blacklist IPs.
 			// TODO: Clear this option when settings are saved.
-			if ( ! is_null( $this->get_last_failed_login_time( $account_name ) ) ) {
-				$this->logger->info(
-					'Too soon after failed login, please check your password and save settings to try again.',
-					array(
-						'account_name' => $account_name,
-					)
-				);
-				continue;
+			if ( ! is_null( $email_account->last_failed_login_time ) ) {
+
+				// If last failure time was less than four hours ago, skip.
+				if ( $email_account->last_failed_login_time->diff( new DateTimeImmutable() ) < new DateInterval( 'PT4H' ) ) {
+					$this->logger->info(
+						'Too soon after failed login, please check your password and save settings to try again.',
+						array(
+							'account_name' => $email_account->display_name,
+						)
+					);
+					continue;
+				}
 			}
 
 			try {
@@ -132,9 +214,9 @@ class API implements API_Interface {
 
 				if ( is_null( $fetcher ) ) {
 					if ( $credentials instanceof IMAP_Credentials_Interface ) {
-						$fetcher = new ImapEngine_Imap_Email_Fetcher( $email_account, $this->logger );
+						$fetcher = new ImapEngine_Imap_Email_Fetcher( $email_account, $credentials, $this->logger );
 					} elseif ( $credentials instanceof Google_API_Credentials_Interface ) {
-						$fetcher = new Gmail_Email_Fetcher( $email_account, $this->logger );
+						$fetcher = new Gmail_Email_Fetcher( $email_account, $credentials, $this->logger );
 					} else {
 						$this->logger->warning(
 							'No email fetcher found for credentials type.',
@@ -147,33 +229,33 @@ class API implements API_Interface {
 				$this->logger->error(
 					'Failed login.',
 					array(
-						'account_name' => $account_name,
+						'account_name' => $email_account->display_name,
 						'exception'    => $exception,
 					)
 				);
-				$this->set_failed_login_time( $account_name, $now_time );
+				$this->set_failed_login_time( $email_account->display_name, $now_time );
 				continue;
 			}
 
-			$since_datetime = $last_fetched_times[ $account_name ] ?? $first_run_datetime;
+			$since_datetime = $last_fetched_times[ $email_account->display_name ] ?? $first_run_datetime;
 
 			try {
 				$all_new_account_emails = $fetcher->retrieve_emails( $since_datetime );
 			} catch ( Exception $exception ) {
 				$this->logger->error(
-					'Error fetching emails for ' . $account_name . '. ' . $exception->getMessage(),
+					'Error fetching emails for ' . $email_account->display_name . '. ' . $exception->getMessage(),
 					array(
 						'exception'        => $exception,
-						'account'          => $account_name,
+						'account'          => $email_account->display_name,
 						'mailbox_settings' => $email_account,
 					)
 				);
 				continue;
 			}
 
-			$this->set_last_fetched_time( $account_name, $now_time );
+			$this->set_last_fetched_time( $email_account->display_name, $now_time );
 
-			$cpt = $this->settings->get_cpt_underscored_20();
+			$cpt = $this->settings->get_emails_cpt_underscored_20();
 			// $account_category_slug = sanitize_title( $account_name );
 			// $mailbox_category      = get_term_by( 'slug', $account_category_slug, 'bh-wp-mailbox-account' );
 			// $term_id               = $mailbox_category instanceof \WP_Term ? $mailbox_category->term_id : 0;
@@ -236,7 +318,7 @@ class API implements API_Interface {
 	 */
 	public function delete_old_emails(): array {
 
-		$email_accounts = $this->settings->get_configured_mailbox_settings();
+		$email_accounts = $this->get_email_account_repository()->get_all( status: 'active' );
 
 		$min_days = null;
 		foreach ( $email_accounts as $email_account ) {
