@@ -10,6 +10,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
 
+use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTimeInterface;
@@ -49,6 +50,13 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		LoggerInterface $logger
 	) {
 		$this->setLogger( $logger );
+	}
+
+	public function set_credentials( Account_Credentials_Interface $credentials ): void {
+
+		if ( ! ( $credentials instanceof IMAP_Credentials_Interface ) ) {
+			return;
+		}
 
 		$server = $credentials->get_email_imap_server();
 		$host   = $server;
@@ -145,14 +153,11 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		return $parsed;
 	}
 
+	public function can_mark_read(): bool {
+		return true;
+	}
 
-	// **
-	// * Whether this mailbox supports marking emails as read/unread on the remote server.
-	// */
-	// public function can_mark_read(): bool;
-	//
-	// **
-	// * Whether this mailbox supports deleting emails on the remote server.
-	// */
-	// public function can_delete_on_server(): bool;
+	public function can_delete_on_server(): bool {
+		return true;
+	}
 }

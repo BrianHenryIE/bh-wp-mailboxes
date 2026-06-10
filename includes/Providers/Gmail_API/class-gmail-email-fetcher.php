@@ -198,4 +198,12 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 
 		return $decoded;
 	}
+
+	public function can_mark_read(): bool {
+		return true;
+	}
+
+	public function can_delete_on_server(): bool {
+		return true;
+	}
 }
