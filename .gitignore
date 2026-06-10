@@ -71,3 +71,4 @@ quickstart-cli.php
 
 !wp-content/mu-plugins/bh-plugin-outside-dir.php
 
+/test-results
