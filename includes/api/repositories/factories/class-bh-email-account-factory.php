@@ -48,10 +48,10 @@ class BH_Email_Account_Factory {
 		$body_identifier_regex_filter = get_post_meta( $post->ID, 'body_identifier_regex_filter', true ) ?: null;
 		$after_download_email_action  = get_post_meta( $post->ID, 'after_download_email_action', true ) ?: null;
 		$delete_emails_after_n_days   = get_post_meta( $post->ID, 'delete_emails_after_n_days', true ) ?: null;
-		$last_successful_login_raw  = get_post_meta( $post->ID, 'last_successful_login_time', true );
-		$last_successful_login_time = $last_successful_login_raw ? DateTime::createFromFormat( DateTime::ATOM, $last_successful_login_raw ) ?: null : null;
-		$last_failed_login_raw      = get_post_meta( $post->ID, 'last_failed_login_time', true );
-		$last_failed_login_time     = $last_failed_login_raw ? DateTime::createFromFormat( DateTime::ATOM, $last_failed_login_raw ) ?: null : null;
+		$last_successful_login_raw    = get_post_meta( $post->ID, 'last_successful_login_time', true );
+		$last_successful_login_time   = $last_successful_login_raw ? DateTime::createFromFormat( DateTime::ATOM, $last_successful_login_raw ) ?: null : null;
+		$last_failed_login_raw        = get_post_meta( $post->ID, 'last_failed_login_time', true );
+		$last_failed_login_time       = $last_failed_login_raw ? DateTime::createFromFormat( DateTime::ATOM, $last_failed_login_raw ) ?: null : null;
 
 		try {
 			return new BH_Email_Account(
