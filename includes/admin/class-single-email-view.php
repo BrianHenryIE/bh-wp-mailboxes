@@ -355,7 +355,7 @@ class Single_Email_View {
 	public function render_status_metabox( WP_Post $post ): void {
 
 		$email = $this->get_email_for_post( $post );
-//		 unset( $post );
+		// unset( $post );
 
 		$statuses = array(
 			'bh_email_new'       => __( 'New', 'bh-wp-mailboxes' ),

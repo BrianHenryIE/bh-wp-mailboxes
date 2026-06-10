@@ -68,3 +68,6 @@ quickstart-cli.php
 /tests/e2e-pw/.auth
 /tests/_data/emails
 /tests/_data/temp
+
+!wp-content/mu-plugins/bh-plugin-outside-dir.php
+

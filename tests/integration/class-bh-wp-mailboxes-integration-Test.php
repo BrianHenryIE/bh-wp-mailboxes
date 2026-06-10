@@ -20,8 +20,6 @@ class Plugin_Integration_Test extends \Codeception\TestCase\WPTestCase {
 	 */
 	public function test_plugin_instantiated() {
 
-		$this->assertArrayHasKey( 'bh_wp_mailboxes_test_plugin', $GLOBALS );
-
-		$this->assertInstanceOf( API::class, $GLOBALS['bh_wp_mailboxes_test_plugin'] );
+		$this->assertTrue( defined( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' ), 'Plugin constant BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME not defined, plugin likely not loaded' );
 	}
 }

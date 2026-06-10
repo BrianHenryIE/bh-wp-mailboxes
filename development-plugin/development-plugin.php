@@ -43,7 +43,16 @@ if ( ! defined( 'WPINC' ) ) {
 	return;
 }
 
-require_once '/var/www/html/wp-content/uploads/bh-wp-mailboxes/vendor/autoload.php';
+if ( file_exists( '/var/www/html/wp-content/uploads/bh-wp-mailboxes/vendor/autoload.php' ) ) {
+	require_once '/var/www/html/wp-content/uploads/bh-wp-mailboxes/vendor/autoload.php';
+	$includes_dir = '/var/www/html/wp-content/uploads/bh-wp-mailboxes/includes/';
+}
+
+$autoloader_path = dirname( __DIR__ ) . '/vendor/autoload.php';
+if ( file_exists( $autoloader_path ) ) {
+	require_once $autoloader_path;
+	$includes_dir = dirname( __DIR__ ) . '/includes/';
+}
 
 Autoloader::generate(
 	__NAMESPACE__,
@@ -52,7 +61,7 @@ Autoloader::generate(
 
 Autoloader::generate(
 	'BrianHenryIE\\WP_Mailboxes',
-	'/var/www/html/wp-content/uploads/bh-wp-mailboxes/includes/',
+	$includes_dir,
 )->register();
 
 // wp-env fixes (cron / self-referential URLs).
@@ -171,7 +180,7 @@ if ( null !== $imap_settings ) {
 // $mailboxes[$imap_settings->get_account_email_address()] = $gmail_settings;
 // }
 
-if ( ! isset( $accounts[ $imap_settings->get_account_email_address() ] ) ) {
+if ( ! is_null( $imap_settings ) && ! isset( $accounts[ $imap_settings->get_account_email_address() ] ) ) {
 	$mailboxes_api->add_email_account(
 		email_address: $imap_settings->get_account_email_address(),
 		display_name: $imap_settings->get_account_unique_friendly_name(),

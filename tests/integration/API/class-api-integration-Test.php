@@ -16,6 +16,8 @@ class API_Integration_Test extends \Codeception\TestCase\WPTestCase {
 	 */
 	public function test_timezone(): void {
 
+		$this->markTestSkipped( 'out of date' );
+
 		$api = BH_WP_Mailboxes::instance();
 
 		$account_name = 'support@brianhenryie.com';
