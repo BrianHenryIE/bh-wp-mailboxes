@@ -35,7 +35,7 @@ jobs:
 
     strategy:
       matrix:
-        php: [ '8.0', '8.1', '8.2', '8.3' ,'8.4' ]
+        php: [ '8.4' ]
 
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.1
