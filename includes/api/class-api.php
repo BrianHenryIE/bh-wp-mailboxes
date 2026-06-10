@@ -605,10 +605,19 @@ class API implements API_Interface {
 		}
 	}
 
-	public function get_email_account_for_email( BH_Email $email ): BH_Email_Account {
-		$post                  = get_post( $email->post_id );
-		$email_account_post_id = $post->post_parent;
-		return $this->email_account_repository->find_by_post_id( $email_account_post_id );
+	/**
+	 * Could be null if the post row was deleted.
+	 */
+	public function get_email_account_for_email( BH_Email $email ): ?BH_Email_Account {
+		$post = get_post( $email->post_id );
+		if ( ! $post || ! $post->post_parent ) {
+			return null;
+		}
+		try {
+			return $this->email_account_repository->find_by_post_id( $post->post_parent );
+		} catch ( \InvalidArgumentException $e ) {
+			return null;
+		}
 	}
 
 	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Fetcher_Interface {
