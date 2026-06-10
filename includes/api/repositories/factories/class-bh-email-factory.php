@@ -55,8 +55,10 @@ class BH_Email_Factory {
 
 		$post_id = $post->ID;
 
-		$is_read           = 'yes' === get_post_meta( $post_id, 'is_remote_read', true );
-		$is_remote_deleted = 'yes' === get_post_meta( $post_id, 'is_remote_deleted', true );
+		$is_read_raw       = get_post_meta( $post_id, 'is_remote_read', true );
+		$is_read           = '' !== $is_read_raw ? 'yes' === $is_read_raw : null;
+		$is_deleted_raw    = get_post_meta( $post_id, 'is_remote_deleted', true );
+		$is_remote_deleted = '' !== $is_deleted_raw ? 'yes' === $is_deleted_raw : null;
 
 		// "Date: Wed, 30 Jul 2025 03:38:07 +0000";
 		$date_header = str_replace( 'Date: ', '', (string) $message->getHeader( 'Date' ) );
