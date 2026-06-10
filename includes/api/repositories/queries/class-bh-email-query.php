@@ -26,8 +26,8 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	 * @param string     $from_address          The sender email address.
 	 * @param string     $original_email        The raw email content.
 	 * @param string     $local_status          The WordPress post status.
-	 * @param ?bool      $is_read_remote        Whether the email is marked read on the remote server.
-	 * @param ?bool      $is_deleted_remote     Whether the email has been deleted on the remote server.
+	 * @param ?bool      $is_remote_read        Whether the email is marked read on the remote server.
+	 * @param ?bool      $is_remote_deleted     Whether the email has been deleted on the remote server.
 	 * @param array<int> $attachment_ids     Array of attachment post IDs.
 	 */
 	public function __construct(
@@ -39,8 +39,8 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 		public string $original_email,
 		// post_excerpt // Is there anywhere we need to use this, if so it would be good to strip tags etc here.
 		public string $local_status, // post status.
-		public ?bool $is_read_remote,
-		public ?bool $is_deleted_remote,
+		public ?bool $is_remote_read,
+		public ?bool $is_remote_deleted,
 		public array $attachment_ids,
 	) {
 		parent::__construct( $post_type );
@@ -73,8 +73,8 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 		return array(
 			'attachment_ids'    => $this->attachment_ids,
 			'from_address'      => $this->from_address,
-			'is_read_remote'    => $this->is_read_remote ? 'yes' : 'no', // TODO: don't save anything for null.
-			'is_deleted_remote' => $this->is_deleted_remote,
+			'is_remote_read'    => $this->is_remote_read,
+			'is_remote_deleted' => $this->is_remote_deleted,
 		);
 	}
 

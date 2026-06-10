@@ -46,7 +46,6 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	 */
 	public function __construct(
 		protected Email_Account_Settings_Interface $settings,
-		protected IMAP_Credentials_Interface $credentials,
 		LoggerInterface $logger
 	) {
 		$this->setLogger( $logger );

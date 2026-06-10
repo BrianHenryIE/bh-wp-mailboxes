@@ -112,6 +112,9 @@ abstract readonly class WP_Post_Query_Abstract {
 			if ( is_array( $value ) ) {
 				return wp_json_encode( $value );
 			}
+			if ( is_bool( $value ) ) {
+				return $value ? 'yes' : 'no';
+			}
 			return $value;
 		};
 

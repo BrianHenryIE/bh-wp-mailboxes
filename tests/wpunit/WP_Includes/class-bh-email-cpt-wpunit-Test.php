@@ -24,10 +24,10 @@ class BH_Email_CPT_WPUnit_Test extends WPUnit_Testcase {
 		$settings = $this->makeEmpty(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
-				'get_cpt_friendly_name'  => Expected::atLeastOnce(
+				'get_emails_cpt_friendly_name'  => Expected::atLeastOnce(
 					fn() => 'my-plugin-emails'
 				),
-				'get_cpt_underscored_20' => Expected::once(
+				'get_emails_cpt_underscored_20' => Expected::once(
 					fn() => 'my_plugin_emails'
 				),
 			)

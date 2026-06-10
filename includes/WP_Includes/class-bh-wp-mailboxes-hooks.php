@@ -63,10 +63,15 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function define_cpt_hooks(): void {
 
-		$cpt = new BH_Email_CPT( $this->settings, $this->logger );
+		$account_cpt = new BH_Email_CPT( $this->settings, $this->logger );
 
-		add_action( 'init', $cpt->register_cpt( ... ) );
-		add_action( 'init', $cpt->register_post_statuses( ... ) );
+		add_action( 'init', $account_cpt->register_cpt( ... ) );
+		add_action( 'init', $account_cpt->register_post_statuses( ... ) );
+
+		$email_cpt = new BH_Email_CPT( $this->settings, $this->logger );
+
+		add_action( 'init', $email_cpt->register_cpt( ... ) );
+		add_action( 'init', $email_cpt->register_post_statuses( ... ) );
 	}
 
 	/**

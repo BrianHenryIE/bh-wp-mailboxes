@@ -354,17 +354,23 @@ class Single_Email_View {
 	 */
 	public function render_status_metabox( WP_Post $post ): void {
 
+		$email = $this->get_email_for_post( $post );
+//		 unset( $post );
+
 		$statuses = array(
 			'bh_email_new'       => __( 'New', 'bh-wp-mailboxes' ),
 			'bh_email_processed' => __( 'Processed', 'bh-wp-mailboxes' ),
 			'bh_email_saved'     => __( 'Saved', 'bh-wp-mailboxes' ),
 		);
 
-		$current_status    = $post->post_status;
-		$is_read_raw       = get_post_meta( $post->ID, 'bh_email_is_read', true );
-		$deleted_on_server = get_post_meta( $post->ID, 'bh_email_deleted_on_server', true );
+		$current_status = $email->post_status;
+		// $is_read_raw       = get_post_meta( $post->ID, 'bh_email_is_read', true );
+		$is_read = $email->is_remote_read;
+		// $deleted_on_server = get_post_meta( $post->ID, 'bh_email_deleted_on_server', true );
+		$deleted_on_server = $email->is_remote_deleted;
 
-		$mailbox = $this->resolve_mailbox_for_post( $post->ID );
+		$email_account = $this->api->get_email_account_for_email( $email );
+		$provider      = $email_account ? $this->api->get_provider_for_email_account( $email_account ) : null;
 
 		echo '<div class="submitbox" id="bh-email-status-box">';
 
@@ -403,11 +409,13 @@ class Single_Email_View {
 		echo '<input type="hidden" name="hidden_post_status" value="' . esc_attr( $current_status ) . '">';
 
 		// Remote status badges.
-		echo '<div class="bh-email-remote-status">' . wp_kses_post( $this->get_remote_status_html( $is_read_raw, $deleted_on_server ) ) . '</div>';
+		if ( $provider?->can_mark_read() && $provider?->can_delete_on_server() ) {
+			echo '<div class="bh-email-remote-status">' . wp_kses_post( $this->get_remote_status_html( $is_read, $deleted_on_server ) ) . '</div>';
+		}
 
 		// Remote action buttons — shown only when the mailbox supports them.
-		if ( ! is_null( $mailbox ) && $mailbox->can_mark_read() ) {
-			$is_read = '' !== $is_read_raw && (bool) $is_read_raw;
+		if ( ! is_null( $provider ) && $provider->can_mark_read() ) {
+			$is_read = '' !== $is_read && (bool) $is_read;
 			if ( $is_read ) {
 				echo '<p><button id="bh-email-mark-unread" class="button">' . esc_html__( 'Mark as unread on server', 'bh-wp-mailboxes' ) . '</button></p>';
 			} else {
@@ -415,7 +423,7 @@ class Single_Email_View {
 			}
 		}
 
-		if ( ! is_null( $mailbox ) && $mailbox->can_delete_on_server() && '1' !== $deleted_on_server ) {
+		if ( ! is_null( $provider ) && $provider->can_delete_on_server() && ! $email->is_remote_deleted ) {
 			echo '<p><button id="bh-email-delete-on-server" class="button button-link-delete">' . esc_html__( 'Delete on server', 'bh-wp-mailboxes' ) . '</button></p>';
 		}
 
@@ -590,22 +598,19 @@ class Single_Email_View {
 	 * Build HTML badge(s) reflecting remote read/deleted status.
 	 *
 	 * @param mixed $is_read_raw       Raw meta value for bh_email_is_read.
-	 * @param mixed $deleted_on_server Raw meta value for bh_email_deleted_on_server.
+	 * @param mixed $is_remote_deleted Raw meta value for bh_email_deleted_on_server.
 	 *
 	 * @return string HTML string safe for use with wp_kses_post().
 	 */
-	protected function get_remote_status_html( mixed $is_read_raw, mixed $deleted_on_server ): string {
+	protected function get_remote_status_html( ?bool $is_read, ?bool $is_remote_deleted ): string {
 
 		$parts = array();
 
-		if ( '' !== $is_read_raw ) {
-			$is_read = (bool) $is_read_raw;
-			$parts[] = $is_read
-				? '<span class="bh-email-badge bh-email-badge--read">' . esc_html__( 'Read on server', 'bh-wp-mailboxes' ) . '</span>'
-				: '<span class="bh-email-badge bh-email-badge--unread">' . esc_html__( 'Unread on server', 'bh-wp-mailboxes' ) . '</span>';
-		}
+		$parts[] = $is_read
+			? '<span class="bh-email-badge bh-email-badge--read">' . esc_html__( 'Read on server', 'bh-wp-mailboxes' ) . '</span>'
+			: '<span class="bh-email-badge bh-email-badge--unread">' . esc_html__( 'Unread on server', 'bh-wp-mailboxes' ) . '</span>';
 
-		if ( '1' === $deleted_on_server ) {
+		if ( $is_remote_deleted ) {
 			$parts[] = '<span class="bh-email-badge bh-email-badge--deleted">' . esc_html__( 'Deleted on server', 'bh-wp-mailboxes' ) . '</span>';
 		}
 
@@ -628,15 +633,9 @@ class Single_Email_View {
 			return null;
 		}
 
-		$term_id = $terms[0]->term_id;
+		foreach ( $this->api->get_email_accounts() as $mailbox ) {
+			$slug = sanitize_title( $mailbox->get_account_unique_friendly_name() );
 
-		foreach ( $this->settings->get_configured_mailbox_settings() as $mailbox ) {
-			$slug            = sanitize_title( $mailbox->get_account_unique_friendly_name() );
-			$term            = get_term_by( 'slug', $slug, 'bh-wp-mailbox-account' );
-			$mailbox_term_id = $term instanceof \WP_Term ? $term->term_id : 0;
-			if ( $mailbox_term_id === $term_id ) {
-				return $mailbox;
-			}
 		}
 
 		return null;

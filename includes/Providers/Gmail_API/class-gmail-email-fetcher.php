@@ -7,6 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
 
+use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTime;
@@ -26,6 +27,8 @@ use Psr\Log\LoggerInterface;
 class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	use LoggerAwareTrait;
 
+	protected Google_API_Credentials_Interface $credentials;
+
 	/**
 	 * Email_Fetcher constructor.
 	 *
@@ -34,12 +37,17 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 */
 	public function __construct(
 		protected Email_Account_Settings_Interface $settings,
-		protected Google_API_Credentials_Interface $credentials,
 		LoggerInterface $logger
 	) {
 		$this->logger = $logger;
 	}
 
+	public function set_credentials( Account_Credentials_Interface $credentials ): void {
+		if ( ! ( $credentials instanceof Google_API_Credentials_Interface ) ) {
+			throw new Exception( 'Credentials must implement Google_API_Credentials_Interface' );
+		}
+		$this->credentials = $credentials;
+	}
 
 	/**
 	 * Returns an authorized API client.
@@ -57,7 +65,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		 *
 		 * @var Google_API_Credentials_Interface $saved_credentials
 		 */
-		$saved_credentials = $this->settings->get_credentials();
+		$saved_credentials = $this->credentials;
 
 		if ( is_null( $saved_credentials->get_access_token() ) ) {
 			return null;

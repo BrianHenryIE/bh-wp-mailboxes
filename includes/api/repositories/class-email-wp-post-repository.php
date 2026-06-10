@@ -180,8 +180,8 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			from_address: $sender, // We'll save this in meta because if it matches a user account it is relevant.
 			original_email: $original_email_no_attachments_string,
 			local_status: 'new', // @see BH_Email_CPT::register_post_statuses().
-			is_read_remote: false, // TODO: how to determine is is already read?
-			is_deleted_remote: false, // We may immediately delete the email, but the fact it exists in save_new means it exists remotely.
+			is_remote_read: false, // TODO: how to determine is is already read?
+			is_remote_deleted: false, // We may immediately delete the email, but the fact it exists in save_new means it exists remotely.
 			attachment_ids: array(),
 		);
 

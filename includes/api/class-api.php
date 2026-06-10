@@ -12,7 +12,6 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Fetcher;
@@ -207,35 +206,30 @@ class API implements API_Interface {
 				}
 			}
 
-			try {
-				// Filter: bh_wp_mailboxes_fetcher_for_credentials( null, Account_Credentials_Interface, Mailbox_Settings_Interface, LoggerInterface ).
-				// Return a non-null Email_Fetcher_Interface to supply a custom fetcher (e.g. a test stub).
-				$fetcher = apply_filters( 'bh_wp_mailboxes_fetcher_for_credentials', null, $credentials, $email_account, $this->logger );
+			$fetcher = $this->get_provider_for_email_account( $email_account );
 
-				if ( is_null( $fetcher ) ) {
-					if ( $credentials instanceof IMAP_Credentials_Interface ) {
-						$fetcher = new ImapEngine_Imap_Email_Fetcher( $email_account, $credentials, $this->logger );
-					} elseif ( $credentials instanceof Google_API_Credentials_Interface ) {
-						$fetcher = new Gmail_Email_Fetcher( $email_account, $credentials, $this->logger );
-					} else {
-						$this->logger->warning(
-							'No email fetcher found for credentials type.',
-							array( 'credentials_class' => get_class( $credentials ) )
-						);
-						continue;
-					}
-				}
-			} catch ( Exception $exception ) {
-				$this->logger->error(
-					'Failed login.',
-					array(
-						'account_name' => $email_account->display_name,
-						'exception'    => $exception,
-					)
-				);
-				$this->set_failed_login_time( $email_account->display_name, $now_time );
+			if ( is_null( $fetcher ) ) {
+				$this->logger->warning( 'No fetcher found for ' . $email_account->display_name );
 				continue;
 			}
+
+			$fetcher->set_credentials( $credentials );
+
+			//
+			// try {
+			//
+			//
+			// } catch ( Exception $exception ) {
+			// $this->logger->error(
+			// 'Failed login.',
+			// array(
+			// 'account_name' => $email_account->display_name,
+			// 'exception'    => $exception,
+			// )
+			// );
+			// $this->set_failed_login_time( $email_account->display_name, $now_time );
+			// continue;
+			// }
 
 			$since_datetime = $last_fetched_times[ $email_account->display_name ] ?? $first_run_datetime;
 
@@ -608,6 +602,35 @@ class API implements API_Interface {
 		} else {
 			$atom_time = $time->format( DateTimeInterface::ATOM );
 			update_option( $option_name, $atom_time );
+		}
+	}
+
+	public function get_email_account_for_email( BH_Email $email ): BH_Email_Account {
+		$post                  = get_post( $email->post_id );
+		$email_account_post_id = $post->post_parent;
+		return $this->email_account_repository->find_by_post_id( $email_account_post_id );
+	}
+
+	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Fetcher_Interface {
+
+		// Filter: bh_wp_mailboxes_fetcher_for_credentials( null, Account_Credentials_Interface, Mailbox_Settings_Interface, LoggerInterface ).
+		// Return a non-null Email_Fetcher_Interface to supply a custom fetcher (e.g. a test stub).
+		$fetcher = apply_filters( 'bh_wp_mailboxes_fetcher_for_credentials', null, $email_account );
+
+		if ( ! is_null( $fetcher ) && ( $fetcher instanceof Email_Fetcher_Interface ) ) {
+			return $fetcher;
+		}
+
+		if ( $email_account->provider_type_class === ImapEngine_Imap_Email_Fetcher::class ) {
+			return new ImapEngine_Imap_Email_Fetcher( $email_account, $this->logger );
+		} elseif ( $email_account->provider_type_class === Google_API_Credentials_Interface::class ) {
+			return new Gmail_Email_Fetcher( $email_account, $this->logger );
+		} else {
+			$this->logger->warning(
+				'No email fetcher found for provider type.',
+				array( 'credentials_class' => $email_account->provider_type_class )
+			);
+			return null;
 		}
 	}
 }

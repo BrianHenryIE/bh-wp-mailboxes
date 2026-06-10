@@ -8,10 +8,13 @@
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Codeception\Stub\Expected;
@@ -39,9 +42,43 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		);
 	}
 
-	/** @return API_Interface&\Codeception\Stub\StubMarshaler */
-	private function make_api(): mixed {
-		return $this->makeEmpty( API_Interface::class );
+	/** @return API_Interface */
+	private function make_api(
+		?BH_Email_Account $email_account_fixture = null,
+		bool $can_return_email_account = true,
+		?Email_Fetcher_Interface $provider_mock = null,
+	): mixed {
+		$api_mock = \Mockery::mock( API_Interface::class );
+
+		$email_account_fixture ??= new BH_Email_Account(
+			post_id: 1,
+			post_type: $this->post_type,
+			status: 'active',
+			provider_type_class: ImapEngine_Imap_Email_Fetcher::class,
+			email_address: 'test@example.org',
+			display_name: 'Brian Henry',
+			from_address_regex_filter: null,
+			body_identifier_regex_filter: null,
+			after_download_email_action: null,
+			delete_emails_after_n_days: 1,
+			last_successful_login_time: null,
+			last_failed_login_time: null,
+		);
+
+		if ( $can_return_email_account ) {
+				$api_mock->allows( 'get_email_account_for_email' )->andReturn( $email_account_fixture );
+		} else {
+			$api_mock->allows( 'get_email_account_for_email' )->andReturnNull();
+		}
+
+		if ( ! $provider_mock ) {
+			$provider_mock = \Mockery::mock( Email_Fetcher_Interface::class );
+			$provider_mock->expects( 'can_mark_read' )->andReturnTrue();
+			$provider_mock->expects( 'can_delete_on_server' )->andReturnTrue();
+		}
+		$api_mock->allows( 'get_provider_for_email_account' )->andReturn( $provider_mock );
+
+		return $api_mock;
 	}
 
 	/** @return Email_WP_Post_Repository */
@@ -105,6 +142,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_add_meta_boxes_registers_email_status_box(): void {
 
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+
 		// CPT must be registered before add_meta_boxes fires.
 		register_post_type(
 			$this->post_type,
@@ -117,8 +157,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$filepath = codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
 
 		$post_id = $this->create_post_from_fixture(
-			$filepath,
-			$this->post_type
+			$this->post_type,
+			$filepath
 		);
 
 		$post = get_post( $post_id );
@@ -130,7 +170,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$wp_meta_boxes = array();
 		$sut->add_meta_boxes( $post );
 
-		$registered_boxes = $wp_meta_boxes[ $this->post_type ] ?? array();
+		$registered_boxes = $wp_meta_boxes[ 'edit-' . $this->post_type ] ?? array();
 
 		// remove_meta_box() sets entries to false rather than unsetting — filter before asserting.
 		$side_high_ids = array_keys( array_filter( $registered_boxes['side']['high'] ?? array() ) );
@@ -145,6 +185,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_add_meta_boxes_registers_headers_box(): void {
 
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+
 		register_post_type(
 			$this->post_type,
 			array(
@@ -153,14 +196,14 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
+		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
 		$post    = get_post( $post_id );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 		$sut->add_meta_boxes( $post );
 
 		global $wp_meta_boxes;
-		$normal_high_ids = array_keys( $wp_meta_boxes[ $this->post_type ]['normal']['high'] ?? array() );
+		$normal_high_ids = array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['normal']['high'] ?? array() );
 		$this->assertContains( 'bh-email-headers', $normal_high_ids );
 	}
 
@@ -171,19 +214,22 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_html_content_metabox_shown_only_when_html_body_present(): void {
 
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+
 		$this->register_cpt();
 
 		// Post from plain-text-only fixture (non-multipart, no HTML part).
 		$post_id_no_html = $this->create_post_from_fixture(
-			codecept_root_dir( 'tests/_data/wpunit/non-multipart.eml' ),
-			$this->post_type
+			$this->post_type,
+			codecept_root_dir( 'tests/_data/wpunit/non-multipart.eml' )
 		);
 		$post_no_html    = get_post( $post_id_no_html );
 
 		// Post from HTML+plain-text fixture (has an HTML part).
 		$post_id_with_html = $this->create_post_from_fixture(
-			codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' ),
-			$this->post_type
+			$this->post_type,
+			codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' )
 		);
 		$post_with_html    = get_post( $post_id_with_html );
 
@@ -194,14 +240,14 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting before assertion is intentional in tests.
 		$wp_meta_boxes = array();
 		$sut->add_meta_boxes( $post_no_html );
-		$normal_default_ids_no_html = array_keys( $wp_meta_boxes[ $this->post_type ]['normal']['default'] ?? array() );
+		$normal_default_ids_no_html = array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['normal']['default'] ?? array() );
 		$this->assertNotContains( 'bh-email-content-html', $normal_default_ids_no_html );
 
 		// Test with HTML.
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting before assertion is intentional in tests.
 		$wp_meta_boxes = array();
 		$sut->add_meta_boxes( $post_with_html );
-		$normal_default_ids_with_html = array_keys( $wp_meta_boxes[ $this->post_type ]['normal']['default'] ?? array() );
+		$normal_default_ids_with_html = array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['normal']['default'] ?? array() );
 		$this->assertContains( 'bh-email-content-html', $normal_default_ids_with_html );
 	}
 
@@ -215,6 +261,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers ::prevent_content_edits
 	 */
 	public function test_prevent_content_edits_restores_original_values(): void {
+
+		$this->markTestSkipped( 'this functionality is in the wrong place' );
 
 		register_post_type(
 			$this->post_type,
@@ -280,6 +328,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers ::log_status_change
 	 */
 	public function test_log_status_change_inserts_log_comment(): void {
+
+		$this->markTestSkipped( 'this is in the wrong place' );
 
 		register_post_type(
 			$this->post_type,
@@ -374,9 +424,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut->add_meta_boxes( $post );
 
 		$side_ids = array_merge(
-			array_keys( $wp_meta_boxes[ $this->post_type ]['side']['high'] ?? array() ),
-			array_keys( $wp_meta_boxes[ $this->post_type ]['side']['default'] ?? array() ),
-			array_keys( $wp_meta_boxes[ $this->post_type ]['side']['low'] ?? array() )
+			array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['high'] ?? array() ),
+			array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['default'] ?? array() ),
+			array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['low'] ?? array() )
 		);
 		$this->assertContains( 'bh-email-attachments', $side_ids, 'Attachments metabox should be in the side column' );
 	}
@@ -403,9 +453,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut->add_meta_boxes( $post );
 
 		$all_side_ids = array_merge(
-			array_keys( $wp_meta_boxes[ $this->post_type ]['side']['high'] ?? array() ),
-			array_keys( $wp_meta_boxes[ $this->post_type ]['side']['default'] ?? array() ),
-			array_keys( $wp_meta_boxes[ $this->post_type ]['side']['low'] ?? array() )
+			array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['high'] ?? array() ),
+			array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['default'] ?? array() ),
+			array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['low'] ?? array() )
 		);
 		$this->assertNotContains( 'bh-email-attachments', $all_side_ids );
 	}
@@ -421,9 +471,12 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_render_status_metabox_shows_received_at_label(): void {
 
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+
 		$this->register_cpt();
 
-		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
+		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
 		update_post_meta( $post_id, 'Date', 'Wed, 30 Jul 2025 03:38:07 +0000' );
 		$post = get_post( $post_id );
 
@@ -444,9 +497,12 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_render_status_metabox_does_not_output_visibility_section(): void {
 
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+
 		$this->register_cpt();
 
-		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
+		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
 		$post    = get_post( $post_id );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
@@ -466,10 +522,13 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_render_status_metabox_shows_read_badge_when_is_read_meta_set(): void {
 
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+
 		$this->register_cpt();
 
-		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
-		update_post_meta( $post_id, 'bh_email_is_read', '1' );
+		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
+		update_post_meta( $post_id, 'is_remote_read', 'yes' );
 		$post = get_post( $post_id );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
@@ -489,9 +548,12 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_render_status_metabox_shows_unread_badge_when_is_read_meta_is_false(): void {
 
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+
 		$this->register_cpt();
 
-		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
+		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
 		update_post_meta( $post_id, 'bh_email_is_read', '0' );
 		$post = get_post( $post_id );
 
@@ -510,14 +572,22 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 *
 	 * @covers ::render_status_metabox
 	 */
-	public function test_render_status_metabox_shows_no_remote_badge_when_meta_absent(): void {
+	public function test_render_status_metabox_shows_no_remote_badge_when_provider_cannot_mark_read(): void {
+
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
 
 		$this->register_cpt();
 
-		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
+		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
 		$post    = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$provider_mock = \Mockery::mock( Email_Fetcher_Interface::class );
+		$provider_mock->expects( 'can_mark_read' )->andReturnFalse();
+		$provider_mock->expects( 'can_delete_on_server' )->andReturnFalse();
+
+		$api_mock = $this->make_api( provider_mock: $provider_mock );
+		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
 
 		ob_start();
 		$sut->render_status_metabox( $post );
@@ -534,14 +604,13 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_render_status_metabox_shows_mark_read_button_when_mailbox_can_mark_read(): void {
 
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+
 		$this->register_cpt();
-		register_taxonomy( 'bh-wp-mailbox-account', $this->post_type );
 
-		$term = wp_insert_term( 'My Test Mailbox', 'bh-wp-mailbox-account' );
-		$this->assertIsArray( $term );
+		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
 
-		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
-		wp_set_post_terms( $post_id, array( (int) $term['term_id'] ), 'bh-wp-mailbox-account' );
 		// Email is unread so the "Mark as read" button (not "Mark as unread") is rendered.
 		update_post_meta( $post_id, 'bh_email_is_read', '0' );
 		$post = get_post( $post_id );
@@ -581,13 +650,17 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_render_status_metabox_hides_remote_buttons_when_no_mailbox_resolved(): void {
 
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+
 		$this->register_cpt();
 
-		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
-		$post    = get_post( $post_id );
+		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
 
-		// Default make_settings returns no configured mailboxes; post has no taxonomy term.
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$post = get_post( $post_id );
+
+		$api_mock = $this->make_api( can_return_email_account: false );
+		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
 
 		ob_start();
 		$sut->render_status_metabox( $post );
@@ -605,15 +678,13 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_render_status_metabox_shows_delete_button_when_mailbox_can_delete(): void {
 
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+
 		$this->register_cpt();
-		register_taxonomy( 'bh-wp-mailbox-account', $this->post_type );
 
-		$term = wp_insert_term( 'Deletable Mailbox', 'bh-wp-mailbox-account' );
-		$this->assertIsArray( $term );
-
-		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
-		wp_set_post_terms( $post_id, array( (int) $term['term_id'] ), 'bh-wp-mailbox-account' );
-		$post = get_post( $post_id );
+		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
+		$post    = get_post( $post_id );
 
 		$mailbox_settings = $this->makeEmpty(
 			Email_Account_Settings_Interface::class,

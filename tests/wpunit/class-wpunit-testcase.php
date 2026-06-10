@@ -39,9 +39,10 @@ class WPUnit_Testcase extends WPTestCase {
 	}
 
 	protected function create_post_from_fixture(
-		string $filepath,
 		string $post_type,
+		?string $filepath = null,
 	): int {
+		$filepath     ??= codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
 		$email_contents = file_get_contents( $filepath );
 
 		$repo = new Email_WP_Post_Repository(
