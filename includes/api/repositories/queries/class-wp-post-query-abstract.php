@@ -13,6 +13,7 @@
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Queries;
 
 use BackedEnum;
+use DateTimeInterface;
 use InvalidArgumentException;
 
 /**
@@ -114,6 +115,9 @@ abstract readonly class WP_Post_Query_Abstract {
 			}
 			if ( is_bool( $value ) ) {
 				return $value ? 'yes' : 'no';
+			}
+			if ( $value instanceof DateTimeInterface ) {
+				return $value->format( DateTimeInterface::ATOM );
 			}
 			return $value;
 		};
