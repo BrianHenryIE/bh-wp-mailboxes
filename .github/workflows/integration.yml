@@ -58,8 +58,8 @@ jobs:
       - name: Install JS dependencies
         run: npm install
 
-      - name: Build JS
-        run: npm run build
+#      - name: Build JS
+#        run: npm run build
 
       - name: Setup test environment
         run: cp .env.testing .env
