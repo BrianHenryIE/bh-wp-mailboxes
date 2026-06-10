@@ -39,17 +39,17 @@ jobs:
           extensions: zip
 
       - name: Read .env.testing
-        uses: c-py/action-dotenv-to-setenv@v2
+        uses: c-py/action-dotenv-to-setenv@v5
         with:
           env-file: .env.testing
 
       - name: Read .env.github
-        uses: c-py/action-dotenv-to-setenv@v2
+        uses: c-py/action-dotenv-to-setenv@v5
         with:
           env-file: .env.github
 
       - name: Read .env.testing
-        uses: c-py/action-dotenv-to-setenv@v2
+        uses: c-py/action-dotenv-to-setenv@v5
         with:
           env-file: .env.testing
 
@@ -61,7 +61,7 @@ jobs:
 #          file_name: .env.secret
 
 #      - name: Read .env.secret
-#        uses: c-py/action-dotenv-to-setenv@v2
+#        uses: c-py/action-dotenv-to-setenv@v5
 #        with:
 #          env-file: .env.secret
 
