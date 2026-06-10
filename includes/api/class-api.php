@@ -365,16 +365,9 @@ class API implements API_Interface {
 	 */
 	protected function resolve_email_account_for_email( BH_Email $email ): ?Email_Account_Settings_Interface {
 
-		$term_id = $email->get_account_category_id();
+		$email_account_id = get_post( $email->get_post_id() )->post_parent;
 
-		foreach ( $this->settings->get_configured_mailbox_settings() as $mailbox ) {
-			$slug            = sanitize_title( $mailbox->get_account_unique_friendly_name() );
-			$term            = get_term_by( 'slug', $slug, 'bh-wp-mailbox-account' );
-			$mailbox_term_id = $term instanceof \WP_Term ? $term->term_id : 0;
-			if ( $mailbox_term_id === $term_id ) {
-				return $mailbox;
-			}
-		}
+		// TODO: Previously the idea was to use taxonomies. I think it's better to use a CPT for each email_account and use it as the parent_post id.
 
 		return null;
 	}

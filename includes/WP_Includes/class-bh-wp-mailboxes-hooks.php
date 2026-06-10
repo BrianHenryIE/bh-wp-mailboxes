@@ -61,9 +61,6 @@ class BH_WP_Mailboxes_Hooks {
 
 		add_action( 'init', $cpt->register_cpt( ... ) );
 		add_action( 'init', $cpt->register_post_statuses( ... ) );
-		add_action( 'init', $cpt->register_mailboxes_taxonomy( ... ) );
-
-		add_action( 'init', $cpt->register_mailbox( ... ) );
 	}
 
 	/**

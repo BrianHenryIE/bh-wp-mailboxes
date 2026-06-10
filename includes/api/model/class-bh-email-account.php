@@ -19,6 +19,5 @@ class BH_Email_Account implements Saved_Post {
 	}
 
 	public function get_last_checked_time(): \DateTimeInterface {
-
 	}
 }

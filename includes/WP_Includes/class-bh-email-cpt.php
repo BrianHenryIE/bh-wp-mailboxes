@@ -11,7 +11,6 @@ namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
-use WP_Taxonomy;
 use WP_Error;
 
 class BH_Email_CPT {
@@ -117,36 +116,6 @@ class BH_Email_CPT {
 	}
 
 	/**
-	 * All emails are saved to the same CPT, and each mailbox is given its own taxonomy, for filtering.
-	 *
-	 * @hooked init
-	 */
-	public function register_mailboxes_taxonomy(): void {
-
-		// TODO: Make this unique to the plugin.
-		$taxonomy_name = 'bh-wp-mailbox-account';
-		$t             = get_taxonomy( $taxonomy_name );
-
-		if ( false !== $t ) {
-			// Nothing to do.
-			return;
-		}
-
-		$post_type = $this->settings->get_cpt_underscored_20();
-
-		/** @var WP_Taxonomy|WP_Error $mailboxes_category */
-		$mailboxes_category = register_taxonomy(
-			'bh-wp-mailbox-account', // Must not exceed 32 characters.
-			$post_type,
-			array(
-				'label'        => __( 'Mailboxes' ),
-				'rewrite'      => array( 'slug' => 'mailbox-account' ),
-				'hierarchical' => true,
-			)
-		);
-	}
-
-	/**
 	 * Register custom post statuses for emails.
 	 *
 	 * - bh_email_new:       Freshly downloaded, not yet acted on.
@@ -192,57 +161,5 @@ class BH_Email_CPT {
 				'label_count'               => _n_noop( 'Saved <span class="count">(%s)</span>', 'Saved <span class="count">(%s)</span>' ),
 			)
 		);
-	}
-
-	/**
-	 * Register each mailbox in the mailboxes taxonomy, for searching/filtering.
-	 *
-	 * @hooked init
-	 */
-	public function register_mailbox(): void {
-
-		foreach ( $this->settings->get_configured_mailbox_settings() as $email_account ) {
-
-			$account_category_slug = sanitize_title( $email_account->get_account_unique_friendly_name() );
-
-			// false when it does not exist.
-			$mailbox_category = get_term_by( 'slug', $account_category_slug, 'bh-wp-mailbox-account' );
-
-			if ( false !== $mailbox_category ) {
-				// Nothing to do.
-				return;
-			}
-
-			// Define the category.
-			// TODO: Test this does add a new category on each pageload?
-			$category_spec_array = array(
-				'taxonomy'          => 'bh-wp-mailbox-account',
-				'category_nicename' => $this->settings->get_cpt_friendly_name(),
-				'cat_name'          => $account_category_slug,
-			);
-
-			// Create the category.
-			// Call to undefined function wp_insert_category()
-			// $new_category_id = \wp_insert_category( $category_spec_array, true );
-
-			// TODO: Check does the term exist.
-			if ( ! is_null( term_exists( $email_account->get_account_unique_friendly_name() ) ) ) {
-				continue;
-			}
-
-			$term = wp_insert_term( $email_account->get_account_unique_friendly_name(), 'bh-wp-mailbox-account', $category_spec_array );
-
-			if ( is_wp_error( $term ) ) {
-				$this->logger->error( $term->get_error_message() );
-				continue;
-			}
-
-			$new_category_id = $term['term_id'];
-
-			if ( is_wp_error( $new_category_id ) ) {
-				/** @var WP_Error $new_category_id */
-				$this->logger->error( $new_category_id->get_error_message() );
-			}
-		}
 	}
 }

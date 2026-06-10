@@ -48,24 +48,6 @@ class BH_Email_CPT_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * @covers ::register_mailboxes_taxonomy
-	 */
-	public function test_registering_the_taxonomy(): void {
-
-		$logger = new ColorLogger();
-
-		$settings = $this->makeEmpty( BH_WP_Mailboxes_Settings_Interface::class );
-
-		$sut = new BH_Email_CPT( $settings, $logger );
-
-		assert( false === get_taxonomy( 'bh-wp-mailbox-account' ) );
-
-		$sut->register_mailboxes_taxonomy();
-
-		$this->assertNotFalse( get_taxonomy( 'bh-wp-mailbox-account' ) );
-	}
-
-	/**
 	 * @covers ::register_mailbox
 	 */
 	public function test_registering_the_account(): void {
