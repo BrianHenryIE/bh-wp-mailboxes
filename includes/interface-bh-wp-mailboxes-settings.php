@@ -55,6 +55,7 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	 * @return non-empty-lowercase-string
 	 */
 	public function get_emails_cpt_underscored_20(): string;
+	/** @return non-empty-lowercase-string */
 	public function get_email_accounts_cpt_underscored_20(): string;
 
 	/**
