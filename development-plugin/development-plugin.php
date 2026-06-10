@@ -192,14 +192,17 @@ if ( ! is_null( $imap_settings ) && ! isset( $accounts[ $imap_settings->get_acco
 	);
 }
 
-add_filter(
-	'bh_wp_mailboxes_credentials',
-	function ( ?Account_Credentials_Interface $value, BH_Email_Account $account ) use ( $imap, $imap_settings ) {
-		if ( $account->email_address === $imap_settings->get_account_email_address() ) {
-			return $imap->get_credentials();
-		}
-		return $value;
-	},
-	10,
-	2
-);
+if ( $imap_settings ) {
+	add_filter(
+		'bh_wp_mailboxes_credentials',
+		function ( ?Account_Credentials_Interface $value, BH_Email_Account $account ) use ( $imap, $imap_settings ) {
+			if ( $account->email_address === $imap_settings->get_account_email_address() ) {
+				return $imap->get_credentials();
+			}
+
+			return $value;
+		},
+		10,
+		2
+	);
+}
