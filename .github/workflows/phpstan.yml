@@ -33,9 +33,6 @@ jobs:
           tools: composer, cs2pr
           extensions: zip
 
-      - name: Install sponge
-        run: sudo apt-get install moreutils
-
       - name: Run composer install
         run: composer install
 
