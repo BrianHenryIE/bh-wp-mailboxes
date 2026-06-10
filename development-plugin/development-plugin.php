@@ -122,7 +122,7 @@ $logger = Logger::instance( $logger_settings );
 $mailboxes = array();
 
 $mailboxes[] = new Imap()->get_mailbox_settings();
-$mailboxes[] = new Gmail_API()->get_mailbox_settings();
+// $mailboxes[] = new Gmail_API()->get_mailbox_settings();
 
 
 $mailboxes_settings = new class( $mailboxes ) implements BH_WP_Mailboxes_Settings_Interface {
