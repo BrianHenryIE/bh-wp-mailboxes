@@ -27,11 +27,20 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 
 	use LoggerAwareTrait;
 
+	/**
+	 * The IMAP mailbox connection.
+	 *
+	 * @var Mailbox
+	 */
 	protected Mailbox $mailbox;
 
 	/**
+	 * Constructor.
+	 *
 	 * @param Email_Account_Settings_Interface $settings Connection settings.
 	 * @param LoggerInterface                  $logger Logger.
+	 * @throws \Exception When credentials are not IMAP credentials.
+	 * @throws \Throwable When the IMAP connection fails.
 	 */
 	public function __construct(
 		protected Email_Account_Settings_Interface $settings,
@@ -44,7 +53,11 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 			throw new \Exception();
 		}
 
-		/** @var IMAP_Credentials_Interface $credentials */
+		/**
+		 * The IMAP credentials cast from account credentials.
+		 *
+		 * @var IMAP_Credentials_Interface $credentials
+		 */
 		$credentials = $this->settings->get_credentials();
 
 		$server = $credentials->get_email_imap_server();
@@ -76,31 +89,17 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 
 		} catch ( \Throwable $t ) {
 
-			$this->dumpExceptionProperties( $t, $this->logger );
-
 			throw $t;
-		}
-	}
-
-	function dumpExceptionProperties( \Throwable $e, LoggerInterface $logger ): void {
-		$ref = new \ReflectionClass( $e );
-
-		echo 'Exception class: ' . $ref->getName() . PHP_EOL;
-
-		foreach ( $ref->getProperties() as $prop ) {
-			$name  = $prop->getName();
-			$value = $prop->getValue( $e );
-
-			$logger->error( "$name: " . print_r( $value, true ) );
 		}
 	}
 
 	/**
 	 * Fetches emails from INBOX since the given time.
 	 *
-	 * @param DateTimeInterface $since_time
+	 * @param DateTimeInterface $since_time The earliest date/time from which to fetch messages.
+	 * @param int               $limit      Maximum number of messages to retrieve.
 	 *
-	 * @return Collection<IMessage> Unsaved, unparsed emails
+	 * @return Collection<IMessage> Unsaved, unparsed emails.
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time, int $limit = 100 ): Collection {
 
@@ -115,7 +114,11 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 			)
 		);
 
-		/** @var Collection<Message> $messages */
+		/**
+		 * Raw ImapEngine messages from the server.
+		 *
+		 * @var Collection<Message> $messages
+		 */
 		$messages = $this->mailbox
 			->inbox()
 			->messages()
@@ -139,7 +142,11 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 			}
 		);
 
-		/** @var Collection<IMessage> $messages */
+		/**
+		 * Parsed IMessage objects.
+		 *
+		 * @var Collection<IMessage> $messages
+		 */
 		$messages = array_map(
 			fn( Message $message ) => $message->parse(),
 			$messages->all()

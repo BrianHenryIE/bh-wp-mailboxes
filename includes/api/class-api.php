@@ -1,4 +1,9 @@
 <?php
+/**
+ * Main API implementation for bh-wp-mailboxes.
+ *
+ * @package brianhenryie/bh-wp-mailboxes
+ */
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
@@ -23,13 +28,27 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use ZBateson\MailMimeParser\IMessage;
 
+/**
+ * Main API for fetching, saving, and managing emails.
+ */
 class API implements API_Interface {
 
 	use LoggerAwareTrait;
 
-	/** @var ?Email_WP_Post_Repository Instantiated lazily on first use. */
+	/**
+	 * Email repository, instantiated lazily on first use.
+	 *
+	 * @var ?Email_WP_Post_Repository
+	 */
 	protected ?Email_WP_Post_Repository $email_repository = null;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings        Plugin settings.
+	 * @param ?Private_Uploads                   $private_uploads Private uploads API, or null to skip attachment saving.
+	 * @param ?LoggerInterface                   $logger          PSR-3 logger.
+	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		/**
@@ -41,7 +60,11 @@ class API implements API_Interface {
 		$this->logger = $logger ?? new NullLogger();
 	}
 
-	/** @return Email_WP_Post_Repository */
+	/**
+	 * Returns the email repository, creating it if it does not yet exist.
+	 *
+	 * @return Email_WP_Post_Repository
+	 */
 	protected function get_email_repository(): Email_WP_Post_Repository {
 		if ( is_null( $this->email_repository ) ) {
 			$this->email_repository = new Email_WP_Post_Repository(
@@ -62,12 +85,20 @@ class API implements API_Interface {
 	 */
 	public function check_email(): array {
 
-		/** @var Email_Account_Settings_Interface[] $email_accounts */
+		/**
+		 * All configured mailbox account settings.
+		 *
+		 * @var Email_Account_Settings_Interface[] $email_accounts
+		 */
 		$email_accounts = $this->settings->get_configured_mailbox_settings();
 
 		$this->logger->debug( 'Starting check_email() for ' . count( $email_accounts ) . ' email address(es).' );
 
-		/** @var BH_Email[] $all_new_emails */
+		/**
+		 * Accumulates all newly saved BH_Email objects across all accounts.
+		 *
+		 * @var BH_Email[] $all_new_emails
+		 */
 		$all_new_emails     = array();
 		$saved_emails       = array();
 		$last_fetched_times = $this->get_last_fetched_times();
@@ -147,7 +178,11 @@ class API implements API_Interface {
 			// $mailbox_category      = get_term_by( 'slug', $account_category_slug, 'bh-wp-mailbox-account' );
 			// $term_id               = $mailbox_category instanceof \WP_Term ? $mailbox_category->term_id : 0;
 
-			/** @var BH_Email[] $new_account_emails */
+			/**
+			 * Newly saved BH_Email objects for this account.
+			 *
+			 * @var BH_Email[] $new_account_emails
+			 */
 			$all_new_account_bh_emails = $this->get_email_repository()->save_all( $all_new_account_emails, $this->settings, $email_account );
 
 			$all_new_emails = array_merge( $all_new_emails, $all_new_account_bh_emails );
@@ -170,7 +205,7 @@ class API implements API_Interface {
 			// foreach ( $filtered_account_emails as $filtered_email ) {
 			// $this->get_email_repository()->save_new( $filtered_email );
 			// $saved_emails[] = $filtered_email;
-			// }
+			// } // end foreach.
 
 			$saved_emails = array();
 
@@ -223,12 +258,12 @@ class API implements API_Interface {
 	// }
 	//
 	// return true;
-	// }
+	// } // end email_filter.
 
 	/**
 	 * Return the most recently downloaded emails.
 	 *
-	 * @param int $number
+	 * @param int $number Maximum number of emails to return.
 	 *
 	 * @return BH_Email[]
 	 */
@@ -277,6 +312,8 @@ class API implements API_Interface {
 	 *
 	 * Dispatches via filter `bh_wp_mailboxes_mark_email_read` so providers can handle it.
 	 * Returns true if a listener handled the action.
+	 *
+	 * @param BH_Email $email The email to mark as read.
 	 */
 	public function mark_email_read( BH_Email $email ): void {
 		$this->perform_remote_email_action( 'mark_read', $email );
@@ -284,6 +321,8 @@ class API implements API_Interface {
 
 	/**
 	 * Mark the email as unread on its remote server and update local post meta.
+	 *
+	 * @param BH_Email $email The email to mark as unread.
 	 */
 	public function mark_email_unread( BH_Email $email ): void {
 		$this->perform_remote_email_action( 'mark_unread', $email );
@@ -291,6 +330,8 @@ class API implements API_Interface {
 
 	/**
 	 * Delete the email on its remote server and update local post meta.
+	 *
+	 * @param BH_Email $email The email to delete on the server.
 	 */
 	public function delete_email_on_server( BH_Email $email ): void {
 		$this->perform_remote_email_action( 'delete_on_server', $email );
@@ -362,6 +403,8 @@ class API implements API_Interface {
 	 * Find the Mailbox_Settings_Interface for the email's account taxonomy term.
 	 *
 	 * Returns null when the account cannot be matched (e.g. term was deleted).
+	 *
+	 * @param BH_Email $email The email to resolve the account for.
 	 */
 	protected function resolve_email_account_for_email( BH_Email $email ): ?Email_Account_Settings_Interface {
 
@@ -403,6 +446,8 @@ class API implements API_Interface {
 
 	/**
 	 * Option name format: "%s_mailbox_last_fetched_%s".
+	 *
+	 * @param string $account_name The account's unique friendly name.
 	 */
 	protected function get_last_fetched_option_name( string $account_name ): string {
 		$plugin_slug = $this->settings->get_plugin_slug();
@@ -410,6 +455,8 @@ class API implements API_Interface {
 	}
 
 	/**
+	 * Returns the last-fetched times for all configured mailbox accounts.
+	 *
 	 * @return array<string, ?DateTimeInterface>
 	 */
 	public function get_last_fetched_times(): array {
@@ -445,6 +492,9 @@ class API implements API_Interface {
 
 	/**
 	 * Save the last fetched time for this account in wp_options.
+	 *
+	 * @param string            $account_name The account's unique friendly name.
+	 * @param DateTimeInterface $time         The time to save.
 	 */
 	public function set_last_fetched_time( string $account_name, DateTimeInterface $time ): void {
 
@@ -464,6 +514,8 @@ class API implements API_Interface {
 
 	/**
 	 * Format: "%s_mailbox_last_failure_%s".
+	 *
+	 * @param string $account_name The account's unique friendly name.
 	 */
 	protected function get_last_failed_login_option_name( string $account_name ): string {
 		$plugin_slug = $this->settings->get_plugin_slug();
@@ -473,10 +525,10 @@ class API implements API_Interface {
 	/**
 	 * Return the last time the login failed. Returns null if none, or if older than $retry_expiry_seconds (default 6h).
 	 *
-	 * @param string $account_name
-	 * @param ?int   $retry_expiry_seconds
+	 * @param string $account_name         The account's unique friendly name.
+	 * @param ?int   $retry_expiry_seconds Seconds before a failed login is forgotten.
 	 *
-	 * @return ?DateTime Null is the preferred response!
+	 * @return ?DateTime Null is the preferred response.
 	 */
 	public function get_last_failed_login_time( string $account_name, ?int $retry_expiry_seconds = null ): ?DateTime {
 
@@ -504,6 +556,9 @@ class API implements API_Interface {
 
 	/**
 	 * Set to null to clear (after a successful login).
+	 *
+	 * @param string             $account_name The account's unique friendly name.
+	 * @param ?DateTimeInterface $time         The failure time, or null to clear.
 	 */
 	public function set_failed_login_time( string $account_name, ?DateTimeInterface $time ): void {
 		$option_name = $this->get_last_failed_login_option_name( $account_name );

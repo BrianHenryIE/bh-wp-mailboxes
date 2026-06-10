@@ -1,4 +1,9 @@
 <?php
+/**
+ * Interface for IMAP server credentials.
+ *
+ * @package brianhenryie/bh-wp-mailboxes
+ */
 
 namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
 

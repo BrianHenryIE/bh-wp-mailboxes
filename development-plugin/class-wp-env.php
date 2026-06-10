@@ -97,6 +97,7 @@ class WP_Env {
 			pattern: '#(https?://)(localhost|127.0.0.1):\d{1,6}#',
 			replacement: '${1}' . preg_quote( $internal_hostname, '#' ),
 			subject: $url
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, not direct output.
 		) ?? ( fn() => throw new Exception( 'The `WP_Env::get_internal_url()` regex failed: ' . preg_last_error_msg() ) )();
 	}
 }

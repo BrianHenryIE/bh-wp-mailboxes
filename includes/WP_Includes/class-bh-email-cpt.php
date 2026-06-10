@@ -4,6 +4,8 @@
  *
  * @see https://developer.wordpress.org/plugins/post-types/registering-custom-post-types/
  * "You must call register_post_type() before the admin_init hook and after the after_setup_theme hook. A good hook to use is the init action hook."
+ *
+ * @package brianhenryie/bh-wp-mailboxes
  */
 
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
@@ -13,6 +15,9 @@ use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WP_Error;
 
+/**
+ * Registers the email custom post type and its post statuses.
+ */
 class BH_Email_CPT {
 
 	use LoggerAwareTrait;
@@ -77,7 +82,11 @@ class BH_Email_CPT {
 			'name_admin_bar'           => 'Email',
 		);
 
-		/** @var \WP_Post_Type|WP_Error  $registered_post_type */
+		/**
+		 * Result of registering the post type.
+		 *
+		 * @var \WP_Post_Type|WP_Error $registered_post_type
+		 */
 		$registered_post_type = register_post_type(
 			$post_type,
 			array(
@@ -110,7 +119,11 @@ class BH_Email_CPT {
 
 		// TODO: throw an exception... if this fails, nothing here will really work.
 		if ( is_wp_error( $registered_post_type ) ) {
-			/** @var WP_Error $registered_post_type */
+			/**
+			 * The error from post type registration.
+			 *
+			 * @var WP_Error $registered_post_type
+			 */
 			$this->logger->error( $registered_post_type->get_error_message() );
 		}
 	}

@@ -45,5 +45,4 @@ class BH_Email_CPT_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertContains( 'my_plugin_emails', $after_registered_post_types );
 	}
-
 }

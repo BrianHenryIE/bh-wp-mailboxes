@@ -1,25 +1,36 @@
 <?php
 /**
  * Convenience methods for Mailboxes_Settings_Interface.
+ *
+ * @package brianhenryie/bh-wp-mailboxes
  */
 
 namespace BrianHenryIE\WP_Mailboxes;
 
 /**
+ * Default implementations for BH_WP_Mailboxes_Settings_Interface.
+ *
  * @see BH_WP_Mailboxes_Settings_Interface
  */
 trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 
 	/**
+	 * Returns the plugin slug.
+	 *
 	 * @see BH_WP_Mailboxes_Settings_Interface::get_plugin_slug()
 	 */
-	abstract function get_plugin_slug(): string;
+	abstract public function get_plugin_slug(): string;
 
 	/**
+	 * Returns the CPT friendly name.
+	 *
 	 * @see BH_WP_Mailboxes_Settings_Interface::get_cpt_friendly_name()
 	 */
-	abstract function get_cpt_friendly_name(): string;
+	abstract public function get_cpt_friendly_name(): string;
 
+	/**
+	 * Returns the CPT name in dashed format.
+	 */
 	public function get_cpt_dashed(): string {
 		return sanitize_title( $this->get_cpt_friendly_name() );
 	}
@@ -39,6 +50,8 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 	}
 
 	/**
+	 * Returns the private uploads subdirectory name.
+	 *
 	 * @see \BrianHenryIE\WP_Private_Uploads\API\Settings_Interface
 	 */
 	public function get_private_uploads_directory_name(): ?string {
@@ -46,6 +59,8 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 	}
 
 	/**
+	 * Returns the default cron schedules for fetching and deleting emails.
+	 *
 	 * @see wp_get_schedules()
 	 *
 	 * @return array{fetch_emails:string, delete_local_emails:string}

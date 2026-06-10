@@ -5,6 +5,8 @@
  * Implements various `WP_List_Table` hooks to customise the view.
  *
  * @see WP_List_Table
+ *
+ * @package brianhenryie/bh-wp-mailboxes
  */
 
 namespace BrianHenryIE\WP_Mailboxes\Admin;
@@ -16,10 +18,21 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
+/**
+ * Renders the emails list table page with custom columns and controls.
+ */
 class Emails_List_Page {
 
 	use LoggerAwareTrait;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param Email_WP_Post_Repository           $email_wp_post_repository Repository for email CPT posts.
+	 * @param API_Interface                      $api                      Main API instance.
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings                 Plugin settings.
+	 * @param LoggerInterface                    $logger                   PSR-3 logger.
+	 */
 	public function __construct(
 		protected Email_WP_Post_Repository $email_wp_post_repository,
 		protected API_Interface $api,
@@ -29,15 +42,9 @@ class Emails_List_Page {
 		$this->setLogger( $logger );
 	}
 
-	// Add New button is based on
-	// @var WP_Post_Type $a
-
-	/** @var \WP_Post_Type */
-	protected $a;
-	// if ( current_user_can( $post_type_object->cap->create_posts ) ) {
-
-
 	/**
+	 * Prints extra table nav controls at the top of the list table.
+	 *
 	 * @hooked manage_posts_extra_tablenav
 	 * @param string $which The location of the extra table nav markup: 'top' or 'bottom'.
 	 */
@@ -59,9 +66,11 @@ class Emails_List_Page {
 
 
 	/**
+	 * Customises the column headers for the emails list table.
+	 *
 	 * @hooked manage_{$post_type}_posts_columns
 	 *
-	 * @param array<string, string> $defaults
+	 * @param array<string, string> $defaults Existing columns.
 	 *
 	 * @return array<string, string>
 	 */
@@ -79,23 +88,22 @@ class Emails_List_Page {
 	}
 
 	/**
+	 * Outputs cell content for custom columns in the emails list table.
+	 *
 	 * @hooked manage_{$post_type}_posts_custom_column
 	 *
-	 * @param string $column_name
-	 * @param int    $post_id
+	 * @param string $column_name The name of the current column.
+	 * @param int    $post_id     The current post ID.
 	 *
 	 * @return void
 	 */
 	public function table_content( $column_name, $post_id ): void {
 
-		$post = get_post( $post_id );
-
-		// check post-type.
 		$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
 
 		switch ( $column_name ) {
 			case 'from':
-				echo $email->get_from_email();
+				echo esc_html( $email->get_from_email() );
 				break;
 			default:
 				break;
@@ -103,6 +111,8 @@ class Emails_List_Page {
 	}
 
 	/**
+	 * Outputs filter controls above the emails list table.
+	 *
 	 * @hooked restrict_manage_posts
 	 *
 	 * @see \WP_Posts_List_Table::categories_dropdown()
@@ -115,33 +125,7 @@ class Emails_List_Page {
 			return;
 		}
 
-		// If count ( accounts ) > 1
-
-		// echo 'account filters';
-
-		// $dates = $wpdb->get_results( "SELECT EXTRACT(YEAR FROM meta_value) as year,  EXTRACT( MONTH FROM meta_value ) as month FROM $wpdb->postmeta WHERE meta_key = '_bs_meta_event_date' AND post_id IN ( SELECT ID FROM $wpdb->posts WHERE post_type = 'event' AND post_status != 'trash' ) GROUP BY year, month " ) ;
-		//
-		// echo '';
-		// echo '' . __( 'Show all event dates', 'textdomain' ) . '';
-		//
-		// foreach( $dates as $date ) {
-		// $month = ( strlen( $date->month ) == 1 ) ? 0 . $date->month : $date->month;
-		// $value = $date->year . '-' . $month . '-' . '01 00:00:00';
-		// $name = date( 'F Y', strtotime( $value ) );
-		//
-		// $selected = ( !empty( $_GET['event_date'] ) AND $_GET['event_date'] == $value ) ? 'selected="select"' : '';
-		// echo '' . $name . '';
-		// }
-		// echo '';
-		//
-		// $ticket_statuses = get_ticket_statuses();
-		// echo '';
-		// echo '' . __( 'Show all ticket statuses', 'textdomain' ) . '';
-		// foreach( $ticket_statuses as $value => $name ) {
-		// $selected = ( !empty( $_GET['ticket_status'] ) AND $_GET['ticket_status'] == $value ) ? 'selected="selected"' : '';
-		// echo '' . $name . '';
-		// }
-		// echo '';
+		// TODO: Add account filter when multiple accounts exist.
 	}
 
 	/**
@@ -149,7 +133,7 @@ class Emails_List_Page {
 	 *
 	 * @hooked pre_get_posts
 	 *
-	 * @param \WP_Query $query
+	 * @param \WP_Query $query The current WP_Query instance.
 	 */
 	public function show_all_post_statuses( \WP_Query $query ): void {
 		if ( ! is_admin() || ! $query->is_main_query() ) {
@@ -185,10 +169,7 @@ class Emails_List_Page {
 			return;
 		}
 
-		// $css_file = plugin_dir_url( __FILE__ ) . '/css/bh-wp-logger.css';
-		// $version  = '1.0.0';
-		//
-		// wp_enqueue_style( $handle, $css_file, array(), $version, 'all' );
+		// TODO: Enqueue stylesheet when one is added.
 	}
 
 
@@ -199,7 +180,7 @@ class Emails_List_Page {
 	 */
 	public function enqueue_scripts(): void {
 
-		// edit.php?post_status=all&post_type=bh_wp_mailboxes_cpt&paged=1
+		// Only enqueue on the correct post type list page.
 
 		$current_screen = get_current_screen();
 

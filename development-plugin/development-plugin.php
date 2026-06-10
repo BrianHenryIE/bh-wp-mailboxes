@@ -51,7 +51,6 @@ Autoloader::generate(
 	'/var/www/html/wp-content/uploads/bh-wp-mailboxes/includes/',
 )->register();
 
-// This may be outated.
 // wp-env fixes (cron / self-referential URLs).
 new WP_Env()->register_hooks();
 
@@ -69,27 +68,17 @@ new Plugins_Page()->register_hooks();
 
 
 
-// I think this is needed because we're mapping the vendor directory to wp-content/plugins/vendor, then libraries/functions
-// that use directory path to determine the current plugin, e.g. Private Uploads, cannot wo
-
-// Fix for symlinks in local dev.
+// Fix for symlinks in local dev: vendor is mapped to wp-content/plugins/vendor.
 add_filter(
 	'plugins_url',
 	function ( $url, $path, $plugin ) {
-
-		/**
-		 * We have mapped the entire project to `localhost:8888/bh-wp-mailboxes/`
-		 *
-		 * E.g. http://localhost:8888/wp-content/plugins/var/www/html/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
-		 * http://localhost:8888/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
-		 */
+		// Rewrite URLs that contain the full filesystem path as a URL segment.
 		if ( str_contains( $url, 'wp-content/plugins/var/www/html/' ) ) {
+			// No-op; just matching to fall through to the replacement below.
 			$a = 'b';
 		}
-		// http://localhost:8888/bh-wp-mailboxes/includes/admin/js/bh-wp-mailboxes.js?ver=1.0.0
 		if ( str_contains( $url, '.css' ) ) {
-			// http://localhost:8888/wp-content/plugins/var/www/html/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
-			// vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
+			// No-op; just matching to fall through to the replacement below.
 			$a = 'b';
 		}
 		return str_replace( 'wp-content/plugins/var/www/html/', '', $url );
@@ -102,15 +91,30 @@ add_filter(
 $logger_settings = new class() implements Logger_Settings_Interface {
 	use Logger_Settings_Trait;
 
+	/**
+	 * Returns the log level.
+	 */
 	public function get_log_level(): string {
 		return 'debug';
 	}
+
+	/**
+	 * Returns the plugin slug.
+	 */
 	public function get_plugin_slug(): string {
 		return 'bh-wp-mailboxes-test-plugin';
 	}
+
+	/**
+	 * Returns the plugin basename.
+	 */
 	public function get_plugin_basename(): string {
 		return defined( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' ) ? BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME : 'bh-wp-mailboxes-test-plugin/bh-wp-mailboxes-test-plugin.php';
 	}
+
+	/**
+	 * Returns the plugin display name.
+	 */
 	public function get_plugin_name(): string {
 		return 'BH WP Mailboxes Test Plugin';
 	}
@@ -135,19 +139,33 @@ if ( null !== $gmail_settings ) {
 $mailboxes_settings = new class( $mailboxes ) implements BH_WP_Mailboxes_Settings_Interface {
 	use BH_WP_Mailboxes_Settings_Defaults_Trait;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param array<mixed> $mailboxes Array of configured mailbox settings.
+	 */
 	public function __construct(
 		protected array $mailboxes = array()
 	) {
 	}
 
+	/**
+	 * Returns the CPT friendly name.
+	 */
 	public function get_cpt_friendly_name(): string {
 		return 'BH WP Mailboxes CPT';
 	}
 
+	/**
+	 * Returns the configured mailbox settings.
+	 */
 	public function get_configured_mailbox_settings(): array {
 		return $this->mailboxes;
 	}
 
+	/**
+	 * Returns the plugin slug.
+	 */
 	public function get_plugin_slug(): string {
 		return 'bh-wp-mailboxes-test-plugin';
 	}

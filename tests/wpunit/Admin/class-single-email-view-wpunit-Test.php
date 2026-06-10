@@ -185,7 +185,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' ),
 			$this->post_type
 		);
-		$post_with_html = get_post( $post_id_with_html );
+		$post_with_html    = get_post( $post_id_with_html );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 
@@ -425,7 +425,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
 		update_post_meta( $post_id, 'Date', 'Wed, 30 Jul 2025 03:38:07 +0000' );
-		$post    = get_post( $post_id );
+		$post = get_post( $post_id );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 

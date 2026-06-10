@@ -11,6 +11,8 @@
 namespace BrianHenryIE\WP_Mailboxes;
 
 /**
+ * Settings interface for bh-wp-mailboxes.
+ *
  * @see BH_WP_Mailboxes_Settings_Defaults_Trait
  */
 interface BH_WP_Mailboxes_Settings_Interface {

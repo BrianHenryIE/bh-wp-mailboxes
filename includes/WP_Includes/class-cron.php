@@ -26,6 +26,8 @@ class Cron {
 	use LoggerAwareTrait;
 
 	/**
+	 * Constructor.
+	 *
 	 * @param API_Interface                      $api BH_WP_Mailboxes main functions.
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings Settings for mailboxes and behaviour.
 	 * @param LoggerInterface                    $logger A PSR logger.

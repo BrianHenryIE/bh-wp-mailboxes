@@ -30,7 +30,11 @@ class Single_Email_View {
 	 */
 	protected string $post_type;
 
-	/** @var array<int, BH_Email> */
+	/**
+	 * Cache of BH_Email instances keyed by post ID.
+	 *
+	 * @var array<int, BH_Email>
+	 */
 	protected array $emails = array();
 
 	/**
@@ -51,6 +55,11 @@ class Single_Email_View {
 		$this->post_type = $this->settings->get_cpt_underscored_20();
 	}
 
+	/**
+	 * Returns the BH_Email for the given post, loading it if not already cached.
+	 *
+	 * @param WP_Post $post The email post to look up.
+	 */
 	private function get_email_for_post( WP_Post $post ): BH_Email {
 		if ( ! isset( $this->emails[ $post->ID ] ) ) {
 			$this->emails[ $post->ID ] = $this->email_wp_post_repository->find_by_post_id( $post->ID );
@@ -67,7 +76,11 @@ class Single_Email_View {
 	 */
 	public function add_meta_boxes( WP_Post $post ): void {
 
-		/** @var BH_Email $email */
+		/**
+		 * The email for the current post.
+		 *
+		 * @var BH_Email $email
+		 */
 		$email = $this->email_wp_post_repository->find_by_post_id( $post->ID );
 		unset( $post );
 
@@ -502,7 +515,7 @@ class Single_Email_View {
 		unset( $post );
 
 		$attachment_ids = $email->attachment_ids;
-		// The post type of the private uploads attachments is not `attachments`
+		// The post type of the private uploads attachments is not `attachments`.
 		// $attachments = get_posts(
 		// array(
 		// 'post_type'   => 'attachment',
@@ -510,7 +523,7 @@ class Single_Email_View {
 		// 'post_status' => 'any',
 		// 'numberposts' => -1,
 		// )
-		// );
+		// ); // end get_posts.
 
 		if ( empty( $attachment_ids ) ) {
 			echo '<p>' . esc_html__( 'No attachments.', 'bh-wp-mailboxes' ) . '</p>';

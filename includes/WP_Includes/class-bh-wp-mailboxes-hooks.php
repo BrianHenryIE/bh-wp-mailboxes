@@ -27,6 +27,12 @@ class BH_WP_Mailboxes_Hooks {
 	 * @var Email_WP_Post_Repository
 	 */
 	protected Email_WP_Post_Repository $email_wp_post_repository;
+
+	/**
+	 * Factory for creating BH_Email instances from posts.
+	 *
+	 * @var BH_Email_Factory
+	 */
 	protected BH_Email_Factory $bh_email_factory;
 
 	/**
