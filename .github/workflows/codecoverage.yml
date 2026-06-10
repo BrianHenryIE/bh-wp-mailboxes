@@ -129,7 +129,7 @@ jobs:
           git checkout -- tests/_data/dump.sql
 
       - name: Commit code coverage to gh-pages
-        uses: stefanzweifel/git-auto-commit-action@v4.1.1
+        uses: stefanzweifel/git-auto-commit-action@v7.1.0
         with:
           repository: tests/_output/html
           branch: gh-pages
@@ -141,7 +141,7 @@ jobs:
         run: vendor/bin/php-coverage-badger tests/_output/clover.xml .github/coverage.svg PHPUnit
 
       - name: Commit code coverage badge
-        uses: stefanzweifel/git-auto-commit-action@v4.1.1
+        uses: stefanzweifel/git-auto-commit-action@v7.1.0
         with:
           commit_message: "🤖 Commit code coverage badge"
           file_pattern: .github/coverage.svg
