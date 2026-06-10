@@ -10,23 +10,35 @@
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Queries;
 
 /**
+ * Query object for BH_Email CPT records.
  */
 readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 
 	/**
-	 * Constructor
+	 * Constructor.
 	 *
 	 * Sometimes these fields are used to fetch, but some are only used to update.
+	 *
+	 * @param string     $post_type             The CPT slug.
+	 * @param string     $account_email_address The mailbox email address (used for guid).
+	 * @param string     $email_id              The unique email ID (used for guid).
+	 * @param string     $subject               The email subject.
+	 * @param string     $from_address          The sender email address.
+	 * @param string     $original_email        The raw email content.
+	 * @param string     $local_status          The WordPress post status.
+	 * @param ?bool      $is_read_remote        Whether the email is marked read on the remote server.
+	 * @param ?bool      $is_deleted_remote     Whether the email has been deleted on the remote server.
+	 * @param array<int> $attachment_ids     Array of attachment post IDs.
 	 */
 	public function __construct(
 		string $post_type,
-		public string $account_email_address, // for guid (but not the full URL guid)
-		public string $email_id, // for guid (but not the full URL guid)
+		public string $account_email_address, // for guid (but not the full URL guid).
+		public string $email_id, // for guid (but not the full URL guid).
 		public string $subject,
 		public string $from_address, // We'll save this in meta because if it matches a user account it is relevant.
 		public string $original_email,
 		// post_excerpt // Is there anywhere we need to use this, if so it would be good to strip tags etc here.
-		public string $local_status, // post status
+		public string $local_status, // post status.
 		public ?bool $is_read_remote,
 		public ?bool $is_deleted_remote,
 		public array $attachment_ids,
@@ -35,6 +47,7 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	}
 
 	/**
+	 * Returns the WP_Post field mappings for a BH_Email.
 	 *
 	 * @return array<string,mixed> $map to:from
 	 */
@@ -52,6 +65,8 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	}
 
 	/**
+	 * Returns the post meta key/value pairs for a BH_Email.
+	 *
 	 * @return array<string,mixed>
 	 */
 	protected function get_meta_input(): array {
@@ -64,8 +79,12 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	}
 
 	/**
+	 * Builds the guid URL for the given email ID.
+	 *
 	 * TODO: test that we're never passing an existing guid, only ever the email id itself.
 	 * TODO: this URL should work for admins to load the email.
+	 *
+	 * @param string $email_id The email message ID.
 	 *
 	 * @example https://bhwp.ie/my-mailbox/contact@bhwp.ie/q1w2e3r4t5
 	 */

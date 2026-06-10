@@ -17,11 +17,11 @@ interface Email_Fetcher_Interface {
 	/**
 	 * Typically, check for emails since the time of the last email or the last time emails were checked for.
 	 *
-	 * @param DateTimeInterface $since_time
+	 * @param DateTimeInterface $since_time The earliest date to retrieve emails from.
 	 *
-	 * @return Collection Unsaved emails.
+	 * @return Collection<int, \ZBateson\MailMimeParser\IMessage> Unsaved emails.
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time ): Collection;
 
-	// public function test_connection();
+	// public function test_connection(); // TODO: implement.
 }

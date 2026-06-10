@@ -41,7 +41,10 @@ readonly class Access_Token {
 	 */
 	public static function from_file( string $file_path ): Access_Token {
 		$json_string = file_get_contents( $file_path );
-		$json        = json_decode( $json_string );
+		if ( false === $json_string ) {
+			throw new \RuntimeException( "Failed to read access token file: {$file_path}" );
+		}
+		$json = json_decode( $json_string );
 		return self::from_json( $json );
 	}
 

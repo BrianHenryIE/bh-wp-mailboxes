@@ -2,11 +2,15 @@ parameters:
     level: 8
     paths:
         - includes
+        - development-plugin
     bootstrapFiles:
         - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
     scanDirectories:
         - wp-content/plugins
         - vendor/wp-cli
+    dynamicConstantNames:
+        - BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME
     ignoreErrors:
         - '#LoggerInterface\|null#'
         - '#get_uploads_subdirectory_name\(\) should return string but returns string\|null#'
+        - '#Path in require_once\(\) "/var/www/html/#'

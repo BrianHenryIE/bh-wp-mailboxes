@@ -53,7 +53,7 @@ class Emails_List_Page {
 		// Only add to our cpt edit screen.
 		$screen    = get_current_screen();
 		$post_type = $this->settings->get_cpt_underscored_20();
-		if ( $screen->post_type !== $post_type ) {
+		if ( null === $screen || $screen->post_type !== $post_type ) {
 			return;
 		}
 
@@ -121,7 +121,7 @@ class Emails_List_Page {
 		global $wpdb;
 		$screen    = get_current_screen();
 		$post_type = $this->settings->get_cpt_underscored_20();
-		if ( $screen->post_type !== $post_type ) {
+		if ( null === $screen || $screen->post_type !== $post_type ) {
 			return;
 		}
 

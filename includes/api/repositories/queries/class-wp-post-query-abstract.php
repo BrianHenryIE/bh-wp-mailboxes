@@ -16,12 +16,16 @@ use BackedEnum;
 use InvalidArgumentException;
 
 /**
+ * Abstract query object mapping domain data to WP_Post fields.
+ *
  * @phpstan-type WpUpdatePostArray array{ID?: int, post_type?:string, post_status?:string, post_author?: int, post_date?: string, post_date_gmt?: string, post_content?: string, post_content_filtered?: string, post_title?: string, post_excerpt?: string, meta_input?:array<string,mixed>}
  */
 abstract readonly class WP_Post_Query_Abstract {
 
 	/**
-	 * Override this with the pieces of data to be saved to the WP_Post.
+	 * Constructor.
+	 *
+	 * @param string $post_type The CPT slug.
 	 */
 	public function __construct(
 		protected string $post_type,
@@ -56,6 +60,8 @@ abstract readonly class WP_Post_Query_Abstract {
 	abstract protected function get_meta_input(): array;
 
 	/**
+	 * Returns valid field names accepted by WP_Query.
+	 *
 	 * @return string[] List of valid field in the WP_Query.
 	 *
 	 * @see wordpress/wp-admin/includes/schema.php:159
@@ -93,7 +99,7 @@ abstract readonly class WP_Post_Query_Abstract {
 
 		foreach ( array_keys( $wp_post_fields ) as $field_name ) {
 			if ( ! in_array( $field_name, $this->get_valid_keys(), true ) ) {
-				throw new InvalidArgumentException( 'Invalid key: ' . $field_name );
+				throw new InvalidArgumentException( 'Invalid key: ' . esc_html( $field_name ) );
 			}
 		}
 
@@ -111,7 +117,11 @@ abstract readonly class WP_Post_Query_Abstract {
 
 		$filter_null = fn( $value ) => ! is_null( $value );
 
-		/** @var WpUpdatePostArray $wp_post_fields */
+		/**
+		 * Array of wp_post field values after type conversion.
+		 *
+		 * @var WpUpdatePostArray $wp_post_fields
+		 */
 		$wp_post_fields = array_map(
 			$map_types_to_json,
 			$wp_post_fields,
@@ -127,7 +137,11 @@ abstract readonly class WP_Post_Query_Abstract {
 			$filter_null
 		);
 
-		/** @var WpUpdatePostArray $wp_post_fields */
+		/**
+		 * Array of wp_post field values after filtering out null values.
+		 *
+		 * @var WpUpdatePostArray $wp_post_fields
+		 */
 		$wp_post_fields = array_filter(
 			$wp_post_fields,
 			$filter_null

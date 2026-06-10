@@ -13,6 +13,7 @@ namespace BrianHenryIE\WP_Mailboxes;
  * Default implementations for Email_Account_Settings_Interface.
  *
  * @see Email_Account_Settings_Interface
+ * @phpstan-require-implements Email_Account_Settings_Interface
  */
 trait Email_Account_Settings_Defaults_Trait {
 

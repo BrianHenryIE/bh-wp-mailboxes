@@ -28,7 +28,7 @@ class Settings_Page {
 	 *
 	 * @hooked admin_menu
 	 */
-	public function add_page() {
+	public function add_page(): void {
 
 		$parent_slug = $this->settings->get_cpt_underscored_20();
 		$page_title  = 'Mailboxes Settings';
@@ -44,7 +44,7 @@ class Settings_Page {
 	/**
 	 * Registered in @see add_page()
 	 */
-	public function display_page() {
+	public function display_page(): void {
 
 		include wp_normalize_path( __DIR__ . '/partials/bh-wp-mailboxes-test-plugin-admin-display.php' );
 	}

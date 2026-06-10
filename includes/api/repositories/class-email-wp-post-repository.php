@@ -33,8 +33,9 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	/**
 	 * Constructor.
 	 *
-	 * @param string           $post_type The CPT slug, e.g. "my_plugin_emails".
-	 * @param ?LoggerInterface $logger    PSR-3 logger.
+	 * @param string           $post_type        The CPT slug, e.g. "my_plugin_emails".
+	 * @param BH_Email_Factory $bh_email_factory Factory for creating BH_Email instances.
+	 * @param ?LoggerInterface $logger           PSR-3 logger.
 	 */
 	public function __construct(
 		protected string $post_type,
@@ -50,10 +51,12 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @param int $post_id The WordPress post ID.
 	 *
 	 * @return BH_Email
+	 * @throws InvalidArgumentException When no post is found with the given ID.
 	 */
 	public function find_by_post_id( int $post_id ): BH_Email {
 		$post = get_post( $post_id );
 		if ( ! ( $post instanceof WP_Post ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- integer, safe to include in exception.
 			throw new InvalidArgumentException( "No post found with ID {$post_id}." );
 		}
 		return $this->bh_email_factory->from_wp_post( $post );
@@ -140,6 +143,16 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		return is_numeric( $result ) ? (int) $result : null;
 	}
 
+	/**
+	 * Saves a new email to the database.
+	 *
+	 * @param IMessage                           $email         The email to save.
+	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes     The mailboxes settings.
+	 * @param Email_Account_Settings_Interface   $email_account The email account settings.
+	 *
+	 * @return BH_Email
+	 * @throws \Exception When WordPress fails to create the post.
+	 */
 	public function save_new(
 		IMessage $email,
 		BH_WP_Mailboxes_Settings_Interface $mailboxes,
@@ -156,28 +169,37 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		);
 		$original_email_no_attachments_string = implode( ' ', $non_attachment_parts );
 
-		$sender = $email->getHeader( 'From' )?->getEmail() ?? '';
+		$from_header = $email->getHeader( 'From' );
+		$sender      = $from_header instanceof \ZBateson\MailMimeParser\Header\AddressHeader ? $from_header->getEmail() ?? '' : '';
 
 		$query = new BH_Email_Query(
 			post_type: $post_type,
 			account_email_address: $email_account->get_account_email_address(),
-			email_id: $email->getMessageId(),
-			subject: $email->getSubject(),
+			email_id: $email->getMessageId() ?? '',
+			subject: $email->getSubject() ?? '',
 			from_address: $sender, // We'll save this in meta because if it matches a user account it is relevant.
 			original_email: $original_email_no_attachments_string,
-			local_status: 'new', /** @see BH_Email_CPT::register_post_statuses() */
+			local_status: 'new', // @see BH_Email_CPT::register_post_statuses().
 			is_read_remote: false, // TODO: how to determine is is already read?
 			is_deleted_remote: false, // We may immediately delete the email, but the fact it exists in save_new means it exists remotely.
 			attachment_ids: array(),
 		);
 
-		/** @var WpUpdatePostArray $args */
+		/**
+		 * The query array for wp_insert_post.
+		 *
+		 * @var WpUpdatePostArray $args
+		 */
 		$args = $query->to_query_array();
 
 		$filter_name = 'content_save_pre';
-		/** @var \WP_Hook[] $wp_filter */
+		/**
+		 * The global WordPress filter hooks.
+		 *
+		 * @var \WP_Hook[] $wp_filter
+		 */
 		global $wp_filter;
-		$hook             = $wp_filter[ $filter_name ] ?? null;
+		$hook             = $wp_filter[ $filter_name ];
 		$callbacks_before = $hook->callbacks;
 		/**
 		 * Avoid modifying the original email content during save. Otherwise, the Message-id header value is removed
@@ -194,6 +216,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 
 		if ( is_wp_error( $post_id ) ) {
 			// TODO Log.
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- CPT slug, not user input.
 			throw new \Exception( 'WordPress failed to create a ' . $post_type . ' for the email.' );
 		}
 
@@ -203,10 +226,14 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	}
 
 	/**
-	 * @param Collection<IMessage> $all_new_account_emails
+	 * Saves all new emails for an account.
 	 *
-	 * @return array
-	 * @throws \Exception
+	 * @param Collection<int, \ZBateson\MailMimeParser\IMessage> $all_new_account_emails The new emails to save.
+	 * @param BH_WP_Mailboxes_Settings_Interface                 $mailboxes              The mailboxes settings.
+	 * @param Email_Account_Settings_Interface                   $email_account          The email account settings.
+	 *
+	 * @return array<int, \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email>
+	 * @throws \Exception When saving an individual email fails.
 	 */
 	public function save_all(
 		Collection $all_new_account_emails,

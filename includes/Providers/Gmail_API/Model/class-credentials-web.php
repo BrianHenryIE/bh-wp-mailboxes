@@ -45,7 +45,10 @@ readonly class Credentials_Web {
 	 */
 	public static function from_file( string $file_path ): Credentials_Web {
 		$json_string = file_get_contents( $file_path );
-		$json        = json_decode( $json_string );
+		if ( false === $json_string ) {
+			throw new \RuntimeException( "Failed to read credentials file: {$file_path}" );
+		}
+		$json = json_decode( $json_string );
 		return self::from_json( $json );
 	}
 

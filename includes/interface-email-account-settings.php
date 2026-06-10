@@ -12,14 +12,14 @@ namespace BrianHenryIE\WP_Mailboxes;
 interface Email_Account_Settings_Interface {
 
 	// Allow deactivating an email account without deleting the settings, so it is no longer automatically checked.
-	// public function is_active(): bool
+	// public function is_active(): bool // TODO: implement.
 
 	/**
 	 * The email address.
 	 *
 	 * You'd think this is the same as the credentials username, but it is not always.
 	 */
-	public function get_account_email_address();
+	public function get_account_email_address(): string;
 
 	/**
 	 * The friendly account name to display.
@@ -27,6 +27,9 @@ interface Email_Account_Settings_Interface {
 	public function get_account_unique_friendly_name(): string;
 
 
+	/**
+	 * Returns the account credentials.
+	 */
 	public function get_credentials(): Account_Credentials_Interface;
 
 	/**

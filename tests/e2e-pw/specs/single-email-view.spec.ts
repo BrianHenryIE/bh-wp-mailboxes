@@ -251,9 +251,21 @@ test.describe( 'Single email view', () => {
 		const iframe = page.locator( '#bh-email-content-html iframe.bh-email-html-body' );
 		await expect( iframe ).toBeAttached();
 
+		// Wait for initial load + resize to fire before collapsing.
+		await page.waitForFunction( () => {
+			const el = document.querySelector( '#bh-email-content-html iframe.bh-email-html-body' ) as HTMLIFrameElement | null;
+			return el !== null && el.style.height !== '';
+		} );
+
 		// Collapse then re-expand the postbox.
 		await page.locator( '#bh-email-content-html .toggle-indicator' ).click();
 		await page.locator( '#bh-email-content-html .toggle-indicator' ).click();
+
+		// Wait for the setTimeout(0) resize callback in single-email-view.js to run.
+		await page.waitForFunction( () => {
+			const el = document.querySelector( '#bh-email-content-html iframe.bh-email-html-body' ) as HTMLIFrameElement | null;
+			return el !== null && el.style.height !== '' && ! document.querySelector( '#bh-email-content-html' )?.classList.contains( 'closed' );
+		} );
 
 		// After re-expanding the iframe should have a positive height set inline.
 		const height = await iframe.evaluate( ( el ) => ( el as HTMLIFrameElement ).style.height );
@@ -267,8 +279,20 @@ test.describe( 'Single email view', () => {
 		const iframe = page.locator( '#bh-email-content-plain iframe.bh-email-plain-body' );
 		await expect( iframe ).toBeAttached();
 
+		// Wait for initial load + resize to fire before collapsing.
+		await page.waitForFunction( () => {
+			const el = document.querySelector( '#bh-email-content-plain iframe.bh-email-plain-body' ) as HTMLIFrameElement | null;
+			return el !== null && el.style.height !== '';
+		} );
+
 		await page.locator( '#bh-email-content-plain .toggle-indicator' ).click();
 		await page.locator( '#bh-email-content-plain .toggle-indicator' ).click();
+
+		// Wait for the setTimeout(0) resize callback in single-email-view.js to run.
+		await page.waitForFunction( () => {
+			const el = document.querySelector( '#bh-email-content-plain iframe.bh-email-plain-body' ) as HTMLIFrameElement | null;
+			return el !== null && el.style.height !== '' && ! document.querySelector( '#bh-email-content-plain' )?.classList.contains( 'closed' );
+		} );
 
 		const height = await iframe.evaluate( ( el ) => ( el as HTMLIFrameElement ).style.height );
 		expect( parseInt( height, 10 ) ).toBeGreaterThan( 0 );
@@ -278,7 +302,9 @@ test.describe( 'Single email view', () => {
 	// Requirement 14: Attachments metabox in side column
 	// -------------------------------------------------------------------------
 
-	test( 'Attachments metabox appears inside the side-sortables column', async ( { admin, page, request } ) => {
+	// Attachments metabox registration is commented out in class-single-email-view.php pending
+	// a decision on how attachment file paths are stored. Skip until re-enabled.
+	test.skip( 'Attachments metabox appears inside the side-sortables column', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request, { has_attachment: true } );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 

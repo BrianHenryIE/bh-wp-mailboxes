@@ -44,7 +44,7 @@ class WP_Env {
 	 */
 	protected function record_hostname(): void {
 
-		if ( defined( 'WP_CLI' ) && ( true === constant( 'WP_CLI' ) ) ) {
+		if ( defined( 'WP_CLI' ) ) {
 			return;
 		}
 
@@ -73,7 +73,7 @@ class WP_Env {
 			case 'wp-cron.php' === $path:
 			case ( isset( $_SERVER['REQUEST_URI'] ) && 'wp-cron.php' === $_SERVER['REQUEST_URI'] ):
 			case wp_doing_cron():
-			case defined( 'WP_CLI' ) && ( true === constant( 'WP_CLI' ) ):
+			case defined( 'WP_CLI' ):
 			case ! isset( $_SERVER['HTTP_USER_AGENT'] ):
 				return $this->get_internal_url( $url );
 			default:

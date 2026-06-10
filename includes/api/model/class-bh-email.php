@@ -94,7 +94,7 @@ readonly class BH_Email implements Saved_Post {
 	 * Returns the WordPress post ID for this email.
 	 */
 	public function get_post_id(): int {
-		return $this->post_id ?? 0;
+		return $this->post_id;
 	}
 
 	/**

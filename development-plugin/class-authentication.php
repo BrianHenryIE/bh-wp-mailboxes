@@ -11,6 +11,7 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin;
 
 use Exception;
+use WP_Error;
 use WP_User;
 
 /**
@@ -29,7 +30,7 @@ class Authentication {
 	/**
 	 * Make REST requests run as the first admin user, so tests can arrange/assert via REST.
 	 *
-	 * @param WP_Error|null|true $errors WP_Error on auth error, null if unused, true if succeeded.
+	 * @param \WP_Error|null|true $errors WP_Error on auth error, null if unused, true if succeeded.
 	 *
 	 * @hooked rest_authentication_errors
 	 * @see \WP_REST_Server::check_authentication()

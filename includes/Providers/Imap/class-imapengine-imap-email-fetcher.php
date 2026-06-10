@@ -15,6 +15,7 @@ use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTimeInterface;
 use DirectoryTree\ImapEngine\Mailbox;
 use DirectoryTree\ImapEngine\Message;
+use DirectoryTree\ImapEngine\MessageInterface;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -99,12 +100,12 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	 * @param DateTimeInterface $since_time The earliest date/time from which to fetch messages.
 	 * @param int               $limit      Maximum number of messages to retrieve.
 	 *
-	 * @return Collection<IMessage> Unsaved, unparsed emails.
+	 * @return Collection<int, IMessage> Unsaved, unparsed emails.
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time, int $limit = 100 ): Collection {
 
 		// `SINCE` filters by date only — go back one extra day and filter by time in PHP.
-		$previous_day = ( clone $since_time )->sub( new \DateInterval( 'P1D' ) );
+		$previous_day = ( new \DateTime() )->setTimestamp( $since_time->getTimestamp() )->sub( new \DateInterval( 'P1D' ) );
 
 		$this->logger->debug(
 			'Fetching IMAP emails',
@@ -114,15 +115,12 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 			)
 		);
 
-		/**
-		 * Raw ImapEngine messages from the server.
-		 *
-		 * @var Collection<Message> $messages
-		 */
-		$messages = $this->mailbox
-			->inbox()
-			->messages()
-			->since( $previous_day )
+		// Call since() before chaining to avoid phpstan's @mixin ImapQueryBuilder type inference
+		// resolving the chain to ImapQueryBuilder, which lacks limit().
+		$message_query = $this->mailbox->inbox()->messages();
+		$message_query->since( $previous_day );
+
+		$messages = $message_query
 			->limit( $limit )
 			->withHeaders()
 			->withBody()
@@ -136,28 +134,25 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		 * @see https://stackoverflow.com/questions/32698415/php-imap-search-unseen-since-date-with-time
 		 */
 		$messages = $messages->filter(
-			function ( Message $message ) use ( $since_time ) {
+			function ( MessageInterface $message ) use ( $since_time ) {
 				$date = $message->date();
 				return ! is_null( $date ) && $date->getTimestamp() >= $since_time->getTimestamp();
 			}
 		);
 
-		/**
-		 * Parsed IMessage objects.
-		 *
-		 * @var Collection<IMessage> $messages
-		 */
-		$messages = array_map(
-			fn( Message $message ) => $message->parse(),
-			$messages->all()
+		/** @var Collection<int, IMessage> $parsed */
+		$parsed = new Collection(
+			array_map(
+				fn( MessageInterface $message ) => $message->parse(),
+				$messages->values()->all()
+			)
 		);
-		$messages = new Collection( $messages );
 
 		$this->logger->info(
-			$messages->count() . ' emails found in inbox since last run.',
+			$parsed->count() . ' emails found in inbox since last run.',
 			array( 'since' => $since_time )
 		);
 
-		return $messages;
+		return $parsed;
 	}
 }

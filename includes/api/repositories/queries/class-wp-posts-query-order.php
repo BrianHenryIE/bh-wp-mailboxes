@@ -8,6 +8,8 @@
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Queries;
 
 /**
+ * Criteria for ordering and limiting WP_Query results.
+ *
  * @see get_posts()
  */
 readonly class WP_Posts_Query_Order {
@@ -27,6 +29,8 @@ readonly class WP_Posts_Query_Order {
 	}
 
 	/**
+	 * Returns the query arguments array for use with get_posts() or WP_Query.
+	 *
 	 * @return array{order?:string,numberposts?:int,orderby?:string}
 	 */
 	public function to_query_array(): array {

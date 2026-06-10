@@ -1,4 +1,9 @@
 <?php
+/**
+ * Factory for creating BH_Email instances from WordPress posts.
+ *
+ * @package brianhenryie/bh-wp-mailboxes
+ */
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Factories;
 
@@ -11,15 +16,28 @@ use WP_Post;
 use ZBateson\MailMimeParser\Header\AddressHeader;
 use ZBateson\MailMimeParser\MailMimeParser;
 
+/**
+ * Factory for BH_Email objects.
+ */
 class BH_Email_Factory {
 	use LoggerAwareTrait;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param LoggerInterface $logger PSR-3 logger.
+	 */
 	public function __construct(
 		LoggerInterface $logger,
 	) {
 		$this->setLogger( $logger );
 	}
 
+	/**
+	 * Hydrates a BH_Email from a WP_Post.
+	 *
+	 * @param WP_Post $post The WordPress post to hydrate from.
+	 */
 	public function from_wp_post( WP_Post $post ): BH_Email {
 
 		$parser = new MailMimeParser();
@@ -41,10 +59,10 @@ class BH_Email_Factory {
 		$is_read     = '' !== $is_read_raw ? (bool) $is_read_raw : null;
 
 		// "Date: Wed, 30 Jul 2025 03:38:07 +0000";
-		$date_header = $message->getHeader( 'Date' );
-		$date_header = str_replace( 'Date: ', '', $date_header );
+		$date_header = str_replace( 'Date: ', '', (string) $message->getHeader( 'Date' ) );
 		// 29 May 2026 06:36:13 -0700
-		$sent_at = DateTime::createFromFormat( DateTime::RFC2822, $date_header ) ?: null;
+		$sent_at_result = DateTime::createFromFormat( DateTime::RFC2822, $date_header );
+		$sent_at        = ( false !== $sent_at_result ) ? $sent_at_result : null;
 
 		$attachment_ids = get_post_meta( $post_id, 'attachment_ids', true );
 		$attachment_ids = (array) json_decode( $attachment_ids );

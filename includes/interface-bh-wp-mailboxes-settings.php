@@ -56,6 +56,8 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	 * The custom post type name used when registering
 	 *
 	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_cpt_underscored()
+	 *
+	 * @return non-empty-lowercase-string
 	 */
 	public function get_cpt_underscored_20(): string;
 
@@ -68,9 +70,9 @@ interface BH_WP_Mailboxes_Settings_Interface {
 
 	/**
 	 * Set how often the emails should be fetched, and how often locally saved emails should be deleted.
-	 * Set to null to disable (do not unset, explicitly set each entry to null, so the existing cron job will be removed).
+	 * Return an empty array or omit keys to disable specific jobs.
 	 *
-	 * @return array{fetch_emails:string, delete_local_emails:string}
+	 * @return array<string, string>
 	 */
 	public function get_cron_schedules(): array;
 }

@@ -123,7 +123,7 @@ class Single_Email_View {
 		}
 
 		$body_text = $email->body_plain_text;
-		if ( '' !== $body_text ) {
+		if ( is_string( $body_text ) && '' !== $body_text ) {
 			add_meta_box(
 				'bh-email-content-plain',
 				__( 'Email Content – Plain Text', 'bh-wp-mailboxes' ),
@@ -451,7 +451,7 @@ class Single_Email_View {
 			$name  = $parts[0];
 			$value = $parts[1];
 
-			if ( is_string( $value ) && '' !== $value ) {
+			if ( '' !== $value ) {
 				echo '<tr>';
 				echo '<th scope="row">' . esc_html( $name ) . '</th>';
 				echo '<td>' . esc_html( $value ) . '</td>';
@@ -495,7 +495,7 @@ class Single_Email_View {
 
 		$body_plain_text = $email->body_plain_text;
 
-		if ( '' === $body_plain_text ) {
+		if ( null === $body_plain_text || '' === $body_plain_text ) {
 			echo '<p>' . esc_html__( 'No plain text content.', 'bh-wp-mailboxes' ) . '</p>';
 			return;
 		}
@@ -535,7 +535,7 @@ class Single_Email_View {
 			$url           = wp_get_attachment_url( $attachment_id );
 			$attached_file = get_attached_file( $attachment_id );
 			$attachment    = get_post( $attachment_id );
-			$filename      = basename( $attached_file ? $attached_file : $attachment->post_title );
+			$filename      = basename( $attached_file ? $attached_file : ( $attachment ? $attachment->post_title : '' ) );
 			echo '<li>';
 			if ( $url ) {
 				echo '<a href="' . esc_url( $url ) . '" download>' . esc_html( $filename ) . '</a>';

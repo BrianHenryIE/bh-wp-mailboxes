@@ -16,7 +16,9 @@ class Plugins_Page {
 	 * Register hooks.
 	 */
 	public function register_hooks(): void {
-		$plugin_basename = BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME;
+		$plugin_basename = defined( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' )
+			? BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME
+			: 'bh-wp-mailboxes-test-plugin/bh-wp-mailboxes-test-plugin.php';
 		add_filter( "plugin_action_links_{$plugin_basename}", $this->display_plugin_action_links( ... ), 10, 4 );
 	}
 

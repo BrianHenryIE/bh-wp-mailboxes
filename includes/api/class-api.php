@@ -181,53 +181,11 @@ class API implements API_Interface {
 			/**
 			 * Newly saved BH_Email objects for this account.
 			 *
-			 * @var BH_Email[] $new_account_emails
+			 * @var BH_Email[] $all_new_account_bh_emails
 			 */
 			$all_new_account_bh_emails = $this->get_email_repository()->save_all( $all_new_account_emails, $this->settings, $email_account );
 
 			$all_new_emails = array_merge( $all_new_emails, $all_new_account_bh_emails );
-
-			continue;
-			/**
-			 * TODO:
-			 * Filter the emails before saving them. E.g. don't save known irrelevant senders.
-			 *
-			 * @var BH_Email[] $filtered_account_emails
-			 */
-			// $filtered_account_emails = array_filter(
-			// $all_new_account_bh_emails,
-			// fn( IMessage $email ): bool => $this->email_filter( $email, $email_account )
-			// );
-
-			// Filter: bh_wp_mailboxes_fetch_emails_complete( BH_Email[] $emails, string $cpt, string $account_name ).
-			// $filtered_account_emails = apply_filters( 'bh_wp_mailboxes_fetch_emails_complete', $filtered_account_emails, $cpt, $account_name );
-			//
-			// foreach ( $filtered_account_emails as $filtered_email ) {
-			// $this->get_email_repository()->save_new( $filtered_email );
-			// $saved_emails[] = $filtered_email;
-			// } // end foreach.
-
-			$saved_emails = array();
-
-			if ( empty( $filtered_account_emails ) ) {
-				continue;
-			}
-
-			$plugin_slug         = $this->settings->get_plugin_slug();
-			$bh_wp_mailboxes_api = $this;
-			$account             = $email_account;
-			$new_bh_emails       = $filtered_account_emails;
-
-			$this->logger->debug( "Firing action `bh_wp_mailboxes_fetch_emails_saved_{$plugin_slug}` with " . count( $new_bh_emails ) . ' new emails' );
-
-			/**
-			 * Action fires with all new emails found.
-			 *
-			 * @param BH_Email[] $new_bh_emails
-			 * @param Email_Account_Settings_Interface $account
-			 * @param API $bh_wp_mailboxes_api
-			 */
-			do_action( "bh_wp_mailboxes_fetch_emails_saved_{$plugin_slug}", $new_bh_emails, $account, $bh_wp_mailboxes_api );
 		}
 
 		return array(
@@ -408,7 +366,8 @@ class API implements API_Interface {
 	 */
 	protected function resolve_email_account_for_email( BH_Email $email ): ?Email_Account_Settings_Interface {
 
-		$email_account_id = get_post( $email->get_post_id() )->post_parent;
+		$post             = get_post( $email->get_post_id() );
+		$email_account_id = $post ? $post->post_parent : 0;
 
 		// TODO: Previously the idea was to use taxonomies. I think it's better to use a CPT for each email_account and use it as the parent_post id.
 
@@ -472,10 +431,8 @@ class API implements API_Interface {
 				$result[ $account_name ] = null;
 				continue;
 			}
-			try {
-				$since_datetime          = DateTime::createFromFormat( DateTime::ATOM, $last_fetched, new DateTimeZone( 'UTC' ) );
-				$result[ $account_name ] = false !== $since_datetime ? $since_datetime : null;
-			} catch ( Exception ) {
+			$since_datetime = DateTime::createFromFormat( DateTime::ATOM, $last_fetched, new DateTimeZone( 'UTC' ) );
+			if ( false === $since_datetime ) {
 				$this->logger->warning(
 					'Could not parse date from option key ' . $last_fetched_option_name . ' with value ' . $last_fetched . '. Possibly manually edited in database. Deleting option.',
 					array(
@@ -485,6 +442,8 @@ class API implements API_Interface {
 				);
 				delete_option( $last_fetched_option_name );
 				$result[ $account_name ] = null;
+			} else {
+				$result[ $account_name ] = $since_datetime;
 			}
 		}
 		return $result;

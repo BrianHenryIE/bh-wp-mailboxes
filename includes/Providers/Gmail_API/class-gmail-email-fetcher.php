@@ -79,7 +79,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		// created automatically when the authorization flow completes for the first time.
 
 		$access_token = $saved_credentials->get_access_token();
-		$client->setAccessToken( $access_token );
+		$client->setAccessToken( (array) $access_token );
 
 		// If there is no previous token or it's expired.
 		if ( $client->isAccessTokenExpired() ) {
@@ -93,7 +93,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CLI output, not HTML.
 				printf( "Open the following link in your browser:\n%s\n", $auth_url );
 				print 'Enter verification code: ';
-				$auth_code = trim( fgets( STDIN ) );
+				$auth_code = trim( (string) fgets( STDIN ) );
 
 				// Exchange authorization code for an access token.
 				$access_token = $client->fetchAccessTokenWithAuthCode( $auth_code );
@@ -122,6 +122,8 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 * @param DateTimeInterface $since_time The earliest date/time from which to retrieve emails.
 	 *
 	 * @throws Exception When the Gmail API call fails.
+	 *
+	 * @return Collection<int, \ZBateson\MailMimeParser\IMessage>
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time ): Collection {
 
@@ -177,11 +179,14 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 */
 	protected function gmail_body_decode( string $data ): string {
 		// @see https://php.net/manual/es/function.base64-decode.php#118244
-		$data = base64_decode( str_replace( array( '-', '_' ), array( '+', '/' ), $data ) );
+		$decoded = base64_decode( str_replace( array( '-', '_' ), array( '+', '/' ), $data ) );
 
 		// Stack Overflow says can also use `quoted_printable_decode()`.
-		$data = imap_qprint( $data );
+		$decoded = imap_qprint( $decoded );
+		if ( false === $decoded ) {
+			return '';
+		}
 
-		return $data;
+		return $decoded;
 	}
 }

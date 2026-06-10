@@ -11,6 +11,7 @@ namespace BrianHenryIE\WP_Mailboxes;
  * Default implementations for BH_WP_Mailboxes_Settings_Interface.
  *
  * @see BH_WP_Mailboxes_Settings_Interface
+ * @phpstan-require-implements BH_WP_Mailboxes_Settings_Interface
  */
 trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 
@@ -63,7 +64,7 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 	 *
 	 * @see wp_get_schedules()
 	 *
-	 * @return array{fetch_emails:string, delete_local_emails:string}
+	 * @return array<string, string>
 	 */
 	public function get_cron_schedules(): array {
 		return array(

@@ -4,6 +4,8 @@
  *
  * Requires settings on first use `BH_WP_Mailbox::instance( $mailbox_settings );`
  * Then can be retrieved with `BH_WP_Mailbox::instance();`
+ *
+ * @package brianhenryie/bh-wp-mailboxes
  */
 
 namespace BrianHenryIE\WP_Mailboxes;
@@ -17,10 +19,26 @@ use BrianHenryIE\WP_Private_Uploads\Private_Uploads;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
+/**
+ * Main library class; singleton wrapper around the API.
+ */
 class BH_WP_Mailboxes extends API {
 
+	/**
+	 * The singleton instance.
+	 *
+	 * @var BH_WP_Mailboxes
+	 */
 	protected static BH_WP_Mailboxes $instance;
 
+	/**
+	 * Returns the singleton instance, creating it on first call.
+	 *
+	 * @param ?BH_WP_Mailboxes_Settings_Interface $settings Plugin settings (required on first call).
+	 * @param ?LoggerInterface                    $logger   PSR-3 logger.
+	 *
+	 * @throws \Exception When settings are not provided on first use.
+	 */
 	public static function instance(
 		?BH_WP_Mailboxes_Settings_Interface $settings = null,
 		?LoggerInterface $logger = null
@@ -39,6 +57,12 @@ class BH_WP_Mailboxes extends API {
 		throw new \Exception( 'Settings must be provided on first use' );
 	}
 
+	/**
+	 * Constructor.
+	 *
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings.
+	 * @param ?LoggerInterface                   $logger   PSR-3 logger.
+	 */
 	protected function __construct( BH_WP_Mailboxes_Settings_Interface $settings, ?LoggerInterface $logger = null ) {
 
 		$logger ??= new NullLogger();
@@ -50,13 +74,24 @@ class BH_WP_Mailboxes extends API {
 			$private_uploads_settings = new class( $settings ) implements Private_Uploads_Settings_Interface {
 				use Private_Uploads_Settings_Trait;
 
+				/**
+				 * Constructor.
+				 *
+				 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes_settings Mailboxes settings.
+				 */
 				public function __construct( protected BH_WP_Mailboxes_Settings_Interface $mailboxes_settings ) {
 				}
 
+				/**
+				 * Returns the plugin slug.
+				 */
 				public function get_plugin_slug(): string {
 					return $this->mailboxes_settings->get_plugin_slug();
 				}
 
+				/**
+				 * Returns the uploads subdirectory name.
+				 */
 				public function get_uploads_subdirectory_name(): string {
 					return $this->mailboxes_settings->get_private_uploads_directory_name();
 				}
