@@ -29,38 +29,37 @@ test.describe( 'Status_View', () => {
 	} );
 
 	test( '"No accounts configured" message shown when no accounts exist', async ( { admin, page, request } ) => {
-		// Ensure this test runs with no accounts by checking the message directly.
-		// (Other tests may add accounts; this test just asserts the message appears when
-		// the container is present and no account rows are in the table.)
+		// Only meaningful on a clean DB; skip gracefully if other tests have already added accounts.
 		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
 
 		const container = page.locator( '#bh-mailboxes-status' );
 		await expect( container ).toBeAttached();
 
-		// Only assert the message when no table rows are present.
-		const hasTable = await page.locator( '#bh-mailboxes-status table' ).count();
-		if ( hasTable === 0 ) {
+		const hasCards = await page.locator( '.bh-mailboxes-account-card' ).count();
+		if ( hasCards === 0 ) {
 			await expect( container ).toContainText( 'No accounts configured' );
 		}
 	} );
 
 	test( 'account email address appears in its status card', async ( { admin, page, request } ) => {
 		const email = `status-view-e2e-${ Date.now() }@example.com`;
-		await createAccount( request, email );
+		const postId = await createAccount( request, email );
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
 
-		await expect( page.locator( '.bh-mailboxes-account-card' ) ).toBeVisible();
-		await expect( page.locator( '#bh-mailboxes-status' ) ).toContainText( email );
+		const card = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
+		await expect( card ).toBeVisible();
+		await expect( card ).toContainText( email );
 	} );
 
 	test( '"Active" status label shown for a newly-created account', async ( { admin, page, request } ) => {
 		const email = `active-account-e2e-${ Date.now() }@example.com`;
-		await createAccount( request, email );
+		const postId = await createAccount( request, email );
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
 
-		await expect( page.locator( '#bh-mailboxes-status' ) ).toContainText( 'Active' );
+		const card = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
+		await expect( card ).toContainText( 'Active' );
 	} );
 
 	test( '"Never" shown in Last Fetched column for a newly-created account', async ( { admin, page, request } ) => {

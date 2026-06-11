@@ -68,7 +68,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 			display_name: $overrides['display_name'] ?? 'Test Account',
 			from_address_regex_filter: $overrides['from_address_regex_filter'] ?? null,
 			body_identifier_regex_filter: $overrides['body_identifier_regex_filter'] ?? null,
-			after_download_email_action: $overrides['after_download_email_action'] ?? null,
+			after_download_remote_email_action: $overrides['after_download_remote_email_action'] ?? null,
 			delete_local_emails_after_n_days: $overrides['delete_local_emails_after_n_days'] ?? null,
 			last_successful_login_time: $overrides['last_successful_login_time'] ?? null,
 			last_failed_login_time: $overrides['last_failed_login_time'] ?? null,
@@ -173,7 +173,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		$html = $this->capture_display( $this->make_sut( $api ) );
 
 		$this->assertStringContainsString( 'inbox@example.com', $html );
-		$this->assertStringContainsString( '<div class="bh-mailboxes-account-card">', $html );
+		$this->assertStringContainsString( 'class="bh-mailboxes-account-card"', $html );
 	}
 
 	/**

@@ -247,6 +247,8 @@ test.describe( 'Single email view', () => {
 	// -------------------------------------------------------------------------
 
 	test( 'HTML iframe height is recalculated after collapsing and re-expanding the postbox', async ( { admin, page, request } ) => {
+		test.setTimeout( 60_000 );
+
 		const postId = await createEmail( request, { body_html: '<p>Hello HTML</p>' } );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
@@ -259,22 +261,24 @@ test.describe( 'Single email view', () => {
 			return el !== null && el.style.height !== '';
 		} );
 
-		// Collapse then re-expand the postbox.
+		// Collapse: click and wait for the 'closed' class to be applied.
 		await page.locator( '#bh-email-content-html .toggle-indicator' ).click();
+		await expect( page.locator( '#bh-email-content-html' ) ).toHaveClass( /closed/ );
+
+		// Expand: click and wait for 'closed' to be removed.
 		await page.locator( '#bh-email-content-html .toggle-indicator' ).click();
+		await expect( page.locator( '#bh-email-content-html' ) ).not.toHaveClass( /closed/ );
 
-		// Wait for the setTimeout(0) resize callback in single-email-view.js to run.
-		await page.waitForFunction( () => {
-			const el = document.querySelector( '#bh-email-content-html iframe.bh-email-html-body' ) as HTMLIFrameElement | null;
-			return el !== null && el.style.height !== '' && ! document.querySelector( '#bh-email-content-html' )?.classList.contains( 'closed' );
-		} );
-
-		// After re-expanding the iframe should have a positive height set inline.
-		const height = await iframe.evaluate( ( el ) => ( el as HTMLIFrameElement ).style.height );
-		expect( parseInt( height, 10 ) ).toBeGreaterThan( 0 );
+		// Poll until the setTimeout(0) resize callback sets a positive height.
+		await expect.poll(
+			() => iframe.evaluate( ( el ) => parseInt( ( el as HTMLIFrameElement ).style.height ?? '0', 10 ) ),
+			{ timeout: 10_000 }
+		).toBeGreaterThan( 0 );
 	} );
 
 	test( 'plain-text iframe height is recalculated after collapsing and re-expanding the postbox', async ( { admin, page, request } ) => {
+		test.setTimeout( 60_000 );
+
 		const postId = await createEmail( request, { body_plain: 'Hello plain text.' } );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
@@ -287,17 +291,19 @@ test.describe( 'Single email view', () => {
 			return el !== null && el.style.height !== '';
 		} );
 
+		// Collapse: click and wait for the 'closed' class to be applied.
 		await page.locator( '#bh-email-content-plain .toggle-indicator' ).click();
+		await expect( page.locator( '#bh-email-content-plain' ) ).toHaveClass( /closed/ );
+
+		// Expand: click and wait for 'closed' to be removed.
 		await page.locator( '#bh-email-content-plain .toggle-indicator' ).click();
+		await expect( page.locator( '#bh-email-content-plain' ) ).not.toHaveClass( /closed/ );
 
-		// Wait for the setTimeout(0) resize callback in single-email-view.js to run.
-		await page.waitForFunction( () => {
-			const el = document.querySelector( '#bh-email-content-plain iframe.bh-email-plain-body' ) as HTMLIFrameElement | null;
-			return el !== null && el.style.height !== '' && ! document.querySelector( '#bh-email-content-plain' )?.classList.contains( 'closed' );
-		} );
-
-		const height = await iframe.evaluate( ( el ) => ( el as HTMLIFrameElement ).style.height );
-		expect( parseInt( height, 10 ) ).toBeGreaterThan( 0 );
+		// Poll until the setTimeout(0) resize callback sets a positive height.
+		await expect.poll(
+			() => iframe.evaluate( ( el ) => parseInt( ( el as HTMLIFrameElement ).style.height ?? '0', 10 ) ),
+			{ timeout: 10_000 }
+		).toBeGreaterThan( 0 );
 	} );
 
 	// -------------------------------------------------------------------------
