@@ -53,7 +53,44 @@ jobs:
 
       - name: Run PHPCS to add annotations to the code
         continue-on-error: true
-        run: vendor/bin/phpcs -q --report=checkstyle | cs2pr
+        run: |
+          vendor/bin/phpcs -q --report=checkstyle > phpcs-checkstyle.xml
+          cat phpcs-checkstyle.xml
+          cat phpcs-checkstyle.xml | cs2pr
+      #          vendor/bin/phpcs -q --report=checkstyle | sponge phpcs-checkstyle.xml
 
-      - name: Fail if there are still phpcs errors in the production code
-        run: vendor/bin/phpcs includes
+      - name: Fail if there are still phpcs errors in the production code (master/main)
+        if: ${{ github.event_name != 'pull_request' }}
+        run: vendor/bin/phpcs includes -v
+
+      - name: Get the PR diff
+        id: pr_diff
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          FILENAME="${{ env.TARGET_BRANCH_REF_NAME }}-${{ github.event.pull_request.head.sha }}.diff"
+          git fetch origin ${{ env.TARGET_BRANCH_REF_NAME }}:refs/remotes/origin/${{ env.TARGET_BRANCH_REF_NAME }}
+          git diff origin/${{ env.TARGET_BRANCH_REF_NAME }} > tmp.diff
+          mv tmp.diff $FILENAME
+          echo "diff_filename=$FILENAME" >> $GITHUB_OUTPUT
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "diff_contents<<$EOF" >> $GITHUB_OUTPUT
+          echo "$(cat $FILENAME)" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+        env:
+          TARGET_BRANCH_REF_NAME: ${{ github.event.pull_request.base.ref }}
+
+      - name: Fail if there are still phpcs errors in the modified files (pr)
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          vendor/bin/prf filter-checkstyle ${{ env.DIFF_FILENAME }} ${{ env.CHECKSTYLE_FILENAME }} filtered-checkstyle.xml --base-path=$(pwd)
+          cat filtered-checkstyle.xml | cs2pr
+        env:
+          DIFF_FILENAME: ${{ steps.pr_diff.outputs.diff_filename }}
+          CHECKSTYLE_FILENAME: "phpcs-checkstyle.xml"
+
+      # On PRs, print out the xml for debug.
+      - name: Debug log filtered-checkstyle.xml
+        if: ${{ failure() && github.event_name == 'pull_request' }}
+        run: cat ${{ env.CHECKSTYLE_FILENAME }}
+        env:
+          CHECKSTYLE_FILENAME: "filtered-checkstyle.xml"
