@@ -105,7 +105,7 @@ class Mailboxes {
 
 		$library_loaded = class_exists( \BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes::class );
 
-		$count = (int) wp_count_posts( self::EMAIL_POST_TYPE )->publish;
+		$count = (int) ( wp_count_posts( self::EMAIL_POST_TYPE )->publish ?? 0 );
 
 		return new WP_REST_Response(
 			array(
@@ -132,9 +132,8 @@ class Mailboxes {
 			? sanitize_text_field( $request->get_param( 'subject' ) )
 			: 'E2E fixture email';
 
-		$body_plain = is_string( $request->get_param( 'body_plain' ) )
-			? sanitize_textarea_field( $request->get_param( 'body_plain' ) )
-			: '';
+		$body_plain = is_string( $request->get_param( 'body_plain' ) ) ? $request->get_param( 'body_plain' ) : '';
+		$body_html  = is_string( $request->get_param( 'body_html' ) ) ? $request->get_param( 'body_html' ) : '';
 
 		$post_status = is_string( $request->get_param( 'post_status' ) )
 			? sanitize_key( $request->get_param( 'post_status' ) )
@@ -142,10 +141,9 @@ class Mailboxes {
 
 		$post_id = wp_insert_post(
 			array(
-				'post_type'    => self::EMAIL_POST_TYPE,
-				'post_status'  => $post_status,
-				'post_title'   => $subject,
-				'post_content' => $body_plain,
+				'post_type'   => self::EMAIL_POST_TYPE,
+				'post_status' => $post_status,
+				'post_title'  => $subject,
 			),
 			true
 		);
@@ -154,19 +152,22 @@ class Mailboxes {
 			return new WP_REST_Response( array( 'error' => $post_id->get_error_message() ), 500 );
 		}
 
-		$body_html = $request->get_param( 'body_html' );
-		if ( is_string( $body_html ) && '' !== $body_html ) {
-			update_post_meta( $post_id, 'bh_email_body_html', wp_kses_post( $body_html ) );
+		// Store body content as MIME so BH_Email_Factory::from_wp_post() (which uses MailMimeParser
+		// on post_content) can read it correctly. Bypass content_save_pre to avoid filter mangling.
+		if ( '' !== $body_plain || '' !== $body_html ) {
+			global $wpdb;
+			$wpdb->update( $wpdb->posts, array( 'post_content' => $this->build_mime( $body_plain, $body_html ) ), array( 'ID' => $post_id ) );
+			clean_post_cache( $post_id );
 		}
 
 		$is_read = $request->get_param( 'is_read' );
 		if ( null !== $is_read ) {
-			update_post_meta( $post_id, 'bh_email_is_read', true === $is_read ? '1' : '0' );
+			update_post_meta( $post_id, 'is_remote_read', true === $is_read ? 'yes' : 'no' );
 		}
 
 		$deleted_on_server = $request->get_param( 'deleted_on_server' );
 		if ( true === $deleted_on_server ) {
-			update_post_meta( $post_id, 'bh_email_deleted_on_server', '1' );
+			update_post_meta( $post_id, 'is_remote_deleted', 'yes' );
 		}
 
 		$has_attachment = $request->get_param( 'has_attachment' );
@@ -194,5 +195,25 @@ class Mailboxes {
 		}
 
 		return new WP_REST_Response( array( 'post_id' => $post_id ), 201 );
+	}
+
+	/**
+	 * Build a minimal RFC2822 MIME message from plain and/or HTML body parts.
+	 *
+	 * @param string $plain Plain-text body (may be empty).
+	 * @param string $html  HTML body (may be empty).
+	 */
+	protected function build_mime( string $plain, string $html ): string {
+		if ( '' !== $plain && '' !== $html ) {
+			$boundary = '----=_Part_' . md5( $plain . $html );
+			return "MIME-Version: 1.0\r\nContent-Type: multipart/alternative; boundary=\"$boundary\"\r\n\r\n"
+				. "--$boundary\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n$plain\r\n"
+				. "--$boundary\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n$html\r\n"
+				. "--$boundary--\r\n";
+		}
+		if ( '' !== $html ) {
+			return "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n$html";
+		}
+		return "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n$plain";
 	}
 }

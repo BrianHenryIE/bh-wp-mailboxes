@@ -39,9 +39,10 @@ class WPUnit_Testcase extends WPTestCase {
 	}
 
 	protected function create_post_from_fixture(
-		string $filepath,
 		string $post_type,
+		?string $filepath = null,
 	): int {
+		$filepath     ??= codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
 		$email_contents = file_get_contents( $filepath );
 
 		$repo = new Email_WP_Post_Repository(
@@ -56,7 +57,7 @@ class WPUnit_Testcase extends WPTestCase {
 
 		// BH_WP_Mailboxes_Settings_Interface $mailboxes,
 		$mailboxes = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
-		$mailboxes->expects( 'get_cpt_underscored_20' )->andReturn( $post_type );
+		$mailboxes->expects( 'get_emails_cpt_underscored_20' )->andReturn( $post_type );
 
 		// Email_Account_Settings_Interface $email_account
 		$email_account = Mockery::mock( Email_Account_Settings_Interface::class );

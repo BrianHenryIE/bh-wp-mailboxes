@@ -11,6 +11,8 @@
 namespace BrianHenryIE\WP_Mailboxes;
 
 /**
+ * Settings interface for bh-wp-mailboxes.
+ *
  * @see BH_WP_Mailboxes_Settings_Defaults_Trait
  */
 interface BH_WP_Mailboxes_Settings_Interface {
@@ -31,14 +33,9 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	 *
 	 * Max.  length 20 characters.
 	 */
-	public function get_cpt_friendly_name(): string;
+	public function get_emails_cpt_friendly_name(): string;
 
-	/**
-	 * The settings for the mailboxes to be checked.
-	 *
-	 * @return Email_Account_Settings_Interface[]
-	 */
-	public function get_configured_mailbox_settings(): array;
+	public function get_email_accounts_cpt_friendly_name(): string;
 
 	/**
 	 * Email attachments are stored in a subfolder of the wp-content/uploads directory. What name should be given to
@@ -54,21 +51,26 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	 * The custom post type name used when registering
 	 *
 	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_cpt_underscored()
+	 *
+	 * @return non-empty-lowercase-string
 	 */
-	public function get_cpt_underscored_20(): string;
+	public function get_emails_cpt_underscored_20(): string;
+	/** @return non-empty-lowercase-string */
+	public function get_email_accounts_cpt_underscored_20(): string;
 
 	/**
 	 * CPT name used in script handles.
 	 *
-	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_cpt_dashed()
+	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_emails_cpt_dashed()
 	 */
-	public function get_cpt_dashed(): string;
+	public function get_emails_cpt_dashed(): string;
+	public function get_email_accounts_cpt_dashed(): string;
 
 	/**
 	 * Set how often the emails should be fetched, and how often locally saved emails should be deleted.
-	 * Set to null to disable (do not unset, explicitly set each entry to null, so the existing cron job will be removed).
+	 * Return an empty array or omit keys to disable specific jobs.
 	 *
-	 * @return array{fetch_emails:string, delete_local_emails:string}
+	 * @return array<string, string>
 	 */
 	public function get_cron_schedules(): array;
 }

@@ -30,7 +30,11 @@ class Single_Email_View {
 	 */
 	protected string $post_type;
 
-	/** @var array<int, BH_Email> */
+	/**
+	 * Cache of BH_Email instances keyed by post ID.
+	 *
+	 * @var array<int, BH_Email>
+	 */
 	protected array $emails = array();
 
 	/**
@@ -48,9 +52,14 @@ class Single_Email_View {
 		LoggerInterface $logger,
 	) {
 		$this->setLogger( $logger );
-		$this->post_type = $this->settings->get_cpt_underscored_20();
+		$this->post_type = $this->settings->get_emails_cpt_underscored_20();
 	}
 
+	/**
+	 * Returns the BH_Email for the given post, loading it if not already cached.
+	 *
+	 * @param WP_Post $post The email post to look up.
+	 */
 	private function get_email_for_post( WP_Post $post ): BH_Email {
 		if ( ! isset( $this->emails[ $post->ID ] ) ) {
 			$this->emails[ $post->ID ] = $this->email_wp_post_repository->find_by_post_id( $post->ID );
@@ -67,7 +76,11 @@ class Single_Email_View {
 	 */
 	public function add_meta_boxes( WP_Post $post ): void {
 
-		/** @var BH_Email $email */
+		/**
+		 * The email for the current post.
+		 *
+		 * @var BH_Email $email
+		 */
 		$email = $this->email_wp_post_repository->find_by_post_id( $post->ID );
 		unset( $post );
 
@@ -110,7 +123,7 @@ class Single_Email_View {
 		}
 
 		$body_text = $email->body_plain_text;
-		if ( '' !== $body_text ) {
+		if ( is_string( $body_text ) && '' !== $body_text ) {
 			add_meta_box(
 				'bh-email-content-plain',
 				__( 'Email Content – Plain Text', 'bh-wp-mailboxes' ),
@@ -341,17 +354,22 @@ class Single_Email_View {
 	 */
 	public function render_status_metabox( WP_Post $post ): void {
 
+		$email = $this->get_email_for_post( $post );
+
 		$statuses = array(
 			'bh_email_new'       => __( 'New', 'bh-wp-mailboxes' ),
 			'bh_email_processed' => __( 'Processed', 'bh-wp-mailboxes' ),
 			'bh_email_saved'     => __( 'Saved', 'bh-wp-mailboxes' ),
 		);
 
-		$current_status    = $post->post_status;
-		$is_read_raw       = get_post_meta( $post->ID, 'bh_email_is_read', true );
-		$deleted_on_server = get_post_meta( $post->ID, 'bh_email_deleted_on_server', true );
+		$current_status = $email->post_status;
+		// $is_read_raw       = get_post_meta( $post->ID, 'bh_email_is_read', true );
+		$is_read = $email->is_remote_read;
+		// $deleted_on_server = get_post_meta( $post->ID, 'bh_email_deleted_on_server', true );
+		$deleted_on_server = $email->is_remote_deleted;
 
-		$mailbox = $this->resolve_mailbox_for_post( $post->ID );
+		$email_account = $this->api->get_email_account_for_email( $email );
+		$provider      = $email_account ? $this->api->get_provider_for_email_account( $email_account ) : null;
 
 		echo '<div class="submitbox" id="bh-email-status-box">';
 
@@ -389,12 +407,15 @@ class Single_Email_View {
 		echo '</select>';
 		echo '<input type="hidden" name="hidden_post_status" value="' . esc_attr( $current_status ) . '">';
 
-		// Remote status badges.
-		echo '<div class="bh-email-remote-status">' . wp_kses_post( $this->get_remote_status_html( $is_read_raw, $deleted_on_server ) ) . '</div>';
+		if ( $provider?->can_read_status() ) {
+			$badges = $this->get_remote_status_html( $is_read, $deleted_on_server );
+			if ( '' !== $badges ) {
+				echo '<div class="bh-email-remote-status">' . wp_kses_post( $badges ) . '</div>';
+			}
+		}
 
 		// Remote action buttons — shown only when the mailbox supports them.
-		if ( ! is_null( $mailbox ) && $mailbox->can_mark_read() ) {
-			$is_read = '' !== $is_read_raw && (bool) $is_read_raw;
+		if ( ! is_null( $provider ) && $provider->can_mark_read() ) {
 			if ( $is_read ) {
 				echo '<p><button id="bh-email-mark-unread" class="button">' . esc_html__( 'Mark as unread on server', 'bh-wp-mailboxes' ) . '</button></p>';
 			} else {
@@ -402,7 +423,7 @@ class Single_Email_View {
 			}
 		}
 
-		if ( ! is_null( $mailbox ) && $mailbox->can_delete_on_server() && '1' !== $deleted_on_server ) {
+		if ( ! is_null( $provider ) && $provider->can_delete_on_server() && ! $email->is_remote_deleted ) {
 			echo '<p><button id="bh-email-delete-on-server" class="button button-link-delete">' . esc_html__( 'Delete on server', 'bh-wp-mailboxes' ) . '</button></p>';
 		}
 
@@ -438,7 +459,7 @@ class Single_Email_View {
 			$name  = $parts[0];
 			$value = $parts[1];
 
-			if ( is_string( $value ) && '' !== $value ) {
+			if ( '' !== $value ) {
 				echo '<tr>';
 				echo '<th scope="row">' . esc_html( $name ) . '</th>';
 				echo '<td>' . esc_html( $value ) . '</td>';
@@ -482,7 +503,7 @@ class Single_Email_View {
 
 		$body_plain_text = $email->body_plain_text;
 
-		if ( '' === $body_plain_text ) {
+		if ( null === $body_plain_text || '' === $body_plain_text ) {
 			echo '<p>' . esc_html__( 'No plain text content.', 'bh-wp-mailboxes' ) . '</p>';
 			return;
 		}
@@ -502,7 +523,7 @@ class Single_Email_View {
 		unset( $post );
 
 		$attachment_ids = $email->attachment_ids;
-		// The post type of the private uploads attachments is not `attachments`
+		// The post type of the private uploads attachments is not `attachments`.
 		// $attachments = get_posts(
 		// array(
 		// 'post_type'   => 'attachment',
@@ -510,7 +531,7 @@ class Single_Email_View {
 		// 'post_status' => 'any',
 		// 'numberposts' => -1,
 		// )
-		// );
+		// ); // end get_posts.
 
 		if ( empty( $attachment_ids ) ) {
 			echo '<p>' . esc_html__( 'No attachments.', 'bh-wp-mailboxes' ) . '</p>';
@@ -522,7 +543,7 @@ class Single_Email_View {
 			$url           = wp_get_attachment_url( $attachment_id );
 			$attached_file = get_attached_file( $attachment_id );
 			$attachment    = get_post( $attachment_id );
-			$filename      = basename( $attached_file ? $attached_file : $attachment->post_title );
+			$filename      = basename( $attached_file ? $attached_file : ( $attachment ? $attachment->post_title : '' ) );
 			echo '<li>';
 			if ( $url ) {
 				echo '<a href="' . esc_url( $url ) . '" download>' . esc_html( $filename ) . '</a>';
@@ -576,56 +597,27 @@ class Single_Email_View {
 	/**
 	 * Build HTML badge(s) reflecting remote read/deleted status.
 	 *
-	 * @param mixed $is_read_raw       Raw meta value for bh_email_is_read.
-	 * @param mixed $deleted_on_server Raw meta value for bh_email_deleted_on_server.
+	 * @param ?bool $is_read           Whether the email is marked read on the remote server, or null if unknown.
+	 * @param ?bool $is_remote_deleted Whether the email has been deleted on the remote server, or null if unknown.
 	 *
 	 * @return string HTML string safe for use with wp_kses_post().
 	 */
-	protected function get_remote_status_html( mixed $is_read_raw, mixed $deleted_on_server ): string {
+	protected function get_remote_status_html( ?bool $is_read, ?bool $is_remote_deleted ): string {
 
 		$parts = array();
 
-		if ( '' !== $is_read_raw ) {
-			$is_read = (bool) $is_read_raw;
+		if ( null !== $is_read ) {
 			$parts[] = $is_read
 				? '<span class="bh-email-badge bh-email-badge--read">' . esc_html__( 'Read on server', 'bh-wp-mailboxes' ) . '</span>'
 				: '<span class="bh-email-badge bh-email-badge--unread">' . esc_html__( 'Unread on server', 'bh-wp-mailboxes' ) . '</span>';
 		}
 
-		if ( '1' === $deleted_on_server ) {
+		if ( $is_remote_deleted ) {
 			$parts[] = '<span class="bh-email-badge bh-email-badge--deleted">' . esc_html__( 'Deleted on server', 'bh-wp-mailboxes' ) . '</span>';
 		}
 
 		return implode( ' ', $parts );
 	}
 
-	/**
-	 * Resolve the Mailbox_Settings_Interface for the mailbox account the given post belongs to.
-	 *
-	 * Returns null when the account cannot be matched.
-	 *
-	 * @param int $post_id The email CPT post ID.
-	 *
-	 * @return ?Email_Account_Settings_Interface
-	 */
-	protected function resolve_mailbox_for_post( int $post_id ): ?Email_Account_Settings_Interface {
-
-		$terms = wp_get_post_terms( $post_id, 'bh-wp-mailbox-account' );
-		if ( ! is_array( $terms ) || empty( $terms ) ) {
-			return null;
-		}
-
-		$term_id = $terms[0]->term_id;
-
-		foreach ( $this->settings->get_configured_mailbox_settings() as $mailbox ) {
-			$slug            = sanitize_title( $mailbox->get_account_unique_friendly_name() );
-			$term            = get_term_by( 'slug', $slug, 'bh-wp-mailbox-account' );
-			$mailbox_term_id = $term instanceof \WP_Term ? $term->term_id : 0;
-			if ( $mailbox_term_id === $term_id ) {
-				return $mailbox;
-			}
-		}
-
-		return null;
-	}
+	// phpcs:ignore Squiz.WhiteSpace.FunctionSpacing.AfterLast
 }

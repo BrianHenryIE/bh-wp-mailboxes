@@ -1,4 +1,9 @@
 <?php
+/**
+ * Factory for creating BH_Email instances from WordPress posts.
+ *
+ * @package brianhenryie/bh-wp-mailboxes
+ */
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Factories;
 
@@ -11,15 +16,28 @@ use WP_Post;
 use ZBateson\MailMimeParser\Header\AddressHeader;
 use ZBateson\MailMimeParser\MailMimeParser;
 
+/**
+ * Factory for BH_Email objects.
+ */
 class BH_Email_Factory {
 	use LoggerAwareTrait;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param LoggerInterface $logger PSR-3 logger.
+	 */
 	public function __construct(
 		LoggerInterface $logger,
 	) {
 		$this->setLogger( $logger );
 	}
 
+	/**
+	 * Hydrates a BH_Email from a WP_Post.
+	 *
+	 * @param WP_Post $post The WordPress post to hydrate from.
+	 */
 	public function from_wp_post( WP_Post $post ): BH_Email {
 
 		$parser = new MailMimeParser();
@@ -37,14 +55,16 @@ class BH_Email_Factory {
 
 		$post_id = $post->ID;
 
-		$is_read_raw = get_post_meta( $post_id, 'is_read_remote', true );
-		$is_read     = '' !== $is_read_raw ? (bool) $is_read_raw : null;
+		$is_read_raw       = get_post_meta( $post_id, 'is_remote_read', true );
+		$is_read           = '' !== $is_read_raw ? 'yes' === $is_read_raw : null;
+		$is_deleted_raw    = get_post_meta( $post_id, 'is_remote_deleted', true );
+		$is_remote_deleted = '' !== $is_deleted_raw ? 'yes' === $is_deleted_raw : null;
 
 		// "Date: Wed, 30 Jul 2025 03:38:07 +0000";
-		$date_header = $message->getHeader( 'Date' );
-		$date_header = str_replace( 'Date: ', '', $date_header );
+		$date_header = str_replace( 'Date: ', '', (string) $message->getHeader( 'Date' ) );
 		// 29 May 2026 06:36:13 -0700
-		$sent_at = DateTime::createFromFormat( DateTime::RFC2822, $date_header ) ?: null;
+		$sent_at_result = DateTime::createFromFormat( DateTime::RFC2822, $date_header );
+		$sent_at        = ( false !== $sent_at_result ) ? $sent_at_result : null;
 
 		$attachment_ids = get_post_meta( $post_id, 'attachment_ids', true );
 		$attachment_ids = (array) json_decode( $attachment_ids );
@@ -53,7 +73,7 @@ class BH_Email_Factory {
 			post_id: $post_id,
 			post_type: $post->post_type,
 			imessage: $message,
-			message_id: $message->getMessageId(),
+			message_id: $message->getMessageId() ?? '',
 			subject: $post->post_title,
 			from_email: $from_email,
 			from_name: $from_name,
@@ -66,7 +86,7 @@ class BH_Email_Factory {
 			last_updated: new DateTime( $post->post_modified, new DateTimeZone( 'UTC' ) ),
 			post_status: $post->post_status,
 			is_remote_read: $is_read,
-			is_remote_deleted: $is_read,
+			is_remote_deleted: $is_remote_deleted,
 		);
 	}
 }

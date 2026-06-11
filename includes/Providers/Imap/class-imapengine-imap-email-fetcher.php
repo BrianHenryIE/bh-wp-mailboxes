@@ -10,11 +10,12 @@
 
 namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
 
+use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTimeInterface;
 use DirectoryTree\ImapEngine\Mailbox;
-use DirectoryTree\ImapEngine\Message;
+use DirectoryTree\ImapEngine\MessageInterface;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -27,10 +28,15 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 
 	use LoggerAwareTrait;
 
+	/**
+	 * The IMAP mailbox connection.
+	 */
 	protected Mailbox $mailbox;
 
 	/**
-	 * @param Email_Account_Settings_Interface $settings Connection settings.
+	 * Constructor.
+	 *
+	 * @param Email_Account_Settings_Interface $settings
 	 * @param LoggerInterface                  $logger Logger.
 	 */
 	public function __construct(
@@ -38,14 +44,19 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		LoggerInterface $logger
 	) {
 		$this->setLogger( $logger );
+	}
 
-		if ( ! ( $settings->get_credentials() instanceof IMAP_Credentials_Interface ) ) {
-			$this->logger->error( 'not IMAP credentials' );
-			throw new \Exception();
+	/**
+	 * @param Account_Credentials_Interface $credentials
+	 *
+	 * @throws \Exception When credentials are not IMAP credentials.
+	 * @throws \Throwable When the IMAP connection fails.
+	 */
+	public function set_credentials( Account_Credentials_Interface $credentials ): void {
+
+		if ( ! ( $credentials instanceof IMAP_Credentials_Interface ) ) {
+			return;
 		}
-
-		/** @var IMAP_Credentials_Interface $credentials */
-		$credentials = $this->settings->get_credentials();
 
 		$server = $credentials->get_email_imap_server();
 		$host   = $server;
@@ -76,36 +87,24 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 
 		} catch ( \Throwable $t ) {
 
-			$this->dumpExceptionProperties( $t, $this->logger );
-
 			throw $t;
-		}
-	}
-
-	function dumpExceptionProperties( \Throwable $e, LoggerInterface $logger ): void {
-		$ref = new \ReflectionClass( $e );
-
-		echo 'Exception class: ' . $ref->getName() . PHP_EOL;
-
-		foreach ( $ref->getProperties() as $prop ) {
-			$name  = $prop->getName();
-			$value = $prop->getValue( $e );
-
-			$logger->error( "$name: " . print_r( $value, true ) );
 		}
 	}
 
 	/**
 	 * Fetches emails from INBOX since the given time.
 	 *
-	 * @param DateTimeInterface $since_time
+	 * @param DateTimeInterface $since_time The earliest date/time from which to fetch messages.
+	 * @param int               $limit      Maximum number of messages to retrieve.
 	 *
-	 * @return Collection<IMessage> Unsaved, unparsed emails
+	 * @return Collection<int, IMessage> Unsaved, unparsed emails.
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time, int $limit = 100 ): Collection {
 
+		// TODO: validate we have had credentials set.
+
 		// `SINCE` filters by date only — go back one extra day and filter by time in PHP.
-		$previous_day = ( clone $since_time )->sub( new \DateInterval( 'P1D' ) );
+		$previous_day = ( new \DateTime() )->setTimestamp( $since_time->getTimestamp() )->sub( new \DateInterval( 'P1D' ) );
 
 		$this->logger->debug(
 			'Fetching IMAP emails',
@@ -115,11 +114,12 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 			)
 		);
 
-		/** @var Collection<Message> $messages */
-		$messages = $this->mailbox
-			->inbox()
-			->messages()
-			->since( $previous_day )
+		// Call since() before chaining to avoid phpstan's @mixin ImapQueryBuilder type inference
+		// resolving the chain to ImapQueryBuilder, which lacks limit().
+		$message_query = $this->mailbox->inbox()->messages();
+		$message_query->since( $previous_day );
+
+		$messages = $message_query
 			->limit( $limit )
 			->withHeaders()
 			->withBody()
@@ -133,24 +133,41 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		 * @see https://stackoverflow.com/questions/32698415/php-imap-search-unseen-since-date-with-time
 		 */
 		$messages = $messages->filter(
-			function ( Message $message ) use ( $since_time ) {
+			function ( MessageInterface $message ) use ( $since_time ) {
 				$date = $message->date();
 				return ! is_null( $date ) && $date->getTimestamp() >= $since_time->getTimestamp();
 			}
 		);
 
-		/** @var Collection<IMessage> $messages */
-		$messages = array_map(
-			fn( Message $message ) => $message->parse(),
-			$messages->all()
+		/** @var Collection<int, IMessage> $parsed */
+		$parsed = new Collection(
+			array_map(
+				fn( MessageInterface $message ) => $message->parse(),
+				$messages->values()->all()
+			)
 		);
-		$messages = new Collection( $messages );
 
 		$this->logger->info(
-			$messages->count() . ' emails found in inbox since last run.',
+			$parsed->count() . ' emails found in inbox since last run.',
 			array( 'since' => $since_time )
 		);
 
-		return $messages;
+		return $parsed;
+	}
+
+	/**
+	 * IMAP can read/write the emails on the server.
+	 * TODO: add a credentials-level `::can_mark_read()` to handle read-only accounts.
+	 */
+	public function can_mark_read(): bool {
+		return true;
+	}
+
+	public function can_delete_on_server(): bool {
+		return true;
+	}
+
+	public function can_read_status(): bool {
+		return true;
 	}
 }

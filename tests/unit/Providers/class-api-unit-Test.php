@@ -4,26 +4,40 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
+use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads;
 use Codeception\Stub\Expected;
 use DateTime;
 use DateTimeInterface;
+use Mockery;
+use Psr\Log\LoggerInterface;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\API
  */
 class API_Unit_Test extends Unit_Testcase {
 
-	protected function setUp(): void {
-		parent::setUp();
-		\WP_Mock::setUp();
-	}
-
-	public function tearDown(): void {
-		\WP_Mock::tearDown();
-		parent::tearDown();
+	protected function get_api(
+		?BH_WP_Mailboxes_Settings_Interface $settings = null,
+		?Email_WP_Post_Repository $email_repository = null,
+		?Email_Account_WP_Post_Repository $email_account_repository = null,
+		?Private_Uploads $private_uploads = null,
+		?LoggerInterface $logger = null
+	): API {
+		return new API(
+			$settings ?? \Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class ),
+			$email_repository ?? \Mockery::mock( Email_WP_Post_Repository::class ),
+			$email_account_repository ?? \Mockery::mock( Email_Account_WP_Post_Repository::class ),
+			$private_uploads ?? \Mockery::mock( Private_Uploads::class ),
+			$logger ?? $this->logger,
+		);
 	}
 
 	/**
@@ -35,17 +49,12 @@ class API_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_check_email_no_mailboxes_configured(): void {
 
-		$logger   = new ColorLogger();
-		$settings = $this->makeEmpty(
-			BH_WP_Mailboxes_Settings_Interface::class,
-			array(
-				'get_configured_mailbox_settings' => Expected::atLeastOnce(
-					fn() => array()
-				),
-			)
-		);
+		$settings = $this->makeEmpty( BH_WP_Mailboxes_Settings_Interface::class );
 
-		$sut = new API( $settings, null, $logger );
+		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
+		$email_account_repository->expects( 'get_all' )->andReturn( array() );
+
+		$sut = $this->get_api( settings: $settings, email_account_repository: $email_account_repository );
 
 		$result = $sut->check_email();
 
@@ -67,41 +76,16 @@ class API_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_check_email_recent_failed_login(): void {
 
-		$configured_mailbox_settings = array(
-			$this->makeEmpty(
-				Email_Account_Settings_Interface::class,
-				array(
-					'get_account_unique_friendly_name' => Expected::atLeastOnce(
-						fn() => 'Dummy Account'
-					),
-					'get_credentials'                  => Expected::once(
-						fn() => $this->makeEmpty( Account_Credentials_Interface::class )
-					),
-				)
-			),
+		$email_account_fixture = BH_Email_Account_Fixture::make(
+			last_failed_login_time: new \DateTimeImmutable(),
 		);
 
-		$logger   = new ColorLogger();
-		$settings = $this->makeEmpty(
-			BH_WP_Mailboxes_Settings_Interface::class,
-			array(
-				'get_plugin_slug'                 => Expected::atLeastOnce(
-					fn() => 'plugin-slug'
-				),
-				'get_configured_mailbox_settings' => Expected::atLeastOnce(
-					fn() => $configured_mailbox_settings
-				),
-			)
-		);
+		$credentials = Mockery::mock( Account_Credentials_Interface::class );
 
-		$sut = new API( $settings, null, $logger );
+		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
+		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account_fixture ) );
 
-		\WP_Mock::userFunction(
-			'sanitize_key',
-			array(
-				'return_arg' => true,
-			)
-		);
+		$sut = $this->get_api( email_account_repository: $email_account_repository );
 
 		\WP_Mock::userFunction(
 			'get_option',
@@ -119,9 +103,13 @@ class API_Unit_Test extends Unit_Testcase {
 			)
 		);
 
+		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+				->withAnyArgs()
+				->reply( $credentials );
+
 		$sut->check_email();
 
-		$this->assertTrue( $logger->hasInfoThatContains( 'Too soon after failed login' ) );
+		$this->assertTrue( $this->logger->hasInfoThatContains( 'Too soon after failed login' ) );
 	}
 
 	/**
@@ -139,7 +127,6 @@ class API_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_set_last_fetched_time(): void {
 
-		$logger   = new ColorLogger();
 		$settings = $this->makeEmpty(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
@@ -149,17 +136,9 @@ class API_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		$sut = new API( $settings, null, $logger );
+		$sut = $this->get_api( settings: $settings );
 
 		$datetime = new \DateTime();
-
-		\WP_Mock::userFunction(
-			'sanitize_key',
-			array(
-				'return_arg' => true,
-				'times'      => 1,
-			)
-		);
 
 		$expected_key = 'plugin-slug_mailbox_last_fetched_brianhenryie@gmail.com';
 
@@ -183,52 +162,19 @@ class API_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_get_last_fetched_times(): void {
 
-		$logger = new ColorLogger();
+		$datetime = new \DateTimeImmutable();
 
-		$account = $this->makeEmpty(
-			Email_Account_Settings_Interface::class,
-			array(
-				'get_account_unique_friendly_name' => 'brianhenryie@gmail.com',
-			)
+		$email_account_fixture = BH_Email_Account_Fixture::make(
+			email_address: 'brianhenryie@gmail.com',
+			last_successful_login_time: $datetime,
 		);
 
-		$settings = $this->makeEmpty(
-			BH_WP_Mailboxes_Settings_Interface::class,
-			array(
-				'get_plugin_slug'                 => Expected::atLeastOnce(
-					fn() => 'plugin-slug'
-				),
-				'get_configured_mailbox_settings' => array(
-					$account,
-				),
-			)
-		);
+		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
+		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account_fixture ) );
 
-		$sut = new API( $settings, null, $logger );
-
-		$datetime = new \DateTime();
-
-		\WP_Mock::userFunction(
-			'sanitize_key',
-			array(
-				'return_arg' => true,
-				'times'      => 1,
-			)
-		);
+		$sut = $this->get_api( email_account_repository: $email_account_repository );
 
 		$expected_key = 'plugin-slug_mailbox_last_fetched_brianhenryie@gmail.com';
-
-		\WP_Mock::userFunction(
-			'get_option',
-			array(
-				'args'   => array(
-					$expected_key,
-					null,
-				),
-				'return' => $datetime->format( DateTimeInterface::ATOM ),
-				'times'  => 1,
-			)
-		);
 
 		$result = $sut->get_last_fetched_times();
 
@@ -248,7 +194,6 @@ class API_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_set_failed_login_time(): void {
 
-		$logger   = new ColorLogger();
 		$settings = $this->makeEmpty(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
@@ -258,17 +203,9 @@ class API_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		$sut = new API( $settings, null, $logger );
+		$sut = $this->get_api( settings: $settings );
 
 		$datetime = new \DateTime();
-
-		\WP_Mock::userFunction(
-			'sanitize_key',
-			array(
-				'return_arg' => true,
-				'times'      => 1,
-			)
-		);
 
 		$expected_key = 'plugin-slug_mailbox_last_failure_brianhenryie@gmail.com';
 
@@ -293,7 +230,6 @@ class API_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_set_failed_login_time_delete(): void {
 
-		$logger   = new ColorLogger();
 		$settings = $this->makeEmpty(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
@@ -303,15 +239,7 @@ class API_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		$sut = new API( $settings, null, $logger );
-
-		\WP_Mock::userFunction(
-			'sanitize_key',
-			array(
-				'return_arg' => true,
-				'times'      => 1,
-			)
-		);
+		$sut = $this->get_api( settings: $settings );
 
 		$expected_key = 'plugin-slug_mailbox_last_failure_brianhenryie@gmail.com';
 
@@ -341,7 +269,6 @@ class API_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_get_last_failed_login_time(): void {
 
-		$logger   = new ColorLogger();
 		$settings = $this->makeEmpty(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
@@ -351,15 +278,7 @@ class API_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		$sut = new API( $settings, null, $logger );
-
-		\WP_Mock::userFunction(
-			'sanitize_key',
-			array(
-				'return_arg' => true,
-				'times'      => 2,
-			)
-		);
+		$sut = $this->get_api( settings: $settings );
 
 		$expected_key = 'plugin-slug_mailbox_last_failure_account';
 
@@ -399,10 +318,9 @@ class API_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_get_settings(): void {
 
-		$logger   = new ColorLogger();
 		$settings = $this->makeEmpty( BH_WP_Mailboxes_Settings_Interface::class );
 
-		$sut = new API( $settings, null, $logger );
+		$sut = $this->get_api( settings: $settings );
 
 		$result = $sut->get_settings();
 

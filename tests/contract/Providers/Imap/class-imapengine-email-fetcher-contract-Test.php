@@ -10,6 +10,7 @@ namespace BrianHenryIE\WP_Emails\API\ImapEngine_Imap;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Providers\Imap\Imap_Credentials_Env;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
@@ -48,31 +49,15 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 			public function get_account_email_address(): string {
 				return 'support@brianhenryie.com';
 			}
-
-			public function get_credentials(): Account_Credentials_Interface {
-				return new class() implements IMAP_Credentials_Interface {
-					public function get_email_imap_server(): string {
-						return $_ENV['IMAP_SERVER'];
-					}
-
-					public function get_email_account_username(): string {
-						return $_ENV['IMAP_USERNAME'];
-					}
-
-					public function get_email_account_password(): string {
-						return $_ENV['IMAP_PASSWORD'];
-					}
-
-					public function get_encryption(): string {
-						return $_ENV['IMAP_ENCRYPTION'];
-					}
-				};
-			}
 		};
 	}
 
 	/**
 	 * Tool to create fixtures.
+	 *
+	 * @param IMessage $email Email to save.
+	 * @param string   $filepath Absolute filepath to save to.
+	 * @param bool     $include_attachments Should the email attachments remain or be removed.
 	 */
 	protected function save_to_file( IMessage $email, string $filepath, bool $include_attachments = true ): void {
 		$attachment_parts      = $email->getAllAttachmentParts();
@@ -93,6 +78,33 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 		$reparsed         = $parser->parse( $from_file, true );
 		$saved_message_id = $reparsed->getMessageId();
 		$this->assertNotEmpty( $saved_message_id );
+	}
+
+	/**
+	 * Mark the most-recently fetched email as read on the server, then unread.
+	 *
+	 * Ported from the removed Ddeboer_Imap integration test (tests/integration/Providers/Ddeboer_Imap/class-mark-email-read-Test.php).
+	 * The Ddeboer provider is gone; ImapEngine's Message object exposes flag() / unflag() for this purpose.
+	 */
+	public function test_mark_email_read_on_server(): void {
+
+		try {
+			$sut = new ImapEngine_Imap_Email_Fetcher( $this->settings, $this->logger );
+		} catch ( ImapEngineException $e ) {
+			$this->fail( $e->getMessage() );
+		}
+
+		$since_time = DateTime::createFromFormat( 'U', (string) ( time() - 30 * 24 * 60 * 60 ) );
+		$messages   = $sut->retrieve_emails( $since_time, 1 );
+
+		if ( $messages->isEmpty() ) {
+			$this->markTestSkipped( 'No emails found in inbox to test mark-read.' );
+		}
+
+		// The IMessage returned by retrieve_emails() is a parsed snapshot; to mark read on the
+		// server we need the underlying ImapEngine Message. That requires accessing the mailbox
+		// directly — this test serves as a living specification for the work tracked in Phase 2.
+		$this->markTestIncomplete( 'ImapEngine_Imap_Email_Fetcher does not yet expose a mark-read method. Implement per Phase 2.' );
 	}
 
 	/**
@@ -145,30 +157,13 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 			public function get_account_email_address(): string {
 				return 'support@brianhenryie.com';
 			}
-
-			public function get_credentials(): Account_Credentials_Interface {
-				return new class() implements IMAP_Credentials_Interface {
-					public function get_email_imap_server(): string {
-						return 'imap.example.com';
-					}
-
-					public function get_email_account_username(): string {
-						return $_ENV['IMAP_USERNAME'];
-					}
-
-					public function get_email_account_password(): string {
-						return $_ENV['IMAP_PASSWORD'];
-					}
-
-					public function get_encryption(): string {
-						return '';
-					}
-				};
-			}
 		};
+
+		$credentials = new Imap_Credentials_Env();
 
 		try {
 			$imap = new ImapEngine_Imap_Email_Fetcher( $settings, $logger );
+			$imap->set_credentials( $credentials );
 			$imap->retrieve_emails( DateTime::createFromFormat( 'U', time() - YEAR_IN_SECONDS ) );
 		} catch ( ImapConnectionFailedException $e ) {
 			$exception = $e;
@@ -186,6 +181,8 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
 		$logger = new ColorLogger();
 
+		$credentials = new Imap_Credentials_Env();
+
 		/** @var Email_Account_Settings_Interface $settings */
 		$settings = new class() implements Email_Account_Settings_Interface {
 			use Email_Account_Settings_Defaults_Trait;
@@ -194,36 +191,21 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 				return 'support@brianhenryie.com';
 			}
 
-			public function get_credentials(): Account_Credentials_Interface {
-				return new class() implements IMAP_Credentials_Interface {
-					public function get_email_imap_server(): string {
-						return $_ENV['IMAP_SERVER'];
-					}
-
-					public function get_email_account_username(): string {
-						return $_ENV['IMAP_USERNAME'];
-					}
-
-					public function get_email_account_password(): string {
-						return 'bad-password';
-					}
-
-					public function get_encryption(): string {
-						return '';
-					}
-				};
+			public function is_active(): bool {
+				return true;
 			}
 		};
 
+		$exception = null;
 		try {
 			$fetcher = new ImapEngine_Imap_Email_Fetcher( $settings, $logger );
-		} catch ( ImapCommandException $e ) {
-			$imapCommandException = $e;
-		} catch ( ImapEngineException $e ) {
-			$imapEngineException = $e;
+			$fetcher->set_credentials( $credentials );
+		} catch ( ImapCommandException $exception ) {
+			$imap_command_exception = $exception;
+		} catch ( ImapEngineException $exception ) {
+			$imap_engine_exception = $exception;
 		}
 
-		throw $e;
-		// $this->assertNotEmpty( $exception );
+		$this->assertNotEmpty( $exception );
 	}
 }

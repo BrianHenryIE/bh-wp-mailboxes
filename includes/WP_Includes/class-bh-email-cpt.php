@@ -4,6 +4,8 @@
  *
  * @see https://developer.wordpress.org/plugins/post-types/registering-custom-post-types/
  * "You must call register_post_type() before the admin_init hook and after the after_setup_theme hook. A good hook to use is the init action hook."
+ *
+ * @package brianhenryie/bh-wp-mailboxes
  */
 
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
@@ -13,6 +15,9 @@ use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WP_Error;
 
+/**
+ * Registers the email custom post type and its post statuses.
+ */
 class BH_Email_CPT {
 
 	use LoggerAwareTrait;
@@ -38,53 +43,57 @@ class BH_Email_CPT {
 	 */
 	public function register_cpt(): void {
 
-		$post_type = $this->settings->get_cpt_underscored_20();
+		$post_type = $this->settings->get_emails_cpt_underscored_20();
 
 		$labels = array(
-			'name'                     => $this->settings->get_cpt_friendly_name(),
-			'singular_name'            => 'Email',
-			'add_new'                  => 'Add New',
-			'add_new_item'             => 'Add New Email',
-			'edit_item'                => 'Email',
-			'new_item'                 => 'New Email',
-			'view_item'                => 'View Email',
-			'view_items'               => 'View Emails',
-			'search_items'             => 'Search Emails',
-			'not_found'                => 'No emails found.',
-			'not_found_in_trash'       => 'No emails found in Trash.',
-			'parent_item_colon'        => null,
-			'all_items'                => 'Emails',
-			'archives'                 => 'Emails',
-			'attributes'               => 'Email Attributes',
-			'insert_into_item'         => 'Insert into email',
-			'uploaded_to_this_item'    => 'Uploaded to this email',
-			'featured_image'           => 'Featured image',
-			'set_featured_image'       => 'Set featured image',
-			'remove_featured_image'    => 'Remove featured image',
-			'use_featured_image'       => 'Use as featured image',
-			'filter_items_list'        => 'Filter emails list',
-			'filter_by_date'           => 'Filter by date',
-			'items_list_navigation'    => 'Emails list navigation',
-			'items_list'               => 'Emails list',
-			'item_published'           => 'Email published.',
-			'item_published_privately' => 'Email published privately.',
-			'item_reverted_to_draft'   => 'Email reverted to draft.',
-			'item_scheduled'           => 'Email scheduled.',
-			'item_updated'             => 'Email updated.',
-			'item_link'                => 'Email Link',
-			'item_link_description'    => 'A link to an email.',
-			'menu_name'                => 'Emails',
-			'name_admin_bar'           => 'Email',
+			'name'                     => $this->settings->get_emails_cpt_friendly_name(),
+			'singular_name'            => __( 'Email', 'bh-wp-mailboxes' ),
+			'add_new'                  => __( 'Add New', 'bh-wp-mailboxes' ),
+			'add_new_item'             => __( 'Add New Email', 'bh-wp-mailboxes' ),
+			'edit_item'                => __( 'Email', 'bh-wp-mailboxes' ),
+			'new_item'                 => __( 'New Email', 'bh-wp-mailboxes' ),
+			'view_item'                => __( 'View Email', 'bh-wp-mailboxes' ),
+			'view_items'               => __( 'View Emails', 'bh-wp-mailboxes' ),
+			'search_items'             => __( 'Search Emails', 'bh-wp-mailboxes' ),
+			'not_found'                => __( 'No emails found.', 'bh-wp-mailboxes' ),
+			'not_found_in_trash'       => __( 'No emails found in Trash.', 'bh-wp-mailboxes' ),
+			'parent_item_colon'        => __( 'Parent Email:', 'bh-wp-mailboxes' ),
+			'all_items'                => __( 'Emails', 'bh-wp-mailboxes' ),
+			'archives'                 => __( 'Emails', 'bh-wp-mailboxes' ),
+			'attributes'               => __( 'Email Attributes', 'bh-wp-mailboxes' ),
+			'insert_into_item'         => __( 'Insert into email', 'bh-wp-mailboxes' ),
+			'uploaded_to_this_item'    => __( 'Uploaded to this email', 'bh-wp-mailboxes' ),
+			'featured_image'           => __( 'Featured image', 'bh-wp-mailboxes' ),
+			'set_featured_image'       => __( 'Set featured image', 'bh-wp-mailboxes' ),
+			'remove_featured_image'    => __( 'Remove featured image', 'bh-wp-mailboxes' ),
+			'use_featured_image'       => __( 'Use as featured image', 'bh-wp-mailboxes' ),
+			'filter_items_list'        => __( 'Filter emails list', 'bh-wp-mailboxes' ),
+			'filter_by_date'           => __( 'Filter by date', 'bh-wp-mailboxes' ),
+			'items_list_navigation'    => __( 'Emails list navigation', 'bh-wp-mailboxes' ),
+			'items_list'               => __( 'Emails list', 'bh-wp-mailboxes' ),
+			'item_published'           => __( 'Email published.', 'bh-wp-mailboxes' ),
+			'item_published_privately' => __( 'Email published privately.', 'bh-wp-mailboxes' ),
+			'item_reverted_to_draft'   => __( 'Email reverted to draft.', 'bh-wp-mailboxes' ),
+			'item_scheduled'           => __( 'Email scheduled.', 'bh-wp-mailboxes' ),
+			'item_updated'             => __( 'Email updated.', 'bh-wp-mailboxes' ),
+			'item_link'                => __( 'Email Link', 'bh-wp-mailboxes' ),
+			'item_link_description'    => __( 'A link to an email.', 'bh-wp-mailboxes' ),
+			'menu_name'                => __( 'Emails', 'bh-wp-mailboxes' ),
+			'name_admin_bar'           => __( 'Email', 'bh-wp-mailboxes' ),
 		);
 
-		/** @var \WP_Post_Type|WP_Error  $registered_post_type */
+		/**
+		 * Result of registering the post type.
+		 *
+		 * @var \WP_Post_Type|WP_Error $registered_post_type
+		 */
 		$registered_post_type = register_post_type(
 			$post_type,
 			array(
-				'description'         => 'Store copies of emails in WordPress',
+				'description'         => __( 'Store copies of emails in WordPress', 'bh-wp-mailboxes' ),
 				'labels'              => $labels,
 				'has_archive'         => false,
-				'rewrite'             => array( 'slug' => sanitize_title( $this->settings->get_cpt_friendly_name() ) ),
+				'rewrite'             => array( 'slug' => sanitize_title( $this->settings->get_emails_cpt_friendly_name() ) ),
 				'supports'            => array(
 					'title',
 					'comments',
@@ -101,7 +110,7 @@ class BH_Email_CPT {
 				// 'delete_post'         => 'update_core',
 				// 'read_post'           => 'edit_posts',
 				// ),
-				'menu_position'       => null,
+				'menu_position'       => 25,
 				'show_in_menu'        => false,
 				'exclude_from_search' => true,
 				'show_in_rest'        => false,
@@ -110,7 +119,11 @@ class BH_Email_CPT {
 
 		// TODO: throw an exception... if this fails, nothing here will really work.
 		if ( is_wp_error( $registered_post_type ) ) {
-			/** @var WP_Error $registered_post_type */
+			/**
+			 * The error from post type registration.
+			 *
+			 * @var WP_Error $registered_post_type
+			 */
 			$this->logger->error( $registered_post_type->get_error_message() );
 		}
 	}

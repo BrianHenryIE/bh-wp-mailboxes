@@ -12,10 +12,20 @@ use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
+/**
+ * Handles AJAX requests from the admin UI.
+ */
 class Ajax {
 
 	use LoggerAwareTrait;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param API_Interface                      $api      Main API instance.
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings.
+	 * @param LoggerInterface                    $logger   PSR-3 logger.
+	 */
 	public function __construct(
 		protected API_Interface $api,
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
@@ -25,6 +35,8 @@ class Ajax {
 	}
 
 	/**
+	 * Triggers an immediate email check for the current mailbox.
+	 *
 	 * @hooked wp_ajax_bh_wp_mailboxes_check_email
 	 */
 	public function check_email(): void {
@@ -35,7 +47,7 @@ class Ajax {
 		}
 
 		// bh-wp-mailboxes could be hooked for many plugins.
-		if ( $this->settings->get_cpt_underscored_20() !== sanitize_key( $_POST['mailboxes_cpt'] ) ) {
+		if ( $this->settings->get_emails_cpt_underscored_20() !== sanitize_key( $_POST['mailboxes_cpt'] ) ) {
 			return;
 		}
 

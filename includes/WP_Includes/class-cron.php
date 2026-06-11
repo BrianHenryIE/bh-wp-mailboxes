@@ -26,6 +26,8 @@ class Cron {
 	use LoggerAwareTrait;
 
 	/**
+	 * Constructor.
+	 *
 	 * @param API_Interface                      $api BH_WP_Mailboxes main functions.
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings Settings for mailboxes and behaviour.
 	 * @param LoggerInterface                    $logger A PSR logger.
@@ -43,14 +45,14 @@ class Cron {
 	 * Build the fetch emails job name from the cpt name.
 	 */
 	public function get_fetch_emails_cron_hook_name(): string {
-		return sanitize_key( $this->settings->get_cpt_friendly_name() ) . '_fetch_emails_job';
+		return sanitize_key( $this->settings->get_emails_cpt_underscored_20() ) . '_fetch_emails_job';
 	}
 
 	/**
 	 * Build the delete emails job name from the cpt name.
 	 */
 	public function get_delete_local_emails_cron_hook_name(): string {
-		return sanitize_key( $this->settings->get_cpt_friendly_name() ) . '_delete_local_emails_job';
+		return sanitize_key( $this->settings->get_emails_cpt_underscored_20() ) . '_delete_local_emails_job';
 	}
 
 	/**

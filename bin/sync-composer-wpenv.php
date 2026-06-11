@@ -59,7 +59,8 @@ if ( $composerLock === null ) {
 
 foreach ( $composerLock['packages-dev'] ?? array() as $package ) {
 	if ( $package['name'] === 'johnpbloch/wordpress-core' ) {
-		$wpEnv['core'] = 'WordPress/WordPress#' . $package['version'];
+		$version        = preg_replace( '/\.0$/', '', $package['version'] );
+		$wpEnv['core'] = 'WordPress/WordPress#' . $version;
 		break;
 	}
 }

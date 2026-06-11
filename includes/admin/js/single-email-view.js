@@ -52,11 +52,17 @@
 		}
 
 		// Auto-resize email body iframes to their content height on initial load.
+		// srcdoc iframes often complete before DOMContentLoaded, so check readyState
+		// and resize immediately when the document is already complete.
 		$( 'iframe.bh-email-html-body, iframe.bh-email-plain-body' ).each( function () {
 			var iframe = this;
-			$( iframe ).on( 'load', function () {
+			if ( iframe.contentDocument && iframe.contentDocument.readyState === 'complete' ) {
 				resizeIframe( iframe );
-			} );
+			} else {
+				$( iframe ).on( 'load', function () {
+					resizeIframe( iframe );
+				} );
+			}
 		} );
 
 		// Re-run resize when a postbox is expanded, since the iframe may have

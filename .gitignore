@@ -65,5 +65,11 @@ quickstart-cli.php
 
 *.secret.*
 /playwright-report
+/tests/e2e-pw/.auth
 /tests/_data/emails
 /tests/_data/temp
+
+!wp-content/mu-plugins/bh-plugin-outside-dir.php
+
+/test-results
+/.playwright-mcp

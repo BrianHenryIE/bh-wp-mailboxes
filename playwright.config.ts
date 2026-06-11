@@ -31,8 +31,17 @@ export default defineConfig( {
 	},
 	projects: [
 		{
+			name: 'setup',
+			testDir: './tests/e2e-pw/setup',
+			testMatch: /.*\.setup\.ts/,
+		},
+		{
 			name: 'chromium',
-			use: { ...devices[ 'Desktop Chrome' ] },
+			use: {
+				...devices[ 'Desktop Chrome' ],
+				storageState: 'tests/e2e-pw/.auth/user.json',
+			},
+			dependencies: [ 'setup' ],
 		},
 	],
 } );

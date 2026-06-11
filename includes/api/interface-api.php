@@ -1,26 +1,39 @@
 <?php
+/**
+ * Main API interface for bh-wp-mailboxes.
+ *
+ * @package brianhenryie/bh-wp-mailboxes
+ */
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 
+/**
+ * Defines the public API for interacting with email mailboxes.
+ */
 interface API_Interface {
 
 	/**
-	 * @param int $number
+	 * Returns the most recently downloaded emails.
+	 *
+	 * @param int $number Maximum number of emails to return.
 	 *
 	 * @return BH_Email[]
 	 */
 	public function get_downloaded_emails( int $number ): array;
 
-	// public function get_mailboxes()
-
 	/**
+	 * Deletes locally-stored emails older than the configured retention period.
+	 *
 	 * @return array{success:bool}
 	 */
 	public function delete_old_emails(): array;
 
 	/**
+	 * Fetches new emails from all configured mailboxes and saves them.
+	 *
 	 * @return array{success:bool}
 	 */
 	public function check_email(): array;
@@ -53,4 +66,8 @@ interface API_Interface {
 	 * @param string $message The note text.
 	 */
 	public function insert_email_log_note( int $post_id, string $message ): void;
+
+	public function get_email_account_for_email( BH_Email $email ): ?BH_Email_Account;
+
+	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Fetcher_Interface;
 }

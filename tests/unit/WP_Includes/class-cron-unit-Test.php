@@ -15,16 +15,6 @@ use Codeception\Stub\Expected;
  */
 class Cron_Unit_Test extends Unit_Testcase {
 
-	protected function setUp(): void {
-		parent::setUp();
-		\WP_Mock::setUp();
-	}
-
-	protected function tearDown(): void {
-		parent::tearDown();
-		\WP_Mock::tearDown();
-	}
-
 	/**
 	 * @covers ::get_fetch_emails_cron_hook_name
 	 * @covers ::__construct
@@ -34,8 +24,8 @@ class Cron_Unit_Test extends Unit_Testcase {
 		$settings = $this->makeEmpty(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
-				'get_cpt_friendly_name' => Expected::once(
-					fn() => 'Test CPT Name'
+				'get_emails_cpt_underscored_20' => Expected::once(
+					fn() => 'test_cpt_name'
 				),
 			)
 		);
@@ -43,18 +33,9 @@ class Cron_Unit_Test extends Unit_Testcase {
 
 		$sut = new Cron( $api, $settings, $logger );
 
-		\WP_Mock::userFunction(
-			'sanitize_key',
-			array(
-				'args'   => array( 'Test CPT Name' ),
-				'return' => 'test-cpt-name',
-				'times'  => 1,
-			)
-		);
-
 		$result = $sut->get_fetch_emails_cron_hook_name();
 
-		$this->assertEquals( 'test-cpt-name_fetch_emails_job', $result );
+		$this->assertEquals( 'test_cpt_name_fetch_emails_job', $result );
 	}
 
 
@@ -67,8 +48,8 @@ class Cron_Unit_Test extends Unit_Testcase {
 		$settings = $this->makeEmpty(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
-				'get_cpt_friendly_name' => Expected::once(
-					fn() => 'Test CPT Name'
+				'get_emails_cpt_underscored_20' => Expected::once(
+					fn() => 'test_cpt_name'
 				),
 			)
 		);
@@ -76,18 +57,9 @@ class Cron_Unit_Test extends Unit_Testcase {
 
 		$sut = new Cron( $api, $settings, $logger );
 
-		\WP_Mock::userFunction(
-			'sanitize_key',
-			array(
-				'args'   => array( 'Test CPT Name' ),
-				'return' => 'test-cpt-name',
-				'times'  => 1,
-			)
-		);
-
 		$result = $sut->get_delete_local_emails_cron_hook_name();
 
-		$this->assertEquals( 'test-cpt-name_delete_local_emails_job', $result );
+		$this->assertEquals( 'test_cpt_name_delete_local_emails_job', $result );
 	}
 
 	/**

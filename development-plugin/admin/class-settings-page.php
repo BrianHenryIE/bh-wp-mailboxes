@@ -1,13 +1,26 @@
 <?php
+/**
+ * Admin settings page for the development plugin.
+ *
+ * @package brianhenryie/bh-wp-mailboxes-development-plugin
+ */
 
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use Psr\Log\LoggerAwareTrait;
 
+/**
+ * Renders the settings admin sub-menu page.
+ */
 class Settings_Page {
 	use LoggerAwareTrait;
 
+	/**
+	 * Plugin settings instance.
+	 *
+	 * @var BH_WP_Mailboxes_Settings_Interface
+	 */
 	protected BH_WP_Mailboxes_Settings_Interface $settings;
 
 	/**
@@ -15,9 +28,9 @@ class Settings_Page {
 	 *
 	 * @hooked admin_menu
 	 */
-	public function add_page() {
+	public function add_page(): void {
 
-		$parent_slug = $this->settings->get_cpt_underscored_20();
+		$parent_slug = $this->settings->get_emails_cpt_underscored_20();
 		$page_title  = 'Mailboxes Settings';
 		$menu_title  = 'Settings';
 		$capability  = '';
@@ -31,7 +44,7 @@ class Settings_Page {
 	/**
 	 * Registered in @see add_page()
 	 */
-	public function display_page() {
+	public function display_page(): void {
 
 		include wp_normalize_path( __DIR__ . '/partials/bh-wp-mailboxes-test-plugin-admin-display.php' );
 	}

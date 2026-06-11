@@ -7,8 +7,13 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
+use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads;
+use Mockery\Mock;
+use Psr\Log\LoggerInterface;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\API
@@ -18,6 +23,31 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 	// -------------------------------------------------------------------------
 	// Order notes / log comments
 	// -------------------------------------------------------------------------
+
+	/**
+	 * Returns an API instance with all it dependencies mocked unless they are specified.
+	 *
+	 * @param ?BH_WP_Mailboxes_Settings_Interface $settings
+	 * @param ?Email_WP_Post_Repository           $email_repository
+	 * @param ?Email_Account_WP_Post_Repository   $email_account_repository
+	 * @param ?Private_Uploads                    $private_uploads
+	 * @param ?LoggerInterface                    $logger
+	 */
+	protected function get_api(
+		?BH_WP_Mailboxes_Settings_Interface $settings = null,
+		?Email_WP_Post_Repository $email_repository = null,
+		?Email_Account_WP_Post_Repository $email_account_repository = null,
+		?Private_Uploads $private_uploads = null,
+		?LoggerInterface $logger = null
+	): API {
+		return new API(
+			$settings ?? \Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class ),
+			$email_repository ?? \Mockery::mock( Email_WP_Post_Repository::class ),
+			$email_account_repository ?? \Mockery::mock( Email_Account_WP_Post_Repository::class ),
+			$private_uploads ?? \Mockery::mock( Private_Uploads::class ),
+			$logger ?? $this->logger,
+		);
+	}
 
 	/**
 	 * Requirement 7: insert_email_log_note creates a WP comment with comment_type 'bh_email_log'.
@@ -36,7 +66,7 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$api = new API( $settings, null, $this->logger );
+		$api = $this->get_api();
 
 		$post_id = $this->factory()->post->create(
 			array(

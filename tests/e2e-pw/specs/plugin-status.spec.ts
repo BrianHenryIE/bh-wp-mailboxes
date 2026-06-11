@@ -33,7 +33,8 @@ test.describe( 'bh-wp-mailboxes', () => {
 		// Act (minimal UI): open the emails admin list.
 		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
 
-		// Assert the fixture is visible in the list.
-		await expect( page.getByText( subject ) ).toBeVisible();
+		// Assert the fixture is visible in the list. Use row-title link to avoid strict-mode
+		// violations (the subject text appears in multiple spans in the WP list table row).
+		await expect( page.locator( 'a.row-title', { hasText: subject } ) ).toBeVisible();
 	} );
 } );
