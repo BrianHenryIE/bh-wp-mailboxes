@@ -28,7 +28,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: bh_wp_private_uploads_tests
+          MYSQL_DATABASE: bh_wp_mailboxes_tests
         ports:
           - 33066
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
