@@ -16,6 +16,8 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Saved_Post;
 readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_Interface {
 
 	/**
+	 * @see BH_Email_Account_CPT::register_post_statuses()
+	 *
 	 * @param int          $post_id The WordPress post ID for this email account.
 	 * @param string       $post_type
 	 * @param class-string $provider_type_class
@@ -23,7 +25,7 @@ readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_In
 	public function __construct(
 		public int $post_id,
 		public string $post_type,
-		public string $status,
+		public string $local_status,
 		public string $provider_type_class,
 		public string $email_address,
 		public string $display_name,
@@ -44,7 +46,7 @@ readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_In
 	}
 
 	public function is_active(): bool {
-		return $this->status === 'active';
+		return $this->local_status === 'bh_email_ac_active';
 	}
 
 	public function get_account_email_address(): string {

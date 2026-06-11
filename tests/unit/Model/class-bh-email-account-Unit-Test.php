@@ -15,25 +15,25 @@ use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 class BH_Email_Account_Unit_Test extends Unit_Testcase {
 
 	/**
-	 * An account with status 'active' must report itself as active.
+	 * An account with status 'bh_email_ac_active' must report itself as active.
 	 *
 	 * @covers ::is_active
 	 */
 	public function test_is_active_returns_true_for_active_status(): void {
 
-		$sut = BH_Email_Account_Fixture::make( status: 'active' );
+		$sut = BH_Email_Account_Fixture::make( status: 'bh_email_ac_active' );
 
 		$this->assertTrue( $sut->is_active() );
 	}
 
 	/**
-	 * An account with status 'inactive' must not report itself as active.
+	 * An account with status 'bh_email_ac_inactive' must not report itself as active.
 	 *
 	 * @covers ::is_active
 	 */
 	public function test_is_active_returns_false_for_inactive_status(): void {
 
-		$sut = BH_Email_Account_Fixture::make( status: 'inactive' );
+		$sut = BH_Email_Account_Fixture::make( status: 'bh_email_ac_inactive' );
 
 		$this->assertFalse( $sut->is_active() );
 	}

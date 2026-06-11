@@ -201,7 +201,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			subject: $email->getSubject() ?? '',
 			from_address: $sender, // We'll save this in meta because if it matches a user account it is relevant.
 			original_email: $original_email_no_attachments_string,
-			local_status: 'new', // @see BH_Email_CPT::register_post_statuses().
+			local_status: 'bh_email_new', // @see BH_Email_CPT::register_post_statuses().
 			is_remote_read: false, // TODO: how to determine is is already read?
 			is_remote_deleted: false, // We may immediately delete the email, but the fact it exists in save_new means it exists remotely.
 			attachment_ids: array(),
@@ -258,7 +258,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		$query = new BH_Email_Query(
 			post_type: $email->get_post_type(),
 			post_id: $email->post_id,
-			local_status: $local_status !== $email->post_status ? $local_status : null,
+			local_status: $local_status !== $email->local_status ? $local_status : null,
 			is_remote_read: $is_remote_read !== $email->is_remote_read ? $is_remote_read : null,
 			is_remote_deleted: $is_remote_deleted !== $email->is_remote_deleted ? $is_remote_deleted : null,
 		);
@@ -288,12 +288,12 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		 * TODO: delete, mark-read updates.
 		 * TODO: document how plugins can print to the log.
 		 */
-		if ( $email->post_status !== $local_status ) {
+		if ( $email->local_status !== $local_status ) {
 			$this->log(
 				$email,
 				sprintf(
 					'Status changed from "%s" to "%s".',
-					$email->post_status,
+					$email->local_status,
 					$local_status
 				)
 			);

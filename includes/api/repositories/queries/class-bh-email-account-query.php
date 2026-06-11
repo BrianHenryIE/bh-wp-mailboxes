@@ -9,11 +9,28 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Queries;
 
+use DateTimeInterface;
+
 /**
  * Query object for BH_Email CPT records.
  */
 readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 
+	/**
+	 * @param string             $post_type
+	 * @param ?string            $provider_type_class
+	 * @param ?int               $post_id
+	 * @param ?string            $email_address
+	 * @param ?string            $status One of "bh_email_ac_active"|"bh_email_ac_inactive"...
+	 * @param ?DateTimeInterface $last_checked_time
+	 * @param ?string            $display_name
+	 * @param ?string            $from_address_regex_filter
+	 * @param ?string            $body_identifier_regex_filter
+	 * @param ?string            $after_download_email_action
+	 * @param ?int               $delete_local_emails_after_n_days
+	 * @param ?DateTimeInterface $last_successful_login_time
+	 * @param ?DateTimeInterface $last_failed_login_time
+	 */
 	public function __construct(
 		string $post_type,
 		protected ?string $provider_type_class = null,
@@ -21,14 +38,14 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 		protected ?string $email_address = null,
 		// Mutable.
 		protected ?string $status = null,
-		protected ?\DateTimeInterface $last_checked_time = null,
+		protected ?DateTimeInterface $last_checked_time = null,
 		protected ?string $display_name = null,
 		protected ?string $from_address_regex_filter = null,
 		protected ?string $body_identifier_regex_filter = null,
 		protected ?string $after_download_email_action = null,
 		protected ?int $delete_local_emails_after_n_days = null,
-		protected ?\DateTimeInterface $last_successful_login_time = null,
-		protected ?\DateTimeInterface $last_failed_login_time = null,
+		protected ?DateTimeInterface $last_successful_login_time = null,
+		protected ?DateTimeInterface $last_failed_login_time = null,
 	) {
 		parent::__construct( $post_type );
 	}
@@ -44,7 +61,7 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 	protected function get_wp_post_fields(): array {
 		return array(
 			'post_type'   => $this->post_type,
-			'post_status' => $this->status,
+			'post_status' => $this->status, // bh_email_ac_active|bh_email_ac_inactive...
 			'post_name'   => $this->email_address, // will be auto-sanitized?
 		// 'post_content' => $this->original_email,
 			// 'post_excerpt',

@@ -169,7 +169,7 @@ class API_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_check_email_skips_inactive_account(): void {
 
-		$email_account = BH_Email_Account_Fixture::make( status: 'inactive' );
+		$email_account = BH_Email_Account_Fixture::make( status: 'bh_email_ac_inactive' );
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );

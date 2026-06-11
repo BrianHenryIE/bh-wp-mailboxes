@@ -133,7 +133,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		$email_account = new BH_Email_Account(
 			post_id: 321,
 			post_type: $this->post_type,
-			status: 'active',
+			local_status: 'bh_email_ac_active',
 			provider_type_class: 'SomeProvider',
 			email_address: 'contact@bhwp.ie',
 			display_name: 'Test Account',

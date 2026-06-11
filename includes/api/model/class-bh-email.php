@@ -12,6 +12,7 @@
 namespace BrianHenryIE\WP_Mailboxes\API\Model;
 
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Saved_Post;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use DateTimeInterface;
 use ZBateson\MailMimeParser\IMessage;
 
@@ -37,7 +38,7 @@ readonly class BH_Email implements Saved_Post {
 	 * @param ?DateTimeInterface $sent_at               When the email was received/sent.
 	 * @param ?DateTimeInterface $downloaded_at         Aka. post publish time.
 	 * @param ?DateTimeInterface $last_updated          The wp_post last updated time.
-	 * @param string             $post_status           WordPress post status.
+	 * @param string             $local_status          WordPress post status. bh_email_new|bh_email_processed|bh_email_saved...
 	 * @param ?bool              $is_remote_read        Whether the email has been read on the remote server (null = unknown).
 	 * @param ?bool              $is_remote_deleted     Whether the email has been deleted on the remote server (null = unknown).
 	 */
@@ -57,7 +58,7 @@ readonly class BH_Email implements Saved_Post {
 		public ?DateTimeInterface $sent_at = null, // `null` implies an issue parsing the date.
 		public ?DateTimeInterface $downloaded_at = null,
 		public ?DateTimeInterface $last_updated = null, // I'm not sure this can be null.
-		public string $post_status = 'unread',
+		public string $local_status = 'bh_email_new',
 		public ?bool $is_remote_read = null,
 		public ?bool $is_remote_deleted = null,
 	) {}
@@ -99,8 +100,10 @@ readonly class BH_Email implements Saved_Post {
 
 	/**
 	 * Returns the WordPress post status for this email.
+	 *
+	 * @see BH_Email_CPT::register_post_statuses()
 	 */
 	public function get_post_status(): string {
-		return $this->post_status;
+		return $this->local_status;
 	}
 }

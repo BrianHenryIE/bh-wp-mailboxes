@@ -67,7 +67,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			provider_type_class: $provider_type_class,
 			post_id: null,
 			email_address: $email_address,
-			status: 'active',
+			status: 'bh_email_ac_active',
 			last_checked_time: null,
 			display_name: $display_name,
 			from_address_regex_filter: $from_address_regex_filter,
@@ -237,18 +237,18 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			);
 		}
 
-		if ( $account->status !== $status ) {
+		if ( $account->local_status !== $status ) {
 			$this->log(
 				$account,
 				sprintf(
 					'Status changed from "%s" to "%s".',
-					$account->status,
+					$account->local_status,
 					$status
 				),
 				false,
 				array(
 					'status' => array(
-						'from' => $account->status,
+						'from' => $account->local_status,
 						'to'   => $status,
 					),
 				)

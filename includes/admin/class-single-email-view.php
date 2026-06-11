@@ -220,7 +220,7 @@ class Single_Email_View {
 			'bh_email_saved'     => __( 'Saved', 'bh-wp-mailboxes' ),
 		);
 
-		$current_status    = $email->post_status;
+		$current_status    = $email->local_status;
 		$is_read           = $email->is_remote_read;
 		$deleted_on_server = $email->is_remote_deleted;
 

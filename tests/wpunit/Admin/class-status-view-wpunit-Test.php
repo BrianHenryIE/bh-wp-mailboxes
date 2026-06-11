@@ -59,7 +59,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		return new BH_Email_Account(
 			post_id: $overrides['post_id'] ?? 1,
 			post_type: $overrides['post_type'] ?? $this->post_type,
-			status: $overrides['status'] ?? 'active',
+			local_status: $overrides['status'] ?? 'bh_email_ac_active',
 			provider_type_class: $overrides['provider_type_class'] ?? 'SomeProvider',
 			email_address: $overrides['email_address'] ?? 'test@example.com',
 			display_name: $overrides['display_name'] ?? 'Test Account',
@@ -270,7 +270,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers ::display
 	 */
 	public function test_display_shows_active_label_for_active_account(): void {
-		$account = $this->make_account( array( 'status' => 'active' ) );
+		$account = $this->make_account( array( 'status' => 'bh_email_ac_active' ) );
 
 		/** @var API_Interface $api */
 		$api = \Mockery::mock( API_Interface::class );
@@ -287,7 +287,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers ::display
 	 */
 	public function test_display_shows_inactive_label_for_inactive_account(): void {
-		$account = $this->make_account( array( 'status' => 'inactive' ) );
+		$account = $this->make_account( array( 'status' => 'bh_email_ac_inactive' ) );
 
 		/** @var API_Interface $api */
 		$api = \Mockery::mock( API_Interface::class );

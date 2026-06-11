@@ -84,7 +84,7 @@ class BH_Email_Factory {
 			sent_at: $sent_at,
 			downloaded_at: new DateTime( $post->post_date, new DateTimeZone( 'UTC' ) ),
 			last_updated: new DateTime( $post->post_modified, new DateTimeZone( 'UTC' ) ),
-			post_status: $post->post_status,
+			local_status: $post->post_status,
 			is_remote_read: $is_read,
 			is_remote_deleted: $is_remote_deleted,
 		);

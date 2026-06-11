@@ -25,7 +25,7 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	 * @param string     $subject               The email subject.
 	 * @param string     $from_address          The sender email address.
 	 * @param string     $original_email        The raw email content.
-	 * @param string     $local_status          The WordPress post status.
+	 * @param string     $local_status          The WordPress post status. bh_email_new|bh_email_processed|bh_email_saved...
 	 * @param ?bool      $is_remote_read        Whether the email is marked read on the remote server.
 	 * @param ?bool      $is_remote_deleted     Whether the email has been deleted on the remote server.
 	 * @param array<int> $attachment_ids     Array of attachment post IDs.

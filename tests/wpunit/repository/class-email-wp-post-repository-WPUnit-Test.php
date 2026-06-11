@@ -56,7 +56,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$email_account = new BH_Email_Account(
 			post_id: 456,
 			post_type: $post_type,
-			status: 'active',
+			local_status: 'bh_email_ac_active',
 			provider_type_class: 'SomeProvider',
 			email_address: 'test@example.com',
 			display_name: 'Test Account',

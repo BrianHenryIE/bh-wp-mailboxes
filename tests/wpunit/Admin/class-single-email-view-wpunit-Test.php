@@ -53,7 +53,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$email_account_fixture ??= new BH_Email_Account(
 			post_id: 1,
 			post_type: $this->post_type,
-			status: 'active',
+			local_status: 'bh_email_ac_active',
 			provider_type_class: ImapEngine_Imap_Email_Fetcher::class,
 			email_address: 'test@example.org',
 			display_name: 'Brian Henry',

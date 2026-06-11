@@ -9,7 +9,7 @@ class BH_Email_Account_Fixture {
 	public static function make(
 		?int $post_id = 2,
 		?string $post_type = 'test-email-account',
-		?string $status = 'active',
+		?string $status = 'bh_email_ac_active',
 		?string $provider_type_class = ImapEngine_Imap_Email_Fetcher::class,
 		?string $email_address = 'test@example.org',
 		?string $display_name = 'Brian Henry',
@@ -23,7 +23,7 @@ class BH_Email_Account_Fixture {
 		return new BH_Email_Account(
 			post_id: $post_id,
 			post_type: $post_type,
-			status: $status,
+			local_status: $status,
 			provider_type_class: $provider_type_class,
 			email_address: $email_address,
 			display_name: $display_name,

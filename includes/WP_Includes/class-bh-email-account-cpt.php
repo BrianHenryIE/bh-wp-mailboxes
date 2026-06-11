@@ -109,7 +109,7 @@ class BH_Email_Account_CPT {
 	public function register_post_statuses(): void {
 
 		register_post_status(
-			'active',
+			'bh_email_ac_active',
 			array(
 				'label'                     => _x( 'Active', 'email account status' ),
 				'public'                    => false,
@@ -121,7 +121,7 @@ class BH_Email_Account_CPT {
 		);
 
 		register_post_status(
-			'inactive',
+			'bh_email_ac_inactive',
 			array(
 				'label'                     => _x( 'Inactive', 'email account status' ),
 				'public'                    => false,
