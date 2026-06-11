@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  COVERAGE_PHP_VERSION: '8.0'
+  COVERAGE_PHP_VERSION: '8.4'
 
 jobs:
   php-tests:
@@ -56,6 +56,7 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: ${{ matrix.php == env.COVERAGE_PHP_VERSION && 'xdebug' || 'none' }}
+          tools: brianhenryie/php-codecoverage-markdown
 
       - name: Update .env.testing config for GitHub Actions
         env:
@@ -177,7 +178,7 @@ jobs:
       - name: Generate markdown report
         if: ${{ matrix.php == env.COVERAGE_PHP_VERSION && github.event_name == 'pull_request' }} # We only need it added once
         run: |
-          vendor/bin/php-codecoverage-markdown \
+          php-codecoverage-markdown \
             --input-file gh-pages/${{ github.sha }}/phpunit/coveragephp.cov \
             --covered-files=${{ steps.changed-files.outputs.all_changed_files }} \
             --base-url ${{ format('https://{0}.github.io/{1}/{2}/phpunit/html/', github.repository_owner, github.event.repository.name, github.sha) }} \
