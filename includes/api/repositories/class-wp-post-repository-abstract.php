@@ -65,10 +65,10 @@ abstract class WP_Post_Repository_Abstract {
 	 * The idea is that plugins consuming this library can annotate the email, e.g. link the WooCommerce order it was
 	 * matched to, to make debugging easy.
 	 *
-	 * @param Saved_Post $saved_post The email account or email to attach the message to.
-	 * @param string     $message The message to log. Will be sanitized with wp_kses_post.
-	 * @param bool       $is_internal Was the message added by the library's automations or by an explicit action.
-	 * @param array      $meta List of values changed.
+	 * @param Saved_Post          $saved_post The email account or email to attach the message to.
+	 * @param string              $message The message to log. Will be sanitized with wp_kses_post.
+	 * @param bool                $is_internal Was the message added by the library's automations or by an explicit action.
+	 * @param array<string,mixed> $meta List of values changed.
 	 */
 	public function log( Saved_Post $saved_post, string $message, bool $is_internal = false, array $meta = array() ): void {
 

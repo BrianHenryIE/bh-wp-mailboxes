@@ -158,7 +158,7 @@ class Mailboxes {
 		$post_id = wp_insert_post(
 			array(
 				'post_type'   => self::ACCOUNT_POST_TYPE,
-				'post_status' => 'active',
+				'post_status' => 'bh_email_ac_active',
 				'post_title'  => $display_name,
 				'post_name'   => sanitize_title( $email_address ),
 			),

@@ -412,10 +412,6 @@ class Single_Email_View {
 	 */
 	public function render_log_notes_metabox( WP_Post $post ): void {
 
-		// TODO: Add $email->comments array.
-		// $email = $this->get_email_for_post( $post );
-		// unset( $post );
-
 		$notes = get_comments(
 			array(
 				'post_id' => $post->ID,

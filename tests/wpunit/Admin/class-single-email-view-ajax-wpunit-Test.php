@@ -37,7 +37,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 *
 	 * @var string
 	 */
-	protected string $_last_response = '';
+	protected string $_last_response = '{}';
 
 	public function setUp(): void {
 		parent::setUp();
@@ -155,14 +155,14 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 * ob_start() opens a dedicated buffer so that dieHandler() closes *our*
 	 * buffer — not Codeception's — when it calls ob_get_clean().
 	 *
-	 * @param callable $fn The AJAX method to invoke.
+	 * @param callable $ajax_function_under_test The AJAX method to invoke.
 	 */
-	private function call_ajax( callable $fn ): void {
+	private function call_ajax( callable $ajax_function_under_test ): void {
 		$this->_last_response = '';
 		$level                = ob_get_level();
 		ob_start();
 		try {
-			$fn();
+			$ajax_function_under_test();
 		} catch ( \WPAjaxDieContinueException $e ) {
 			// Normal AJAX termination; dieHandler already closed the buffer.
 		} catch ( \WPAjaxDieStopException $e ) {

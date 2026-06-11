@@ -13,6 +13,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Query;
 use DateTimeInterface;
+use Exception;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
@@ -172,7 +173,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @param BH_Email_Account                   $email_account The email account settings.
 	 *
 	 * @return BH_Email
-	 * @throws \Exception When WordPress fails to create the post.
+	 * @throws Exception When WordPress fails to create the post.
 	 */
 	public function save_new(
 		IMessage $email,
@@ -222,7 +223,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @param BH_Email_Account                   $email_account          The email account settings.
 	 *
 	 * @return array<int, \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email>
-	 * @throws \Exception When saving an individual email fails.
+	 * @throws Exception When saving an individual email fails.
 	 */
 	public function save_all(
 		Collection $all_new_account_emails,
@@ -241,12 +242,12 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 *
 	 * NB: many email properties are not mutable.
 	 *
-	 * @param BH_Email $email
-	 * @param ?string  $local_status
-	 * @param ?bool    $is_remote_read
-	 * @param ?bool    $is_remote_deleted
+	 * @param BH_Email $email The existing email to update.
+	 * @param ?string  $local_status The post_status for the email in WordPress (i.e. not the remote read/unread status).
+	 * @param ?bool    $is_remote_read Record of is the email read on the server.
+	 * @param ?bool    $is_remote_deleted Record of is the email deleted on the server.
 	 *
-	 * @throws \Exception
+	 * @throws Exception On failure to save.
 	 */
 	public function update(
 		BH_Email $email,
@@ -274,7 +275,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		$result = wp_update_post( $args, true );
 
 		if ( is_wp_error( $result ) ) {
-			throw new \Exception(
+			throw new Exception(
 				sprintf(
 					'Failed to update email post with ID %d: %s',
 					$email->post_id,

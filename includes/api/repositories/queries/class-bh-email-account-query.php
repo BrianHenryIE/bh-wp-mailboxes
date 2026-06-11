@@ -9,6 +9,9 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Queries;
 
+use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
+use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use DateTimeInterface;
 
 /**
@@ -17,19 +20,19 @@ use DateTimeInterface;
 readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 
 	/**
-	 * @param string             $post_type
-	 * @param ?string            $provider_type_class
-	 * @param ?int               $post_id
-	 * @param ?string            $email_address
+	 * @param string             $post_type As defined in {@see BH_WP_Mailboxes_Settings_Interface::get_email_accounts_cpt_underscored_20()}.
+	 * @param ?string            $provider_type_class The {@see Email_Fetcher_Interface} implementation used for this account.
+	 * @param ?int               $post_id WordPress post table ID.
+	 * @param ?string            $email_address Email address for display and search.
 	 * @param ?string            $status One of "bh_email_ac_active"|"bh_email_ac_inactive"...
-	 * @param ?DateTimeInterface $last_checked_time
-	 * @param ?string            $display_name
-	 * @param ?string            $from_address_regex_filter
-	 * @param ?string            $body_identifier_regex_filter
-	 * @param ?string            $after_download_email_action
-	 * @param ?int               $delete_local_emails_after_n_days
-	 * @param ?DateTimeInterface $last_successful_login_time
-	 * @param ?DateTimeInterface $last_failed_login_time
+	 * @param ?DateTimeInterface $last_checked_time The last time an attempt was made to fetch emails.
+	 * @param ?string            $display_name Friendly account name for UI.
+	 * @param ?string            $from_address_regex_filter Only emails whose from address matches this regex will be saved.
+	 * @param ?string            $body_identifier_regex_filter Only emails whose body matches this regex will be saved.
+	 * @param ?string            $after_download_email_action What to do after downloading the email – delete|mark-read|nothing.
+	 * @param ?int               $delete_local_emails_after_n_days How long to keep the emails before cron deletes them.
+	 * @param ?DateTimeInterface $last_successful_login_time Record of last successful connection time.
+	 * @param ?DateTimeInterface $last_failed_login_time Record of last failure time.
 	 */
 	public function __construct(
 		string $post_type,

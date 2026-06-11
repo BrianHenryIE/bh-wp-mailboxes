@@ -13,6 +13,7 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Account_Query;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Query;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use DateTimeInterface;
+use Exception;
 use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -50,7 +51,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @param ?string $after_download_email_action Delete or mark read or do nothing after download (if at all possible).
 	 * @param ?int    $delete_local_emails_after_n_days Delete locally stored emails after n days.
 	 *
-	 * @throws \Exception When wp_insert_post fails.
+	 * @throws Exception When wp_insert_post fails.
 	 */
 	public function save_new(
 		string $email_address,
@@ -186,7 +187,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @param ?DateTimeInterface $last_successful_login_time Record of success.
 	 * @param ?DateTimeInterface $last_failed_login_time Record of failure.
 	 *
-	 * @throws \Exception
+	 * @throws Exception When WordPress fails to save the post.
 	 */
 	public function update(
 		BH_Email_Account $account,
@@ -228,7 +229,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		$result = wp_update_post( $args, true );
 
 		if ( is_wp_error( $result ) ) {
-			throw new \Exception(
+			throw new Exception(
 				sprintf(
 					'Failed to update email account post with ID %d: %s.',
 					(int) $account->post_id,

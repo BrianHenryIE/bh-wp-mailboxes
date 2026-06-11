@@ -16,17 +16,22 @@ class BH_Email_CPT_WPUnit_Test extends WPUnit_Testcase {
 	protected function make_settings(
 		string $plugin_slug = 'my-test-plugin',
 		string $emails_cpt_friendly_name = 'My Emails',
-		// ?string $private_uploads_directory_name,
+		?string $private_uploads_directory_name = null,
 		string $emails_cpt_underscored_20 = 'my_emails_cpt',
-		// string $email_accounts_cpt_underscored_20,
+		?string $email_accounts_cpt_underscored_20 = null,
 		string $emails_cpt_dashed = 'my-emails-cpt',
-		// ?string $email_accounts_cpt_dashed,
-		// ?array cron_schedules,
+		?string $email_accounts_cpt_dashed = null,
+		?array $cron_schedules = null,
 	): BH_WP_Mailboxes_Settings_Interface {
 		$mock = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$mock->allows( 'get_plugin_slug' )->andReturn( $plugin_slug );
 		$mock->allows( 'get_emails_cpt_friendly_name' )->andReturn( $emails_cpt_friendly_name );
 		$mock->allows( 'get_emails_cpt_underscored_20' )->andReturn( $emails_cpt_underscored_20 );
+
+		$private_uploads_directory_name && $mock->allows( 'get_private_uploads_directory_name' )->andReturn( $private_uploads_directory_name );
+		$email_accounts_cpt_underscored_20 && $mock->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( $email_accounts_cpt_underscored_20 );
+		$email_accounts_cpt_dashed && $mock->allows( 'get_email_accounts_cpt_dashed' )->andReturn( $email_accounts_cpt_dashed );
+		$cron_schedules && $mock->allows( 'get_cron_schedules' )->andReturn( $cron_schedules );
 
 		return $mock;
 	}
