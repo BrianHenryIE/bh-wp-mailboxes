@@ -13,11 +13,6 @@ use Codeception\Stub\Expected;
  */
 class AJAX_Unit_Test extends Unit_Testcase {
 
-	protected function setup(): void {
-		parent::setup();
-		\WP_Mock::setUp();
-	}
-
 	protected function tearDown(): void {
 		parent::tearDown();
 		\WP_Mock::tearDown();
@@ -33,7 +28,7 @@ class AJAX_Unit_Test extends Unit_Testcase {
 		$settings = $this->makeEmpty(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
-				'get_cpt_underscored_20' => Expected::once(
+				'get_emails_cpt_underscored_20' => Expected::once(
 					fn() => 'mailboxes_cpt'
 				),
 			)
@@ -55,13 +50,6 @@ class AJAX_Unit_Test extends Unit_Testcase {
 
 		$_POST['_wpnonce']      = '_wpnonce';
 		$_POST['mailboxes_cpt'] = 'mailboxes_cpt';
-
-		\WP_Mock::userFunction(
-			'sanitize_key',
-			array(
-				'return_arg' => true,
-			)
-		);
 
 		\WP_Mock::userFunction(
 			'wp_verify_nonce',
@@ -91,7 +79,7 @@ class AJAX_Unit_Test extends Unit_Testcase {
 		$settings = $this->makeEmpty(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
-				'get_cpt_underscored_20' => Expected::once(
+				'get_emails_cpt_underscored_20' => Expected::once(
 					fn() => 'mailboxes_cpt'
 				),
 			)
@@ -117,7 +105,7 @@ class AJAX_Unit_Test extends Unit_Testcase {
 		\WP_Mock::userFunction(
 			'sanitize_key',
 			array(
-				'return_arg' => true,
+				'return_arg' => 1,
 			)
 		);
 

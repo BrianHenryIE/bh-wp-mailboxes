@@ -19,6 +19,13 @@ class Unit_Testcase extends Unit {
 		WP_Mock::setUp();
 
 		WP_Mock::passthruFunction( 'sanitize_title' );
+		// WP_Mock::passthruFunction( 'sanitize_key' );
+		\WP_Mock::userFunction(
+			'sanitize_key',
+			array(
+				'return_arg' => true,
+			)
+		);
 
 		$this->logger = new ColorLogger();
 

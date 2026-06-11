@@ -162,12 +162,12 @@ class Mailboxes {
 
 		$is_read = $request->get_param( 'is_read' );
 		if ( null !== $is_read ) {
-			update_post_meta( $post_id, 'bh_email_is_read', true === $is_read ? '1' : '0' );
+			update_post_meta( $post_id, 'is_remote_read', true === $is_read ? 'yes' : 'no' );
 		}
 
 		$deleted_on_server = $request->get_param( 'deleted_on_server' );
 		if ( true === $deleted_on_server ) {
-			update_post_meta( $post_id, 'bh_email_deleted_on_server', '1' );
+			update_post_meta( $post_id, 'is_remote_deleted', 'yes' );
 		}
 
 		$has_attachment = $request->get_param( 'has_attachment' );

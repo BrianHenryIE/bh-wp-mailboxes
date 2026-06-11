@@ -408,14 +408,16 @@ class Single_Email_View {
 		echo '</select>';
 		echo '<input type="hidden" name="hidden_post_status" value="' . esc_attr( $current_status ) . '">';
 
-		// Remote status badges.
 		if ( $provider?->can_mark_read() && $provider?->can_delete_on_server() ) {
-			echo '<div class="bh-email-remote-status">' . wp_kses_post( $this->get_remote_status_html( $is_read, $deleted_on_server ) ) . '</div>';
+			// Remote status badges — visible whenever read/deleted state is known, regardless of provider.
+			$badges = $this->get_remote_status_html( $is_read, $deleted_on_server );
+			if ( '' !== $badges ) {
+				echo '<div class="bh-email-remote-status">' . wp_kses_post( $badges ) . '</div>';
+			}
 		}
 
 		// Remote action buttons — shown only when the mailbox supports them.
 		if ( ! is_null( $provider ) && $provider->can_mark_read() ) {
-			$is_read = '' !== $is_read && (bool) $is_read;
 			if ( $is_read ) {
 				echo '<p><button id="bh-email-mark-unread" class="button">' . esc_html__( 'Mark as unread on server', 'bh-wp-mailboxes' ) . '</button></p>';
 			} else {
@@ -597,8 +599,8 @@ class Single_Email_View {
 	/**
 	 * Build HTML badge(s) reflecting remote read/deleted status.
 	 *
-	 * @param mixed $is_read_raw       Raw meta value for bh_email_is_read.
-	 * @param mixed $is_remote_deleted Raw meta value for bh_email_deleted_on_server.
+	 * @param ?bool $is_read           Whether the email is marked read on the remote server, or null if unknown.
+	 * @param ?bool $is_remote_deleted Whether the email has been deleted on the remote server, or null if unknown.
 	 *
 	 * @return string HTML string safe for use with wp_kses_post().
 	 */
@@ -606,9 +608,11 @@ class Single_Email_View {
 
 		$parts = array();
 
-		$parts[] = $is_read
-			? '<span class="bh-email-badge bh-email-badge--read">' . esc_html__( 'Read on server', 'bh-wp-mailboxes' ) . '</span>'
-			: '<span class="bh-email-badge bh-email-badge--unread">' . esc_html__( 'Unread on server', 'bh-wp-mailboxes' ) . '</span>';
+		if ( null !== $is_read ) {
+			$parts[] = $is_read
+				? '<span class="bh-email-badge bh-email-badge--read">' . esc_html__( 'Read on server', 'bh-wp-mailboxes' ) . '</span>'
+				: '<span class="bh-email-badge bh-email-badge--unread">' . esc_html__( 'Unread on server', 'bh-wp-mailboxes' ) . '</span>';
+		}
 
 		if ( $is_remote_deleted ) {
 			$parts[] = '<span class="bh-email-badge bh-email-badge--deleted">' . esc_html__( 'Deleted on server', 'bh-wp-mailboxes' ) . '</span>';
@@ -617,27 +621,5 @@ class Single_Email_View {
 		return implode( ' ', $parts );
 	}
 
-	/**
-	 * Resolve the Mailbox_Settings_Interface for the mailbox account the given post belongs to.
-	 *
-	 * Returns null when the account cannot be matched.
-	 *
-	 * @param int $post_id The email CPT post ID.
-	 *
-	 * @return ?Email_Account_Settings_Interface
-	 */
-	protected function resolve_mailbox_for_post( int $post_id ): ?Email_Account_Settings_Interface {
-
-		$terms = wp_get_post_terms( $post_id, 'bh-wp-mailbox-account' );
-		if ( ! is_array( $terms ) || empty( $terms ) ) {
-			return null;
-		}
-
-		foreach ( $this->api->get_email_accounts() as $mailbox ) {
-			$slug = sanitize_title( $mailbox->get_account_unique_friendly_name() );
-
-		}
-
-		return null;
-	}
+	// phpcs:ignore Squiz.WhiteSpace.FunctionSpacing.AfterLast
 }

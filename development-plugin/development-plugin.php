@@ -161,7 +161,7 @@ $mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface 
 	}
 };
 
-$mailboxes_api = new BH_WP_Mailboxes( $mailboxes_settings, $logger );
+$mailboxes_api = BH_WP_Mailboxes::make( $mailboxes_settings, $logger );
 
 $accounts = $mailboxes_api->get_email_accounts();
 

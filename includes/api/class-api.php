@@ -13,7 +13,6 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factor
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
@@ -30,7 +29,6 @@ use Exception;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use ZBateson\MailMimeParser\IMessage;
 
 /**
  * Main API for fetching, saving, and managing emails.
@@ -38,15 +36,6 @@ use ZBateson\MailMimeParser\IMessage;
 class API implements API_Interface {
 
 	use LoggerAwareTrait;
-
-	/**
-	 * Email repository, instantiated lazily on first use.
-	 *
-	 * @var ?Email_WP_Post_Repository
-	 */
-	protected ?Email_WP_Post_Repository $email_repository = null;
-
-	protected ?Email_Account_WP_Post_Repository $email_account_repository = null;
 
 	/**
 	 * Constructor.
@@ -57,6 +46,8 @@ class API implements API_Interface {
 	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
+		protected Email_WP_Post_Repository $email_repository,
+		protected Email_Account_WP_Post_Repository $email_account_repository,
 		/**
 		 * If this is null, attachments will not be saved.
 		 */
@@ -71,7 +62,7 @@ class API implements API_Interface {
 	 */
 	public function get_email_accounts(): array {
 		$indexed_accounts = array();
-		foreach ( $this->get_email_account_repository()->get_all() as $account ) {
+		foreach ( $this->email_account_repository->get_all() as $account ) {
 			$indexed_accounts[ $account->email_address ] = $account;
 		}
 		return $indexed_accounts;
@@ -92,7 +83,7 @@ class API implements API_Interface {
 		?string $after_download_email_action,
 		?int $delete_emails_after_n_days,
 	): BH_Email_Account {
-		$email_accounts_repository = $this->get_email_account_repository();
+		$email_accounts_repository = $this->email_account_repository;
 		if ( ! empty(
 			$email_accounts_repository->query(
 				email_address: $email_address
@@ -109,38 +100,6 @@ class API implements API_Interface {
 			after_download_email_action: $after_download_email_action,
 			delete_emails_after_n_days: $delete_emails_after_n_days,
 		);
-	}
-
-	/**
-	 * Returns the email repository, creating it if it does not yet exist.
-	 *
-	 * @return Email_WP_Post_Repository
-	 */
-	protected function get_email_account_repository(): Email_Account_WP_Post_Repository {
-		if ( is_null( $this->email_account_repository ) ) {
-			$this->email_account_repository = new Email_Account_WP_Post_Repository(
-				$this->settings->get_email_accounts_cpt_underscored_20(),
-				new BH_Email_Account_Factory( $this->logger ),
-				$this->logger
-			);
-		}
-		return $this->email_account_repository;
-	}
-
-	/**
-	 * Returns the email repository, creating it if it does not yet exist.
-	 *
-	 * @return Email_WP_Post_Repository
-	 */
-	protected function get_email_repository(): Email_WP_Post_Repository {
-		if ( is_null( $this->email_repository ) ) {
-			$this->email_repository = new Email_WP_Post_Repository(
-				$this->settings->get_emails_cpt_underscored_20(),
-				new BH_Email_Factory( $this->logger ),
-				$this->logger
-			);
-		}
-		return $this->email_repository;
 	}
 
 	/**
@@ -168,7 +127,7 @@ class API implements API_Interface {
 		 */
 		$all_new_emails     = array();
 		$saved_emails       = array();
-		$last_fetched_times = $this->get_last_fetched_times();
+		$last_fetched_times = $this->get_last_fetched_times( $email_accounts );
 
 		// The first time we run, we'll look back over one week of emails.
 		$now_time           = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
@@ -195,7 +154,8 @@ class API implements API_Interface {
 			if ( ! is_null( $email_account->last_failed_login_time ) ) {
 
 				// If last failure time was less than four hours ago, skip.
-				if ( $email_account->last_failed_login_time->diff( new DateTimeImmutable() ) < new DateInterval( 'PT4H' ) ) {
+
+				if ( $email_account->last_failed_login_time->add( new DateInterval( 'PT4H' ) ) > new DateTimeImmutable() ) {
 					$this->logger->info(
 						'Too soon after failed login, please check your password and save settings to try again.',
 						array(
@@ -259,7 +219,7 @@ class API implements API_Interface {
 			 *
 			 * @var BH_Email[] $all_new_account_bh_emails
 			 */
-			$all_new_account_bh_emails = $this->get_email_repository()->save_all( $all_new_account_emails, $this->settings, $email_account );
+			$all_new_account_bh_emails = $this->email_repository->save_all( $all_new_account_emails, $this->settings, $email_account );
 
 			$all_new_emails = array_merge( $all_new_emails, $all_new_account_bh_emails );
 		}
@@ -302,7 +262,7 @@ class API implements API_Interface {
 	 * @return BH_Email[]
 	 */
 	public function get_downloaded_emails( int $number = 200 ): array {
-		return $this->get_email_repository()->find_recent( $number );
+		return $this->email_repository->find_recent( $number );
 	}
 
 	/**
@@ -312,7 +272,7 @@ class API implements API_Interface {
 	 */
 	public function delete_old_emails(): array {
 
-		$email_accounts = $this->get_email_account_repository()->get_all( status: 'active' );
+		$email_accounts = $this->email_account_repository->get_all( status: 'active' );
 
 		$min_days = null;
 		foreach ( $email_accounts as $email_account ) {
@@ -331,7 +291,7 @@ class API implements API_Interface {
 		}
 
 		$cutoff  = new DateTimeImmutable( "now - {$min_days} days", new DateTimeZone( 'UTC' ) );
-		$deleted = $this->get_email_repository()->delete_older_than( $cutoff );
+		$deleted = $this->email_repository->delete_older_than( $cutoff );
 
 		$this->logger->info( "Deleted {$deleted} emails older than {$min_days} days." );
 
@@ -494,33 +454,13 @@ class API implements API_Interface {
 	 *
 	 * @return array<string, ?DateTimeInterface>
 	 */
-	public function get_last_fetched_times(): array {
+	public function get_last_fetched_times( ?array $email_accounts = null ): array {
 		$result = array();
 
-		foreach ( $this->settings->get_configured_mailbox_settings() as $mailbox_settings ) {
-			$account_name = $mailbox_settings->get_account_unique_friendly_name();
+		$email_accounts ??= $this->get_email_accounts();
 
-			$last_fetched_option_name = $this->get_last_fetched_option_name( $account_name );
-
-			$last_fetched = get_option( $last_fetched_option_name, null );
-			if ( is_null( $last_fetched ) ) {
-				$result[ $account_name ] = null;
-				continue;
-			}
-			$since_datetime = DateTime::createFromFormat( DateTime::ATOM, $last_fetched, new DateTimeZone( 'UTC' ) );
-			if ( false === $since_datetime ) {
-				$this->logger->warning(
-					'Could not parse date from option key ' . $last_fetched_option_name . ' with value ' . $last_fetched . '. Possibly manually edited in database. Deleting option.',
-					array(
-						'option_name' => $last_fetched_option_name,
-						'value'       => $last_fetched,
-					)
-				);
-				delete_option( $last_fetched_option_name );
-				$result[ $account_name ] = null;
-			} else {
-				$result[ $account_name ] = $since_datetime;
-			}
+		foreach ( $email_accounts as $email_account ) {
+			$result[ $email_account->email_address ] = $email_account->last_successful_login_time;
 		}
 		return $result;
 	}

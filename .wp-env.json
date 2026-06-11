@@ -20,5 +20,5 @@
     "afterStart": "wp-env run cli wp plugin activate development-plugin"
   },
   "phpVersion": "8.4",
-  "core": "WordPress/WordPress#7.0"
+  "core": "WordPress/WordPress#7.0.0"
 }

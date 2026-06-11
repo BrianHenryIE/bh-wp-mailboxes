@@ -2,15 +2,16 @@
 /**
  * The main entrypoint for the library.
  *
- * Requires settings on first use `BH_WP_Mailbox::instance( $mailbox_settings );`
- * Then can be retrieved with `BH_WP_Mailbox::instance();`
- *
  * @package brianhenryie/bh-wp-mailboxes
  */
 
 namespace BrianHenryIE\WP_Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\API\API;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_WP_Mailboxes_Hooks;
 use BrianHenryIE\WP_Private_Uploads\BH_WP_Private_Uploads_Hooks;
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Interface;
@@ -25,93 +26,88 @@ use Psr\Log\NullLogger;
 class BH_WP_Mailboxes extends API {
 
 	/**
-	 * The singleton instance.
-	 *
-	 * @var BH_WP_Mailboxes
-	 */
-	protected static BH_WP_Mailboxes $instance;
-
-	/**
-	 * Returns the singleton instance, creating it on first call.
-	 *
-	 * @param ?BH_WP_Mailboxes_Settings_Interface $settings Plugin settings (required on first call).
-	 * @param ?LoggerInterface                    $logger   PSR-3 logger.
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings
+	 * @param ?LoggerInterface                   $logger   PSR-3 logger.
 	 *
 	 * @throws \Exception When settings are not provided on first use.
 	 */
-	public static function instance(
-		?BH_WP_Mailboxes_Settings_Interface $settings = null,
+	public static function make(
+		BH_WP_Mailboxes_Settings_Interface $settings,
 		?LoggerInterface $logger = null
-	): BH_WP_Mailboxes {
-
-		if ( ! empty( self::$instance ) ) {
-			return self::$instance;
-		}
-
-		if ( ! is_null( $settings ) ) {
-			self::$instance = new BH_WP_Mailboxes( $settings, $logger );
-			new BH_WP_Mailboxes_Hooks( self::$instance, $settings, $logger );
-			return self::$instance;
-		}
-
-		throw new \Exception( 'Settings must be provided on first use' );
-	}
-
-	/**
-	 * Constructor.
-	 *
-	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings.
-	 * @param ?LoggerInterface                   $logger   PSR-3 logger.
-	 */
-	public function __construct( BH_WP_Mailboxes_Settings_Interface $settings, ?LoggerInterface $logger = null ) {
-
-		$this->validate_settings( $settings );
-
+	): API {
+		self::validate_settings( $settings );
 		$logger ??= new NullLogger();
 
-		$private_uploads = null;
+		$emails_post_type = $settings->get_emails_cpt_underscored_20();
+		$bh_email_factory = new BH_Email_Factory( $logger );
+		$email_repository = new Email_WP_Post_Repository(
+			$emails_post_type,
+			$bh_email_factory,
+			$logger
+		);
 
-		if ( ! is_null( $settings->get_private_uploads_directory_name() ) ) {
-			// Make the attachments' directory inaccessible to the public.
-			$private_uploads_settings = new class( $settings ) implements Private_Uploads_Settings_Interface {
-				use Private_Uploads_Settings_Trait;
+		$email_accounts_post_type = $settings->get_email_accounts_cpt_underscored_20();
+		$bh_email_account_factory = new BH_Email_Account_Factory( $logger );
+		$email_account_repository = new Email_Account_WP_Post_Repository(
+			$email_accounts_post_type,
+			$bh_email_account_factory,
+			$logger,
+		);
 
-				/**
-				 * Constructor.
-				 *
-				 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes_settings Mailboxes settings.
-				 */
-				public function __construct( protected BH_WP_Mailboxes_Settings_Interface $mailboxes_settings ) {
-				}
+		$private_uploads = self::make_private_uploads( $settings, $logger );
 
-				/**
-				 * Returns the plugin slug.
-				 */
-				public function get_plugin_slug(): string {
-					return $this->mailboxes_settings->get_plugin_slug();
-				}
-
-				/**
-				 * Returns the uploads subdirectory name.
-				 */
-				public function get_uploads_subdirectory_name(): string {
-					return $this->mailboxes_settings->get_private_uploads_directory_name();
-				}
-			};
-
-			// We don't use the Private_Uploads singleton in case the parent plugin also needs it.
-			$private_uploads = new Private_Uploads( $private_uploads_settings, $logger );
-			new BH_WP_Private_Uploads_Hooks( $private_uploads, $private_uploads_settings, $logger );
-		}
-
-		parent::__construct( $settings, $private_uploads, $logger );
-
-		new BH_WP_Mailboxes_Hooks( $this, $settings, $logger );
+		$mailboxes_api = new API(
+			$settings,
+			$email_repository,
+			$email_account_repository,
+			$private_uploads,
+			$logger
+		);
+		new BH_WP_Mailboxes_Hooks( $mailboxes_api, $settings, $logger );
+		return $mailboxes_api;
 	}
 
-	protected function validate_settings( BH_WP_Mailboxes_Settings_Interface $settings ) {
+	protected static function validate_settings( BH_WP_Mailboxes_Settings_Interface $settings ) {
 		if ( $settings->get_emails_cpt_underscored_20() === $settings->get_email_accounts_cpt_underscored_20() ) {
 			throw new \Exception( 'The emails CPT and email accounts CPT cannot have the same slug. Please change one of them in your settings.' );
 		}
+	}
+
+	protected static function make_private_uploads( BH_WP_Mailboxes_Settings_Interface $settings, LoggerInterface $logger ): ?Private_Uploads {
+		if ( is_null( $settings->get_private_uploads_directory_name() ) || ! class_exists( Private_Uploads::class ) ) {
+			return null;
+		}
+
+		// Make the attachments' directory inaccessible to the public.
+		$private_uploads_settings = new class( $settings ) implements Private_Uploads_Settings_Interface {
+			use Private_Uploads_Settings_Trait;
+
+			/**
+			 * Constructor.
+			 *
+			 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes_settings Mailboxes settings.
+			 */
+			public function __construct( protected BH_WP_Mailboxes_Settings_Interface $mailboxes_settings ) {
+			}
+
+			/**
+			 * Returns the plugin slug.
+			 */
+			public function get_plugin_slug(): string {
+				return $this->mailboxes_settings->get_plugin_slug();
+			}
+
+			/**
+			 * Returns the uploads subdirectory name.
+			 */
+			public function get_uploads_subdirectory_name(): string {
+				return $this->mailboxes_settings->get_private_uploads_directory_name();
+			}
+		};
+
+		// We don't use the Private_Uploads singleton in case the parent plugin also needs it.
+		$private_uploads = new Private_Uploads( $private_uploads_settings, $logger );
+		new BH_WP_Private_Uploads_Hooks( $private_uploads, $private_uploads_settings, $logger );
+		return $private_uploads;
 	}
 }
