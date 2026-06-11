@@ -42,6 +42,9 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	// Helpers
 	// -------------------------------------------------------------------------
 
+	/**
+	 * Instantiate a `Email_WP_Post_Repository` object.
+	 */
 	private function make_repository(): Email_WP_Post_Repository {
 		return new Email_WP_Post_Repository(
 			$this->post_type,

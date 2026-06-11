@@ -66,7 +66,13 @@
     <rule ref="WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents">
         <exclude-pattern>*/tests/*</exclude-pattern>
     </rule>
+    <rule ref="WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents">
+        <exclude-pattern>*/tests/*</exclude-pattern>
+    </rule>
     <rule ref="WordPress.WP.GlobalVariablesOverride.Prohibited">
+        <exclude-pattern>*/tests/*</exclude-pattern>
+    </rule>
+    <rule ref="PSR2.Classes.PropertyDeclaration.Underscore">
         <exclude-pattern>*/tests/*</exclude-pattern>
     </rule>
 

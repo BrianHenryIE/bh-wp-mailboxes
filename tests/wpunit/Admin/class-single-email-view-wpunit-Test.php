@@ -14,6 +14,7 @@ use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
@@ -42,30 +43,22 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		);
 	}
 
-	/** @return API_Interface */
-	private function make_api(
+	/**
+	 * Get an API instance to test.
+	 *
+	 * @param BH_Email_Account         $email_account_fixture Default: boring fixture with not filters configured.
+	 * @param bool                     $can_return_email_account If there is a correspoinding BH_Email_Account for the BH_Email.
+	 * @param ?Email_Fetcher_Interface $provider_mock Default: mock that supports all features.
+	 */
+	protected function make_api(
 		?BH_Email_Account $email_account_fixture = null,
 		bool $can_return_email_account = true,
 		?Email_Fetcher_Interface $provider_mock = null,
-	): mixed {
+	): API_Interface {
 		$api_mock = \Mockery::mock( API_Interface::class );
 
-		$email_account_fixture ??= new BH_Email_Account(
-			post_id: 1,
-			post_type: $this->post_type,
-			local_status: 'bh_email_ac_active',
-			provider_type_class: ImapEngine_Imap_Email_Fetcher::class,
-			email_address: 'test@example.org',
-			display_name: 'Brian Henry',
-			from_address_regex_filter: null,
-			body_identifier_regex_filter: null,
-			after_download_email_action: null,
-			delete_local_emails_after_n_days: 1,
-			last_successful_login_time: null,
-			last_failed_login_time: null,
-		);
-
 		if ( $can_return_email_account ) {
+			$email_account_fixture ??= BH_Email_Account_Fixture::make();
 			$api_mock->allows( 'get_email_account_for_email' )->andReturn( $email_account_fixture );
 		} else {
 			$api_mock->allows( 'get_email_account_for_email' )->andReturnNull();
