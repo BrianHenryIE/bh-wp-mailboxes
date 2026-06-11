@@ -81,6 +81,9 @@ class BH_WP_Mailboxes_Hooks {
 
 		$cron = new Cron( $this->api, $this->settings, $this->logger );
 
+		// Clear failed-login backoff when the parent plugin saves its settings.
+		add_action( 'bh_wp_mailboxes_settings_saved', $this->api->on_settings_saved( ... ) );
+
 		add_action( 'plugins_loaded', $cron->add_cron_jobs( ... ), 20 );
 
 		// {cpt_name}_fetch_emails_job.

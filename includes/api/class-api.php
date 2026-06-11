@@ -40,17 +40,16 @@ class API implements API_Interface {
 	/**
 	 * Constructor.
 	 *
-	 * @param BH_WP_Mailboxes_Settings_Interface $settings        Plugin settings.
-	 * @param ?Private_Uploads                   $private_uploads Private uploads API, or null to skip attachment saving.
-	 * @param ?LoggerInterface                   $logger          PSR-3 logger.
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings                 Plugin settings.
+	 * @param Email_WP_Post_Repository           $email_repository         Repository for saved emails.
+	 * @param Email_Account_WP_Post_Repository   $email_account_repository Repository for email accounts.
+	 * @param ?Private_Uploads                   $private_uploads          Private uploads API, or null to skip attachment saving.
+	 * @param ?LoggerInterface                   $logger                   PSR-3 logger.
 	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		protected Email_WP_Post_Repository $email_repository,
 		protected Email_Account_WP_Post_Repository $email_account_repository,
-		/**
-		 * If this is null, attachments will not be saved.
-		 */
 		protected ?Private_Uploads $private_uploads,
 		?LoggerInterface $logger = null
 	) {
@@ -58,6 +57,8 @@ class API implements API_Interface {
 	}
 
 	/**
+	 * Returns all email accounts indexed by email address.
+	 *
 	 * @return BH_Email_Account[]
 	 */
 	public function get_email_accounts(): array {
@@ -69,10 +70,17 @@ class API implements API_Interface {
 	}
 
 	/**
-	 * @param string                                $email_address
-	 * @param string                                $display_name
-	 * @param class-string<Email_Fetcher_Interface> $provider_type_class
-	 * @param ?string                               $after_download_email_action nothing|mark_read|delete
+	 * Add a new email account configuration.
+	 *
+	 * @param string  $email_address               The mailbox address.
+	 * @param string  $display_name                Human-readable account name.
+	 * @param string  $provider_type_class         Provider class to use for fetching (class-string<Email_Fetcher_Interface>).
+	 * @param ?string $from_address_regex_filter   Optional regex to filter incoming senders.
+	 * @param ?string $body_identifier_regex_filter Optional regex to filter email bodies.
+	 * @param ?string $after_download_email_action One of: nothing, mark_read, delete.
+	 * @param ?int    $delete_emails_after_n_days  Days before locally-saved emails are purged.
+	 *
+	 * @throws Exception When an account with this email address already exists.
 	 */
 	public function add_email_account(
 		string $email_address,
@@ -175,22 +183,6 @@ class API implements API_Interface {
 
 			$fetcher->set_credentials( $credentials );
 
-			//
-			// try {
-			//
-			//
-			// } catch ( Exception $exception ) {
-			// $this->logger->error(
-			// 'Failed login.',
-			// array(
-			// 'account_name' => $email_account->display_name,
-			// 'exception'    => $exception,
-			// )
-			// );
-			// $this->set_failed_login_time( $email_account->display_name, $now_time );
-			// continue;
-			// }
-
 			$since_datetime = $last_fetched_times[ $email_account->display_name ] ?? $first_run_datetime;
 
 			try {
@@ -209,11 +201,6 @@ class API implements API_Interface {
 
 			$this->set_last_fetched_time( $email_account->display_name, $now_time );
 
-			$cpt = $this->settings->get_emails_cpt_underscored_20();
-			// $account_category_slug = sanitize_title( $account_name );
-			// $mailbox_category      = get_term_by( 'slug', $account_category_slug, 'bh-wp-mailbox-account' );
-			// $term_id               = $mailbox_category instanceof \WP_Term ? $mailbox_category->term_id : 0;
-
 			/**
 			 * Newly saved BH_Email objects for this account.
 			 *
@@ -224,35 +211,26 @@ class API implements API_Interface {
 			$all_new_emails = array_merge( $all_new_emails, $all_new_account_bh_emails );
 		}
 
+		/**
+		 * Fires after all new emails have been fetched and saved across every account.
+		 *
+		 * @param BH_Email[] $all_new_emails Every newly saved BH_Email object.
+		 */
+		do_action( 'bh_wp_mailboxes_fetch_emails_saved_' . $this->settings->get_plugin_slug(), $all_new_emails );
+
+		/**
+		 * Fires once check_email() has finished, regardless of how many emails were saved.
+		 *
+		 * @param BH_Email[] $all_new_emails Every newly saved BH_Email object.
+		 */
+		do_action( 'bh_wp_mailboxes_fetch_emails_complete', $all_new_emails );
+
 		return array(
 			'success'        => true,
 			'all_new_emails' => $all_new_emails,
 			'saved_emails'   => $saved_emails,
 		);
 	}
-
-	/**
-	 * TODO: This should be done when querying the server. i.e. a search during fetch.
-	 *
-	 * @deprecated
-	 */
-	// protected function email_filter( IMessage $email, Email_Account_Settings_Interface $settings ): bool {
-	//
-	// if ( ! is_null( $settings->get_from_email_regex() )
-	// && 1 !== preg_match( $settings->get_from_email_regex(), $email->get_from_email() ) ) {
-	// $this->logger->debug( "Email from {$email->get_from_email()} did not match get_from_email_regex {$settings->get_from_email_regex()}." );
-	// return false;
-	// }
-	//
-	// if ( ! is_null( $settings->get_identifier_regex() )
-	// && 1 !== preg_match( $settings->get_identifier_regex(), $email->body_plain_text )
-	// && 1 !== preg_match( $settings->get_identifier_regex(), $email->get_body_html() ) ) {
-	// $this->logger->debug( "Email body did not match get_identifier_regex {$settings->get_identifier_regex()}." );
-	// return false;
-	// }
-	//
-	// return true;
-	// } // end email_filter.
 
 	/**
 	 * Return the most recently downloaded emails.
@@ -548,7 +526,9 @@ class API implements API_Interface {
 	}
 
 	/**
-	 * Could be null if the post row was deleted.
+	 * Return the email account for an email post, or null if the post/parent was deleted.
+	 *
+	 * @param BH_Email $email The email whose account to resolve.
 	 */
 	public function get_email_account_for_email( BH_Email $email ): ?BH_Email_Account {
 		$post = get_post( $email->post_id );
@@ -562,19 +542,39 @@ class API implements API_Interface {
 		}
 	}
 
+	/**
+	 * Clear all failed-login times so every account retries on the next cron run.
+	 *
+	 * The parent plugin should fire `do_action('bh_wp_mailboxes_settings_saved')`
+	 * from its own settings-save callback to trigger this automatically.
+	 *
+	 * @hooked bh_wp_mailboxes_settings_saved
+	 */
+	public function on_settings_saved(): void {
+		foreach ( $this->email_account_repository->get_all() as $email_account ) {
+			$this->set_failed_login_time( $email_account->display_name, null );
+		}
+	}
+
+	/**
+	 * Return the email fetcher for a given account.
+	 *
+	 * Applies filter `bh_wp_mailboxes_fetcher_for_credentials` so callers can inject a custom
+	 * fetcher (e.g. a stub in tests or the development plugin).
+	 *
+	 * @param BH_Email_Account $email_account The account to find a fetcher for.
+	 */
 	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Fetcher_Interface {
 
-		// Filter: bh_wp_mailboxes_fetcher_for_credentials( null, Account_Credentials_Interface, Mailbox_Settings_Interface, LoggerInterface ).
-		// Return a non-null Email_Fetcher_Interface to supply a custom fetcher (e.g. a test stub).
 		$fetcher = apply_filters( 'bh_wp_mailboxes_fetcher_for_credentials', null, $email_account );
 
 		if ( ! is_null( $fetcher ) && ( $fetcher instanceof Email_Fetcher_Interface ) ) {
 			return $fetcher;
 		}
 
-		if ( $email_account->provider_type_class === ImapEngine_Imap_Email_Fetcher::class ) {
+		if ( ImapEngine_Imap_Email_Fetcher::class === $email_account->provider_type_class ) {
 			return new ImapEngine_Imap_Email_Fetcher( $email_account, $this->logger );
-		} elseif ( $email_account->provider_type_class === Google_API_Credentials_Interface::class ) {
+		} elseif ( Google_API_Credentials_Interface::class === $email_account->provider_type_class ) {
 			return new Gmail_Email_Fetcher( $email_account, $this->logger );
 		} else {
 			$this->logger->warning(

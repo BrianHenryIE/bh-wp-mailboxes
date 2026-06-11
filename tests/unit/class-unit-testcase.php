@@ -22,6 +22,12 @@ class Unit_Testcase extends Unit {
 		WP_Mock::setUsePatchwork( true );
 		WP_Mock::setUp();
 
+		// WP_Mock::Filter::$filtersWithAnyArgs is a static array that is never reset between tests.
+		// Without this reset, any test that calls onFilter()->withAnyArgs() will pollute subsequent tests.
+		$prop = new \ReflectionProperty( \WP_Mock\Filter::class, 'filtersWithAnyArgs' );
+		$prop->setAccessible( true );
+		$prop->setValue( null, array() );
+
 		WP_Mock::passthruFunction( 'sanitize_title' );
 		WP_Mock::passthruFunction( 'sanitize_key' );
 

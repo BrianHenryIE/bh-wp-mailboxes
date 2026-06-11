@@ -67,7 +67,24 @@ interface API_Interface {
 	 */
 	public function insert_email_log_note( int $post_id, string $message ): void;
 
+	/**
+	 * Return the email account for an email post, or null if the post/parent was deleted.
+	 *
+	 * @param BH_Email $email The email whose account to resolve.
+	 */
 	public function get_email_account_for_email( BH_Email $email ): ?BH_Email_Account;
 
+	/**
+	 * Return the email fetcher for a given account, or null when no provider is known.
+	 *
+	 * @param BH_Email_Account $email_account The account to find a fetcher for.
+	 */
 	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Fetcher_Interface;
+
+	/**
+	 * Clear all failed-login times so every account retries on the next cron run.
+	 *
+	 * @hooked bh_wp_mailboxes_settings_saved
+	 */
+	public function on_settings_saved(): void;
 }
