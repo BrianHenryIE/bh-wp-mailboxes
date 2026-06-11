@@ -92,7 +92,7 @@ class Status_View {
 		}
 
 		echo '</div>';
-		echo '<script>document.querySelector(".wp-header-end").after(document.getElementById("bh-mailboxes-status"));</script>';
+		echo '<script>document.addEventListener("DOMContentLoaded",function(){document.querySelector(".wp-header-end").after(document.getElementById("bh-mailboxes-status"));});</script>';
 	}
 
 	/**
