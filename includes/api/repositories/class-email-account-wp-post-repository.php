@@ -21,6 +21,13 @@ use WP_Post;
 class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	use LoggerAwareTrait;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param string                   $post_type               CPT slug.
+	 * @param BH_Email_Account_Factory $bh_email_account_factory Factory to hydrate WP_Post → BH_Email_Account.
+	 * @param LoggerInterface          $logger                  PSR-3 logger.
+	 */
 	public function __construct(
 		protected string $post_type,
 		protected BH_Email_Account_Factory $bh_email_account_factory,
@@ -40,7 +47,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @param ?string $after_download_email_action Delete or mark read or do nothing after download (if at all possible).
 	 * @param ?int    $delete_emails_after_n_days Delete locally stored emails after n days.
 	 *
-	 * @throws \Exception
+	 * @throws \Exception When wp_insert_post fails.
 	 */
 	public function save_new(
 		string $email_address,
@@ -84,12 +91,14 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	}
 
 	/**
-	 * @param string $status
+	 * Returns all email accounts, optionally filtered by status.
+	 *
+	 * @param string $status Post status to filter by, or 'all' for no filter.
 	 *
 	 * @return BH_Email_Account[]
 	 */
 	public function get_all(
-		string $status = 'all' // TODO: enum active|inactive|all
+		string $status = 'all' // TODO: enum active|inactive|all.
 	): array {
 
 		$post_type = $this->post_type;
@@ -109,6 +118,9 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	/**
 	 * Queries the repository and returns matching email accounts.
 	 *
+	 * @param string  $status        Post status to filter by, or 'all'.
+	 * @param ?string $email_address Email address to filter by.
+	 *
 	 * @return array<BH_Email_Account>
 	 */
 	public function query(
@@ -125,8 +137,10 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	}
 
 	/**
-	 * @param BH_Email_Account_Query $query
-	 * @param ?callable              $filter
+	 * Executes a query and returns hydrated BH_Email_Account objects.
+	 *
+	 * @param BH_Email_Account_Query $query  Query object describing the criteria.
+	 * @param ?callable              $filter Optional key-filter applied to the query array before execution.
 	 *
 	 * @return BH_Email_Account[]
 	 */
@@ -141,8 +155,9 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			);
 		}
 
+		$wp_query = new \WP_Query( $query_args );
 		/** @var WP_Post[] $posts */
-		$posts = get_posts( $query_args );
+		$posts = $wp_query->posts;
 
 		return array_map(
 			$this->bh_email_account_factory->from_wp_post( ... ),
