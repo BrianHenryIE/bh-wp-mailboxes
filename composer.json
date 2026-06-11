@@ -77,6 +77,8 @@
         "lucatume/wp-browser": "*",
         "phpcompatibility/phpcompatibility-wp": "*",
         "phpstan/extension-installer": "*",
+        "phpstan/phpstan-mockery": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
         "phpunit/phpcov": "*",
         "rector/rector": "^2.4",
         "squizlabs/php_codesniffer": "*",
