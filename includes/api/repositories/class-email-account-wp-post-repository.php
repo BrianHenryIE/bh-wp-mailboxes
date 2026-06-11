@@ -18,6 +18,7 @@ use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WP_Post;
+use WP_Query;
 
 /**
  * Persists and retrieves BH_Email_Account objects as WordPress CPT posts.
@@ -163,9 +164,13 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			);
 		}
 
-		$wp_query = new \WP_Query( $query_args );
-		/** @var WP_Post[] $posts */
-		$posts = $wp_query->posts;
+		$wp_query = new WP_Query( $query_args );
+		/**
+		 * Array of WP_Post objects.
+		 *
+		 * @var WP_Post[] $posts
+		 */
+		$posts = (array) $wp_query->posts;
 
 		return array_map(
 			$this->bh_email_account_factory->from_wp_post( ... ),

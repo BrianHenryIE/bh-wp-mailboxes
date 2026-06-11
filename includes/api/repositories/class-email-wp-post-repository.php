@@ -218,9 +218,9 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	/**
 	 * Saves all new emails for an account.
 	 *
-	 * @param Collection<int, IMessage>          $all_new_account_emails The new emails to save.
-	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes              The mailboxes settings.
-	 * @param BH_Email_Account                   $email_account          The email account settings.
+	 * @param Collection&Collection<int, IMessage> $all_new_account_emails The new emails to save.
+	 * @param BH_WP_Mailboxes_Settings_Interface   $mailboxes              The mailboxes settings.
+	 * @param BH_Email_Account                     $email_account          The email account settings.
 	 *
 	 * @return array<int, \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email>
 	 * @throws Exception When saving an individual email fails.
