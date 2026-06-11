@@ -35,6 +35,9 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	 */
 	public function get_emails_cpt_friendly_name(): string;
 
+	/**
+	 * The display name for email accounts' list.
+	 */
 	public function get_email_accounts_cpt_friendly_name(): string;
 
 	/**
@@ -44,18 +47,28 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	 * If this is null, no directory will be created and no attachments will be saved.
 	 *
 	 * Trait default: plugin-slug-email-attachments
+	 *
+	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_private_uploads_directory_name()
 	 */
 	public function get_private_uploads_directory_name(): ?string;
 
 	/**
-	 * The custom post type name used when registering
+	 * The custom post type name used when registering the email post type.
 	 *
-	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_cpt_underscored()
+	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_cpt_underscored(
+	 * @used-by BH_Email_CPT::register_cpt()
 	 *
 	 * @return non-empty-lowercase-string
 	 */
 	public function get_emails_cpt_underscored_20(): string;
-	/** @return non-empty-lowercase-string */
+
+	/**
+	 * The CPT name/key for saving configured email accounts.
+	 *
+	 * @used-by BH_Email_Account_CPT::register_cpt()
+	 *
+	 * @return non-empty-lowercase-string
+	 */
 	public function get_email_accounts_cpt_underscored_20(): string;
 
 	/**
@@ -64,6 +77,10 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_emails_cpt_dashed()
 	 */
 	public function get_emails_cpt_dashed(): string;
+
+	/**
+	 * The CPT title, lowercase-dashed for enqueuing CSS/JS.
+	 */
 	public function get_email_accounts_cpt_dashed(): string;
 
 	/**

@@ -19,16 +19,18 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	 *
 	 * Sometimes these fields are used to fetch, but some are only used to update.
 	 *
-	 * @param string     $post_type             The CPT slug.
-	 * @param string     $account_email_address The mailbox email address (used for guid).
-	 * @param string     $email_id              The unique email ID (used for guid).
-	 * @param string     $subject               The email subject.
-	 * @param string     $from_address          The sender email address.
-	 * @param string     $original_email        The raw email content.
-	 * @param string     $local_status          The WordPress post status. bh_email_new|bh_email_processed|bh_email_saved...
-	 * @param ?bool      $is_remote_read        Whether the email is marked read on the remote server.
-	 * @param ?bool      $is_remote_deleted     Whether the email has been deleted on the remote server.
-	 * @param array<int> $attachment_ids     Array of attachment post IDs.
+	 * @param string      $post_type             The CPT slug.
+	 * @param ?int        $post_id The email's ID in the WordPress posts table.
+	 * @param ?int        $post_parent WP post_id for the BH_Email_Account.
+	 * @param ?string     $account_email_address The mailbox email address (used for guid).
+	 * @param ?string     $email_id              The unique email ID (used for guid).
+	 * @param ?string     $subject               The email subject.
+	 * @param ?string     $from_address          The sender email address.
+	 * @param ?string     $original_email        The raw email content.
+	 * @param ?string     $local_status          The WordPress post status. bh_email_new|bh_email_processed|bh_email_saved...
+	 * @param ?bool       $is_remote_read        Whether the email is marked read on the remote server.
+	 * @param ?bool       $is_remote_deleted     Whether the email has been deleted on the remote server.
+	 * @param ?array<int> $attachment_ids        Array of attachment post IDs.
 	 */
 	public function __construct(
 		string $post_type,

@@ -7,6 +7,8 @@
 
 namespace BrianHenryIE\WP_Mailboxes;
 
+use BrianHenryIE\WP_Private_Uploads\Private_Uploads;
+
 /**
  * Default implementations for BH_WP_Mailboxes_Settings_Interface.
  *
@@ -46,6 +48,8 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 	}
 
 	/**
+	 * Used in JS handles.
+	 *
 	 * @see BH_WP_Mailboxes_Settings_Interface::get_email_accounts_cpt_dashed()
 	 */
 	public function get_email_accounts_cpt_dashed(): string {
@@ -66,6 +70,9 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 		return substr( $cpt_underscored, 0, 20 );
 	}
 
+	/**
+	 * The custom post type key/name (not title) for configured email accounts.
+	 */
 	public function get_email_accounts_cpt_underscored_20(): string {
 		$cpt_underscored = str_replace( '-', '_', $this->get_email_accounts_cpt_dashed() );
 		return substr( $cpt_underscored, 0, 20 );
@@ -77,7 +84,9 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 	 * @see \BrianHenryIE\WP_Private_Uploads\API\Settings_Interface
 	 */
 	public function get_private_uploads_directory_name(): ?string {
-		return $this->get_plugin_slug() . '-email-attachments';
+		return class_exists( Private_Uploads::class )
+			? $this->get_plugin_slug() . '-email-attachments'
+			: null;
 	}
 
 	/**

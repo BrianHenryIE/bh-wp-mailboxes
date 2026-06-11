@@ -226,7 +226,6 @@ class API implements API_Interface {
 
 		$this->email_account_repository->update( $email_account, last_checked_time: $now_time );
 
-		/** @var BH_Email[] $saved */
 		$saved = $this->email_repository->save_all( $all_new_account_emails, $this->settings, $email_account );
 		return $saved;
 	}
@@ -234,9 +233,12 @@ class API implements API_Interface {
 	/**
 	 * Fetches new emails for a single account and saves them.
 	 *
-	 * @param BH_Email_Account $account The account to check.
+	 * @param BH_Email_Account   $account The account to check.
+	 * @param ?DateTimeInterface $since Specific day to check since (only support granularity of day).
 	 *
 	 * @return array{success:bool, new_emails:BH_Email[]}
+	 * @throws \DateInvalidOperationException
+	 * @throws \DateMalformedStringException
 	 */
 	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): array {
 		$now_time = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
