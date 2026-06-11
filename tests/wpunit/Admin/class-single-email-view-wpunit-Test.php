@@ -258,8 +258,6 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 	/**
 	 * Prevent_content_edits restores original title and content for existing email posts.
-	 *
-	 * @covers ::prevent_content_edits
 	 */
 	public function test_prevent_content_edits_restores_original_values(): void {
 
@@ -305,8 +303,6 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 	/**
 	 * Log_status_change inserts a comment when the post status changes.
-	 *
-	 * @covers ::log_status_change
 	 */
 	public function test_log_status_change_inserts_log_comment(): void {
 

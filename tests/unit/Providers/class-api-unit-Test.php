@@ -118,52 +118,7 @@ class API_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 *
-	 * Check:
-	 * * the key is sanitized.
-	 * * update_option is called with expected key and a string
-	 *
-	 * TODO: Validate the date string is ATOM.
-	 *
-	 * @see https://gist.github.com/olivertappin/615737591c9fa8882719fed405978aaf
-	 *
-	 * @covers ::set_last_fetched_time
-	 * @covers ::get_last_fetched_option_name
-	 */
-	public function test_set_last_fetched_time(): void {
-
-		$settings = $this->makeEmpty(
-			BH_WP_Mailboxes_Settings_Interface::class,
-			array(
-				'get_plugin_slug' => Expected::atLeastOnce(
-					fn() => 'plugin-slug'
-				),
-			)
-		);
-
-		$sut = $this->get_api( settings: $settings );
-
-		$datetime = new \DateTime();
-
-		$expected_key = 'plugin-slug_mailbox_last_fetched_brianhenryie@gmail.com';
-
-		\WP_Mock::userFunction(
-			'update_option',
-			array(
-				'args'  => array(
-					$expected_key,
-					\WP_Mock\Functions::type( 'string' ),
-				),
-				'times' => 1,
-			)
-		);
-
-		$sut->set_last_fetched_time( 'brianhenryie@gmail.com', $datetime );
-	}
-
-	/**
 	 * @covers ::get_last_fetched_times
-	 * @covers ::get_last_fetched_option_name
 	 */
 	public function test_get_last_fetched_times(): void {
 
@@ -179,8 +134,6 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$sut = $this->get_api( email_account_repository: $email_account_repository );
 
-		$expected_key = 'plugin-slug_mailbox_last_fetched_brianhenryie@gmail.com';
-
 		$result = $sut->get_last_fetched_times();
 
 		$this->assertArrayHasKey( 'brianhenryie@gmail.com', $result );
@@ -190,61 +143,6 @@ class API_Unit_Test extends Unit_Testcase {
 		$result_datetime = $result['brianhenryie@gmail.com'];
 		$difference      = $result_datetime->format( 'U' ) - $datetime->format( 'U' );
 		$this->assertEquals( 0, $difference );
-	}
-
-	/**
-	 * Need to test the date interval.
-	 *
-	 * Set a failure date one day in the past.
-	 * The function should recognise this as over 6 hours ago!
-	 * It should delete the saved option.
-	 * And return null.
-	 *
-	 * @covers ::get_last_failed_login_time
-	 * @covers ::get_last_failed_login_option_name
-	 */
-	public function test_get_last_failed_login_time(): void {
-
-		$settings = $this->makeEmpty(
-			BH_WP_Mailboxes_Settings_Interface::class,
-			array(
-				'get_plugin_slug' => Expected::atLeastOnce(
-					fn() => 'plugin-slug'
-				),
-			)
-		);
-
-		$sut = $this->get_api( settings: $settings );
-
-		$expected_key = 'plugin-slug_mailbox_last_failure_account';
-
-		// One month in the past.
-		$return = new DateTime()->sub( new \DateInterval( 'P1D' ) )->format( DateTime::ATOM );
-		\WP_Mock::userFunction(
-			'get_option',
-			array(
-				'args'   => array(
-					$expected_key,
-					null,
-				),
-				'return' => $return,
-				'times'  => 1,
-			)
-		);
-
-		\WP_Mock::userFunction(
-			'delete_option',
-			array(
-				'args'  => array(
-					$expected_key,
-				),
-				'times' => 1,
-			)
-		);
-
-		$result = $sut->get_last_failed_login_time( 'account' );
-
-		$this->assertNull( $result );
 	}
 
 	/**
@@ -361,6 +259,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
+		$email_account_repository->expects( 'update' )->andReturnArg(0);
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
@@ -369,8 +268,6 @@ class API_Unit_Test extends Unit_Testcase {
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_fetcher_for_credentials' )
 				->with( null, $email_account )
 				->reply( $fetcher );
-
-		\WP_Mock::userFunction( 'update_option' );
 
 		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_saved_test-plugin', array() );
 		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_complete', array() );
@@ -447,6 +344,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
+		$email_account_repository->expects( 'update' )->andReturnArg(0);
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
@@ -455,8 +353,6 @@ class API_Unit_Test extends Unit_Testcase {
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_fetcher_for_credentials' )
 				->with( null, $email_account )
 				->reply( $fetcher );
-
-		\WP_Mock::userFunction( 'update_option' );
 
 		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_saved_test-plugin', array() );
 		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_complete', array() );

@@ -158,7 +158,6 @@ class API implements API_Interface {
 
 			// Check if we have recently had a failed login.
 			// Do not retry: some servers rate limit bad auth attempts and blacklist IPs.
-			// TODO: Clear this option when settings are saved.
 			if ( ! is_null( $email_account->last_failed_login_time ) ) {
 
 				// If last failure time was less than four hours ago, skip.
@@ -183,7 +182,7 @@ class API implements API_Interface {
 
 			$fetcher->set_credentials( $credentials );
 
-			$since_datetime = $last_fetched_times[ $email_account->display_name ] ?? $first_run_datetime;
+			$since_datetime = $last_fetched_times[ $email_account->email_address ] ?? $first_run_datetime;
 
 			try {
 				$all_new_account_emails = $fetcher->retrieve_emails( $since_datetime );
@@ -199,7 +198,7 @@ class API implements API_Interface {
 				continue;
 			}
 
-			$this->set_last_fetched_time( $email_account->display_name, $now_time );
+			$this->email_account_repository->update($email_account, last_successful_login_time: $now_time);
 
 			/**
 			 * Newly saved BH_Email objects for this account.
@@ -409,16 +408,6 @@ class API implements API_Interface {
 	}
 
 	/**
-	 * Option name format: "%s_mailbox_last_fetched_%s".
-	 *
-	 * @param string $account_name The account's unique friendly name.
-	 */
-	protected function get_last_fetched_option_name( string $account_name ): string {
-		$plugin_slug = $this->settings->get_plugin_slug();
-		return sanitize_key( sprintf( '%s_mailbox_last_fetched_%s', $plugin_slug, $account_name ) );
-	}
-
-	/**
 	 * Returns the last-fetched times for all configured mailbox accounts.
 	 *
 	 * @param BH_Email_Account[] $email_accounts Specific accounts to return the times for, otherwise all are returned.
@@ -434,65 +423,6 @@ class API implements API_Interface {
 			$result[ $email_account->email_address ] = $email_account->last_successful_login_time;
 		}
 		return $result;
-	}
-
-	/**
-	 * Save the last fetched time for this account in wp_options.
-	 *
-	 * @param string            $account_name The account's unique friendly name.
-	 * @param DateTimeInterface $time         The time to save.
-	 */
-	public function set_last_fetched_time( string $account_name, DateTimeInterface $time ): void {
-
-		$last_fetched_option_name = $this->get_last_fetched_option_name( $account_name );
-		$atom_time                = $time->format( DateTime::ATOM );
-
-		update_option( $last_fetched_option_name, $atom_time );
-
-		$this->logger->debug(
-			'Updated option ' . $last_fetched_option_name . ' to ' . $atom_time,
-			array(
-				'option_name'  => $last_fetched_option_name,
-				'option_value' => $atom_time,
-			)
-		);
-	}
-
-	/**
-	 * Format: "%s_mailbox_last_failure_%s".
-	 *
-	 * @param string $account_name The account's unique friendly name.
-	 */
-	protected function get_last_failed_login_option_name( string $account_name ): string {
-		$plugin_slug = $this->settings->get_plugin_slug();
-		return sanitize_key( sprintf( '%s_mailbox_last_failure_%s', $plugin_slug, $account_name ) );
-	}
-
-	/**
-	 * Return the last time the login failed. Returns null if none, or if older than $retry_expiry_seconds (default 6h).
-	 *
-	 * @param string $account_name         The account's unique friendly name.
-	 * @param ?int   $retry_expiry_seconds Seconds before a failed login is forgotten.
-	 *
-	 * @return ?DateTime Null is the preferred response.
-	 */
-	public function get_last_failed_login_time( string $account_name, ?int $retry_expiry_seconds = null ): ?DateTime {
-
-		$option_name = $this->get_last_failed_login_option_name( $account_name );
-		$atom_time   = get_option( $option_name, null );
-
-		if ( is_null( $atom_time ) ) {
-			return null;
-		}
-
-		$retry_expiry_seconds ??= HOUR_IN_SECONDS * 6;
-		$interval               = new DateInterval( 'PT' . $retry_expiry_seconds . 'S' );
-		$now                    = new DateTime( 'now', new DateTimeZone( 'UTC' ) );
-		$now_sub_interval       = $now->sub( $interval );
-
-		$last_failed_datetime = DateTime::createFromFormat( DateTime::ATOM, $atom_time, new DateTimeZone( 'UTC' ) );
-
-		return false !== $last_failed_datetime ? $last_failed_datetime : null;
 	}
 
 	/**

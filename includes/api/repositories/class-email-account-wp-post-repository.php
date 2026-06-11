@@ -64,10 +64,10 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		$query = new BH_Email_Account_Query(
 			post_type: $this->post_type,
 			provider_type_class: $provider_type_class,
-			post_id: $email_address,
+			post_id: null,
 			email_address: $email_address,
-			status: $display_name,
-			last_checked_time: $provider_type_class,
+			status: 'active',
+			last_checked_time: null,
 			display_name: $display_name,
 			from_address_regex_filter: $from_address_regex_filter,
 			body_identifier_regex_filter: $body_identifier_regex_filter,
@@ -135,7 +135,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		return $this->run_query(
 			new BH_Email_Account_Query(
 				post_type: $this->post_type,
-				post_id: $status,
+				post_id: null,
 				email_address: $email_address,
 				status: $status,
 			)
@@ -182,7 +182,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		// ?string $body_identifier_regex_filter = null,
 		// ?string $after_download_email_action = null,
 		// ?int $delete_emails_after_n_days = null,
-		// ?\DateTimeInterface $last_successful_login_time = null,
+		?\DateTimeInterface $last_successful_login_time = null,
 		?\DateTimeInterface $last_failed_login_time = null,
 	): BH_Email_Account {
 
