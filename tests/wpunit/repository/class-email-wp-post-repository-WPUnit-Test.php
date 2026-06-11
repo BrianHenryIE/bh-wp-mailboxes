@@ -71,11 +71,11 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 	/**
 	 * Log_status_change does nothing when the status has not changed.
 	 *
-	 * @covers ::log_status_change
+	 * @covers ::log
 	 */
 	public function test_log_status_change_skips_when_status_unchanged(): void {
 
-		$this->markTestSkipped('Will be reimplementing in the repository.');
+		$this->markTestSkipped( 'Will be reimplementing in the repository.' );
 
 		register_post_type(
 			$this->post_type,
@@ -105,5 +105,4 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$sut = new Single_Email_View( $this->make_settings(), $api, $this->make_repository(), $this->logger );
 		$sut->log_status_change( $post_id, $post_after, $post_before );
 	}
-
 }

@@ -32,16 +32,17 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	 */
 	public function __construct(
 		string $post_type,
-		public string $account_email_address, // for guid (but not the full URL guid).
-		public string $email_id, // for guid (but not the full URL guid).
-		public string $subject,
-		public string $from_address, // We'll save this in meta because if it matches a user account it is relevant.
-		public string $original_email,
+		public ?int $post_id = null,
+		public ?string $account_email_address = null, // for guid (but not the full URL guid).
+		public ?string $email_id = null, // for guid (but not the full URL guid).
+		public ?string $subject = null,
+		public ?string $from_address = null, // We'll save this in meta because if it matches a user account it is relevant.
+		public ?string $original_email = null,
 		// post_excerpt // Is there anywhere we need to use this, if so it would be good to strip tags etc here.
-		public string $local_status, // post status.
-		public ?bool $is_remote_read,
-		public ?bool $is_remote_deleted,
-		public array $attachment_ids,
+		public ?string $local_status = null, // post status.
+		public ?bool $is_remote_read = null,
+		public ?bool $is_remote_deleted = null,
+		public ?array $attachment_ids = null,
 	) {
 		parent::__construct( $post_type );
 	}
@@ -60,7 +61,7 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 			// 'post_parent' => , // mailbox id.
 			'post_content' => $this->original_email,
 			// 'post_excerpt',
-			'guid'         => $this->guid_for( $this->email_id ),
+			'guid'         => $this->account_email_address && $this->email_id ? $this->guid_for( $this->account_email_address, $this->email_id ) : null,
 		);
 	}
 
@@ -88,13 +89,13 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	 *
 	 * @example https://bhwp.ie/my-mailbox/contact@bhwp.ie/q1w2e3r4t5
 	 */
-	protected function guid_for( string $email_id ): string {
+	protected function guid_for( string $account_email_address, string $email_id ): string {
 		$site_url = get_site_url();
 		return sprintf(
 			'%s/%s/%s/%s',
 			$site_url,
 			$this->post_type,
-			rawurlencode( $this->account_email_address ),
+			rawurlencode( $account_email_address ),
 			rawurlencode( sanitize_key( $email_id ) )
 		);
 	}

@@ -9,10 +9,10 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads;
-use Mockery\Mock;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -59,21 +59,20 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_insert_email_log_note_creates_comment_with_bh_email_log_type(): void {
 
-		$settings = $this->makeEmpty(
-			BH_WP_Mailboxes_Settings_Interface::class,
-			array(
-				'get_cpt_underscored_20' => fn() => 'bh_wp_mailboxes_cpt',
-			)
+		$post_type = 'test_api_email';
+		if ( ! post_type_exists( $post_type ) ) {
+			register_post_type( $post_type, array( 'public' => false ) );
+		}
+
+		$repository = new Email_WP_Post_Repository(
+			$post_type,
+			new BH_Email_Factory( $this->logger ),
+			$this->logger,
 		);
 
-		$api = $this->get_api();
+		$post_id = $this->create_post_from_fixture( $post_type );
 
-		$post_id = $this->factory()->post->create(
-			array(
-				'post_type'   => 'post',
-				'post_status' => 'publish',
-			)
-		);
+		$api = $this->get_api( email_repository: $repository );
 
 		$api->insert_email_log_note( $post_id, 'Status changed from "bh_email_new" to "bh_email_processed".' );
 

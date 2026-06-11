@@ -12,7 +12,6 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
-use WP_Post;
 
 /**
  * Handles AJAX requests from the admin UI.
@@ -24,9 +23,10 @@ class Single_Email_View_Ajax {
 	/**
 	 * Constructor.
 	 *
-	 * @param API_Interface                      $api      Main API instance.
-	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings.
-	 * @param LoggerInterface                    $logger   PSR-3 logger.
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings                Plugin settings.
+	 * @param API_Interface                      $api                     Main API instance.
+	 * @param Email_WP_Post_Repository           $email_wp_post_repository Email repository.
+	 * @param LoggerInterface                    $logger                  PSR-3 logger.
 	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
@@ -78,15 +78,18 @@ class Single_Email_View_Ajax {
 		}
 
 		$post_id = (int) $_POST['post_id'];
-		$post    = get_post( $post_id );
-
-		if ( ! ( $post instanceof WP_Post ) || $this->settings->get_emails_cpt_underscored_20() !== $post->post_type ) {
-			wp_send_json_error( array( 'message' => 'Invalid post.' ), 400 );
-		}
 
 		try {
 			$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
+		} catch ( \InvalidArgumentException $exception ) {
+			wp_send_json_error( array( 'message' => 'Invalid post.' ), 400 );
+		}
 
+		// TODO: Validate request here. Is it even possible to mark an email read if it's already marked read? etc.
+
+		// TODO: Check user permissions here.
+
+		try {
 			match ( $action ) {
 				'mark_read'        => $this->api->mark_email_read( $email ),
 				'mark_unread'      => $this->api->mark_email_unread( $email ),
@@ -102,8 +105,8 @@ class Single_Email_View_Ajax {
 
 		wp_send_json_success(
 			array(
-				// TODO: Reimplement this in JavaScript.
-//				'status_html' => $this->get_remote_status_html( $is_read_raw, $deleted_on_server ),
+				'is_read'           => '' === $is_read_raw ? null : ( '1' === $is_read_raw ),
+				'is_remote_deleted' => '' === $deleted_on_server ? null : ( '1' === $deleted_on_server ),
 			)
 		);
 	}

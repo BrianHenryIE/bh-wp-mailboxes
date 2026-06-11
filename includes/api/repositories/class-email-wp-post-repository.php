@@ -214,32 +214,67 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		);
 	}
 
-	/**
-	 * Insert a log note when the post status changes.
-	 *
-	 * @hooked post_updated (priority 10, accepted_args 3)
-	 *
-	 * @param int     $post_id     The post ID.
-	 * @param WP_Post $post_after  Post object after the update.
-	 * @param WP_Post $post_before Post object before the update.
-	 */
-	public function log_status_change( int $post_id, WP_Post $post_after, WP_Post $post_before ): void {
+	public function log( BH_Email $email, string $message ): void {
 
-		if ( $this->post_type !== $post_after->post_type ) {
-			return;
-		}
-
-		if ( $post_after->post_status === $post_before->post_status ) {
-			return;
-		}
-
-		$this->api->insert_email_log_note(
-			$post_id,
-			sprintf(
-				'Status changed from "%s" to "%s".',
-				$post_before->post_status,
-				$post_after->post_status
+		wp_insert_comment(
+			array(
+				'comment_post_ID'    => $email->post_id,
+				'comment_content'    => wp_kses_post( $message ),
+				'comment_agent'      => 'bh-wp-mailboxes',
+				'comment_type'       => 'bh_email_log',
+				'comment_author'     => 'bh-wp-mailboxes',
+				'comment_author_url' => '',
+				'user_id'            => get_current_user_id(),
+				'comment_approved'   => 1,
 			)
 		);
+	}
+
+	public function update(
+		BH_Email $email,
+		?string $local_status = null,
+		?bool $is_remote_read = null,
+		?bool $is_remote_deleted = null,
+	): BH_Email {
+
+		$query = new BH_Email_Query(
+			post_type: $email->get_post_type(),
+			post_id: $email->post_id,
+			local_status: $local_status !== $email->post_status ? $local_status : null,
+			is_remote_read: $is_remote_read !== $email->is_remote_read ? $is_remote_read : null,
+			is_remote_deleted: $is_remote_deleted !== $email->is_remote_deleted ? $is_remote_deleted : null,
+		);
+
+		$args = $query->to_query_array();
+
+		if ( count( $args ) === 2 ) {
+			// Only the post_id remains.
+			$this->logger->warning( 'Attempted to make a no-op updated' );
+			return $email;
+		}
+
+		$result = wp_update_post( $args, true );
+
+		if ( is_wp_error( $result ) ) {
+			throw new \Exception( "Failed to update email post with ID {$email->post_id}: " . $result->get_error_message() );
+		}
+
+		/**
+		 * So far only logging staus update
+		 * TODO: delete, mark-read updates.
+		 * TODO: document how plugins can print to the log.
+		 */
+		if ( $email->post_status !== $local_status ) {
+			$this->log(
+				$email,
+				sprintf(
+					'Status changed from "%s" to "%s".',
+					$email->post_status,
+					$local_status
+				)
+			);
+		}
+
+		return $this->find_by_post_id( $email->post_id );
 	}
 }

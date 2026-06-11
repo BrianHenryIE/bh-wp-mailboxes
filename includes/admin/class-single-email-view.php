@@ -232,12 +232,12 @@ class Single_Email_View {
 		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 
 		// Downloaded at: when the email was fetched into WordPress (post_date).
-		$downloaded = wp_date( $date_format, $email->downloaded_at->getTimestamp() );
+		$downloaded = $email->downloaded_at ? wp_date( $date_format, $email->downloaded_at->getTimestamp() ) : '';
 		echo '<p><strong>' . esc_html__( 'Downloaded at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( (string) $downloaded ) . '</p>';
 
 		// Updated at: last time the post record was modified (post_modified).
-		$updated = wp_date( $date_format, $email->last_updated->getTimestamp() );
-		echo '<p><strong>' . esc_html__( 'Updated at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( $updated ) . '</p>';
+		$updated = $email->last_updated ? wp_date( $date_format, $email->last_updated->getTimestamp() ) : '';
+		echo '<p><strong>' . esc_html__( 'Updated at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( (string) $updated ) . '</p>';
 
 		// Local status selector.
 		echo '<p><label for="bh-post-status"><strong>' . esc_html__( 'Status:', 'bh-wp-mailboxes' ) . '</strong></label></p>';
@@ -258,7 +258,7 @@ class Single_Email_View {
 
 		// Sent: The email "Date" header.
 		$sent = $email->sent_at ? wp_date( $date_format, $email->sent_at->getTimestamp() ) : '';
-		echo '<p><strong>' . esc_html__( 'Sent:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( $sent ) . '</p>';
+		echo '<p><strong>' . esc_html__( 'Sent:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( (string) $sent ) . '</p>';
 
 		if ( $provider?->can_read_status() ) {
 			$badges = $this->get_remote_status_html( $is_read, $deleted_on_server );

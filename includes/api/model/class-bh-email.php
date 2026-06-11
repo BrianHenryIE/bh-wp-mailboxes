@@ -56,7 +56,7 @@ readonly class BH_Email implements Saved_Post {
 		// public array $meta_data = array(), // TODO: add meta data support.
 		public ?DateTimeInterface $sent_at = null, // `null` implies an issue parsing the date.
 		public ?DateTimeInterface $downloaded_at = null,
-		public ?DateTimeInterface $last_updated = null,
+		public ?DateTimeInterface $last_updated = null, // I'm not sure this can be null.
 		public string $post_status = 'unread',
 		public ?bool $is_remote_read = null,
 		public ?bool $is_remote_deleted = null,

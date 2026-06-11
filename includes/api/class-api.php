@@ -396,18 +396,9 @@ class API implements API_Interface {
 	 */
 	public function insert_email_log_note( int $post_id, string $message ): void {
 
-		wp_insert_comment(
-			array(
-				'comment_post_ID'    => $post_id,
-				'comment_content'    => wp_kses_post( $message ),
-				'comment_agent'      => 'bh-wp-mailboxes',
-				'comment_type'       => 'bh_email_log',
-				'comment_author'     => 'bh-wp-mailboxes',
-				'comment_author_url' => '',
-				'user_id'            => get_current_user_id(),
-				'comment_approved'   => 1,
-			)
-		);
+		$email = $this->email_repository->find_by_post_id( $post_id );
+
+		$this->email_repository->log( $email, $message );
 	}
 
 	/**
