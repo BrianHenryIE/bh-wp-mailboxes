@@ -7,15 +7,13 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Factories;
 
-use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use DateTime;
-use DateTimeZone;
+use Exception;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
+use TypeError;
 use WP_Post;
-use ZBateson\MailMimeParser\Header\AddressHeader;
-use ZBateson\MailMimeParser\MailMimeParser;
 
 /**
  * Factory for BH_Email_Account objects.
@@ -38,8 +36,11 @@ class BH_Email_Account_Factory {
 	 * Hydrates a BH_Email from a WP_Post.
 	 *
 	 * @param WP_Post $post The WordPress post to hydrate from.
+	 * @throws Exception On type error using db data to instantiate object.
 	 */
 	public function from_wp_post( WP_Post $post ): BH_Email_Account {
+
+		// TODO: NB: Sanitize.
 
 		$provider_type_class              = get_post_meta( $post->ID, 'provider_type_class', true ) ?: null;
 		$email_address                    = get_post_meta( $post->ID, 'email_address', true ) ?: null;
@@ -68,15 +69,13 @@ class BH_Email_Account_Factory {
 				$last_successful_login_time,
 				$last_failed_login_time,
 			);
-		} catch ( \TypeError $type_error ) {
+		} catch ( TypeError $type_error ) {
 
 			// TODO: Figure out what field is missing.
-			// wp_delete_post( $post->ID, true );
-
-			throw new \Exception(
+			throw new Exception(
 				'Invalid saved BH_Email_Account object',
-				$type_error->getCode(),
-				$type_error
+				esc_html( $type_error->getCode() ),
+				esc_html( $type_error )
 			);
 		}
 	}

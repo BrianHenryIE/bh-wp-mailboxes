@@ -67,7 +67,7 @@ class BH_Email_Account_Unit_Test extends Unit_Testcase {
 	 *
 	 * @covers ::get_post_id
 	 * @covers ::get_account_email_address
-	 * @covers ::get_account_unique_friendly_name
+	 * @covers ::get_account_display_friendly_name
 	 * @covers ::get_from_email_regex
 	 * @covers ::get_body_identifier_regex
 	 * @covers ::get_delete_emails_days
@@ -85,7 +85,7 @@ class BH_Email_Account_Unit_Test extends Unit_Testcase {
 
 		$this->assertSame( 42, $sut->get_post_id() );
 		$this->assertSame( 'info@example.com', $sut->get_account_email_address() );
-		$this->assertSame( 'My Account', $sut->get_account_unique_friendly_name() );
+		$this->assertSame( 'My Account', $sut->get_account_display_friendly_name() );
 		$this->assertSame( '/^sender@/', $sut->get_from_email_regex() );
 		$this->assertSame( '/order #\d+/', $sut->get_body_identifier_regex() );
 		$this->assertSame( 14, $sut->get_delete_emails_days() );

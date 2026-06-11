@@ -26,7 +26,7 @@ interface Email_Account_Settings_Interface {
 	/**
 	 * The friendly account name to display.
 	 */
-	public function get_account_unique_friendly_name(): string;
+	public function get_account_display_friendly_name(): string;
 
 	/**
 	 * Should the email be deleted after it is reconciled.

@@ -64,10 +64,8 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 	protected function get_wp_post_fields(): array {
 		return array(
 			'post_type'   => $this->post_type,
-			'post_status' => $this->status, // bh_email_ac_active|bh_email_ac_inactive...
+			'post_status' => $this->status,
 			'post_name'   => $this->email_address, // will be auto-sanitized?
-		// 'post_content' => $this->original_email,
-			// 'post_excerpt',
 		);
 	}
 
@@ -78,11 +76,6 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 	 */
 	protected function get_meta_input(): array {
 		return array(
-			// 'attachment_ids'    => $this->attachment_ids,
-			// 'from_address'      => $this->from_address,
-			// 'is_read_remote'    => $this->is_read_remote ? 'yes' : 'no', // TODO: don't save anything for null.
-			// 'is_deleted_remote' => $this->is_deleted_remote,
-
 			'provider_type_class'              => $this->provider_type_class ? str_replace( '\\', '\\\\', $this->provider_type_class ) : null,
 			'email_address'                    => $this->email_address, // The post_name is sanitized.
 			'display_name'                     => $this->display_name,

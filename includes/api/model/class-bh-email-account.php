@@ -45,15 +45,18 @@ readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_In
 		return $this->post_id;
 	}
 
+	/**
+	 * Should the account be checked for emails?
+	 */
 	public function is_active(): bool {
-		return $this->local_status === 'bh_email_ac_active';
+		return  'bh_email_ac_active' === $this->local_status;
 	}
 
 	public function get_account_email_address(): string {
 		return $this->email_address;
 	}
 
-	public function get_account_unique_friendly_name(): string {
+	public function get_account_display_friendly_name(): string {
 		return $this->display_name;
 	}
 

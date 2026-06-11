@@ -22,7 +22,7 @@ class BH_Email_WPUnit_Test extends WPUnit_Testcase {
 		$mailbox  = $this->makeEmpty(
 			Email_Account_Settings_Interface::class,
 			array(
-				'get_account_unique_friendly_name' => Expected::atLeastOnce(
+				'get_account_display_friendly_name' => Expected::atLeastOnce(
 					fn() => 'brianhenryie@gmail.com'
 				),
 			)
