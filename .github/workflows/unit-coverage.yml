@@ -120,6 +120,7 @@ jobs:
         with:
           percentage: 33
           exit: true
+          metric: statements
           filename: tests/_output/clover.xml
           rounded-precision: "0"
 
