@@ -132,6 +132,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 
 		$email_account = \Mockery::mock( Email_Account_Settings_Interface::class );
 		$email_account->expects( 'get_account_email_address' )->andReturn( 'contact@bhwp.ie' );
+		$email_account->expects( 'get_post_id' )->andReturn( 321 );
 
 		$bh_email = $repo->save_new( $email, $mailboxes, $email_account );
 		return $bh_email->get_post_id();

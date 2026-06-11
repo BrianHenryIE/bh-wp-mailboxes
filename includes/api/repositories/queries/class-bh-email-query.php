@@ -33,6 +33,7 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	public function __construct(
 		string $post_type,
 		public ?int $post_id = null,
+		public ?int $post_parent = null,
 		public ?string $account_email_address = null, // for guid (but not the full URL guid).
 		public ?string $email_id = null, // for guid (but not the full URL guid).
 		public ?string $subject = null,
@@ -58,7 +59,7 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 			'post_type'    => $this->post_type,
 			'post_title'   => $this->subject,
 			'post_status'  => $this->local_status,
-			// 'post_parent' => , // mailbox id.
+			'post_parent'  => $this->post_parent, // mailbox id.
 			'post_content' => $this->original_email,
 			// 'post_excerpt',
 			'guid'         => $this->account_email_address && $this->email_id ? $this->guid_for( $this->account_email_address, $this->email_id ) : null,

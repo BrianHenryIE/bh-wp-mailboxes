@@ -7,6 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
@@ -149,16 +150,16 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * The account address is encoded in each email's GUID, so this uses a LIKE
 	 * query rather than a meta lookup.
 	 *
-	 * @param string $account_email The mailbox address, e.g. "contact@example.com".
+	 * @param BH_Email_Account $email_account The mailbox, e.g. "contact@example.com".
 	 */
-	public function count_for_account_email( string $account_email ): int {
+	public function count_for_account_email( BH_Email_Account $email_account ): int {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$count = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM $wpdb->posts WHERE post_type = %s AND post_status != 'trash' AND guid LIKE %s",
+				"SELECT COUNT(*) FROM $wpdb->posts WHERE post_type = %s AND post_status != 'trash' AND post_parent = %s",
 				$this->post_type,
-				'%/' . $wpdb->esc_like( rawurlencode( $account_email ) ) . '/%',
+				$email_account->get_post_id()
 			)
 		);
 		return (int) $count;
@@ -169,7 +170,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 *
 	 * @param IMessage                           $email         The email to save.
 	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes     The mailboxes settings.
-	 * @param Email_Account_Settings_Interface   $email_account The email account settings.
+	 * @param BH_Email_Account                   $email_account The email account settings.
 	 *
 	 * @return BH_Email
 	 * @throws \Exception When WordPress fails to create the post.
@@ -177,7 +178,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	public function save_new(
 		IMessage $email,
 		BH_WP_Mailboxes_Settings_Interface $mailboxes,
-		Email_Account_Settings_Interface $email_account
+		BH_Email_Account $email_account
 	): BH_Email {
 
 		$post_type = $mailboxes->get_emails_cpt_underscored_20();
@@ -195,6 +196,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 
 		$query = new BH_Email_Query(
 			post_type: $post_type,
+			post_parent: $email_account->get_post_id(),
 			account_email_address: $email_account->get_account_email_address(),
 			email_id: $email->getMessageId() ?? '',
 			subject: $email->getSubject() ?? '',
@@ -218,7 +220,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 *
 	 * @param Collection<int, IMessage>          $all_new_account_emails The new emails to save.
 	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes              The mailboxes settings.
-	 * @param Email_Account_Settings_Interface   $email_account          The email account settings.
+	 * @param BH_Email_Account                   $email_account          The email account settings.
 	 *
 	 * @return array<int, \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email>
 	 * @throws \Exception When saving an individual email fails.
@@ -226,7 +228,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	public function save_all(
 		Collection $all_new_account_emails,
 		BH_WP_Mailboxes_Settings_Interface $mailboxes,
-		Email_Account_Settings_Interface $email_account
+		BH_Email_Account $email_account
 	): array {
 
 		return array_map(

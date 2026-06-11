@@ -241,12 +241,17 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 				array(
 					'post_type'   => $this->post_type,
 					'post_status' => 'publish',
-					'guid'        => home_url( "/{$this->post_type}/" . rawurlencode( $account_email ) . "/msg-{$i}" ),
+					'post_parent' => 321,
 				)
 			);
 		}
 
-		$account = $this->make_account( array( 'email_address' => $account_email ) );
+		$account = $this->make_account(
+			array(
+				'email_address' => $account_email,
+				'post_id'       => 321,
+			)
+		);
 
 		/** @var API_Interface $api */
 		$api = \Mockery::mock( API_Interface::class );

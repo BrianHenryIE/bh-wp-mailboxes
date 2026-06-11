@@ -176,7 +176,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	public function update(
 		BH_Email_Account $account,
 		?string $status = null,
-		 ?\DateTimeInterface $last_checked_time = null,
+		?\DateTimeInterface $last_checked_time = null,
 		// ?string $display_name = null,
 		// ?string $from_address_regex_filter = null,
 		// ?string $body_identifier_regex_filter = null,

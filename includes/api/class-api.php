@@ -198,7 +198,7 @@ class API implements API_Interface {
 				continue;
 			}
 
-			$this->email_account_repository->update($email_account, last_successful_login_time: $now_time);
+			$this->email_account_repository->update( $email_account, last_checked_time: $now_time );
 
 			/**
 			 * Newly saved BH_Email objects for this account.

@@ -259,7 +259,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
-		$email_account_repository->expects( 'update' )->andReturnArg(0);
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 );
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
@@ -344,7 +344,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
-		$email_account_repository->expects( 'update' )->andReturnArg(0);
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 );
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )

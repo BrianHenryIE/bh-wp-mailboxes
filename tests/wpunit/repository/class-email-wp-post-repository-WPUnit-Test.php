@@ -55,6 +55,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 
 		$email_account = Mockery::mock( Email_Account_Settings_Interface::class );
 		$email_account->expects( 'get_account_email_address' )->andReturn( 'test@example.com' );
+		$email_account->expects( 'get_post_id' )->andReturn( 456 );
 
 		$result = $sut->save_new(
 			$email,
