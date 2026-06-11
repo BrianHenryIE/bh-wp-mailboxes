@@ -12,4 +12,5 @@ interface Saved_Post {
 	 * Returns the WordPress post ID.
 	 */
 	public function get_post_id(): int;
+	public function get_post_type(): string;
 }

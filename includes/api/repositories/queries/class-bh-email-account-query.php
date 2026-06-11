@@ -16,11 +16,13 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 
 	public function __construct(
 		string $post_type,
-		protected string $status = 'all',
-		protected ?\DateTimeInterface $last_checked_time = null,
-		protected ?string $email_address = null,
-		protected ?string $display_name = null,
 		protected ?string $provider_type_class = null,
+		protected ?int $post_id = null,
+		protected ?string $email_address = null,
+		// Mutable.
+		protected ?string $status = null,
+		protected ?\DateTimeInterface $last_checked_time = null,
+		protected ?string $display_name = null,
 		protected ?string $from_address_regex_filter = null,
 		protected ?string $body_identifier_regex_filter = null,
 		protected ?string $after_download_email_action = null,

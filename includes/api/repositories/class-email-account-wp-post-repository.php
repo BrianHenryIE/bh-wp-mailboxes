@@ -7,8 +7,10 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
+use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Account_Query;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Query;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
@@ -61,9 +63,12 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 
 		$query = new BH_Email_Account_Query(
 			post_type: $this->post_type,
-			email_address: $email_address,
-			display_name: $display_name,
 			provider_type_class: $provider_type_class,
+			post_id: $email_address,
+			email_address: $email_address,
+			status: $display_name,
+			last_checked_time: $provider_type_class,
+			display_name: $display_name,
 			from_address_regex_filter: $from_address_regex_filter,
 			body_identifier_regex_filter: $body_identifier_regex_filter,
 			after_download_email_action: $after_download_email_action,
@@ -130,8 +135,9 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		return $this->run_query(
 			new BH_Email_Account_Query(
 				post_type: $this->post_type,
-				status: $status,
+				post_id: $status,
 				email_address: $email_address,
+				status: $status,
 			)
 		);
 	}
@@ -163,5 +169,54 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			$this->bh_email_account_factory->from_wp_post( ... ),
 			$posts
 		);
+	}
+
+
+
+	public function update(
+		BH_Email_Account $account,
+		?string $status = null,
+		// ?\DateTimeInterface $last_checked_time = null,
+		// ?string $display_name = null,
+		// ?string $from_address_regex_filter = null,
+		// ?string $body_identifier_regex_filter = null,
+		// ?string $after_download_email_action = null,
+		// ?int $delete_emails_after_n_days = null,
+		// ?\DateTimeInterface $last_successful_login_time = null,
+		?\DateTimeInterface $last_failed_login_time = null,
+	): BH_Email_Account {
+
+		$query = new BH_Email_Account_Query(
+			post_type: $account->get_post_type(),
+			post_id: $account->get_post_id(),
+			last_failed_login_time: $last_failed_login_time,
+		);
+
+		$args = $query->to_query_array();
+
+		if ( count( $args ) === 2 ) {
+			// Only the post_id remains.
+			$this->logger->warning( 'Attempted to make a no-op updated' );
+			return $account;
+		}
+
+		$result = wp_update_post( $args, true );
+
+		if ( is_wp_error( $result ) ) {
+			throw new \Exception( "Failed to update email account post with ID {$account->post_id}: " . $result->get_error_message() );
+		}
+
+		// if ( $account->status !== $status ) {
+		// $this->log(
+		// $account,
+		// sprintf(
+		// 'Status changed from "%s" to "%s".',
+		// $account->status,
+		// $status
+		// )
+		// );
+		// }
+
+		return $this->find_by_post_id( $account->post_id );
 	}
 }
