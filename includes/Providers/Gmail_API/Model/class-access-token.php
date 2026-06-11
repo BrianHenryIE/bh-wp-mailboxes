@@ -38,6 +38,8 @@ readonly class Access_Token {
 	 * Creates an Access_Token instance from a JSON token file.
 	 *
 	 * @param string $file_path Path to the access token JSON file.
+	 *
+	 * phpcs:disable WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 	 */
 	public static function from_file( string $file_path ): Access_Token {
 		$json_string = file_get_contents( $file_path );

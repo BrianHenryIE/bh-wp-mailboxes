@@ -24,15 +24,6 @@ use Psr\Log\LoggerInterface;
  */
 class API_Unit_Test extends Unit_Testcase {
 
-	protected function setUp(): void {
-		parent::setUp();
-	}
-
-	public function tearDown(): void {
-		\WP_Mock::tearDown();
-		parent::tearDown();
-	}
-
 	protected function get_api(
 		?BH_WP_Mailboxes_Settings_Interface $settings = null,
 		?Email_WP_Post_Repository $email_repository = null,

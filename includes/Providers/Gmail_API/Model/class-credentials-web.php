@@ -42,6 +42,8 @@ readonly class Credentials_Web {
 	 * Creates a Credentials_Web instance from a JSON credentials file.
 	 *
 	 * @param string $file_path Path to the credentials JSON file.
+	 *
+	 * phpcs:disable WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 	 */
 	public static function from_file( string $file_path ): Credentials_Web {
 		$json_string = file_get_contents( $file_path );

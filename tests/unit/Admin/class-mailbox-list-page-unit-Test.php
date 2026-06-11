@@ -21,16 +21,6 @@ use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
  */
 class Mailbox_List_Page_Test extends Unit_Testcase {
 
-	protected function setup(): void {
-		parent::setup();
-		\WP_Mock::setUp();
-	}
-
-	protected function tearDown(): void {
-		parent::tearDown();
-		\WP_Mock::tearDown();
-	}
-
 	/**
 	 * Verifies enqueue_styles() calls wp_enqueue_style() with appropriate parameters.
 	 * Verifies the .css file exists.

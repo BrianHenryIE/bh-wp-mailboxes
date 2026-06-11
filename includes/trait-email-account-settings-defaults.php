@@ -72,4 +72,11 @@ trait Email_Account_Settings_Defaults_Trait {
 	public function can_delete_on_server(): bool {
 		return false;
 	}
+
+	/**
+	 * When this is false, the account will not be checked on cron.
+	 */
+	public function is_active(): bool {
+		return true;
+	}
 }

@@ -40,9 +40,6 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	 *
 	 * @param IMAP_Credentials_Interface $credentials Connection settings.
 	 * @param LoggerInterface            $logger Logger.
-	 *
-	 * @throws \Exception When credentials are not IMAP credentials.
-	 * @throws \Throwable When the IMAP connection fails.
 	 */
 	public function __construct(
 		protected Email_Account_Settings_Interface $settings,
@@ -51,6 +48,12 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		$this->setLogger( $logger );
 	}
 
+	/**
+	 * @param Account_Credentials_Interface $credentials
+	 *
+	 * @throws \Exception When credentials are not IMAP credentials.
+	 * @throws \Throwable When the IMAP connection fails.
+	 */
 	public function set_credentials( Account_Credentials_Interface $credentials ): void {
 
 		if ( ! ( $credentials instanceof IMAP_Credentials_Interface ) ) {
@@ -99,6 +102,8 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	 * @return Collection<int, IMessage> Unsaved, unparsed emails.
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time, int $limit = 100 ): Collection {
+
+		// TODO: validate we have had credentials set.
 
 		// `SINCE` filters by date only — go back one extra day and filter by time in PHP.
 		$previous_day = ( new \DateTime() )->setTimestamp( $since_time->getTimestamp() )->sub( new \DateInterval( 'P1D' ) );

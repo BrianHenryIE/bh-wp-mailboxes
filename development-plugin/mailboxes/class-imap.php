@@ -47,6 +47,9 @@ class Imap {
 				return 'support@brianhenryie.com';
 			}
 
+			/**
+			 * When false, the account is not checked on cron.
+			 */
 			public function is_active(): bool {
 				return true;
 			}

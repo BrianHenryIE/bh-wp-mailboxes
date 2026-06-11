@@ -13,11 +13,6 @@ use Codeception\Stub\Expected;
  */
 class AJAX_Unit_Test extends Unit_Testcase {
 
-	protected function tearDown(): void {
-		parent::tearDown();
-		\WP_Mock::tearDown();
-	}
-
 	/**
 	 * @covers ::check_email
 	 * @covers ::__construct

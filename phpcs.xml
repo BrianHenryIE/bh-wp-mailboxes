@@ -15,6 +15,7 @@
     <arg name="colors"/>
 
     <exclude-pattern>/assets/</exclude-pattern>
+    <exclude-pattern>/bin/</exclude-pattern>
     <exclude-pattern>/scratch/</exclude-pattern>
     <exclude-pattern>/tests/_data/</exclude-pattern>
     <exclude-pattern>/tests/_output/</exclude-pattern>
@@ -23,6 +24,16 @@
     <exclude-pattern>/wordpress/</exclude-pattern>
     <exclude-pattern>/wp-content/</exclude-pattern>
 
+    <!-- I like to keep unused parameters in so I know which are available – prefix them with an underscore. -->
+    <rule ref="Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed">
+        <exclude-pattern>*</exclude-pattern>
+    </rule>
+    <!-- Short ternary operators are great. -->
+    <rule ref="Universal.Operators.DisallowShortTernary.Found">
+        <exclude-pattern>*</exclude-pattern>
+    </rule>
+
+    <!-- Enforce fewer rules on development plugin -->
 
     <!-- Enforce fewer rules on tests -->
     <rule ref="WordPress.Files.FileName.NotHyphenatedLowercase">
@@ -50,7 +61,13 @@
         <exclude-pattern>*/tests/*</exclude-pattern>
     </rule>
     <rule ref="WordPress.NamingConventions.ValidVariableName.VariableNotSnakeCase">
-        <exclude-pattern>*/tests/acceptance/*</exclude-pattern>
+        <exclude-pattern>*/tests/*</exclude-pattern>
+    </rule>
+    <rule ref="WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents">
+        <exclude-pattern>*/tests/*</exclude-pattern>
+    </rule>
+    <rule ref="WordPress.WP.GlobalVariablesOverride.Prohibited">
+        <exclude-pattern>*/tests/*</exclude-pattern>
     </rule>
 
 </ruleset>

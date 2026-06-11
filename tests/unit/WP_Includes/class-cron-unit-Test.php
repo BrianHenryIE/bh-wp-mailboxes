@@ -15,11 +15,6 @@ use Codeception\Stub\Expected;
  */
 class Cron_Unit_Test extends Unit_Testcase {
 
-	protected function tearDown(): void {
-		parent::tearDown();
-		\WP_Mock::tearDown();
-	}
-
 	/**
 	 * @covers ::get_fetch_emails_cron_hook_name
 	 * @covers ::__construct

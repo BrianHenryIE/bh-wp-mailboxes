@@ -94,8 +94,8 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 			'%s/%s/%s/%s',
 			$site_url,
 			$this->post_type,
-			urlencode( $this->account_email_address ),
-			urlencode( sanitize_key( $email_id ) )
+			rawurlencode( $this->account_email_address ),
+			rawurlencode( sanitize_key( $email_id ) )
 		);
 	}
 }

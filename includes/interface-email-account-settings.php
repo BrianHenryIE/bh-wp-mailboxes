@@ -11,8 +11,10 @@ namespace BrianHenryIE\WP_Mailboxes;
 
 interface Email_Account_Settings_Interface {
 
-	// Allow deactivating an email account without deleting the settings, so it is no longer automatically checked.
-	public function is_active(): bool; // TODO: implement.
+	/**
+	 * Allow deactivating an email account without deleting the settings, so it is no longer automatically checked.
+	 */
+	public function is_active(): bool;
 
 	/**
 	 * The email address.

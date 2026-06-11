@@ -66,7 +66,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		);
 
 		if ( $can_return_email_account ) {
-				$api_mock->allows( 'get_email_account_for_email' )->andReturn( $email_account_fixture );
+			$api_mock->allows( 'get_email_account_for_email' )->andReturn( $email_account_fixture );
 		} else {
 			$api_mock->allows( 'get_email_account_for_email' )->andReturnNull();
 		}
@@ -75,6 +75,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			$provider_mock = \Mockery::mock( Email_Fetcher_Interface::class );
 			$provider_mock->expects( 'can_mark_read' )->andReturnTrue();
 			$provider_mock->expects( 'can_delete_on_server' )->andReturnTrue();
+			$provider_mock->expects( 'can_read_status' )->andReturnTrue();
 		}
 		$api_mock->allows( 'get_provider_for_email_account' )->andReturn( $provider_mock );
 
@@ -585,6 +586,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$provider_mock = \Mockery::mock( Email_Fetcher_Interface::class );
 		$provider_mock->expects( 'can_mark_read' )->andReturnFalse();
 		$provider_mock->expects( 'can_delete_on_server' )->andReturnFalse();
+		$provider_mock->expects( 'can_read_status' )->andReturnFalse();
 
 		$api_mock = $this->make_api( provider_mock: $provider_mock );
 		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
