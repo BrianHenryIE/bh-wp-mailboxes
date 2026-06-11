@@ -155,7 +155,7 @@ class API implements API_Interface {
 
 				// If last failure time was less than four hours ago, skip.
 
-				if ( $email_account->last_failed_login_time->add( new DateInterval( 'PT4H' ) ) > new DateTimeImmutable() ) {
+				if ( $email_account->last_failed_login_time > ( new DateTime() )->sub( new DateInterval( 'PT4H' ) ) ) {
 					$this->logger->info(
 						'Too soon after failed login, please check your password and save settings to try again.',
 						array(

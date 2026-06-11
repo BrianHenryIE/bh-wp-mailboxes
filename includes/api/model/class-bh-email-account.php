@@ -56,7 +56,7 @@ readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_In
 	}
 
 	public function after_download_email_action(): string {
-		return $this->after_download_email_action;
+		return $this->after_download_email_action ?? 'nothing';
 	}
 
 	public function get_from_email_regex(): ?string {

@@ -182,14 +182,14 @@ if ( null !== $imap_settings ) {
 
 $gmail_settings = ( new Gmail_API() )->get_mailbox_settings();
 if ( null !== $gmail_settings ) {
-	$mailboxes[ $imap_settings->get_account_email_address() ] = $gmail_settings;
+	$mailboxes[ $gmail_settings->get_account_email_address() ] = $gmail_settings;
 }
 
 if ( ! is_null( $imap_settings ) && ! isset( $accounts[ $imap_settings->get_account_email_address() ] ) ) {
 	$mailboxes_api->add_email_account(
 		email_address: $imap_settings->get_account_email_address(),
 		display_name: $imap_settings->get_account_unique_friendly_name(),
-		provider_type_class: \BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface::class,
+		provider_type_class: \BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher::class,
 		from_address_regex_filter: null,
 		body_identifier_regex_filter: null,
 		after_download_email_action: null,
