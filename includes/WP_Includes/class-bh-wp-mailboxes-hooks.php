@@ -100,7 +100,7 @@ class BH_WP_Mailboxes_Hooks {
 	protected function define_admin_ui_hooks(): void {
 
 		$status_view = new Status_View( $this->api, $this->settings, $this->email_wp_post_repository, $this->logger );
-		add_action( 'manage_posts_extra_tablenav', $status_view->display( ... ), 5 );
+		add_action( 'admin_notices', $status_view->display( ... ) );
 
 		$mailbox_list_page = new Emails_List_Page( $this->email_wp_post_repository, $this->api, $this->settings, $this->logger );
 

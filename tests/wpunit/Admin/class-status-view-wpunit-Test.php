@@ -88,9 +88,9 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		);
 	}
 
-	private function capture_display( Status_View $sut, string $which = 'top' ): string {
+	private function capture_display( Status_View $sut ): string {
 		ob_start();
-		$sut->display( $which );
+		$sut->display();
 		return (string) ob_get_clean();
 	}
 
@@ -115,16 +115,18 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * Nothing should be printed for the 'bottom' position.
+	 * Nothing should be printed on a single-post screen (non-list base).
 	 *
 	 * @covers ::display
 	 */
-	public function test_display_outputs_nothing_for_bottom_position(): void {
+	public function test_display_outputs_nothing_on_single_post_screen(): void {
+		set_current_screen( 'post' );
+
 		/** @var API_Interface $api */
 		$api = \Mockery::mock( API_Interface::class );
 		$api->shouldNotReceive( 'get_email_accounts' );
 
-		$html = $this->capture_display( $this->make_sut( $api ), 'bottom' );
+		$html = $this->capture_display( $this->make_sut( $api ) );
 		$this->assertSame( '', $html );
 	}
 

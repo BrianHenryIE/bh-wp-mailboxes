@@ -41,21 +41,16 @@ class Status_View {
 	}
 
 	/**
-	 * Renders the status cards at the top of the emails list tablenav.
+	 * Renders the status cards in the admin notices area of the emails list screen.
 	 *
-	 * @hooked manage_posts_extra_tablenav
-	 *
-	 * @param string $which 'top' or 'bottom'.
+	 * @hooked admin_notices
 	 */
-	public function display( string $which ): void {
+	public function display(): void {
 
 		$screen    = get_current_screen();
 		$post_type = $this->settings->get_emails_cpt_underscored_20();
 
-		if ( null === $screen || $screen->post_type !== $post_type ) {
-			return;
-		}
-		if ( 'top' !== $which ) {
+		if ( null === $screen || $screen->post_type !== $post_type || 'edit' !== $screen->base ) {
 			return;
 		}
 
