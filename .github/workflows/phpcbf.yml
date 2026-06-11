@@ -85,7 +85,7 @@ jobs:
       - name: Filter to only phpcs errors in the modified files (pr)
         continue-on-error: true # @see https://github.com/kamazee/pr-filter/issues/13
         if: ${{ github.event_name == 'pull_request' }}
-        run: cat filtered-checkstyle.xml | cs2pr
+        run: vendor/bin/prf filter-checkstyle ${{ env.DIFF_FILENAME }} ${{ env.CHECKSTYLE_FILENAME }} filtered-checkstyle.xml --base-path=$(pwd)
         env:
           DIFF_FILENAME: ${{ steps.pr_diff.outputs.diff_filename }}
           CHECKSTYLE_FILENAME: "phpcs-checkstyle.xml"
