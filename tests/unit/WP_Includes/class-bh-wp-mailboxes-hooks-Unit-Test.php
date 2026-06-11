@@ -33,9 +33,6 @@ class BH_WP_Mailboxes_Hooks_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		\WP_Mock::userFunction( 'add_action' );
-		\WP_Mock::userFunction( 'add_filter' );
-
 		return new BH_WP_Mailboxes_Hooks( $api, $settings, $this->logger );
 	}
 
@@ -43,11 +40,6 @@ class BH_WP_Mailboxes_Hooks_Unit_Test extends Unit_Testcase {
 	 * Constructor must complete without error, wiring up all hook groups.
 	 *
 	 * @covers ::__construct
-	 * @covers ::define_cpt_hooks
-	 * @covers ::define_cron_hooks
-	 * @covers ::define_admin_ui_hooks
-	 * @covers ::define_single_email_view_hooks
-	 * @covers ::define_ajax_hooks
 	 */
 	public function test_constructor_registers_all_hooks_without_error(): void {
 
