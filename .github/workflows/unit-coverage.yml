@@ -1,4 +1,8 @@
 name: Code Coverage Report Comment
+# Coverage is measured over the unit + wpunit suites only.
+# The contract suite requires live mailbox credentials and never runs in CI (see PLAN.md rule 5).
+# The e2e suite drives a browser and produces no PHP line coverage.
+# The threshold below is a ratchet: it must not decrease. Raise it as Phase 2 adds tests.
 
 on:
   pull_request:
@@ -38,7 +42,7 @@ jobs:
         php: [ '8.4' ]
 
     steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.1
+      - uses: actions/checkout@v6
         with:
           # Value already defaults to true, but `persist-credentials` is required to push new commits to the repository.
           persist-credentials: true
@@ -46,13 +50,13 @@ jobs:
 
       - name: Checkout GitHub Pages branch for code coverage report
         if: ${{ matrix.php == env.COVERAGE_PHP_VERSION }}
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.1
+        uses: actions/checkout@v6
         with:
           ref: gh-pages
           path: gh-pages
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@2.37.2
         with:
           php-version: ${{ matrix.php }}
           coverage: ${{ matrix.php == env.COVERAGE_PHP_VERSION && 'xdebug' || 'none' }}
@@ -114,8 +118,9 @@ jobs:
         uses: johanvanhelden/gha-clover-test-coverage-check@2543c79a701f179bd63aa14c16c6938c509b2cec # v1
         id: coverage-percentage
         with:
-          percentage: 25
-          exit: false
+          percentage: 33
+          exit: true
+          metric: statements
           filename: tests/_output/clover.xml
           rounded-precision: "0"
 
@@ -157,7 +162,7 @@ jobs:
 
       - name: Commit HTML code coverage + badge to gh-pages
         if: ${{ matrix.php == env.COVERAGE_PHP_VERSION }}
-        uses: stefanzweifel/git-auto-commit-action@v7
+        uses: stefanzweifel/git-auto-commit-action@v7.1.0
         with:
           repository: gh-pages
           branch: gh-pages
@@ -165,7 +170,7 @@ jobs:
 
       - name: Commit code coverage badge to master/main
         if: ${{ matrix.php == env.COVERAGE_PHP_VERSION && github.ref == 'refs/heads/master' }}
-        uses: stefanzweifel/git-auto-commit-action@v7
+        uses: stefanzweifel/git-auto-commit-action@v7.1.0
         with:
           file_pattern: .github/coverage.svg
           commit_message: "🤖 Commit code coverage badge"

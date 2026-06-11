@@ -1,0 +1,32 @@
+name: Release
+
+# On tag push, verify CHANGELOG.md documents the release version, then stop.
+# Packagist picks up the tag automatically via the GitHub webhook — no deploy step needed.
+#
+# ⚠️  Before tagging, confirm brianhenryie/bh-wp-mailboxes is registered on Packagist
+#     and the GitHub webhook is active (Packagist dashboard → Settings → GitHub hook).
+#
+# @author BrianHenryIE
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Verify CHANGELOG.md documents this release
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"   # strip leading 'v' from tag name
+          if ! grep -qF "## [${VERSION}]" CHANGELOG.md && ! grep -qF "## ${VERSION}" CHANGELOG.md; then
+            echo "::error file=CHANGELOG.md::CHANGELOG.md does not contain an entry for version ${VERSION}."
+            echo "Add a '## [${VERSION}]' or '## ${VERSION}' heading before tagging."
+            exit 1
+          fi
+          echo "CHANGELOG.md contains an entry for ${VERSION} ✓"
