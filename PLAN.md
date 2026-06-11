@@ -22,30 +22,30 @@ Read these before any work: `README.md`, `ARCHITECTURE.md`, `CLAUDE.md`, `includ
 
 ---
 
-## Phase 0 — Baseline: make everything green
+## Phase 0 — Baseline: make everything green ✅ (PR #1, merged)
 
 Goal: trustworthy local signal. No new features.
 
-- [ ] 0.1 Run `composer install`, then `vendor/bin/codecept run unit` and `vendor/bin/codecept run wpunit`. Fix failures. Commit `8a71f30` ("Comment out erroring code") left dead/commented code — find it (`git show 8a71f30`), then fix or delete it.
-- [ ] 0.2 Run `composer lint` repo-wide on `includes/` and `development-plugin/`. Fix all phpcs and phpstan errors. ⚠️ If phpstan reveals genuine bugs (not just annotations), list them for the user before fixing.
-- [ ] 0.3 The `integration` suite references the removed `Ddeboer_Imap` provider (`tests/integration/Providers/Ddeboer_Imap/class-mark-email-read-Test.php`). Port the test intent (marking an email read on the server) to `ImapEngine_Imap_Email_Fetcher` as a contract test, and delete the dead file.
-- [ ] 0.4 **Privacy:** `tests/_data/temp/` contains ~35 real-world `.eml` files with real addresses (Outlook, TikTok Shop, etc.). Delete the directory, add it to `.gitignore`. ⚠️ Ask the user whether any should be sanitized (headers/bodies anonymized) and kept as fixtures in `tests/_data/wpunit/` first. Note: files committed to git history remain in history — flag to the user that a history rewrite (`git filter-repo`) may be warranted.
-- [ ] 0.5 Verify `npm install && npm run wp-env:start` boots, development-plugin activates (`.wp-env.json` `afterStart`), and `npm run test:e2e` passes the two existing specs (`plugin-status.spec.ts`, `single-email-view.spec.ts`).
+- [x] 0.1 Run `composer install`, then `vendor/bin/codecept run unit` and `vendor/bin/codecept run wpunit`. Fix failures. Commit `8a71f30` ("Comment out erroring code") left dead/commented code — find it (`git show 8a71f30`), then fix or delete it.
+- [x] 0.2 Run `composer lint` repo-wide on `includes/` and `development-plugin/`. Fix all phpcs and phpstan errors.
+- [x] 0.3 Ported to `tests/contract/Providers/Imap/class-imapengine-email-fetcher-contract-Test.php`; dead `Ddeboer_Imap` file deleted. The `integration` suite survives (hooks + API tests) and has its own workflow.
+- [x] 0.4 `tests/_data/temp/` is gitignored and untracked. ⚠️ Still open: the ~35 real `.eml` files remain in git history — a `git filter-repo` rewrite is warranted; flag before any history-sensitive work.
+- [x] 0.5 wp-env boots, development-plugin activates, both e2e specs pass.
 
-**Done when:** unit, wpunit, and e2e suites pass locally; `composer lint` is clean; no real emails in the working tree.
+**Phase 0 also delivered most of the originally planned Phase 1:** the old PHP 7.4-era workflows were replaced rather than rewritten per the original task list. Current workflows (all PHP 8.4): `phpcbf.yml` (phpcbf auto-commit on master + phpcs annotations via cs2pr; on PRs, fails only on errors in changed lines via `kamazee/pr-filter`), `phpstan.yml` (annotations repo-wide; fails on `includes/` on master, on changed files in PRs), `unit-coverage.yml` (unit + wpunit with mysql:8.0, coverage merged and published to gh-pages, `.github/coverage.svg` badge, PR coverage comment), `integration.yml` (codecept integration suite), `e2e.yml` (Playwright against wp-env, report artifacts). `acceptance.yml`, `deploy.yml`, and `release.yml` are deleted; `dependabot.yml` (daily, composer + npm + github-actions) is in place; the `gh-pages` branch exists.
 
-## Phase 1 — CI/CD modernization
+## Phase 1 — CI/CD hardening
 
-Goal: every push runs lint + unit + wpunit + e2e on PHP 8.4. Current workflows are unusable: PHP 7.4 matrix vs `composer.json` `"php": ">=8.4"`, `actions/checkout@v2`, `setup-php@2.11.0`.
+Goal: close the gaps the Phase 0 workflow rewrite left open. Do **not** restructure the existing five workflows — the auto-commit phpcbf approach and the PR diff-filtering are deliberate; keep them.
 
-- [ ] 1.1 New `.github/workflows/lint.yml`: PHP 8.4, `actions/checkout@v4`, `shivammathur/setup-php@v2`, composer cache; runs `vendor/bin/phpcs` and `vendor/bin/phpstan analyse --memory-limit 1G`. On push + pull_request. Delete `phpcbf.yml` (auto-committing phpcbf fixes is replaced by failing the lint job).
-- [ ] 1.2 New `.github/workflows/tests.yml`: PHP 8.4, mysql:8.0 service; runs `codecept run unit` and `codecept run wpunit`. Reuse the env-file pattern from the old workflows (`.env.testing`, `.env.github`).
-- [ ] 1.3 Rewrite `codecoverage.yml`: same as 1.2 plus xdebug, `composer test-coverage` (minus the `open` step), publish HTML to gh-pages, regenerate `.github/coverage.svg` badge. ⚠️ Confirm the `gh-pages` branch exists; if not, ask the user to create it.
-- [ ] 1.4 New `.github/workflows/e2e.yml`: Node LTS, `npm ci`, `npx playwright install --with-deps chromium`, `npm run wp-env:start`, `npm run test:e2e`; upload `playwright-report/` as artifact on failure.
-- [ ] 1.5 Delete `acceptance.yml`, `deploy.yml`, `integration.yml` (the library has no acceptance suite or deploy target; integration is superseded by 1.2 — fold the integration suite into `tests.yml` if it survives Phase 0). Reduce `release.yml` to: on tag, verify CHANGELOG.md contains the tag version. Packagist updates from tags automatically. ⚠️ Confirm the package is registered on Packagist.
-- [ ] 1.6 Add `.github/dependabot.yml` for composer, npm, and github-actions ecosystems (monthly).
+- [ ] 1.1 Merge the open Dependabot PRs (`actions/checkout@v6`, `actions/upload-artifact@v7`, `shivammathur/setup-php@2.37.2`, `c-py/action-dotenv-to-setenv@v5`, `stefanzweifel/git-auto-commit-action@v7.1.0`, `lucatume/wp-browser@4.6.0`), confirming each leaves all workflows green. Then align stragglers: `phpcbf.yml` still uses `upload-artifact@v4`; `unit-coverage.yml` pins `checkout` at a v4.3.1 SHA while every other workflow uses v6.
+- [ ] 1.2 Fix `e2e.yml` package-manager mix-up: `yarn playwright install --with-deps` in an npm project → `npx playwright install --with-deps chromium`.
+- [ ] 1.3 Make the coverage gate real: `unit-coverage.yml` checks 25% with `exit: false`, so it can never fail. Record the actual current line-coverage %, set `percentage` to it and `exit: true` — a ratchet, raised in Phase 2.5. Note the **contract suite never runs in CI by design** (rule 5) and the **e2e suite produces no PHP coverage**; the badge reflects unit + wpunit only — document that in the workflow header comment.
+- [ ] 1.4 New `release.yml`: on tag push, verify `CHANGELOG.md` contains the tag version, then stop — Packagist updates from tags automatically. ⚠️ Confirm `brianhenryie/bh-wp-mailboxes` is registered on Packagist; if not, ask the user to register it.
+- [ ] 1.5 Verify the PR diff-filtering actually fails when it should: open a throwaway PR introducing (a) a phpcs error and (b) a phpstan error in a file the PR touches, and the same in a file it does not touch. Expected: failures for (a)/(b) in touched files only. The `kamazee/pr-filter` step is `continue-on-error` (its issue #13) — confirm a genuine error still reaches the failing `cs2pr` step. Close the PR without merging.
+- [ ] 1.6 ⚠️ Branch protection on `master`: ask the user to require the five workflow checks before merge (or set via `gh api` if permitted) — without it, the PR-only failure logic in `phpcbf.yml`/`phpstan.yml` is advisory.
 
-**Done when:** all four workflows pass on a test branch push.
+**Done when:** a test PR shows annotations + coverage comment and all five workflows are required and green; the coverage gate demonstrably fails below threshold; a test tag passes `release.yml`.
 
 ## Phase 2 — Unit test coverage of the core pipeline
 
@@ -73,7 +73,7 @@ Tasks (each = tests first, then resolve the embedded TODO the tests pin down):
 - [ ] 2.2 `Email_WP_Post_Repository`: dedup behavior (same guid fetched twice → one post); `is_read_remote` determination TODO; attachment saving via `bh-wp-private-uploads` (`// TODO: save attachments` at line ~200) — ⚠️ attachments are a feature decision; confirm scope with the user before implementing, otherwise test current behavior and leave the TODO.
 - [ ] 2.3 `Status_View` (`includes/admin/class-status-view.php` is a TODO stub): implement minimally — per account: last fetched time, last failure time, email count — with wpunit tests and a Playwright spec (rule 3).
 - [ ] 2.4 Fetcher mapping tests using the four sanitized fixtures in `tests/_data/wpunit/` (`html-and-plaintext.eml`, `html-no-plain-text.eml`, `non-multipart.eml`, `test_save_new.eml`).
-- [ ] 2.5 Add coverage thresholds: fail `codecoverage.yml` below 70% lines initially; record the actual number in PLAN progress notes and raise over time.
+- [ ] 2.5 Raise the `unit-coverage.yml` ratchet (set in 1.3) toward 70% lines as this phase adds tests; record the actual number in PLAN progress notes.
 
 **Done when:** every class in `includes/` has a corresponding test file and the table above is empty.
 
@@ -103,7 +103,7 @@ Existing: `plugin-status.spec.ts`, `single-email-view.spec.ts`. Add (arrange via
 ## Phase 5 — Documentation
 
 - [ ] 5.1 Rewrite `README.md`: what it does (keep the existing examples) → installation (`composer require brianhenryie/bh-wp-mailboxes`) → 5-minute integration walkthrough referencing the development-plugin files from 3.2/3.4 → actions & filters reference → Gmail API setup (keep existing section) → GDPR section (keep, tighten). Move the CLI sketch, credentials-storage questions, and "Should we keep a historic count" to `docs/open-questions.md`.
-- [ ] 5.2 Generate the hooks reference with `pronamic/wp-documentor` into the README's existing `<!-- filters -->` markers; add a CI step in `lint.yml` that fails if the committed output is stale.
+- [ ] 5.2 Generate the hooks reference with `pronamic/wp-documentor` into the README's existing `<!-- filters -->` markers; add a CI step in `phpcbf.yml` that fails if the committed output is stale.
 - [ ] 5.3 Update `ARCHITECTURE.md` with a diagram: Cron → `API::check_email()` → Fetcher (IMAP / Gmail / filter-supplied) → `Email_WP_Post_Repository` → CPT → action. Document the settings/credentials split (library never stores credentials).
 - [ ] 5.4 Populate `CHANGELOG.md` (currently 13 bytes) following keepachangelog.com; document dev setup in `CONTRIBUTING.md` (wp-env, suites, e2e).
 - [ ] 5.5 Fix the README badge row: "WordPress tested 7.0" links to a wordpress.org plugin page that does not exist for a library — point badges at the GitHub repo/actions instead.
