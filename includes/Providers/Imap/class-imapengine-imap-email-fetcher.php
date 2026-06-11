@@ -30,16 +30,14 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 
 	/**
 	 * The IMAP mailbox connection.
-	 *
-	 * @var Mailbox
 	 */
 	protected Mailbox $mailbox;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param IMAP_Credentials_Interface $credentials Connection settings.
-	 * @param LoggerInterface            $logger Logger.
+	 * @param Email_Account_Settings_Interface $settings
+	 * @param LoggerInterface                  $logger Logger.
 	 */
 	public function __construct(
 		protected Email_Account_Settings_Interface $settings,

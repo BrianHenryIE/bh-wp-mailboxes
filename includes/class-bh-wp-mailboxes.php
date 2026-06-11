@@ -67,12 +67,30 @@ class BH_WP_Mailboxes extends API {
 		return $mailboxes_api;
 	}
 
-	protected static function validate_settings( BH_WP_Mailboxes_Settings_Interface $settings ) {
+	/**
+	 * Because the defaults trait truncates strings, it's easily possible that two custom post types have the same
+	 * name. This is a quick check to avoid that.
+	 *
+	 * This is something that would be caught during development.
+	 *
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings For `::get_*_cpt_underscored_20()`.
+	 *
+	 * @throws \Exception
+	 */
+	protected static function validate_settings( BH_WP_Mailboxes_Settings_Interface $settings ): void {
 		if ( $settings->get_emails_cpt_underscored_20() === $settings->get_email_accounts_cpt_underscored_20() ) {
 			throw new \Exception( 'The emails CPT and email accounts CPT cannot have the same slug. Please change one of them in your settings.' );
 		}
 	}
 
+	/**
+	 * We save attachments in a secure directory.
+	 *
+	 * @see https://github.com/BrianHenryIE/bh-wp-private-uploads
+	 *
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings
+	 * @param LoggerInterface                    $logger PSR logger.
+	 */
 	protected static function make_private_uploads( BH_WP_Mailboxes_Settings_Interface $settings, LoggerInterface $logger ): ?Private_Uploads {
 		if ( is_null( $settings->get_private_uploads_directory_name() ) || ! class_exists( Private_Uploads::class ) ) {
 			return null;

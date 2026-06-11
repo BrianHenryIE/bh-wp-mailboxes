@@ -10,8 +10,8 @@ namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Account_Query;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
-use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use InvalidArgumentException;
+use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WP_Post;
 
@@ -19,18 +19,28 @@ use WP_Post;
  * Persists and retrieves BH_Email_Account objects as WordPress CPT posts.
  */
 class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
+	use LoggerAwareTrait;
 
 	public function __construct(
 		protected string $post_type,
 		protected BH_Email_Account_Factory $bh_email_account_factory,
 		LoggerInterface $logger,
 	) {
+		$this->setLogger( $logger );
 	}
 
 	/**
 	 * Saves a new email account to the database.
 	 *
-	 * @param Email_Account_Settings_Interface $email_account_settings The email account settings to save.
+	 * @param string  $email_address Email address for id and display (credentials are separate).
+	 * @param string  $display_name Friendly display name.
+	 * @param string  $provider_type_class The API the account uses.
+	 * @param ?string $from_address_regex_filter Only save emails whose from address matches this regex.
+	 * @param ?string $body_identifier_regex_filter Only save emails whose body matches this regex.
+	 * @param ?string $after_download_email_action Delete or mark read or do nothing after download (if at all possible).
+	 * @param ?int    $delete_emails_after_n_days Delete locally stored emails after n days.
+	 *
+	 * @throws \Exception
 	 */
 	public function save_new(
 		string $email_address,
@@ -114,6 +124,12 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		);
 	}
 
+	/**
+	 * @param BH_Email_Account_Query $query
+	 * @param ?callable              $filter
+	 *
+	 * @return BH_Email_Account[]
+	 */
 	protected function run_query( BH_Email_Account_Query $query, ?callable $filter = null ): array {
 		$query_args = $query->to_query_array();
 

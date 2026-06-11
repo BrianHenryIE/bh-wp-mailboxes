@@ -69,10 +69,10 @@ class API implements API_Interface {
 	}
 
 	/**
-	 * @param string                                         $email_address
-	 * @param string                                         $display_name
-	 * @param string                                         $after_download_email_action nothing|mark_read|delete
-	 * @param class-string<Email_Account_Settings_Interface> $provider_type_class
+	 * @param string                                $email_address
+	 * @param string                                $display_name
+	 * @param class-string<Email_Fetcher_Interface> $provider_type_class
+	 * @param ?string                               $after_download_email_action nothing|mark_read|delete
 	 */
 	public function add_email_account(
 		string $email_address,
@@ -451,6 +451,8 @@ class API implements API_Interface {
 
 	/**
 	 * Returns the last-fetched times for all configured mailbox accounts.
+	 *
+	 * @param BH_Email_Account[] $email_accounts Specific accounts to return the times for, otherwise all are returned.
 	 *
 	 * @return array<string, ?DateTimeInterface>
 	 */
