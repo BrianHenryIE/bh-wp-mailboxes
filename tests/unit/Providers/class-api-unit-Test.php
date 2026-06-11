@@ -193,75 +193,6 @@ class API_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * Pretty much the same test as above.
-	 *
-	 * @covers ::set_failed_login_time
-	 */
-	public function test_set_failed_login_time(): void {
-
-		$settings = $this->makeEmpty(
-			BH_WP_Mailboxes_Settings_Interface::class,
-			array(
-				'get_plugin_slug' => Expected::atLeastOnce(
-					fn() => 'plugin-slug'
-				),
-			)
-		);
-
-		$sut = $this->get_api( settings: $settings );
-
-		$datetime = new \DateTime();
-
-		$expected_key = 'plugin-slug_mailbox_last_failure_brianhenryie@gmail.com';
-
-		\WP_Mock::userFunction(
-			'update_option',
-			array(
-				'args'  => array(
-					$expected_key,
-					\WP_Mock\Functions::type( 'string' ),
-				),
-				'times' => 1,
-			)
-		);
-
-		$sut->set_failed_login_time( 'brianhenryie@gmail.com', $datetime );
-	}
-
-	/**
-	 * Pretty much the same test as above.
-	 *
-	 * @covers ::set_failed_login_time
-	 */
-	public function test_set_failed_login_time_delete(): void {
-
-		$settings = $this->makeEmpty(
-			BH_WP_Mailboxes_Settings_Interface::class,
-			array(
-				'get_plugin_slug' => Expected::atLeastOnce(
-					fn() => 'plugin-slug'
-				),
-			)
-		);
-
-		$sut = $this->get_api( settings: $settings );
-
-		$expected_key = 'plugin-slug_mailbox_last_failure_brianhenryie@gmail.com';
-
-		\WP_Mock::userFunction(
-			'delete_option',
-			array(
-				'args'  => array(
-					$expected_key,
-				),
-				'times' => 1,
-			)
-		);
-
-		$sut->set_failed_login_time( 'brianhenryie@gmail.com', null );
-	}
-
-	/**
 	 * Need to test the date interval.
 	 *
 	 * Set a failure date one day in the past.
@@ -610,42 +541,5 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$this->assertNull( $result );
 		$this->assertTrue( $this->logger->hasWarningThatContains( 'No email fetcher found for provider type' ) );
-	}
-
-	/**
-	 * On_settings_saved() must delete the failed-login option for every account.
-	 *
-	 * @covers ::on_settings_saved
-	 */
-	public function test_on_settings_saved_clears_all_failed_login_times(): void {
-
-		$account_a = BH_Email_Account_Fixture::make( display_name: 'Account A' );
-		$account_b = BH_Email_Account_Fixture::make( display_name: 'Account B' );
-
-		$settings = $this->makeEmpty(
-			BH_WP_Mailboxes_Settings_Interface::class,
-			array( 'get_plugin_slug' => Expected::atLeastOnce( fn() => 'test-plugin' ) )
-		);
-
-		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
-		$email_account_repository->expects( 'get_all' )->andReturn( array( $account_a, $account_b ) );
-
-		\WP_Mock::userFunction(
-			'delete_option',
-			array(
-				'args'  => array( 'test-plugin_mailbox_last_failure_Account A' ),
-				'times' => 1,
-			)
-		);
-		\WP_Mock::userFunction(
-			'delete_option',
-			array(
-				'args'  => array( 'test-plugin_mailbox_last_failure_Account B' ),
-				'times' => 1,
-			)
-		);
-
-		$sut = $this->get_api( settings: $settings, email_account_repository: $email_account_repository );
-		$sut->on_settings_saved();
 	}
 }

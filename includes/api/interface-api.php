@@ -80,11 +80,4 @@ interface API_Interface {
 	 * @param BH_Email_Account $email_account The account to find a fetcher for.
 	 */
 	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Fetcher_Interface;
-
-	/**
-	 * Clear all failed-login times so every account retries on the next cron run.
-	 *
-	 * @hooked bh_wp_mailboxes_settings_saved
-	 */
-	public function on_settings_saved(): void;
 }

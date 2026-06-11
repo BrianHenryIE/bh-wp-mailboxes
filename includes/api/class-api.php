@@ -492,28 +492,7 @@ class API implements API_Interface {
 
 		$last_failed_datetime = DateTime::createFromFormat( DateTime::ATOM, $atom_time, new DateTimeZone( 'UTC' ) );
 
-		if ( $last_failed_datetime < $now_sub_interval ) {
-			$this->set_failed_login_time( $account_name, null );
-			return null;
-		}
-
 		return false !== $last_failed_datetime ? $last_failed_datetime : null;
-	}
-
-	/**
-	 * Set to null to clear (after a successful login).
-	 *
-	 * @param string             $account_name The account's unique friendly name.
-	 * @param ?DateTimeInterface $time         The failure time, or null to clear.
-	 */
-	public function set_failed_login_time( string $account_name, ?DateTimeInterface $time ): void {
-		$option_name = $this->get_last_failed_login_option_name( $account_name );
-		if ( is_null( $time ) ) {
-			delete_option( $option_name );
-		} else {
-			$atom_time = $time->format( DateTimeInterface::ATOM );
-			update_option( $option_name, $atom_time );
-		}
 	}
 
 	/**
@@ -530,20 +509,6 @@ class API implements API_Interface {
 			return $this->email_account_repository->find_by_post_id( $post->post_parent );
 		} catch ( \InvalidArgumentException $e ) {
 			return null;
-		}
-	}
-
-	/**
-	 * Clear all failed-login times so every account retries on the next cron run.
-	 *
-	 * The parent plugin should fire `do_action('bh_wp_mailboxes_settings_saved')`
-	 * from its own settings-save callback to trigger this automatically.
-	 *
-	 * @hooked bh_wp_mailboxes_settings_saved
-	 */
-	public function on_settings_saved(): void {
-		foreach ( $this->email_account_repository->get_all() as $email_account ) {
-			$this->set_failed_login_time( $email_account->display_name, null );
 		}
 	}
 
