@@ -61,15 +61,12 @@ jobs:
 
       - name: Activate plugins
         run: |
+          # Set up permalinks for REST API
+          npx wp-env run cli -- wp rewrite structure '/%year%/%monthnum%/%postname%/' --hard
           # Activate the development plugin on development environment (port 8888)
           npx wp-env run cli -- wp plugin activate development-plugin
           # List plugins to verify activation
-          npx wp-env run cli -- wp plugin list
-          # Set up permalinks for REST API
-          npx wp-env run cli -- wp rewrite structure '/%year%/%monthnum%/%postname%/' --hard
-          # Also activate on tests environment (port 8889) for completeness
-          npx wp-env run tests-cli -- wp plugin activate development-plugin
-          npx wp-env run tests-cli -- wp rewrite structure '/%year%/%monthnum%/%postname%/' --hard
+#          npx wp-env run cli -- wp plugin list # `Error: Invalid format: table`.
 
       - name: Run Playwright tests
         run: npm run test:e2e -- --reporter=github
