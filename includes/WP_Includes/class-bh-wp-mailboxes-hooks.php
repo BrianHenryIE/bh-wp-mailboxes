@@ -10,6 +10,7 @@ namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 use BrianHenryIE\WP_Mailboxes\Admin\Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
+use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View_Ajax;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
@@ -72,6 +73,8 @@ class BH_WP_Mailboxes_Hooks {
 
 		add_action( 'init', $email_cpt->register_cpt( ... ) );
 		add_action( 'init', $email_cpt->register_post_statuses( ... ) );
+
+		add_filter( 'wp_insert_post_data', $email_cpt->prevent_content_edits( ... ), 10, 2 );
 	}
 
 	/**
@@ -123,12 +126,12 @@ class BH_WP_Mailboxes_Hooks {
 
 		add_action( "add_meta_boxes_{$post_type}", $view->add_meta_boxes( ... ) );
 		add_action( 'admin_enqueue_scripts', $view->enqueue_scripts( ... ) );
-		add_filter( 'wp_insert_post_data', $view->prevent_content_edits( ... ), 10, 2 );
-		add_action( 'post_updated', $view->log_status_change( ... ), 10, 3 );
 
-		add_action( 'wp_ajax_bh_wp_mailboxes_mark_read', $view->ajax_mark_read( ... ) );
-		add_action( 'wp_ajax_bh_wp_mailboxes_mark_unread', $view->ajax_mark_unread( ... ) );
-		add_action( 'wp_ajax_bh_wp_mailboxes_delete_on_server', $view->ajax_delete_on_server( ... ) );
+		$ajax = new Single_Email_View_Ajax( $this->settings, $this->api, $this->email_wp_post_repository, $this->logger );
+
+		add_action( 'wp_ajax_bh_wp_mailboxes_mark_read', $ajax->ajax_mark_read( ... ) );
+		add_action( 'wp_ajax_bh_wp_mailboxes_mark_unread', $ajax->ajax_mark_unread( ... ) );
+		add_action( 'wp_ajax_bh_wp_mailboxes_delete_on_server', $ajax->ajax_delete_on_server( ... ) );
 	}
 
 	/**

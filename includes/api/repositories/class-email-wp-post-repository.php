@@ -213,4 +213,33 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			$all_new_account_emails->all()
 		);
 	}
+
+	/**
+	 * Insert a log note when the post status changes.
+	 *
+	 * @hooked post_updated (priority 10, accepted_args 3)
+	 *
+	 * @param int     $post_id     The post ID.
+	 * @param WP_Post $post_after  Post object after the update.
+	 * @param WP_Post $post_before Post object before the update.
+	 */
+	public function log_status_change( int $post_id, WP_Post $post_after, WP_Post $post_before ): void {
+
+		if ( $this->post_type !== $post_after->post_type ) {
+			return;
+		}
+
+		if ( $post_after->post_status === $post_before->post_status ) {
+			return;
+		}
+
+		$this->api->insert_email_log_note(
+			$post_id,
+			sprintf(
+				'Status changed from "%s" to "%s".',
+				$post_before->post_status,
+				$post_after->post_status
+			)
+		);
+	}
 }

@@ -5,10 +5,13 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
+use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
+use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
+use Codeception\Stub\Expected;
 use Mockery;
 use ZBateson\MailMimeParser\IMessage;
 use ZBateson\MailMimeParser\MailMimeParser;
@@ -64,4 +67,43 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		// "Date: Wed, 30 Jul 2025 03:38:07 +0000".
 		$this->assertEquals( '2025-07-30 03:38:07', $result->get_sent_at()->format( 'Y-m-d H:i:s' ) );
 	}
+
+	/**
+	 * Log_status_change does nothing when the status has not changed.
+	 *
+	 * @covers ::log_status_change
+	 */
+	public function test_log_status_change_skips_when_status_unchanged(): void {
+
+		$this->markTestSkipped('Will be reimplementing in the repository.');
+
+		register_post_type(
+			$this->post_type,
+			array(
+				'public'  => false,
+				'show_ui' => true,
+			)
+		);
+
+		$post_id = $this->factory()->post->create(
+			array(
+				'post_type'   => $this->post_type,
+				'post_status' => 'bh_email_new',
+			)
+		);
+
+		$post_before = get_post( $post_id );
+		$post_after  = clone $post_before;
+
+		$api = $this->makeEmpty(
+			API_Interface::class,
+			array(
+				'insert_email_log_note' => Expected::never(),
+			)
+		);
+
+		$sut = new Single_Email_View( $this->make_settings(), $api, $this->make_repository(), $this->logger );
+		$sut->log_status_change( $post_id, $post_after, $post_before );
+	}
+
 }

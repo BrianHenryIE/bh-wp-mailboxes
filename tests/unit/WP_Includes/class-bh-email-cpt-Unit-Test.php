@@ -53,8 +53,8 @@ class BH_Email_CPT_Unit_Test extends Unit_Testcase {
 		\WP_Mock::userFunction(
 			'register_post_type',
 			array(
-				'times' => 1,
-				'args'  => array( 'my_email_cpt', \WP_Mock\Functions::type( 'array' ) ),
+				'times'  => 1,
+				'args'   => array( 'my_email_cpt', \WP_Mock\Functions::type( 'array' ) ),
 				'return' => $post_type_stub,
 			)
 		);

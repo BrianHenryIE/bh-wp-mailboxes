@@ -95,7 +95,7 @@ class Single_Email_View {
 		add_meta_box(
 			'bh-email-status',
 			__( 'Email Status', 'bh-wp-mailboxes' ),
-			$this->render_status_metabox( ... ),
+			$this->render_local_status_metabox( ... ),
 			$this->post_type,
 			'side',
 			'high'
@@ -134,26 +134,14 @@ class Single_Email_View {
 			);
 		}
 
-		// $email->get_attachment_ids()
-		// $attachments = get_posts(
-		// array(
-		// 'post_type'   => 'attachment',
-		// 'post_parent' => $post->ID,
-		// 'post_status' => 'any',
-		// 'numberposts' => -1,
-		// 'fields'      => 'ids',
-		// )
-		// );
-		// if ( ! empty( $attachments ) ) {
-		// add_meta_box(
-		// 'bh-email-attachments',
-		// __( 'Attachments', 'bh-wp-mailboxes' ),
-		// $this->render_attachments_metabox( ... ),
-		// $this->post_type,
-		// 'side',
-		// 'default'
-		// );
-		// }
+		add_meta_box(
+			'bh-email-attachments',
+			__( 'Attachments', 'bh-wp-mailboxes' ),
+			$this->render_attachments_metabox( ... ),
+			$this->post_type,
+			'side',
+			'default'
+		);
 
 		add_meta_box(
 			'bh-email-log-notes',
@@ -212,137 +200,6 @@ class Single_Email_View {
 		}
 	}
 
-	/**
-	 * Restore original title and content to prevent edits to immutable email fields.
-	 *
-	 * @hooked wp_insert_post_data (priority 10, accepted_args 2)
-	 *
-	 * @param array<string, mixed> $data    Sanitised post data about to be inserted.
-	 * @param array<string, mixed> $postarr Raw post data from the edit form.
-	 *
-	 * @return array<string, mixed>
-	 */
-	public function prevent_content_edits( array $data, array $postarr ): array {
-
-		$post_type = $data['post_type'] ?? '';
-		if ( $this->post_type !== $post_type ) {
-			return $data;
-		}
-
-		$post_id = (int) ( $postarr['ID'] ?? 0 );
-		if ( 0 === $post_id ) {
-			return $data;
-		}
-
-		$original = get_post( $post_id );
-		if ( ! ( $original instanceof WP_Post ) ) {
-			return $data;
-		}
-
-		$data['post_title']   = $original->post_title;
-		$data['post_content'] = $original->post_content;
-
-		return $data;
-	}
-
-	/**
-	 * Insert a log note when the post status changes.
-	 *
-	 * @hooked post_updated (priority 10, accepted_args 3)
-	 *
-	 * @param int     $post_id     The post ID.
-	 * @param WP_Post $post_after  Post object after the update.
-	 * @param WP_Post $post_before Post object before the update.
-	 */
-	public function log_status_change( int $post_id, WP_Post $post_after, WP_Post $post_before ): void {
-
-		if ( $this->post_type !== $post_after->post_type ) {
-			return;
-		}
-
-		if ( $post_after->post_status === $post_before->post_status ) {
-			return;
-		}
-
-		$this->api->insert_email_log_note(
-			$post_id,
-			sprintf(
-				'Status changed from "%s" to "%s".',
-				$post_before->post_status,
-				$post_after->post_status
-			)
-		);
-	}
-
-	/**
-	 * Mark email as read on the remote server.
-	 *
-	 * @hooked wp_ajax_bh_wp_mailboxes_mark_read
-	 */
-	public function ajax_mark_read(): void {
-		$this->handle_remote_action( 'mark_read' );
-	}
-
-	/**
-	 * Mark email as unread on the remote server.
-	 *
-	 * @hooked wp_ajax_bh_wp_mailboxes_mark_unread
-	 */
-	public function ajax_mark_unread(): void {
-		$this->handle_remote_action( 'mark_unread' );
-	}
-
-	/**
-	 * Delete the email on the remote server.
-	 *
-	 * @hooked wp_ajax_bh_wp_mailboxes_delete_on_server
-	 */
-	public function ajax_delete_on_server(): void {
-		$this->handle_remote_action( 'delete_on_server' );
-	}
-
-	/**
-	 * Shared AJAX handler for remote email actions.
-	 *
-	 * @param string $action One of: mark_read, mark_unread, delete_on_server.
-	 */
-	protected function handle_remote_action( string $action ): void {
-
-		if ( ! isset( $_POST['_wpnonce'], $_POST['post_id'] )
-			|| ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-remote-action' ) ) {
-			wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
-		}
-
-		$post_id = (int) $_POST['post_id'];
-		$post    = get_post( $post_id );
-
-		if ( ! ( $post instanceof WP_Post ) || $this->post_type !== $post->post_type ) {
-			wp_send_json_error( array( 'message' => 'Invalid post.' ), 400 );
-		}
-
-		try {
-			$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
-
-			match ( $action ) {
-				'mark_read'        => $this->api->mark_email_read( $email ),
-				'mark_unread'      => $this->api->mark_email_unread( $email ),
-				'delete_on_server' => $this->api->delete_email_on_server( $email ),
-			};
-		} catch ( \Throwable $e ) {
-			$this->logger->error( "Remote action '{$action}' failed: " . $e->getMessage(), array( 'post_id' => $post_id ) );
-			wp_send_json_error( array( 'message' => $e->getMessage() ), 500 );
-		}
-
-		$is_read_raw       = get_post_meta( $post_id, 'bh_email_is_read', true );
-		$deleted_on_server = get_post_meta( $post_id, 'bh_email_deleted_on_server', true );
-
-		wp_send_json_success(
-			array(
-				'status_html' => $this->get_remote_status_html( $is_read_raw, $deleted_on_server ),
-			)
-		);
-	}
-
 	// -------------------------------------------------------------------------
 	// Metabox render methods
 	// -------------------------------------------------------------------------
@@ -352,9 +209,10 @@ class Single_Email_View {
 	 *
 	 * @param WP_Post $post The email post being edited.
 	 */
-	public function render_status_metabox( WP_Post $post ): void {
+	public function render_local_status_metabox( WP_Post $post ): void {
 
 		$email = $this->get_email_for_post( $post );
+		unset( $post );
 
 		$statuses = array(
 			'bh_email_new'       => __( 'New', 'bh-wp-mailboxes' ),
@@ -362,10 +220,8 @@ class Single_Email_View {
 			'bh_email_saved'     => __( 'Saved', 'bh-wp-mailboxes' ),
 		);
 
-		$current_status = $email->post_status;
-		// $is_read_raw       = get_post_meta( $post->ID, 'bh_email_is_read', true );
-		$is_read = $email->is_remote_read;
-		// $deleted_on_server = get_post_meta( $post->ID, 'bh_email_deleted_on_server', true );
+		$current_status    = $email->post_status;
+		$is_read           = $email->is_remote_read;
 		$deleted_on_server = $email->is_remote_deleted;
 
 		$email_account = $this->api->get_email_account_for_email( $email );
@@ -375,22 +231,12 @@ class Single_Email_View {
 
 		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 
-		// Received at: parsed from the email's Date header.
-		$date_header = get_post_meta( $post->ID, 'Date', true );
-		if ( is_string( $date_header ) && '' !== $date_header ) {
-			$parsed = date_create( $date_header );
-			if ( false !== $parsed ) {
-				$sent = wp_date( $date_format, $parsed->getTimestamp() );
-				echo '<p><strong>' . esc_html__( 'Received at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( (string) $sent ) . '</p>';
-			}
-		}
-
 		// Downloaded at: when the email was fetched into WordPress (post_date).
-		$downloaded = (string) mysql2date( $date_format, $post->post_date );
-		echo '<p><strong>' . esc_html__( 'Downloaded at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( $downloaded ) . '</p>';
+		$downloaded = wp_date( $date_format, $email->downloaded_at->getTimestamp() );
+		echo '<p><strong>' . esc_html__( 'Downloaded at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( (string) $downloaded ) . '</p>';
 
 		// Updated at: last time the post record was modified (post_modified).
-		$updated = (string) mysql2date( $date_format, $post->post_modified );
+		$updated = wp_date( $date_format, $email->last_updated->getTimestamp() );
 		echo '<p><strong>' . esc_html__( 'Updated at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( $updated ) . '</p>';
 
 		// Local status selector.
@@ -402,10 +248,17 @@ class Single_Email_View {
 		}
 		// Show legacy status if not one of the custom ones.
 		if ( ! array_key_exists( $current_status, $statuses ) ) {
+			$this->logger->warning( 'Problem with email status. Unexpectedly found ' . $current_status );
 			echo '<option value="' . esc_attr( $current_status ) . '" selected="selected">' . esc_html( ucfirst( $current_status ) ) . '</option>';
 		}
 		echo '</select>';
 		echo '<input type="hidden" name="hidden_post_status" value="' . esc_attr( $current_status ) . '">';
+
+		// Remote status
+
+		// Sent: The email "Date" header.
+		$sent = $email->sent_at ? wp_date( $date_format, $email->sent_at->getTimestamp() ) : '';
+		echo '<p><strong>' . esc_html__( 'Sent:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( $sent ) . '</p>';
 
 		if ( $provider?->can_read_status() ) {
 			$badges = $this->get_remote_status_html( $is_read, $deleted_on_server );
@@ -415,7 +268,7 @@ class Single_Email_View {
 		}
 
 		// Remote action buttons — shown only when the mailbox supports them.
-		if ( ! is_null( $provider ) && $provider->can_mark_read() ) {
+		if ( $provider?->can_mark_read() && ! $email->is_remote_deleted ) {
 			if ( $is_read ) {
 				echo '<p><button id="bh-email-mark-unread" class="button">' . esc_html__( 'Mark as unread on server', 'bh-wp-mailboxes' ) . '</button></p>';
 			} else {
@@ -423,7 +276,7 @@ class Single_Email_View {
 			}
 		}
 
-		if ( ! is_null( $provider ) && $provider->can_delete_on_server() && ! $email->is_remote_deleted ) {
+		if ( $provider?->can_delete_on_server() && ! $email->is_remote_deleted ) {
 			echo '<p><button id="bh-email-delete-on-server" class="button button-link-delete">' . esc_html__( 'Delete on server', 'bh-wp-mailboxes' ) . '</button></p>';
 		}
 
@@ -522,19 +375,16 @@ class Single_Email_View {
 		$email = $this->get_email_for_post( $post );
 		unset( $post );
 
+		// NB: The post type of the private uploads attachments is not `attachments`.
 		$attachment_ids = $email->attachment_ids;
-		// The post type of the private uploads attachments is not `attachments`.
-		// $attachments = get_posts(
-		// array(
-		// 'post_type'   => 'attachment',
-		// 'post_parent' => $post->ID,
-		// 'post_status' => 'any',
-		// 'numberposts' => -1,
-		// )
-		// ); // end get_posts.
 
-		if ( empty( $attachment_ids ) ) {
-			echo '<p>' . esc_html__( 'No attachments.', 'bh-wp-mailboxes' ) . '</p>';
+		if ( is_null( $attachment_ids ) ) {
+			echo '<p class="bh-email-attachments--empty">' . esc_html__( 'Attachments disabled.', 'bh-wp-mailboxes' ) . '</p>';
+			return;
+		}
+
+		if ( 0 === count( $attachment_ids ) ) {
+			echo '<p class="bh-email-attachments--empty">' . esc_html__( 'No attachments.', 'bh-wp-mailboxes' ) . '</p>';
 			return;
 		}
 
@@ -561,6 +411,10 @@ class Single_Email_View {
 	 * @param WP_Post $post The email post being edited.
 	 */
 	public function render_log_notes_metabox( WP_Post $post ): void {
+
+		// TODO: Add $email->comments array.
+		// $email = $this->get_email_for_post( $post );
+		// unset( $post );
 
 		$notes = get_comments(
 			array(
@@ -618,6 +472,4 @@ class Single_Email_View {
 
 		return implode( ' ', $parts );
 	}
-
-	// phpcs:ignore Squiz.WhiteSpace.FunctionSpacing.AfterLast
 }

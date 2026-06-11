@@ -52,9 +52,9 @@ readonly class BH_Email implements Saved_Post {
 		public string $original_mime_message = '',
 		public ?string $body_plain_text = '',
 		public ?string $body_html = '',
-		public array $attachment_ids = array(),
+		public ?array $attachment_ids = null, // `null` when configured not to save attachments.
 		// public array $meta_data = array(), // TODO: add meta data support.
-		public ?DateTimeInterface $sent_at = null,
+		public ?DateTimeInterface $sent_at = null, // `null` implies an issue parsing the date.
 		public ?DateTimeInterface $downloaded_at = null,
 		public ?DateTimeInterface $last_updated = null,
 		public string $post_status = 'unread',

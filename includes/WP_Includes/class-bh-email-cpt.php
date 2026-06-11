@@ -14,6 +14,7 @@ use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WP_Error;
+use WP_Post;
 
 /**
  * Registers the email custom post type and its post statuses.
@@ -174,5 +175,42 @@ class BH_Email_CPT {
 				'label_count'               => _n_noop( 'Saved <span class="count">(%s)</span>', 'Saved <span class="count">(%s)</span>' ),
 			)
 		);
+	}
+
+	/**
+	 * Make email cpt immutable.
+	 *
+	 * Restore original title and content to prevent edits to immutable email fields.
+	 *
+	 * @hooked wp_insert_post_data (priority 10, accepted_args 2)
+	 *
+	 * @param array<string, mixed> $data    Sanitised post data about to be inserted.
+	 * @param array<string, mixed> $postarr Raw post data from the edit form.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function prevent_content_edits( array $data, array $postarr ): array {
+
+		$bh_email_post_type = $this->settings->get_emails_cpt_underscored_20();
+
+		$post_type = $data['post_type'] ?? '';
+		if ( $bh_email_post_type !== $post_type ) {
+			return $data;
+		}
+
+		$post_id = (int) ( $postarr['ID'] ?? 0 );
+		if ( 0 === $post_id ) {
+			return $data;
+		}
+
+		$original = get_post( $post_id );
+		if ( ! ( $original instanceof WP_Post ) ) {
+			return $data;
+		}
+
+		$data['post_title']   = $original->post_title;
+		$data['post_content'] = $original->post_content;
+
+		return $data;
 	}
 }

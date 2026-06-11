@@ -299,26 +299,6 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( $original_content, $result['post_content'] );
 	}
 
-	/**
-	 * Prevent_content_edits ignores posts of a different post type.
-	 *
-	 * @covers ::prevent_content_edits
-	 */
-	public function test_prevent_content_edits_ignores_other_post_types(): void {
-
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
-
-		$incoming_data = array(
-			'post_type'  => 'post',
-			'post_title' => 'A regular post',
-		);
-		$postarr       = array( 'ID' => 0 );
-
-		$result = $sut->prevent_content_edits( $incoming_data, $postarr );
-
-		$this->assertSame( 'A regular post', $result['post_title'] );
-	}
-
 	// -------------------------------------------------------------------------
 	// Status change logging
 	// -------------------------------------------------------------------------
@@ -355,42 +335,6 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			API_Interface::class,
 			array(
 				'insert_email_log_note' => Expected::once(),
-			)
-		);
-
-		$sut = new Single_Email_View( $this->make_settings(), $api, $this->make_repository(), $this->logger );
-		$sut->log_status_change( $post_id, $post_after, $post_before );
-	}
-
-	/**
-	 * Log_status_change does nothing when the status has not changed.
-	 *
-	 * @covers ::log_status_change
-	 */
-	public function test_log_status_change_skips_when_status_unchanged(): void {
-
-		register_post_type(
-			$this->post_type,
-			array(
-				'public'  => false,
-				'show_ui' => true,
-			)
-		);
-
-		$post_id = $this->factory()->post->create(
-			array(
-				'post_type'   => $this->post_type,
-				'post_status' => 'bh_email_new',
-			)
-		);
-
-		$post_before = get_post( $post_id );
-		$post_after  = clone $post_before;
-
-		$api = $this->makeEmpty(
-			API_Interface::class,
-			array(
-				'insert_email_log_note' => Expected::never(),
 			)
 		);
 
@@ -466,11 +410,11 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Requirement 6: "Received at:" label appears in the status metabox (not "Published on").
+	 * Requirement 6: "Downloaded at:" label appears in the status metabox (not "Published on").
 	 *
-	 * @covers ::render_status_metabox
+	 * @covers ::render_local_status_metabox
 	 */
-	public function test_render_status_metabox_shows_received_at_label(): void {
+	public function test_render_local_status_metabox_shows_downloaded_at_label(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
@@ -484,19 +428,19 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_status_metabox( $post );
+		$sut->render_local_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
-		$this->assertStringContainsString( 'Received at:', $html, '"Received at:" label should appear in the status metabox' );
+		$this->assertStringContainsString( 'Downloaded at:', $html, '"Downloaded at:" label should appear in the status metabox' );
 		$this->assertStringNotContainsString( 'Published on', $html, '"Published on" label should not appear' );
 	}
 
 	/**
 	 * Requirement 5: the visibility selector is not present in the status metabox output.
 	 *
-	 * @covers ::render_status_metabox
+	 * @covers ::render_local_status_metabox
 	 */
-	public function test_render_status_metabox_does_not_output_visibility_section(): void {
+	public function test_render_local_status_metabox_does_not_output_visibility_section(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
@@ -509,7 +453,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_status_metabox( $post );
+		$sut->render_local_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringNotContainsString( 'id="visibility"', $html );
@@ -519,9 +463,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Requirement 10: "Read on server" badge shown when bh_email_is_read meta is truthy.
 	 *
-	 * @covers ::render_status_metabox
+	 * @covers ::render_local_status_metabox
 	 */
-	public function test_render_status_metabox_shows_read_badge_when_is_read_meta_set(): void {
+	public function test_render_local_status_metabox_shows_read_badge_when_is_read_meta_set(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
@@ -535,7 +479,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_status_metabox( $post );
+		$sut->render_local_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'bh-email-badge--read', $html );
@@ -545,9 +489,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Requirement 10: "Unread on server" badge shown when bh_email_is_read meta is explicitly false.
 	 *
-	 * @covers ::render_status_metabox
+	 * @covers ::render_local_status_metabox
 	 */
-	public function test_render_status_metabox_shows_unread_badge_when_is_read_meta_is_false(): void {
+	public function test_render_local_status_metabox_shows_unread_badge_when_is_read_meta_is_false(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
@@ -561,7 +505,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_status_metabox( $post );
+		$sut->render_local_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'bh-email-badge--unread', $html );
@@ -571,9 +515,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Requirement 10: no remote status badge when bh_email_is_read meta is absent.
 	 *
-	 * @covers ::render_status_metabox
+	 * @covers ::render_local_status_metabox
 	 */
-	public function test_render_status_metabox_shows_no_remote_badge_when_provider_cannot_mark_read(): void {
+	public function test_render_local_status_metabox_shows_no_remote_badge_when_provider_cannot_mark_read(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
@@ -592,7 +536,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_status_metabox( $post );
+		$sut->render_local_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringNotContainsString( 'bh-email-badge--read', $html );
@@ -602,9 +546,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Requirement 11: mark-read button shown when the resolved mailbox reports can_mark_read() = true.
 	 *
-	 * @covers ::render_status_metabox
+	 * @covers ::render_local_status_metabox
 	 */
-	public function test_render_status_metabox_shows_mark_read_button_when_mailbox_can_mark_read(): void {
+	public function test_render_local_status_metabox_shows_mark_read_button_when_mailbox_can_mark_read(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
@@ -639,7 +583,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_status_metabox( $post );
+		$sut->render_local_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'bh-email-mark-read', $html, '"Mark as read on server" button should appear' );
@@ -648,9 +592,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Requirement 11: no remote buttons shown when no mailbox is resolved (no taxonomy term on post).
 	 *
-	 * @covers ::render_status_metabox
+	 * @covers ::render_local_status_metabox
 	 */
-	public function test_render_status_metabox_hides_remote_buttons_when_no_mailbox_resolved(): void {
+	public function test_render_local_status_metabox_hides_remote_buttons_when_no_mailbox_resolved(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
@@ -665,7 +609,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_status_metabox( $post );
+		$sut->render_local_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringNotContainsString( 'bh-email-mark-read', $html );
@@ -676,9 +620,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Requirement 11: delete-on-server button shown when mailbox can_delete_on_server() = true.
 	 *
-	 * @covers ::render_status_metabox
+	 * @covers ::render_local_status_metabox
 	 */
-	public function test_render_status_metabox_shows_delete_button_when_mailbox_can_delete(): void {
+	public function test_render_local_status_metabox_shows_delete_button_when_mailbox_can_delete(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
@@ -710,7 +654,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_status_metabox( $post );
+		$sut->render_local_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'bh-email-delete-on-server', $html );

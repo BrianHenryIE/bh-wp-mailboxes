@@ -153,20 +153,20 @@ test.describe( 'Single email view', () => {
 		await expect( statusBox ).not.toContainText( 'Published on' );
 	} );
 
-	test( 'status metabox shows "Received at:" from the email Date header when present', async ( { admin, page, request } ) => {
+	test( 'status metabox shows "Sent:" from the email Date header when present', async ( { admin, page, request } ) => {
 		const dateHeader = 'Mon, 01 Jan 2024 10:30:00 +0000';
 		const postId = await createEmail( request, { date_header: dateHeader } );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
 		const statusBox = page.locator( '#bh-email-status' );
-		await expect( statusBox ).toContainText( 'Received at:' );
+		await expect( statusBox ).toContainText( 'Sent:' );
 	} );
 
-	test( 'status metabox does not show "Received at:" when email has no Date header', async ( { admin, page, request } ) => {
+	test( 'status metabox always "Sent:" even when email has no Date header', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		await expect( page.locator( '#bh-email-status' ) ).not.toContainText( 'Received at:' );
+		await expect( page.locator( '#bh-email-status' ) ).toContainText( 'Sent:' );
 	} );
 
 	test( 'status metabox always shows "Updated at:"', async ( { admin, page, request } ) => {
