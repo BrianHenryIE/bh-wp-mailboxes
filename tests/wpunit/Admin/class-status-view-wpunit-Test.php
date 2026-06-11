@@ -146,7 +146,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertStringContainsString( 'id="bh-mailboxes-status"', $html );
 		$this->assertStringContainsString( 'No accounts configured', $html );
-		$this->assertStringNotContainsString( '<table', $html );
+		$this->assertStringNotContainsString( '<div class="bh-mailboxes-account-card">', $html );
 	}
 
 	// -------------------------------------------------------------------------
@@ -154,7 +154,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * The account's email address appears in the table row.
+	 * The account's email address appears in its card.
 	 *
 	 * @covers ::display
 	 */
@@ -168,7 +168,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		$html = $this->capture_display( $this->make_sut( $api ) );
 
 		$this->assertStringContainsString( 'inbox@example.com', $html );
-		$this->assertStringContainsString( '<table', $html );
+		$this->assertStringContainsString( '<div class="bh-mailboxes-account-card">', $html );
 	}
 
 	/**
@@ -228,7 +228,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * The email count for the account is shown in the table.
+	 * The email count for the account is shown in its card.
 	 *
 	 * @covers ::display
 	 */

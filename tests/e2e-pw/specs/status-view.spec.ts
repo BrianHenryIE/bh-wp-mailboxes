@@ -44,13 +44,13 @@ test.describe( 'Status_View', () => {
 		}
 	} );
 
-	test( 'account email address appears in the status table', async ( { admin, page, request } ) => {
+	test( 'account email address appears in its status card', async ( { admin, page, request } ) => {
 		const email = `status-view-e2e-${ Date.now() }@example.com`;
 		await createAccount( request, email );
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
 
-		await expect( page.locator( '#bh-mailboxes-status table' ) ).toBeVisible();
+		await expect( page.locator( '.bh-mailboxes-account-card' ) ).toBeVisible();
 		await expect( page.locator( '#bh-mailboxes-status' ) ).toContainText( email );
 	} );
 

@@ -8,7 +8,7 @@ namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use Codeception\Stub\Expected;
@@ -53,9 +53,20 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		/** @var IMessage $email */
 		$email = $parser->parse( $email_contents, true );
 
-		$email_account = Mockery::mock( Email_Account_Settings_Interface::class );
-		$email_account->expects( 'get_account_email_address' )->andReturn( 'test@example.com' );
-		$email_account->expects( 'get_post_id' )->andReturn( 456 );
+		$email_account = new BH_Email_Account(
+			post_id: 456,
+			post_type: $post_type,
+			status: 'active',
+			provider_type_class: 'SomeProvider',
+			email_address: 'test@example.com',
+			display_name: 'Test Account',
+			from_address_regex_filter: null,
+			body_identifier_regex_filter: null,
+			after_download_email_action: null,
+			delete_emails_after_n_days: null,
+			last_successful_login_time: null,
+			last_failed_login_time: null,
+		);
 
 		$result = $sut->save_new(
 			$email,

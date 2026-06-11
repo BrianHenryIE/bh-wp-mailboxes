@@ -5,7 +5,7 @@ namespace BrianHenryIE\WP_Mailboxes;
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
-use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use Mockery;
 use Psr\Log\LoggerInterface;
 use lucatume\WPBrowser\TestCase\WPTestCase;
@@ -60,10 +60,20 @@ class WPUnit_Testcase extends WPTestCase {
 		$mailboxes = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$mailboxes->expects( 'get_emails_cpt_underscored_20' )->andReturn( $post_type );
 
-		// Email_Account_Settings_Interface $email_account
-		$email_account = Mockery::mock( Email_Account_Settings_Interface::class );
-		$email_account->expects( 'get_account_email_address' )->andReturn( 'contact@bhwp.ie' );
-		$email_account->expects( 'get_post_id' )->andReturn( 321 );
+		$email_account = new BH_Email_Account(
+			post_id: 321,
+			post_type: $post_type,
+			status: 'active',
+			provider_type_class: 'SomeProvider',
+			email_address: 'contact@bhwp.ie',
+			display_name: 'Test Account',
+			from_address_regex_filter: null,
+			body_identifier_regex_filter: null,
+			after_download_email_action: null,
+			delete_emails_after_n_days: null,
+			last_successful_login_time: null,
+			last_failed_login_time: null,
+		);
 
 		$bh_email = $repo->save_new( $email, $mailboxes, $email_account );
 

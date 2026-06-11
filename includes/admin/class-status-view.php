@@ -1,6 +1,6 @@
 <?php
 /**
- * Status table rendered at the top of the emails list view.
+ * Status cards rendered at the top of the emails list view.
  *
  * Shows per-account: last fetched time, last failure time, and email count.
  *
@@ -41,7 +41,7 @@ class Status_View {
 	}
 
 	/**
-	 * Renders the status table at the top of the emails list tablenav.
+	 * Renders the status cards at the top of the emails list tablenav.
 	 *
 	 * @hooked manage_posts_extra_tablenav
 	 *
@@ -61,6 +61,14 @@ class Status_View {
 
 		$accounts = $this->api->get_email_accounts();
 
+		echo '<style>
+			#bh-mailboxes-status { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 12px; }
+			.bh-mailboxes-account-card { background:#fff; border:1px solid #c3c4c7; box-shadow:0 1px 1px rgba(0,0,0,.04); padding:8px 12px 10px; min-width:170px; }
+			.bh-mailboxes-account-card__title { font-weight:600; font-size:13px; padding-bottom:5px; margin-bottom:5px; border-bottom:1px solid #f0f0f1; }
+			.bh-mailboxes-account-card__details { margin:0; display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-size:12px; }
+			.bh-mailboxes-account-card__details dt { color:#646970; font-weight:500; }
+			.bh-mailboxes-account-card__details dd { margin:0; }
+		</style>';
 		echo '<div id="bh-mailboxes-status" class="bh-mailboxes-status">';
 
 		if ( empty( $accounts ) ) {
@@ -69,28 +77,26 @@ class Status_View {
 			return;
 		}
 
-		echo '<table class="wp-list-table widefat fixed striped">';
-		echo '<thead><tr>';
-		foreach ( array( 'Account', 'Status', 'Emails', 'Last Fetched', 'Last Failure' ) as $label ) {
-			echo '<th>' . esc_html__( $label, 'bh-wp-mailboxes' ) . '</th>';
-		}
-		echo '</tr></thead><tbody>';
-
 		foreach ( $accounts as $account ) {
-			$email_count  = $this->email_wp_post_repository->count_for_account_email( $account->email_address );
-			$last_fetched = $account->last_successful_login_time;
-			$last_failure = $account->last_failed_login_time;
+			$email_count  = $this->email_wp_post_repository->count_for_account_email( $account );
+			$status_label = $account->is_active() ? __( 'Active', 'bh-wp-mailboxes' ) : __( 'Inactive', 'bh-wp-mailboxes' );
 
-			echo '<tr>';
-			echo '<td>' . esc_html( $account->email_address ) . '</td>';
-			echo '<td>' . esc_html( $account->is_active() ? __( 'Active', 'bh-wp-mailboxes' ) : __( 'Inactive', 'bh-wp-mailboxes' ) ) . '</td>';
-			echo '<td>' . esc_html( (string) $email_count ) . '</td>';
-			echo '<td>' . esc_html( $this->format_time( $last_fetched ) ) . '</td>';
-			echo '<td>' . esc_html( $this->format_time( $last_failure ) ) . '</td>';
-			echo '</tr>';
+			echo '<div class="bh-mailboxes-account-card">';
+			echo '<div class="bh-mailboxes-account-card__title">' . esc_html( $account->email_address ) . '</div>';
+			echo '<dl class="bh-mailboxes-account-card__details">';
+			echo '<dt>' . esc_html__( 'Status', 'bh-wp-mailboxes' ) . '</dt>';
+			echo '<dd>' . esc_html( $status_label ) . '</dd>';
+			echo '<dt>' . esc_html__( 'Emails', 'bh-wp-mailboxes' ) . '</dt>';
+			echo '<dd>' . esc_html( (string) $email_count ) . '</dd>';
+			echo '<dt>' . esc_html__( 'Last fetched', 'bh-wp-mailboxes' ) . '</dt>';
+			echo '<dd>' . esc_html( $this->format_time( $account->last_successful_login_time ) ) . '</dd>';
+			echo '<dt>' . esc_html__( 'Last failure', 'bh-wp-mailboxes' ) . '</dt>';
+			echo '<dd>' . esc_html( $this->format_time( $account->last_failed_login_time ) ) . '</dd>';
+			echo '</dl>';
+			echo '</div>';
 		}
 
-		echo '</tbody></table></div>';
+		echo '</div>';
 	}
 
 	/**
