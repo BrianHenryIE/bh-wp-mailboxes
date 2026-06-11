@@ -97,3 +97,14 @@ jobs:
         run: cat ${{ env.CHECKSTYLE_FILENAME }}
         env:
           CHECKSTYLE_FILENAME: "filtered-checkstyle.xml"
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phpcbf-artifacts-${{ github.run_id }}
+          path: |
+            phpcs-checkstyle.xml
+            filtered-checkstyle.xml
+            *.diff
+          if-no-files-found: ignore
