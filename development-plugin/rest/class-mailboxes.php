@@ -29,6 +29,8 @@ class Mailboxes {
 	 */
 	const EMAIL_POST_TYPE = 'bh_wp_mailboxes_cpt';
 
+	const ACCOUNT_POST_TYPE = 'my_plugin_account';
+
 	/**
 	 * Register the REST routes.
 	 */
@@ -50,6 +52,26 @@ class Mailboxes {
 				'methods'             => 'GET',
 				'callback'            => $this->get_status( ... ),
 				'permission_callback' => '__return_true',
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/accounts',
+			array(
+				'methods'             => 'POST',
+				'callback'            => $this->create_account( ... ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'email_address' => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+					'display_name'  => array(
+						'type'     => 'string',
+						'required' => false,
+					),
+				),
 			)
 		);
 
@@ -114,6 +136,44 @@ class Mailboxes {
 			),
 			200
 		);
+	}
+
+	/**
+	 * Create a fixture email account post for e2e tests.
+	 *
+	 * Required body param: email_address.
+	 * Optional: display_name.
+	 *
+	 * Returns { post_id: int } with HTTP 201.
+	 *
+	 * @param WP_REST_Request $request The REST request object.
+	 */
+	public function create_account( WP_REST_Request $request ): WP_REST_Response {
+
+		$email_address = sanitize_email( (string) $request->get_param( 'email_address' ) );
+		$display_name  = is_string( $request->get_param( 'display_name' ) )
+			? sanitize_text_field( $request->get_param( 'display_name' ) )
+			: $email_address;
+
+		$post_id = wp_insert_post(
+			array(
+				'post_type'   => self::ACCOUNT_POST_TYPE,
+				'post_status' => 'active',
+				'post_title'  => $display_name,
+				'post_name'   => sanitize_title( $email_address ),
+			),
+			true
+		);
+
+		if ( is_wp_error( $post_id ) ) {
+			return new WP_REST_Response( array( 'error' => $post_id->get_error_message() ), 500 );
+		}
+
+		update_post_meta( $post_id, 'email_address', $email_address );
+		update_post_meta( $post_id, 'display_name', $display_name );
+		update_post_meta( $post_id, 'provider_type_class', 'BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap' );
+
+		return new WP_REST_Response( array( 'post_id' => $post_id ), 201 );
 	}
 
 	/**

@@ -63,13 +63,14 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 			// 'is_read_remote'    => $this->is_read_remote ? 'yes' : 'no', // TODO: don't save anything for null.
 			// 'is_deleted_remote' => $this->is_deleted_remote,
 
-				'provider_type_class'      => $this->provider_type_class,
+			'provider_type_class'          => $this->provider_type_class,
 			'email_address'                => $this->email_address, // The post_name is sanitized.
 			'display_name'                 => $this->display_name,
 			'from_address_regex_filter'    => $this->from_address_regex_filter,
 			'body_identifier_regex_filter' => $this->body_identifier_regex_filter,
 			'after_download_email_action'  => $this->after_download_email_action,
 			'delete_emails_after_n_days'   => $this->delete_emails_after_n_days,
+			'last_checked_time'            => $this->last_checked_time,
 			'last_successful_login_time'   => $this->last_successful_login_time,
 			'last_failed_login_time'       => $this->last_failed_login_time,
 		);

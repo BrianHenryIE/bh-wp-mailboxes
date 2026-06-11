@@ -144,6 +144,27 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	}
 
 	/**
+	 * Returns the number of saved emails for a given account email address.
+	 *
+	 * The account address is encoded in each email's GUID, so this uses a LIKE
+	 * query rather than a meta lookup.
+	 *
+	 * @param string $account_email The mailbox address, e.g. "contact@example.com".
+	 */
+	public function count_for_account_email( string $account_email ): int {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$count = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM $wpdb->posts WHERE post_type = %s AND post_status != 'trash' AND guid LIKE %s",
+				$this->post_type,
+				'%/' . $wpdb->esc_like( rawurlencode( $account_email ) ) . '/%',
+			)
+		);
+		return (int) $count;
+	}
+
+	/**
 	 * Saves a new email to the database.
 	 *
 	 * @param IMessage                           $email         The email to save.

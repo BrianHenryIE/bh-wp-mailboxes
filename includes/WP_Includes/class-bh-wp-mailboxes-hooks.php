@@ -11,6 +11,7 @@ use BrianHenryIE\WP_Mailboxes\Admin\Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View_Ajax;
+use BrianHenryIE\WP_Mailboxes\Admin\Status_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
@@ -97,6 +98,9 @@ class BH_WP_Mailboxes_Hooks {
 	 * Define hooks related to the list table view.
 	 */
 	protected function define_admin_ui_hooks(): void {
+
+		$status_view = new Status_View( $this->api, $this->settings, $this->email_wp_post_repository, $this->logger );
+		add_action( 'manage_posts_extra_tablenav', $status_view->display( ... ), 5 );
 
 		$mailbox_list_page = new Emails_List_Page( $this->email_wp_post_repository, $this->api, $this->settings, $this->logger );
 
