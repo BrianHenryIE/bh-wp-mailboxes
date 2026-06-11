@@ -75,7 +75,7 @@ class API implements API_Interface {
 	 * @param string  $provider_type_class         Provider class to use for fetching (class-string<Email_Fetcher_Interface>).
 	 * @param ?string $from_address_regex_filter   Optional regex to filter incoming senders.
 	 * @param ?string $body_identifier_regex_filter Optional regex to filter email bodies.
-	 * @param ?string $after_download_email_action One of: nothing, mark_read, delete.
+	 * @param ?string $after_download_remote_email_action One of: nothing, mark_read, delete.
 	 * @param ?int    $delete_local_emails_after_n_days  Days before locally-saved emails are purged.
 	 *
 	 * @throws Exception When an account with this email address already exists.
@@ -86,7 +86,7 @@ class API implements API_Interface {
 		string $provider_type_class,
 		?string $from_address_regex_filter,
 		?string $body_identifier_regex_filter,
-		?string $after_download_email_action,
+		?string $after_download_remote_email_action,
 		?int $delete_local_emails_after_n_days,
 	): BH_Email_Account {
 		$email_accounts_repository = $this->email_account_repository;
@@ -103,7 +103,7 @@ class API implements API_Interface {
 			provider_type_class: $provider_type_class,
 			from_address_regex_filter: $from_address_regex_filter,
 			body_identifier_regex_filter: $body_identifier_regex_filter,
-			after_download_email_action: $after_download_email_action,
+			after_download_remote_email_action: $after_download_remote_email_action,
 			delete_local_emails_after_n_days: $delete_local_emails_after_n_days,
 		);
 	}

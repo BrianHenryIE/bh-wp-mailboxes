@@ -69,7 +69,7 @@ class WPUnit_Testcase extends WPTestCase {
 			display_name: 'Test Account',
 			from_address_regex_filter: null,
 			body_identifier_regex_filter: null,
-			after_download_email_action: null,
+			after_download_remote_email_action: null,
 			delete_local_emails_after_n_days: null,
 			last_successful_login_time: null,
 			last_failed_login_time: null,

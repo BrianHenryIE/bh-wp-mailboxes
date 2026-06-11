@@ -27,7 +27,7 @@ trait Email_Account_Settings_Defaults_Trait {
 	/**
 	 * Returns the default post-download action.
 	 */
-	public function after_download_email_action(): string {
+	public function after_download_remote_email_action(): string {
 		return 'nothing';
 	}
 

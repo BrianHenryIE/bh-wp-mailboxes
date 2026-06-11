@@ -48,7 +48,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @param string  $provider_type_class The API the account uses.
 	 * @param ?string $from_address_regex_filter Only save emails whose from address matches this regex.
 	 * @param ?string $body_identifier_regex_filter Only save emails whose body matches this regex.
-	 * @param ?string $after_download_email_action Delete or mark read or do nothing after download (if at all possible).
+	 * @param ?string $after_download_remote_email_action Delete or mark read or do nothing after download (if at all possible).
 	 * @param ?int    $delete_local_emails_after_n_days Delete locally stored emails after n days.
 	 *
 	 * @throws Exception When wp_insert_post fails.
@@ -59,7 +59,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		string $provider_type_class,
 		?string $from_address_regex_filter,
 		?string $body_identifier_regex_filter,
-		?string $after_download_email_action,
+		?string $after_download_remote_email_action,
 		?int $delete_local_emails_after_n_days,
 	): BH_Email_Account {
 
@@ -73,7 +73,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			display_name: $display_name,
 			from_address_regex_filter: $from_address_regex_filter,
 			body_identifier_regex_filter: $body_identifier_regex_filter,
-			after_download_email_action: $after_download_email_action,
+			after_download_remote_email_action: $after_download_remote_email_action,
 			delete_local_emails_after_n_days: $delete_local_emails_after_n_days,
 		);
 
@@ -180,7 +180,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @param ?string            $display_name The friendly name for UI.
 	 * @param ?string            $from_address_regex_filter Filter to only save emails whose from address matches this.
 	 * @param ?string            $body_identifier_regex_filter Filter to only save emails whose body matches this.
-	 * @param ?string            $after_download_email_action Operation to perform after: delete|mark-read|nothing.
+	 * @param ?string            $after_download_remote_email_action Operation to perform after: delete|mark-read|nothing.
 	 * @param ?int               $delete_local_emails_after_n_days When to purge the local copies.
 	 * @param ?string            $status The optional status change.
 	 * @param ?DateTimeInterface $last_checked_time The new last checked time.
@@ -195,7 +195,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		?string $display_name = null,
 		?string $from_address_regex_filter = null,
 		?string $body_identifier_regex_filter = null,
-		?string $after_download_email_action = null,
+		?string $after_download_remote_email_action = null,
 		?int $delete_local_emails_after_n_days = null,
 		// Status.
 		?string $status = null,
@@ -212,7 +212,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			display_name: $display_name,
 			from_address_regex_filter: $from_address_regex_filter,
 			body_identifier_regex_filter: $body_identifier_regex_filter,
-			after_download_email_action: $after_download_email_action,
+			after_download_remote_email_action: $after_download_remote_email_action,
 			delete_local_emails_after_n_days: $delete_local_emails_after_n_days,
 			last_successful_login_time: $last_successful_login_time,
 			last_failed_login_time: $last_failed_login_time,

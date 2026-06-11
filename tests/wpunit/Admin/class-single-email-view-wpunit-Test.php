@@ -554,8 +554,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			Email_Account_Settings_Interface::class,
 			array(
 				'get_account_display_friendly_name' => fn() => 'My Test Mailbox',
-				'can_mark_read'                    => fn() => true,
-				'can_delete_on_server'             => fn() => false,
+				'can_mark_read'                     => fn() => true,
+				'can_delete_on_server'              => fn() => false,
 			)
 		);
 
@@ -625,8 +625,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			Email_Account_Settings_Interface::class,
 			array(
 				'get_account_display_friendly_name' => fn() => 'Deletable Mailbox',
-				'can_mark_read'                    => fn() => false,
-				'can_delete_on_server'             => fn() => true,
+				'can_mark_read'                     => fn() => false,
+				'can_delete_on_server'              => fn() => true,
 			)
 		);
 

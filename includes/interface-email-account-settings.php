@@ -33,7 +33,7 @@ interface Email_Account_Settings_Interface {
 	 *
 	 * @return string nothing|mark_read|delete
 	 */
-	public function after_download_email_action(): string;
+	public function after_download_remote_email_action(): string;
 
 	/**
 	 * Regex to filter email from address for further matching.

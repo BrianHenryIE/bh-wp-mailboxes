@@ -39,27 +39,27 @@ class BH_Email_Account_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * A null after_download_email_action must default to 'nothing'.
+	 * A null after_download_remote_email_action must default to 'nothing'.
 	 *
-	 * @covers ::after_download_email_action
+	 * @covers ::after_download_remote_email_action
 	 */
-	public function test_after_download_email_action_returns_nothing_when_null(): void {
+	public function test_after_download_remote_email_action_returns_nothing_when_null(): void {
 
-		$sut = BH_Email_Account_Fixture::make( after_download_email_action: null );
+		$sut = BH_Email_Account_Fixture::make( after_download_remote_email_action: null );
 
-		$this->assertSame( 'nothing', $sut->after_download_email_action() );
+		$this->assertSame( 'nothing', $sut->after_download_remote_email_action() );
 	}
 
 	/**
 	 * A configured action value must be returned as-is.
 	 *
-	 * @covers ::after_download_email_action
+	 * @covers ::after_download_remote_email_action
 	 */
-	public function test_after_download_email_action_returns_configured_value(): void {
+	public function test_after_download_remote_email_action_returns_configured_value(): void {
 
-		$sut = BH_Email_Account_Fixture::make( after_download_email_action: 'mark_read' );
+		$sut = BH_Email_Account_Fixture::make( after_download_remote_email_action: 'mark_read' );
 
-		$this->assertSame( 'mark_read', $sut->after_download_email_action() );
+		$this->assertSame( 'mark_read', $sut->after_download_remote_email_action() );
 	}
 
 	/**
