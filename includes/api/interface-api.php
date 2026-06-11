@@ -9,6 +9,7 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
+use DateTimeInterface;
 
 /**
  * Defines the public API for interacting with email mailboxes.
@@ -87,4 +88,13 @@ interface API_Interface {
 	 * @return BH_Email_Account[]
 	 */
 	public function get_email_accounts(): array;
+
+	/**
+	 * Fetches new emails for a single account and saves them.
+	 *
+	 * @param BH_Email_Account $account The account to check.
+	 *
+	 * @return array{success:bool, new_emails:BH_Email[]}
+	 */
+	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): array;
 }

@@ -30,7 +30,7 @@ readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_In
 		public ?string $from_address_regex_filter,
 		public ?string $body_identifier_regex_filter,
 		public ?string $after_download_email_action,
-		public ?int $delete_emails_after_n_days,
+		public ?int $delete_local_emails_after_n_days,
 		public ?\DateTimeInterface $last_successful_login_time, // Not exactly last email received time.
 		public ?\DateTimeInterface $last_failed_login_time,
 	) {
@@ -68,7 +68,7 @@ readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_In
 	}
 
 	public function get_delete_emails_days(): ?int {
-		return $this->delete_emails_after_n_days;
+		return $this->delete_local_emails_after_n_days;
 	}
 
 	public function get_post_type(): string {

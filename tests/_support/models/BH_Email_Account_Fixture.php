@@ -16,7 +16,7 @@ class BH_Email_Account_Fixture {
 		?string $from_address_regex_filter = null,
 		?string $body_identifier_regex_filter = null,
 		?string $after_download_email_action = null,
-		?int $delete_emails_after_n_days = 7,
+		?int $delete_local_emails_after_n_days = 7,
 		?\DateTimeInterface $last_successful_login_time = null,
 		?\DateTimeInterface $last_failed_login_time = null,
 	): BH_Email_Account {
@@ -30,7 +30,7 @@ class BH_Email_Account_Fixture {
 			from_address_regex_filter: $from_address_regex_filter,
 			body_identifier_regex_filter: $body_identifier_regex_filter,
 			after_download_email_action: $after_download_email_action,
-			delete_emails_after_n_days: $delete_emails_after_n_days,
+			delete_local_emails_after_n_days: $delete_local_emails_after_n_days,
 			last_successful_login_time: $last_successful_login_time,
 			last_failed_login_time: $last_failed_login_time,
 		);

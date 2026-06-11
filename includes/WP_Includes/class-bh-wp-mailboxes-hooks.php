@@ -145,5 +145,7 @@ class BH_WP_Mailboxes_Hooks {
 		$ajax = new Ajax( $this->api, $this->settings, $this->logger );
 
 		add_action( 'wp_ajax_bh_wp_mailboxes_check_email', $ajax->check_email( ... ) );
+		add_action( 'wp_ajax_bh_wp_mailboxes_check_account', $ajax->check_account( ... ) );
+		add_action( 'wp_ajax_bh_wp_mailboxes_set_fetch_since', $ajax->check_account( ... ) );
 	}
 }

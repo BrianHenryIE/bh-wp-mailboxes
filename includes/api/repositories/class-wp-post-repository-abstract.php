@@ -7,6 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
+use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract;
 
 /**
@@ -56,5 +57,32 @@ abstract class WP_Post_Repository_Abstract {
 		}
 
 		return $post_id;
+	}
+
+	/**
+	 * Add a log message for each update/modification. This is saved as a WordPress comment.
+	 *
+	 * The idea is that plugins consuming this library can annotate the email, e.g. link the WooCommerce order it was
+	 * matched to, to make debugging easy.
+	 *
+	 * @param Saved_Post $saved_post The email account or email to attach the message to.
+	 * @param string     $message The message to log. Will be sanitized with wp_kses_post.
+	 * @param bool       $is_internal Was the message added by the library's automations or by an explicit action.
+	 * @param array      $meta List of values changed.
+	 */
+	public function log( Saved_Post $saved_post, string $message, bool $is_internal = false, array $meta = array() ): void {
+
+		wp_insert_comment(
+			array(
+				'comment_post_ID'    => $saved_post->get_post_id(),
+				'comment_content'    => wp_kses_post( $message ),
+				'comment_agent'      => 'bh-wp-mailboxes',
+				'comment_type'       => 'bh_email_log',
+				'comment_author'     => 'bh-wp-mailboxes',
+				'comment_author_url' => '',
+				'user_id'            => get_current_user_id(),
+				'comment_approved'   => 1,
+			)
+		);
 	}
 }

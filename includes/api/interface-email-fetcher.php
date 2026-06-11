@@ -26,9 +26,30 @@ interface Email_Fetcher_Interface {
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time ): Collection;
 
-	// public function test_connection(); // TODO: implement.
+	/**
+	 * Test the account connection without returning emails.
+	 */
+	// `public function test_connection();`.
+
+	/**
+	 * Does the email service support reading the read/unread status of emails on the server.
+	 */
 	public function can_read_status(): bool;
+
+	/**
+	 * Does the email service support changing the read/unread status on the server.
+	 */
 	public function can_mark_read(): bool;
+
+	/**
+	 * Does the service supports deleting the remote emails.
+	 */
 	public function can_delete_on_server(): bool;
-	// public function do_delete_on_server(): bool;
+
+	/**
+	 * Delete the email on the remote server.
+	 *
+	 * @throws \Exception When the email service does not support the operation or the user does not have permission.
+	 */
+	// `public function do_delete_on_server(): bool;`.
 }

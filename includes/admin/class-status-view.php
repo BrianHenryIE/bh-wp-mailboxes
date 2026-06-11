@@ -63,6 +63,8 @@ class Status_View {
 			.bh-mailboxes-account-card__details { margin:0; display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-size:12px; }
 			.bh-mailboxes-account-card__details dt { color:#646970; font-weight:500; }
 			.bh-mailboxes-account-card__details dd { margin:0; }
+			.bh-mailboxes-account-card__actions { margin-top:8px; display:flex; align-items:center; gap:5px; }
+			.bh-fetch-since-input { width:120px; }
 		</style>';
 		echo '<div id="bh-mailboxes-status" class="bh-mailboxes-status">';
 
@@ -72,9 +74,13 @@ class Status_View {
 			return;
 		}
 
+		wp_nonce_field( 'bh-wp-mailboxes-account-actions', '_wpnonce_account_actions' );
+
 		foreach ( $accounts as $account ) {
 			$email_count  = $this->email_wp_post_repository->count_for_account_email( $account );
 			$status_label = $account->is_active() ? __( 'Active', 'bh-wp-mailboxes' ) : __( 'Inactive', 'bh-wp-mailboxes' );
+			$since_value  = $account->last_successful_login_time?->format( 'Y-m-d' ) ?? '';
+			$account_id   = esc_attr( (string) $account->get_post_id() );
 
 			echo '<div class="bh-mailboxes-account-card">';
 			echo '<div class="bh-mailboxes-account-card__title">' . esc_html( $account->email_address ) . '</div>';
@@ -88,6 +94,11 @@ class Status_View {
 			echo '<dt>' . esc_html__( 'Last failure', 'bh-wp-mailboxes' ) . '</dt>';
 			echo '<dd>' . esc_html( $this->format_time( $account->last_failed_login_time ) ) . '</dd>';
 			echo '</dl>';
+			echo '<div class="bh-mailboxes-account-card__actions">';
+			echo '<button class="button button-primary button-small bh-check-account" data-account-id="' . $account_id . '">' . esc_html__( 'Check now', 'bh-wp-mailboxes' ) . '</button>';
+			echo '<button class="button button-small bh-fetch-since-toggle" data-account-id="' . $account_id . '" title="' . esc_attr__( 'Set the date from which emails will be fetched', 'bh-wp-mailboxes' ) . '">' . esc_html__( 'Since…', 'bh-wp-mailboxes' ) . '</button>';
+			echo '<input type="date" class="bh-fetch-since-input" data-account-id="' . $account_id . '" value="' . esc_attr( $since_value ) . '" style="display:none">';
+			echo '</div>';
 			echo '</div>';
 		}
 

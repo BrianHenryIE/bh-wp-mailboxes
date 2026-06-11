@@ -60,7 +60,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			from_address_regex_filter: null,
 			body_identifier_regex_filter: null,
 			after_download_email_action: null,
-			delete_emails_after_n_days: 1,
+			delete_local_emails_after_n_days: 1,
 			last_successful_login_time: null,
 			last_failed_login_time: null,
 		);

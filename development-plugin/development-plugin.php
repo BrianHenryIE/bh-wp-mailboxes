@@ -193,7 +193,7 @@ if ( ! is_null( $imap_settings ) && ! isset( $accounts[ $imap_settings->get_acco
 		from_address_regex_filter: null,
 		body_identifier_regex_filter: null,
 		after_download_email_action: null,
-		delete_emails_after_n_days: 1,
+		delete_local_emails_after_n_days: 1,
 	);
 }
 

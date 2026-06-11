@@ -9,8 +9,6 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Fetcher;
@@ -78,7 +76,7 @@ class API implements API_Interface {
 	 * @param ?string $from_address_regex_filter   Optional regex to filter incoming senders.
 	 * @param ?string $body_identifier_regex_filter Optional regex to filter email bodies.
 	 * @param ?string $after_download_email_action One of: nothing, mark_read, delete.
-	 * @param ?int    $delete_emails_after_n_days  Days before locally-saved emails are purged.
+	 * @param ?int    $delete_local_emails_after_n_days  Days before locally-saved emails are purged.
 	 *
 	 * @throws Exception When an account with this email address already exists.
 	 */
@@ -89,7 +87,7 @@ class API implements API_Interface {
 		?string $from_address_regex_filter,
 		?string $body_identifier_regex_filter,
 		?string $after_download_email_action,
-		?int $delete_emails_after_n_days,
+		?int $delete_local_emails_after_n_days,
 	): BH_Email_Account {
 		$email_accounts_repository = $this->email_account_repository;
 		if ( ! empty(
@@ -106,7 +104,7 @@ class API implements API_Interface {
 			from_address_regex_filter: $from_address_regex_filter,
 			body_identifier_regex_filter: $body_identifier_regex_filter,
 			after_download_email_action: $after_download_email_action,
-			delete_emails_after_n_days: $delete_emails_after_n_days,
+			delete_local_emails_after_n_days: $delete_local_emails_after_n_days,
 		);
 	}
 
@@ -143,71 +141,8 @@ class API implements API_Interface {
 		$first_run_datetime = $now_time->sub( $interval_one_week );
 
 		foreach ( $email_accounts as $email_account ) {
-
-			if ( ! $email_account->is_active() ) {
-				$this->logger->debug( 'Skipping inactive email account ' . $email_account->display_name );
-				continue;
-			}
-
-			$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $email_account );
-
-			if ( is_null( $credentials ) || ! ( $credentials instanceof Account_Credentials_Interface ) ) {
-				$this->logger->warning( 'No credentials found for ' . $email_account->display_name );
-				continue;
-			}
-
-			// Check if we have recently had a failed login.
-			// Do not retry: some servers rate limit bad auth attempts and blacklist IPs.
-			if ( ! is_null( $email_account->last_failed_login_time ) ) {
-
-				// If last failure time was less than four hours ago, skip.
-
-				if ( $email_account->last_failed_login_time > ( new DateTime() )->sub( new DateInterval( 'PT4H' ) ) ) {
-					$this->logger->info(
-						'Too soon after failed login, please check your password and save settings to try again.',
-						array(
-							'account_name' => $email_account->display_name,
-						)
-					);
-					continue;
-				}
-			}
-
-			$fetcher = $this->get_provider_for_email_account( $email_account );
-
-			if ( is_null( $fetcher ) ) {
-				$this->logger->warning( 'No fetcher found for ' . $email_account->display_name );
-				continue;
-			}
-
-			$fetcher->set_credentials( $credentials );
-
-			$since_datetime = $last_fetched_times[ $email_account->email_address ] ?? $first_run_datetime;
-
-			try {
-				$all_new_account_emails = $fetcher->retrieve_emails( $since_datetime );
-			} catch ( Exception $exception ) {
-				$this->logger->error(
-					'Error fetching emails for ' . $email_account->display_name . '. ' . $exception->getMessage(),
-					array(
-						'exception'        => $exception,
-						'account'          => $email_account->display_name,
-						'mailbox_settings' => $email_account,
-					)
-				);
-				continue;
-			}
-
-			$this->email_account_repository->update( $email_account, last_checked_time: $now_time );
-
-			/**
-			 * Newly saved BH_Email objects for this account.
-			 *
-			 * @var BH_Email[] $all_new_account_bh_emails
-			 */
-			$all_new_account_bh_emails = $this->email_repository->save_all( $all_new_account_emails, $this->settings, $email_account );
-
-			$all_new_emails = array_merge( $all_new_emails, $all_new_account_bh_emails );
+			$fetched        = $this->fetch_for_account( $email_account, $last_fetched_times[ $email_account->email_address ] ?? $first_run_datetime, $now_time );
+			$all_new_emails = array_merge( $all_new_emails, $fetched );
 		}
 
 		/**
@@ -228,6 +163,88 @@ class API implements API_Interface {
 			'success'        => true,
 			'all_new_emails' => $all_new_emails,
 			'saved_emails'   => $saved_emails,
+		);
+	}
+
+	/**
+	 * Fetches new emails for a single account, saves them, and updates the account's last-checked time.
+	 *
+	 * Shared by check_email() (loop) and check_email_for_account() (single).
+	 *
+	 * @param BH_Email_Account  $email_account   The account to fetch for.
+	 * @param DateTimeInterface $since_datetime  Fetch emails newer than this time.
+	 * @param DateTimeImmutable $now_time        Current time, used to update last-checked meta.
+	 *
+	 * @return BH_Email[] Newly saved emails for the account.
+	 */
+	protected function fetch_for_account( BH_Email_Account $email_account, DateTimeInterface $since_datetime, DateTimeImmutable $now_time ): array {
+
+		if ( ! $email_account->is_active() ) {
+			$this->logger->debug( 'Skipping inactive email account ' . $email_account->display_name );
+			return array();
+		}
+
+		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $email_account );
+
+		if ( is_null( $credentials ) || ! ( $credentials instanceof Account_Credentials_Interface ) ) {
+			$this->logger->warning( 'No credentials found for ' . $email_account->display_name );
+			return array();
+		}
+
+		if ( ! is_null( $email_account->last_failed_login_time ) ) {
+			if ( $email_account->last_failed_login_time > ( new DateTime() )->sub( new DateInterval( 'PT4H' ) ) ) {
+				$this->logger->info(
+					'Too soon after failed login, please check your password and save settings to try again.',
+					array( 'account_name' => $email_account->display_name )
+				);
+				return array();
+			}
+		}
+
+		$fetcher = $this->get_provider_for_email_account( $email_account );
+
+		if ( is_null( $fetcher ) ) {
+			$this->logger->warning( 'No fetcher found for ' . $email_account->display_name );
+			return array();
+		}
+
+		$fetcher->set_credentials( $credentials );
+
+		try {
+			$all_new_account_emails = $fetcher->retrieve_emails( $since_datetime );
+		} catch ( Exception $exception ) {
+			$this->logger->error(
+				'Error fetching emails for ' . $email_account->display_name . '. ' . $exception->getMessage(),
+				array(
+					'exception'        => $exception,
+					'account'          => $email_account->display_name,
+					'mailbox_settings' => $email_account,
+				)
+			);
+			return array();
+		}
+
+		$this->email_account_repository->update( $email_account, last_checked_time: $now_time );
+
+		/** @var BH_Email[] $saved */
+		$saved = $this->email_repository->save_all( $all_new_account_emails, $this->settings, $email_account );
+		return $saved;
+	}
+
+	/**
+	 * Fetches new emails for a single account and saves them.
+	 *
+	 * @param BH_Email_Account $account The account to check.
+	 *
+	 * @return array{success:bool, new_emails:BH_Email[]}
+	 */
+	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): array {
+		$now_time = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
+		$since    = $since ?? $account->last_successful_login_time ?? $now_time->sub( new DateInterval( 'P1W' ) );
+		$saved    = $this->fetch_for_account( $account, $since, $now_time );
+		return array(
+			'success'    => true,
+			'new_emails' => $saved,
 		);
 	}
 
@@ -454,7 +471,7 @@ class API implements API_Interface {
 
 		$fetcher = apply_filters( 'bh_wp_mailboxes_fetcher_for_credentials', null, $email_account );
 
-		if ( ! is_null( $fetcher ) && ( $fetcher instanceof Email_Fetcher_Interface ) ) {
+		if ( $fetcher instanceof Email_Fetcher_Interface ) {
 			return $fetcher;
 		}
 

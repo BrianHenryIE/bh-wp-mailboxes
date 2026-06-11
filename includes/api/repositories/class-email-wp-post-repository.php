@@ -9,7 +9,6 @@ namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Query;
@@ -237,22 +236,18 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		);
 	}
 
-	public function log( BH_Email $email, string $message ): void {
-
-		wp_insert_comment(
-			array(
-				'comment_post_ID'    => $email->post_id,
-				'comment_content'    => wp_kses_post( $message ),
-				'comment_agent'      => 'bh-wp-mailboxes',
-				'comment_type'       => 'bh_email_log',
-				'comment_author'     => 'bh-wp-mailboxes',
-				'comment_author_url' => '',
-				'user_id'            => get_current_user_id(),
-				'comment_approved'   => 1,
-			)
-		);
-	}
-
+	/**
+	 * Update a property on an email.
+	 *
+	 * NB: many email properties are not mutable.
+	 *
+	 * @param BH_Email $email
+	 * @param ?string  $local_status
+	 * @param ?bool    $is_remote_read
+	 * @param ?bool    $is_remote_deleted
+	 *
+	 * @throws \Exception
+	 */
 	public function update(
 		BH_Email $email,
 		?string $local_status = null,
@@ -279,7 +274,13 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		$result = wp_update_post( $args, true );
 
 		if ( is_wp_error( $result ) ) {
-			throw new \Exception( "Failed to update email post with ID {$email->post_id}: " . $result->get_error_message() );
+			throw new \Exception(
+				sprintf(
+					'Failed to update email post with ID %d: %s',
+					$email->post_id,
+					esc_html( $result->get_error_message() )
+				)
+			);
 		}
 
 		/**

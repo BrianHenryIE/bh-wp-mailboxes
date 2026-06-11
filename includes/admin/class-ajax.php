@@ -9,6 +9,8 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use DateTimeImmutable;
+use DateTimeZone;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
@@ -58,5 +60,40 @@ class Ajax {
 		} else {
 			wp_send_json_error( $result );
 		}
+	}
+
+	/**
+	 * Triggers an immediate email check for a single account.
+	 *
+	 * @hooked wp_ajax_bh_wp_mailboxes_check_account
+	 */
+	public function check_account(): void {
+
+		if ( ! isset( $_POST['_wpnonce'], $_POST['account_post_id'] )
+			|| ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-account-actions' ) ) {
+			wp_send_json_error( array( 'message' => 'Invalid nonce.' ) );
+		}
+
+		$account_post_id = (int) $_POST['account_post_id'];
+		$account         = null;
+		foreach ( $this->api->get_email_accounts() as $candidate ) {
+			if ( $candidate->get_post_id() === $account_post_id ) {
+				$account = $candidate;
+				break;
+			}
+		}
+
+		if ( null === $account ) {
+			wp_send_json_error( array( 'message' => 'Account not found.' ) );
+		}
+
+		$since = null;
+		if ( isset( $_POST['since_date'] ) ) {
+			$since_raw = sanitize_text_field( wp_unslash( (string) $_POST['since_date'] ) );
+			$since     = DateTimeImmutable::createFromFormat( 'Y-m-d', $since_raw, new DateTimeZone( 'UTC' ) ) ?: null;
+		}
+
+		$result = $this->api->check_email_for_account( $account, $since );
+		wp_send_json_success( array( 'new_email_count' => count( $result['new_emails'] ) ) );
 	}
 }

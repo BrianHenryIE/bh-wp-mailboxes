@@ -80,7 +80,7 @@ class BH_Email_Account_Unit_Test extends Unit_Testcase {
 			display_name: 'My Account',
 			from_address_regex_filter: '/^sender@/',
 			body_identifier_regex_filter: '/order #\d+/',
-			delete_emails_after_n_days: 14,
+			delete_local_emails_after_n_days: 14,
 		);
 
 		$this->assertSame( 42, $sut->get_post_id() );
@@ -103,7 +103,7 @@ class BH_Email_Account_Unit_Test extends Unit_Testcase {
 		$sut = BH_Email_Account_Fixture::make(
 			from_address_regex_filter: null,
 			body_identifier_regex_filter: null,
-			delete_emails_after_n_days: null,
+			delete_local_emails_after_n_days: null,
 		);
 
 		$this->assertNull( $sut->get_from_email_regex() );

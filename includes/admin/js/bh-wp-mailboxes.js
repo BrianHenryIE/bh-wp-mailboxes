@@ -3,43 +3,62 @@
 
     $(function() {
 
-        $('#check-email').on(
-            'click',
-            function(event) {
-                event.preventDefault();
+        // ── Global check-all button ────────────────────────────────────────────
+        $('#check-email').on('click', function(event) {
+            event.preventDefault();
 
-                let buttonName = event.target.name;
+            var urlParams = new URLSearchParams(window.location.search);
+            var data = {
+                action: 'bh_wp_mailboxes_check_email',
+                mailboxes_cpt: urlParams.get('post_type'),
+                _wpnonce: $('#_wpnonce_checknow').val(),
+            };
 
-                var data = {};
+            $.post(ajaxurl, data, function(response) {
+                console.log(response);
+            });
+        });
 
-                // $_GET['page'] has the slug.
-                // e.g. ?page=bh-wp-logger-test-plugin-logs
-                var urlParams = new URLSearchParams(window.location.search);
+        // ── Per-account: Check now ─────────────────────────────────────────────
+        $(document).on('click', '.bh-check-account', function() {
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Checking…');
 
-                data.mailboxes_cpt = urlParams.get('post_type');
-                data._wpnonce = $('#_wpnonce_checknow').val();
-
-                switch ( buttonName) {
-                    case 'check-email':
-                        data.action = 'bh_wp_mailboxes_check_email';
-
-                        break;
-                    default:
-                        return;
+            $.post(ajaxurl, {
+                action: 'bh_wp_mailboxes_check_account',
+                account_post_id: $btn.data('account-id'),
+                _wpnonce: $('#_wpnonce_account_actions').val(),
+            }, function(response) {
+                $btn.prop('disabled', false).text('Check now');
+                if (response.success) {
+                    location.reload();
                 }
+            }).fail(function() {
+                $btn.prop('disabled', false).text('Check now');
+            });
+        });
 
-                $.post(
-                    ajaxurl,
-                    data,
-                    function (response) {
+        // ── Per-account: Since… toggle ─────────────────────────────────────────
+        $(document).on('click', '.bh-fetch-since-toggle', function() {
+            var accountId = $(this).data('account-id');
+            var $input = $('.bh-fetch-since-input[data-account-id="' + accountId + '"]');
+            $input.toggle().focus();
+        });
 
-                        console.log(response);
-                    }
-                );
-
-            }
-        );
-
+        // ── Per-account: Since date change ─────────────────────────────────────
+        $(document).on('change', '.bh-fetch-since-input', function() {
+            var $input = $(this);
+            $.post(ajaxurl, {
+                action: 'bh_wp_mailboxes_set_fetch_since',
+                account_post_id: $input.data('account-id'),
+                since_date: $input.val(),
+                _wpnonce: $('#_wpnonce_account_actions').val(),
+            }, function(response) {
+                if (response.success) {
+                    $input.hide();
+                }
+            });
+        });
 
     });
 
