@@ -105,7 +105,7 @@ class Mailboxes {
 
 		$library_loaded = class_exists( \BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes::class );
 
-		$count = (int) wp_count_posts( self::EMAIL_POST_TYPE )->publish;
+		$count = (int) ( wp_count_posts( self::EMAIL_POST_TYPE )->publish ?? 0 );
 
 		return new WP_REST_Response(
 			array(

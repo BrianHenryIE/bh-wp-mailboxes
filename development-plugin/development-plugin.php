@@ -147,7 +147,7 @@ $mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface 
 	}
 
 	public function get_emails_cpt_underscored_20(): string {
-		return 'my_plugin_email';
+		return 'bh_wp_mailboxes_cpt';
 	}
 
 	public function get_email_accounts_cpt_underscored_20(): string {

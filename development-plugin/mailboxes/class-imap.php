@@ -47,6 +47,7 @@ class Imap {
 				return 'support@brianhenryie.com';
 			}
 
+
 			/**
 			 * When false, the account is not checked on cron.
 			 */
