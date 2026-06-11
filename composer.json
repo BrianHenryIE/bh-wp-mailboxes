@@ -73,6 +73,7 @@
         "dealerdirect/phpcodesniffer-composer-installer": "*",
         "google/apiclient": "^2.19",
         "johnpbloch/wordpress": "*",
+        "kamazee/pr-filter": "^1.1",
         "lucatume/wp-browser": "*",
         "phpcompatibility/phpcompatibility-wp": "*",
         "phpstan/extension-installer": "*",
