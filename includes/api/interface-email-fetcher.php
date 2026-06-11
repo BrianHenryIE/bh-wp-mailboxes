@@ -27,6 +27,7 @@ interface Email_Fetcher_Interface {
 	public function retrieve_emails( DateTimeInterface $since_time ): Collection;
 
 	// public function test_connection(); // TODO: implement.
+	public function can_read_status(): bool;
 	public function can_mark_read(): bool;
 
 	public function can_delete_on_server(): bool;

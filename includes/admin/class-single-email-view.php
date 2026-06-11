@@ -355,7 +355,6 @@ class Single_Email_View {
 	public function render_status_metabox( WP_Post $post ): void {
 
 		$email = $this->get_email_for_post( $post );
-		// unset( $post );
 
 		$statuses = array(
 			'bh_email_new'       => __( 'New', 'bh-wp-mailboxes' ),
@@ -408,8 +407,7 @@ class Single_Email_View {
 		echo '</select>';
 		echo '<input type="hidden" name="hidden_post_status" value="' . esc_attr( $current_status ) . '">';
 
-		if ( $provider?->can_mark_read() && $provider?->can_delete_on_server() ) {
-			// Remote status badges — visible whenever read/deleted state is known, regardless of provider.
+		if ( $provider?->can_read_status() ) {
 			$badges = $this->get_remote_status_html( $is_read, $deleted_on_server );
 			if ( '' !== $badges ) {
 				echo '<div class="bh-email-remote-status">' . wp_kses_post( $badges ) . '</div>';

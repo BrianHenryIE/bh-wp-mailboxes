@@ -10,7 +10,6 @@ namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
-use DateTime;
 use DateTimeInterface;
 use Exception;
 use Google\Service\Gmail\ListMessagesResponse;
@@ -204,6 +203,10 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	}
 
 	public function can_delete_on_server(): bool {
+		return true;
+	}
+
+	public function can_read_status(): bool {
 		return true;
 	}
 }

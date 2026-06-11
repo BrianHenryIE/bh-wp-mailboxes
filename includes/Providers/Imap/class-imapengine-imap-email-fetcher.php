@@ -15,7 +15,6 @@ use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTimeInterface;
 use DirectoryTree\ImapEngine\Mailbox;
-use DirectoryTree\ImapEngine\Message;
 use DirectoryTree\ImapEngine\MessageInterface;
 use Illuminate\Support\Collection;
 use Psr\Log\LoggerAwareTrait;
@@ -153,11 +152,19 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		return $parsed;
 	}
 
+	/**
+	 * IMAP can read/write the emails on the server.
+	 * TODO: add a credentials-level `::can_mark_read()` to handle read-only accounts.
+	 */
 	public function can_mark_read(): bool {
 		return true;
 	}
 
 	public function can_delete_on_server(): bool {
+		return true;
+	}
+
+	public function can_read_status(): bool {
 		return true;
 	}
 }
