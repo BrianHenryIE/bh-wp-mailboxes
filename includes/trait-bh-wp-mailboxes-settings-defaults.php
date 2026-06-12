@@ -53,7 +53,7 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 	 * @see BH_WP_Mailboxes_Settings_Interface::get_email_accounts_cpt_dashed()
 	 */
 	public function get_email_accounts_cpt_dashed(): string {
-		return sanitize_title( $this->get_emails_cpt_friendly_name() );
+		return sanitize_title( $this->get_email_accounts_cpt_friendly_name() );
 	}
 
 	/**
