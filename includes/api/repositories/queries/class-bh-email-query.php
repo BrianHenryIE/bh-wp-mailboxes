@@ -9,6 +9,8 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Queries;
 
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+
 /**
  * Query object for BH_Email CPT records.
  */
@@ -63,8 +65,7 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 			'post_status'  => $this->local_status,
 			'post_parent'  => $this->post_parent, // mailbox id.
 			'post_content' => $this->original_email,
-			// 'post_excerpt',
-			'guid'         => $this->account_email_address && $this->email_id ? $this->guid_for( $this->account_email_address, $this->email_id ) : null,
+			'guid'         => $this->get_guid(),
 		);
 	}
 
@@ -83,23 +84,13 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	}
 
 	/**
-	 * Builds the guid URL for the given email ID.
-	 *
-	 * TODO: test that we're never passing an existing guid, only ever the email id itself.
-	 * TODO: this URL should work for admins to load the email.
-	 *
-	 * @param string $email_id The email message ID.
-	 *
-	 * @example https://bhwp.ie/my-mailbox/contact@bhwp.ie/q1w2e3r4t5
+	 * The guid uniquely identifies an email by account + Message-ID, so the repository can
+	 * deduplicate the same email fetched twice. Returns null when either component is absent.
 	 */
-	protected function guid_for( string $account_email_address, string $email_id ): string {
-		$site_url = get_site_url();
-		return sprintf(
-			'%s/%s/%s/%s',
-			$site_url,
-			$this->post_type,
-			rawurlencode( $account_email_address ),
-			rawurlencode( sanitize_key( $email_id ) )
-		);
+	public function get_guid(): ?string {
+		if ( null === $this->account_email_address || null === $this->email_id ) {
+			return null;
+		}
+		return Email_WP_Post_Repository::guid_for( $this->post_type, $this->account_email_address, $this->email_id );
 	}
 }

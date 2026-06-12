@@ -131,6 +131,11 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		return $count;
 	}
 
+	public function is_post_for_message_id( string $account_email_address, string $message_id ): bool {
+
+		return (bool) $this->find_post_id_by_guid( self::guid_for( $this->post_type, $account_email_address, $message_id ) );
+	}
+
 	/**
 	 * Query the WordPress posts table for a post with the given guid.
 	 *
@@ -208,6 +213,20 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			is_remote_deleted: false, // We may immediately delete the email, but the fact it exists in save_new means it exists remotely.
 			attachment_ids: array(),
 		);
+
+		// Deduplicate: the same email (account + Message-ID) may be fetched more than once.
+		// Its guid is stable, so if a post already exists we return it rather than inserting a duplicate.
+		$guid = self::guid_for(
+			$post_type,
+			$email_account->get_account_email_address(),
+			$email->getMessageId() ?? ''
+		);
+		if ( null !== $guid ) {
+			$existing_post_id = $this->find_post_id_by_guid( $guid );
+			if ( null !== $existing_post_id ) {
+				return $this->find_by_post_id( $existing_post_id );
+			}
+		}
 
 		$post_id = $this->insert( $query );
 
@@ -302,5 +321,28 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		}
 
 		return $this->find_by_post_id( $email->post_id );
+	}
+
+
+	/**
+	 * Builds the guid URL for the given email ID.
+	 *
+	 * TODO: test that we're never passing an existing guid, only ever the email id itself.
+	 * TODO: this URL should work for admins to load the email.
+	 *
+	 * @param string $account_email_address The mailbox email address.
+	 * @param string $email_id              The email message ID.
+	 *
+	 * @example https://bhwp.ie/my-mailbox/contact@bhwp.ie/q1w2e3r4t5
+	 */
+	public static function guid_for( string $post_type, string $account_email_address, string $email_id ): string {
+		$site_url = get_site_url();
+		return sprintf(
+			'%s/%s/%s/%s',
+			$site_url,
+			$post_type,
+			rawurlencode( $account_email_address ),
+			rawurlencode( sanitize_key( $email_id ) )
+		);
 	}
 }
