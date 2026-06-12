@@ -20,6 +20,7 @@ use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use WP_Post;
+use ZBateson\MailMimeParser\Header\AddressHeader;
 use ZBateson\MailMimeParser\IMessage;
 
 /**
@@ -192,17 +193,17 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		$original_email_no_attachments_string = implode( ' ', $non_attachment_parts );
 
 		$from_header = $email->getHeader( 'From' );
-		$sender      = $from_header instanceof \ZBateson\MailMimeParser\Header\AddressHeader ? $from_header->getEmail() ?? '' : '';
+		$sender      = $from_header instanceof AddressHeader ? $from_header->getEmail() ?? '' : '';
 
 		$query = new BH_Email_Query(
 			post_type: $post_type,
 			post_parent: $email_account->get_post_id(),
 			account_email_address: $email_account->get_account_email_address(),
-			email_id: $email->getMessageId() ?? '',
+			email_id: $email->getMessageId() ?? '', // TODO: This should never be empty.
 			subject: $email->getSubject() ?? '',
 			from_address: $sender, // We'll save this in meta because if it matches a user account it is relevant.
 			original_email: $original_email_no_attachments_string,
-			local_status: 'bh_email_new', // @see BH_Email_CPT::register_post_statuses().
+			local_status: 'bh_email_new',
 			is_remote_read: false, // TODO: how to determine is is already read?
 			is_remote_deleted: false, // We may immediately delete the email, but the fact it exists in save_new means it exists remotely.
 			attachment_ids: array(),
@@ -218,9 +219,9 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	/**
 	 * Saves all new emails for an account.
 	 *
-	 * @param Collection&Collection<int, IMessage> $all_new_account_emails The new emails to save.
-	 * @param BH_WP_Mailboxes_Settings_Interface   $mailboxes              The mailboxes settings.
-	 * @param BH_Email_Account                     $email_account          The email account settings.
+	 * @param Collection<int, IMessage>          $all_new_account_emails The new emails to save.
+	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes              The mailboxes settings.
+	 * @param BH_Email_Account                   $email_account          The email account settings.
 	 *
 	 * @return array<int, \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email>
 	 * @throws Exception When saving an individual email fails.
@@ -278,7 +279,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			throw new Exception(
 				sprintf(
 					'Failed to update email post with ID %d: %s',
-					$email->post_id,
+					intval( $email->post_id ),
 					esc_html( $result->get_error_message() )
 				)
 			);

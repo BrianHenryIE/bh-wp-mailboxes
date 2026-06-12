@@ -32,6 +32,10 @@
     <rule ref="Universal.Operators.DisallowShortTernary.Found">
         <exclude-pattern>*</exclude-pattern>
     </rule>
+    <!-- PHPStan should handle types -->
+    <rule ref="Squiz.Commenting.FunctionComment.IncorrectTypeHint">
+        <exclude-pattern>*</exclude-pattern>
+    </rule>
 
     <!-- Enforce fewer rules on development plugin -->
 

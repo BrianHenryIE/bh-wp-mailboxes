@@ -73,9 +73,10 @@ class BH_Email_Account_Factory {
 
 			// TODO: Figure out what field is missing.
 			throw new Exception(
-				'Invalid saved BH_Email_Account object',
-				intval( $type_error->getCode() ),
-				$type_error
+				sprintf(
+					'Invalid type when saving BH_Email_Account object: %s',
+					esc_html( $type_error->getMessage() )
+				)
 			);
 		}
 	}

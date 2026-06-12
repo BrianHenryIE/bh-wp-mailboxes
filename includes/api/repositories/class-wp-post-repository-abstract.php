@@ -9,6 +9,7 @@ namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract;
+use Exception;
 
 /**
  * Subclasses should implement: (no generics in PHP!)
@@ -20,6 +21,17 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract;
  */
 abstract class WP_Post_Repository_Abstract {
 
+	/**
+	 * Add a new post from a query object. Returns the post ID.
+	 *
+	 * Removes WordPress's filters on `post_content` so we can use it to save data.
+	 *
+	 * @see wp_insert_post()
+	 *
+	 * @param WP_Post_Query_Abstract $query A stronly typed class that serializes to a WordPress query args array.
+	 *
+	 * @throws Exception When WordPress fails to create the post.
+	 */
 	protected function insert( WP_Post_Query_Abstract $query ): int {
 		/**
 		 * The query array for wp_insert_post.
@@ -52,8 +64,7 @@ abstract class WP_Post_Repository_Abstract {
 
 		if ( is_wp_error( $post_id ) ) {
 			// TODO Log.
-			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- CPT slug, not user input.
-			throw new \Exception( 'WordPress failed to create new post.' );
+			throw new Exception( 'WordPress failed to create new post.' );
 		}
 
 		return $post_id;
