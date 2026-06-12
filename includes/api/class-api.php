@@ -27,6 +27,7 @@ use Exception;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use ZBateson\MailMimeParser\IMessage;
 
 /**
  * Main API for fetching, saving, and managing emails.
@@ -225,6 +226,14 @@ class API implements API_Interface {
 		}
 
 		$this->email_account_repository->update( $email_account, last_checked_time: $now_time );
+
+		// Drop any emails already saved locally (same account + Message-ID) so we never duplicate.
+		$all_new_account_emails = $all_new_account_emails->reject(
+			fn ( IMessage $unsaved_email ): bool => $this->email_repository->is_post_for_message_id(
+				$email_account->email_address,
+				$unsaved_email->getMessageId() ?? ''
+			)
+		);
 
 		$saved = $this->email_repository->save_all( $all_new_account_emails, $this->settings, $email_account );
 		return $saved;

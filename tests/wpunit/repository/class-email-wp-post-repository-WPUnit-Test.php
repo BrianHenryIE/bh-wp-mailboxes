@@ -1,6 +1,8 @@
 <?php
 /**
  * TODO: move to integration test?
+ *
+ * @package brianhenryie/bh-wp-mailboxes
  */
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
@@ -21,6 +23,7 @@ use ZBateson\MailMimeParser\MailMimeParser;
  */
 class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WPUnit_Testcase {
 
+	/** @var BH_WP_Mailboxes_Settings_Interface Mocked settings used across the suite. */
 	protected BH_WP_Mailboxes_Settings_Interface $settings;
 
 	protected function setUp(): void {
@@ -78,6 +81,56 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 
 		// "Date: Wed, 30 Jul 2025 03:38:07 +0000".
 		$this->assertEquals( '2025-07-30 03:38:07', $result->get_sent_at()->format( 'Y-m-d H:i:s' ) );
+	}
+
+	/**
+	 * Fetching the same email twice (same account + Message-ID, i.e. same guid) must not
+	 * create two posts. The second save_new should return the already-saved post.
+	 *
+	 * @covers ::save_new
+	 */
+	public function test_save_new_dedups_by_guid(): void {
+
+		$post_type        = 'test_post_type';
+		$bh_email_factory = new BH_Email_Factory( $this->logger );
+
+		$sut = new Email_WP_Post_Repository( $post_type, $bh_email_factory, $this->logger );
+
+		$email_filepath = codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' );
+		$email_contents = file_get_contents( $email_filepath );
+		$parser         = new MailMimeParser();
+		/** @var IMessage $email */
+		$email = $parser->parse( $email_contents, true );
+
+		$email_account = new BH_Email_Account(
+			post_id: 456,
+			post_type: $post_type,
+			local_status: 'bh_email_ac_active',
+			provider_type_class: 'SomeProvider',
+			email_address: 'test@example.com',
+			display_name: 'Test Account',
+			from_address_regex_filter: null,
+			body_identifier_regex_filter: null,
+			after_download_remote_email_action: null,
+			delete_local_emails_after_n_days: null,
+			last_successful_login_time: null,
+			last_failed_login_time: null,
+		);
+
+		$first  = $sut->save_new( $email, $this->settings, $email_account );
+		$second = $sut->save_new( $email, $this->settings, $email_account );
+
+		$this->assertSame(
+			$first->get_post_id(),
+			$second->get_post_id(),
+			'Saving the same email twice should return the same post.'
+		);
+
+		$this->assertSame(
+			1,
+			$sut->count_for_account_email( $email_account ),
+			'Only one post should exist for the deduplicated email.'
+		);
 	}
 
 	/**
