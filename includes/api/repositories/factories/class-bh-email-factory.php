@@ -67,8 +67,10 @@ class BH_Email_Factory {
 		$sent_at_result = DateTime::createFromFormat( DateTime::RFC2822, $date_header );
 		$sent_at        = ( false !== $sent_at_result ) ? $sent_at_result : null;
 
-		$attachment_ids = get_post_meta( $post_id, 'attachment_ids', true );
-		$attachment_ids = (array) json_decode( $attachment_ids );
+		// Absent meta means attachment-saving was disabled (null); a present value (even `[]`) means
+		// it was enabled. This distinction drives the "Attachments disabled" vs "No attachments" UI.
+		$attachment_ids_raw = get_post_meta( $post_id, 'attachment_ids', true );
+		$attachment_ids     = ( '' === $attachment_ids_raw ) ? null : (array) json_decode( (string) $attachment_ids_raw );
 
 		$remote_uid          = get_post_meta( $post_id, 'remote_uid', true );
 		$remote_folder       = get_post_meta( $post_id, 'remote_folder', true );

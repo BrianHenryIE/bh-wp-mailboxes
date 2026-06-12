@@ -15,8 +15,12 @@ use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
+use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads_API;
+use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Interface;
+use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Trait;
 use Codeception\Stub\Expected;
 use Mockery;
+use WP_Post;
 use ZBateson\MailMimeParser\IMessage;
 use ZBateson\MailMimeParser\MailMimeParser;
 
@@ -193,6 +197,120 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$this->assertSame( '4242', $rehydrated_coordinates->remote_uid );
 		$this->assertSame( 'INBOX', $rehydrated_coordinates->folder );
 		$this->assertSame( 99, $rehydrated_coordinates->uid_validity );
+	}
+
+	/**
+	 * With a real private-uploads API, an email's attachment is written to disk, a post recording it
+	 * is created (parented to the email), and that post id is stored on the email and rehydrated.
+	 *
+	 * Drives the actual `save_attachments()` path end-to-end: MIME part → temp file →
+	 * `move_file_to_private_uploads_and_create_post()` → post id.
+	 *
+	 * @covers ::save_new
+	 */
+	public function test_save_new_saves_attachments(): void {
+
+		$post_type = 'test_post_type';
+		$sut       = new Email_WP_Post_Repository( $post_type, new BH_Email_Factory( $this->logger ), $this->logger );
+
+		// move_file_to_private_uploads() requires the `upload_files` capability.
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		/** @var Private_Uploads_Settings_Interface $private_uploads_settings */
+		$private_uploads_settings = new class() implements Private_Uploads_Settings_Interface {
+			use Private_Uploads_Settings_Trait;
+
+			public function get_plugin_slug(): string {
+				return 'bh-wp-mailboxes-test';
+			}
+
+			public function get_uploads_subdirectory_name(): string {
+				return 'bh-wp-mailboxes-test-attachments';
+			}
+		};
+		$private_uploads          = new Private_Uploads_API( $private_uploads_settings, $this->logger );
+
+		$email_filepath = codecept_root_dir( 'tests/_data/wpunit/with-attachment.eml' );
+		$parser         = new MailMimeParser();
+		/** @var IMessage $email */
+		$email = $parser->parse( (string) file_get_contents( $email_filepath ), true );
+
+		$result = $sut->save_new(
+			$this->make_fetched_email( $email ),
+			$this->settings,
+			$this->make_email_account( $post_type ),
+			$private_uploads,
+		);
+
+		// One attachment → one real post id recorded on the email and rehydrated from meta.
+		$ids = $result->attachment_ids;
+		$this->assertIsArray( $ids );
+		$this->assertCount( 1, $ids );
+		$attachment_id = $ids[0];
+		$this->assertSame( $ids, $sut->find_by_post_id( $result->get_post_id() )->attachment_ids );
+
+		// The recording post exists and is parented to the email.
+		$attachment_post = get_post( $attachment_id );
+		$this->assertInstanceOf( WP_Post::class, $attachment_post );
+		$this->assertSame( $result->get_post_id(), $attachment_post->post_parent );
+
+		// The file is really on disk with the attachment's decoded content.
+		$file = get_attached_file( $attachment_id );
+		$this->assertIsString( $file );
+		$this->assertFileExists( $file );
+		$this->assertStringEndsWith( '.txt', $file );
+		$this->assertSame( "hello world\n", file_get_contents( $file ) );
+
+		// The moved file lives outside the test DB transaction; remove it.
+		wp_delete_file( $file );
+	}
+
+	/**
+	 * Without a private-uploads API, attachment-saving is disabled: attachment_ids is null
+	 * ("Attachments disabled"), not an empty array.
+	 *
+	 * @covers ::save_new
+	 */
+	public function test_save_new_attachments_disabled_when_no_private_uploads(): void {
+
+		$post_type = 'test_post_type';
+		$sut       = new Email_WP_Post_Repository( $post_type, new BH_Email_Factory( $this->logger ), $this->logger );
+
+		$email_filepath = codecept_root_dir( 'tests/_data/wpunit/with-attachment.eml' );
+		$parser         = new MailMimeParser();
+		/** @var IMessage $email */
+		$email = $parser->parse( (string) file_get_contents( $email_filepath ), true );
+
+		$result = $sut->save_new(
+			$this->make_fetched_email( $email ),
+			$this->settings,
+			$this->make_email_account( $post_type ),
+		);
+
+		$this->assertNull( $result->attachment_ids );
+		$this->assertSame( '', get_post_meta( $result->get_post_id(), 'attachment_ids', true ) );
+	}
+
+	/**
+	 * Build a minimal BH_Email_Account for save_new().
+	 *
+	 * @param string $post_type The emails CPT slug.
+	 */
+	private function make_email_account( string $post_type ): BH_Email_Account {
+		return new BH_Email_Account(
+			post_id: 456,
+			post_type: $post_type,
+			local_status: 'bh_email_ac_active',
+			provider_type_class: 'SomeProvider',
+			email_address: 'test@example.com',
+			display_name: 'Test Account',
+			from_address_regex_filter: null,
+			body_identifier_regex_filter: null,
+			after_download_remote_email_action: null,
+			delete_local_emails_after_n_days: null,
+			last_successful_login_time: null,
+			last_failed_login_time: null,
+		);
 	}
 
 	/**

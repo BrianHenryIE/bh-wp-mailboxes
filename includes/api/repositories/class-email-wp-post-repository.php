@@ -13,6 +13,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Query;
+use BrianHenryIE\WP_Private_Uploads\API_Interface as Private_Uploads_API_Interface;
 use DateTimeInterface;
 use Exception;
 use Illuminate\Support\Collection;
@@ -22,6 +23,7 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use WP_Post;
 use ZBateson\MailMimeParser\Header\AddressHeader;
+use ZBateson\MailMimeParser\Message\IMessagePart;
 
 /**
  * WordPress post repository for email CPT records.
@@ -180,9 +182,10 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	/**
 	 * Saves a new email to the database.
 	 *
-	 * @param Fetched_Email                      $fetched_email The email plus its remote coordinates and read state.
-	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes     The mailboxes settings.
-	 * @param BH_Email_Account                   $email_account The email account settings.
+	 * @param Fetched_Email                      $fetched_email   The email plus its remote coordinates and read state.
+	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes       The mailboxes settings.
+	 * @param BH_Email_Account                   $email_account   The email account settings.
+	 * @param ?Private_Uploads_API_Interface     $private_uploads When present, email attachments are saved to private uploads.
 	 *
 	 * @return BH_Email
 	 * @throws Exception When WordPress fails to create the post.
@@ -190,7 +193,8 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	public function save_new(
 		Fetched_Email $fetched_email,
 		BH_WP_Mailboxes_Settings_Interface $mailboxes,
-		BH_Email_Account $email_account
+		BH_Email_Account $email_account,
+		?Private_Uploads_API_Interface $private_uploads = null
 	): BH_Email {
 
 		$email       = $fetched_email->message;
@@ -220,7 +224,8 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			local_status: 'bh_email_new',
 			is_remote_read: $fetched_email->is_remote_read,
 			is_remote_deleted: false, // We may immediately delete the email, but the fact it exists in save_new means it exists remotely.
-			attachment_ids: array(),
+			// `null` records "attachments disabled"; an array (possibly empty) records "attachments enabled".
+			attachment_ids: is_null( $private_uploads ) ? null : array(),
 			remote_uid: $coordinates->remote_uid,
 			remote_folder: $coordinates->folder,
 			remote_uid_validity: $coordinates->uid_validity,
@@ -240,9 +245,62 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 
 		$post_id = $this->insert( $query );
 
-		// TODO: save attachments.
+		if ( ! is_null( $private_uploads ) ) {
+			$attachment_ids = $this->save_attachments( $attachment_parts, $post_id, $private_uploads );
+			update_post_meta( $post_id, 'attachment_ids', (string) wp_json_encode( $attachment_ids ) );
+		}
 
 		return $this->find_by_post_id( $post_id );
+	}
+
+	/**
+	 * Save each email attachment into the private uploads directory, returning the created post ids.
+	 *
+	 * Each attachment is independent: a failure is logged and the others still save, so one bad
+	 * attachment never costs us the email.
+	 *
+	 * @param IMessagePart[]                $attachment_parts The email's attachment parts.
+	 * @param int                           $email_post_id    The saved email's post id, used as the attachments' parent.
+	 * @param Private_Uploads_API_Interface $private_uploads  The private uploads API.
+	 *
+	 * @return int[] The post ids of the saved attachments.
+	 */
+	private function save_attachments( array $attachment_parts, int $email_post_id, Private_Uploads_API_Interface $private_uploads ): array {
+
+		$attachment_ids = array();
+
+		foreach ( $attachment_parts as $part ) {
+			$filename = $part->getFilename() ?? 'attachment';
+			$tmp_file = wp_tempnam( $filename );
+
+			try {
+				$part->saveContent( $tmp_file );
+
+				$result = $private_uploads->move_file_to_private_uploads_and_create_post(
+					tmp_file: $tmp_file,
+					filename: $filename,
+					post_parent_id: $email_post_id,
+				);
+
+				$attachment_ids[] = $result->post_id;
+			} catch ( \Throwable $e ) {
+				$this->logger->error(
+					'Failed to save email attachment.',
+					array(
+						'filename'  => $filename,
+						'post_id'   => $email_post_id,
+						'exception' => $e,
+					)
+				);
+			} finally {
+				// On success the file has been moved away; this only cleans up after a failure.
+				if ( file_exists( $tmp_file ) ) {
+					wp_delete_file( $tmp_file );
+				}
+			}
+		}
+
+		return $attachment_ids;
 	}
 
 	/**
@@ -255,14 +313,26 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @return array<int, \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email>
 	 * @throws Exception When saving an individual email fails.
 	 */
+	/**
+	 * Saves all new emails for an account.
+	 *
+	 * @param Collection<int, Fetched_Email>     $all_new_account_emails The new emails to save.
+	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes              The mailboxes settings.
+	 * @param BH_Email_Account                   $email_account          The email account settings.
+	 * @param ?Private_Uploads_API_Interface     $private_uploads        When present, email attachments are saved to private uploads.
+	 *
+	 * @return array<int, \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email>
+	 * @throws Exception When saving an individual email fails.
+	 */
 	public function save_all(
 		Collection $all_new_account_emails,
 		BH_WP_Mailboxes_Settings_Interface $mailboxes,
-		BH_Email_Account $email_account
+		BH_Email_Account $email_account,
+		?Private_Uploads_API_Interface $private_uploads = null
 	): array {
 
 		return array_map(
-			fn( $new_email ) => $this->save_new( $new_email, $mailboxes, $email_account ),
+			fn( $new_email ) => $this->save_new( $new_email, $mailboxes, $email_account, $private_uploads ),
 			$all_new_account_emails->all()
 		);
 	}

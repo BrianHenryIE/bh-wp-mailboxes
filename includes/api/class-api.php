@@ -237,7 +237,7 @@ class API implements API_Interface {
 			)
 		);
 
-		$saved = $this->email_repository->save_all( $all_new_account_emails, $this->settings, $email_account );
+		$saved = $this->email_repository->save_all( $all_new_account_emails, $this->settings, $email_account, $this->private_uploads );
 		return $saved;
 	}
 
