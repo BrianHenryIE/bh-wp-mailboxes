@@ -223,6 +223,8 @@ class API implements API_Interface {
 					'mailbox_settings' => $email_account,
 				)
 			);
+			// Record the failure time so the next four hours of cron runs skip this account.
+			$this->email_account_repository->update( $email_account, last_failed_login_time: $now_time );
 			return array();
 		}
 

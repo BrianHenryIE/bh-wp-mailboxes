@@ -66,6 +66,7 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	#[\Override]
 	protected function get_wp_post_fields(): array {
 		return array(
+			'ID'           => $this->post_id,
 			'post_type'    => $this->post_type,
 			'post_title'   => $this->subject,
 			'post_status'  => $this->local_status,

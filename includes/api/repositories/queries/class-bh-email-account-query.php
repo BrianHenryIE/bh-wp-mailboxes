@@ -64,6 +64,7 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 	#[\Override]
 	protected function get_wp_post_fields(): array {
 		return array(
+			'ID'          => $this->post_id,
 			'post_type'   => $this->post_type,
 			'post_status' => $this->status,
 			'post_name'   => $this->email_address, // will be auto-sanitized?
