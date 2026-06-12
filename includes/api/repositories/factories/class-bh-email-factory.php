@@ -8,6 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Factories;
 
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use DateTime;
 use DateTimeZone;
 use Psr\Log\LoggerAwareTrait;
@@ -69,6 +70,16 @@ class BH_Email_Factory {
 		$attachment_ids = get_post_meta( $post_id, 'attachment_ids', true );
 		$attachment_ids = (array) json_decode( $attachment_ids );
 
+		$remote_uid          = get_post_meta( $post_id, 'remote_uid', true );
+		$remote_folder       = get_post_meta( $post_id, 'remote_folder', true );
+		$remote_uid_validity = get_post_meta( $post_id, 'remote_uid_validity', true );
+		$remote_coordinates  = new Remote_Email_Coordinates(
+			message_id: $message->getMessageId() ?? '',
+			remote_uid: '' !== $remote_uid ? (string) $remote_uid : null,
+			folder: '' !== $remote_folder ? (string) $remote_folder : null,
+			uid_validity: '' !== $remote_uid_validity ? (int) $remote_uid_validity : null,
+		);
+
 		return new BH_Email(
 			post_id: $post_id,
 			post_type: $post->post_type,
@@ -87,6 +98,7 @@ class BH_Email_Factory {
 			local_status: $post->post_status,
 			is_remote_read: $is_read,
 			is_remote_deleted: $is_remote_deleted,
+			remote_coordinates: $remote_coordinates,
 		);
 	}
 }

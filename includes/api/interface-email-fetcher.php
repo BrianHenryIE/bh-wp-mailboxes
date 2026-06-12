@@ -10,11 +10,19 @@
 namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
 
 interface Email_Fetcher_Interface {
 
+	/**
+	 * Set credentials (and presumably connect if relevant).
+	 *
+	 * Can be no-op (until we create a super-class/interface for all email services).
+	 *
+	 * @param Account_Credentials_Interface $credentials From the `bh_wp_mailboxes_credentials` filter.
+	 */
 	public function set_credentials( Account_Credentials_Interface $credentials ): void;
 
 	/**
@@ -22,7 +30,7 @@ interface Email_Fetcher_Interface {
 	 *
 	 * @param DateTimeInterface $since_time The earliest time to retrieve emails from.
 	 *
-	 * @return Collection<int, \ZBateson\MailMimeParser\IMessage> Unsaved emails.
+	 * @return Collection<int, \BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email> Unsaved emails with their remote coordinates.
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time ): Collection;
 
@@ -35,6 +43,13 @@ interface Email_Fetcher_Interface {
 	 * Does the email service support reading the read/unread status of emails on the server.
 	 */
 	public function can_read_status(): bool;
+
+	/**
+	 * Make an API call to determine whether the email is marked read on the server.
+	 *
+	 * @param Remote_Email_Coordinates $coordinates How to locate the email on the remote server.
+	 */
+	public function get_is_marked_read( Remote_Email_Coordinates $coordinates ): bool;
 
 	/**
 	 * Does the email service support changing the read/unread status on the server.

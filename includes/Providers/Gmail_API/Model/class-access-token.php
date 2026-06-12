@@ -7,6 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model;
 
+use RuntimeException;
 use stdClass;
 
 /**
@@ -44,7 +45,12 @@ readonly class Access_Token {
 	public static function from_file( string $file_path ): Access_Token {
 		$json_string = file_get_contents( $file_path );
 		if ( false === $json_string ) {
-			throw new \RuntimeException( "Failed to read access token file: {$file_path}" );
+			throw new RuntimeException(
+				sprintf(
+					'Failed to read access token file: %s',
+					esc_html( $file_path ),
+				)
+			);
 		}
 		$json = json_decode( $json_string );
 		return self::from_json( $json );

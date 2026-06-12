@@ -10,6 +10,7 @@ namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Query;
 use DateTimeInterface;
@@ -21,7 +22,6 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use WP_Post;
 use ZBateson\MailMimeParser\Header\AddressHeader;
-use ZBateson\MailMimeParser\IMessage;
 
 /**
  * WordPress post repository for email CPT records.
@@ -180,7 +180,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	/**
 	 * Saves a new email to the database.
 	 *
-	 * @param IMessage                           $email         The email to save.
+	 * @param Fetched_Email                      $fetched_email The email plus its remote coordinates and read state.
 	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes     The mailboxes settings.
 	 * @param BH_Email_Account                   $email_account The email account settings.
 	 *
@@ -188,10 +188,13 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @throws Exception When WordPress fails to create the post.
 	 */
 	public function save_new(
-		IMessage $email,
+		Fetched_Email $fetched_email,
 		BH_WP_Mailboxes_Settings_Interface $mailboxes,
 		BH_Email_Account $email_account
 	): BH_Email {
+
+		$email       = $fetched_email->message;
+		$coordinates = $fetched_email->coordinates;
 
 		$post_type = $mailboxes->get_emails_cpt_underscored_20();
 
@@ -215,9 +218,12 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			from_address: $sender, // We'll save this in meta because if it matches a user account it is relevant.
 			original_email: $original_email_no_attachments_string,
 			local_status: 'bh_email_new',
-			is_remote_read: false, // TODO: how to determine is is already read?
+			is_remote_read: $fetched_email->is_remote_read,
 			is_remote_deleted: false, // We may immediately delete the email, but the fact it exists in save_new means it exists remotely.
 			attachment_ids: array(),
+			remote_uid: $coordinates->remote_uid,
+			remote_folder: $coordinates->folder,
+			remote_uid_validity: $coordinates->uid_validity,
 		);
 
 		// Deduplicate: the same email (account + Message-ID) may be fetched more than once.
@@ -242,7 +248,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	/**
 	 * Saves all new emails for an account.
 	 *
-	 * @param Collection<int, IMessage>          $all_new_account_emails The new emails to save.
+	 * @param Collection<int, Fetched_Email>     $all_new_account_emails The new emails to save.
 	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes              The mailboxes settings.
 	 * @param BH_Email_Account                   $email_account          The email account settings.
 	 *

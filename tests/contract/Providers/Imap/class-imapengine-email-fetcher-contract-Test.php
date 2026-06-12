@@ -9,14 +9,16 @@
 namespace BrianHenryIE\WP_Emails\API\ImapEngine_Imap;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
-use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\Imap_Credentials_Env;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
+use DateInterval;
 use DateTime;
+use DirectoryTree\ImapEngine\Mailbox;
 use DirectoryTree\ImapEngine\Exceptions\Exception as ImapEngineException;
 use DirectoryTree\ImapEngine\Exceptions\ImapCommandException;
 use DirectoryTree\ImapEngine\Exceptions\ImapConnectionFailedException;
@@ -130,8 +132,9 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 		// Don't accidentally save anything.
 		return;
 
-		/** @var IMessage $email */
-		foreach ( $messages as $email ) {
+		/** @var \BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email $fetched */
+		foreach ( $messages as $fetched ) {
+			$email          = $fetched->message;
 			$sender_address = $email->getHeader( 'From' )->getEmail();
 			if ( 'contact@bhwp.ie' === $sender_address ) {
 				// We only get WordFence and Comment emails from the site, the interesting ones come from other senders.
@@ -145,6 +148,102 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 		}
 	}
 
+
+	/**
+	 * Live contract: get_is_marked_read() must agree with the server's actual `\Seen` flag along
+	 * both lookup paths.
+	 *
+	 * Ground truth is read directly from ImapEngine (an independent oracle): the newest inbox
+	 * message's UID, UIDVALIDITY, Message-ID, and `\Seen` flag. The fetcher is then asked via:
+	 *  - the **UID path** — correct UID + UIDVALIDITY → direct FETCH;
+	 *  - the **fallback path** — a deliberately wrong UIDVALIDITY forces the `Message-ID` search;
+	 *  - the **not-found path** — bogus coordinates → false.
+	 *
+	 * Requires live credentials in test-credentials/.env.secret; skipped when the inbox is empty.
+	 */
+	public function test_get_is_marked_read_matches_server_flag(): void {
+
+		$credentials = new Imap_Credentials_Env();
+
+		// Independent oracle: read the newest recent inbox message + flag straight from the library.
+		$oracle_inbox = $this->make_oracle_mailbox( $credentials )->inbox();
+		$oracle_query = $oracle_inbox->messages();
+		$oracle_query->since( ( new DateTime() )->sub( new DateInterval( 'P30D' ) ) );
+		$newest = $oracle_query->withFlags()->get()->last();
+
+		if ( is_null( $newest ) ) {
+			$this->markTestSkipped( 'No recent emails in inbox to read read/unread status from.' );
+		}
+
+		$message_id    = $newest->messageId(true);
+		$expected_seen = $newest->isSeen();
+		$folder        = $oracle_inbox->path();
+		$status        = $oracle_inbox->status();
+		$uid_validity  = isset( $status['UIDVALIDITY'] ) ? (int) $status['UIDVALIDITY'] : null;
+		$this->assertNotEmpty( $message_id, 'Newest inbox message has no Message-ID header.' );
+
+		// System under test.
+		$sut = new ImapEngine_Imap_Email_Fetcher( $this->settings, $this->logger );
+		$sut->set_credentials( $credentials );
+
+		// UID path: correct UID + UIDVALIDITY → direct FETCH.
+		$uid_coordinates = new Remote_Email_Coordinates(
+			message_id: $message_id,
+			remote_uid: (string) $newest->uid(),
+			folder: $folder,
+			uid_validity: $uid_validity,
+		);
+		$this->assertSame(
+			$expected_seen,
+			$sut->get_is_marked_read( $uid_coordinates ),
+			'UID path: should match the server `\Seen` flag.'
+		);
+
+		// Fallback path: a wrong UIDVALIDITY voids the UID, forcing the Message-ID search.
+		$fallback_coordinates = new Remote_Email_Coordinates(
+			message_id: $message_id,
+			remote_uid: (string) $newest->uid(),
+			folder: $folder,
+			uid_validity: ( $uid_validity ?? 0 ) + 1,
+		);
+		$this->assertSame(
+			$expected_seen,
+			$sut->get_is_marked_read( $fallback_coordinates ),
+			'Fallback path: a stale UIDVALIDITY should still resolve via the Message-ID search.'
+		);
+
+		// Not-found path: bogus Message-ID and no UID → false.
+		$this->assertFalse(
+			$sut->get_is_marked_read(
+				new Remote_Email_Coordinates( message_id: 'missing-' . uniqid() . '@contract.invalid' )
+			),
+			'Unknown coordinates should report false.'
+		);
+	}
+
+	/**
+	 * Build a Mailbox connection directly from env credentials, mirroring the fetcher's own
+	 * connection settings, to serve as an independent oracle for the contract test above.
+	 *
+	 * @param IMAP_Credentials_Interface $credentials Live IMAP credentials from the environment.
+	 */
+	private function make_oracle_mailbox( IMAP_Credentials_Interface $credentials ): Mailbox {
+		$server = $credentials->get_email_imap_server();
+		$host   = $server;
+		if ( str_contains( $server, ':' ) ) {
+			[ $host ] = explode( ':', $server, 2 );
+		}
+
+		return Mailbox::make(
+			array(
+				'host'          => $host,
+				'username'      => $credentials->get_email_account_username(),
+				'password'      => $credentials->get_email_account_password(),
+				'encryption'    => 'tls',
+				'validate_cert' => false,
+			)
+		);
+	}
 
 	public function test_bad_server(): void {
 

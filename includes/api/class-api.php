@@ -14,6 +14,7 @@ use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
@@ -28,7 +29,6 @@ use Exception;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use ZBateson\MailMimeParser\IMessage;
 
 /**
  * Main API for fetching, saving, and managing emails.
@@ -231,9 +231,9 @@ class API implements API_Interface {
 
 		// Drop any emails already saved locally (same account + Message-ID) so we never duplicate.
 		$all_new_account_emails = $all_new_account_emails->reject(
-			fn ( IMessage $unsaved_email ): bool => $this->email_repository->is_post_for_message_id(
+			fn ( Fetched_Email $unsaved_email ): bool => $this->email_repository->is_post_for_message_id(
 				$email_account->email_address,
-				$unsaved_email->getMessageId() ?? ''
+				$unsaved_email->message->getMessageId() ?? ''
 			)
 		);
 

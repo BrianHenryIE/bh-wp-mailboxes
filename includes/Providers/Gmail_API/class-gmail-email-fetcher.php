@@ -9,10 +9,13 @@ namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTimeInterface;
 use Exception;
 use Google\Service\Gmail\ListMessagesResponse;
+use Google\Service\Gmail\Message as Gmail_Message;
 use Google_Client;
 use Google_Service_Gmail;
 use Illuminate\Support\Collection;
@@ -131,7 +134,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 *
 	 * @throws Exception When the Gmail API call fails.
 	 *
-	 * @return Collection<int, \ZBateson\MailMimeParser\IMessage>
+	 * @return Collection<int, Fetched_Email>
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time ): Collection {
 
@@ -163,7 +166,8 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		$messages = $r->getMessages();
 		foreach ( $messages as $message ) {
 
-			// Request format=raw to receive the full RFC 2822 message (base64url-encoded).
+			// Request format=raw to receive the full RFC 2822 message (base64url-encoded);
+			// the response also carries labelIds, from which the read state is derived.
 			$single_message = $service->users_messages->get( 'me', $message->id, array( 'format' => 'raw' ) );
 
 			$raw = $single_message->getRaw();
@@ -171,11 +175,30 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 				continue;
 			}
 
-			$rfc2822 = base64_decode( strtr( $raw, '-_', '+/' ) );
-			$emails->add( $parser->parse( $rfc2822, false ) );
+			$rfc2822  = base64_decode( strtr( $raw, '-_', '+/' ) );
+			$imessage = $parser->parse( $rfc2822, false );
+
+			// The Gmail message id is a stable, label-move-resilient handle; store it as the remote uid.
+			$coordinates = new Remote_Email_Coordinates(
+				message_id: $imessage->getMessageId() ?? '',
+				remote_uid: (string) $message->id,
+			);
+
+			$emails->add(
+				new Fetched_Email( $imessage, $coordinates, $this->is_read_from_labels( $single_message->getLabelIds() ) )
+			);
 		}
 
 		return $emails;
+	}
+
+	/**
+	 * A Gmail message is unread while it carries the `UNREAD` label.
+	 *
+	 * @param string[]|null $label_ids The message's Gmail label ids.
+	 */
+	protected function is_read_from_labels( ?array $label_ids ): bool {
+		return ! in_array( 'UNREAD', (array) $label_ids, true );
 	}
 
 	/**
@@ -196,6 +219,92 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		}
 
 		return $decoded;
+	}
+
+	/**
+	 * Determine whether the email is marked read on the server.
+	 *
+	 * Prefers a direct lookup by the stored Gmail message id (which survives label/folder moves);
+	 * falls back to a `rfc822msgid:` search on the RFC822 Message-ID when the id is absent or the
+	 * message can no longer be fetched by it.
+	 *
+	 * @param Remote_Email_Coordinates $coordinates How to locate the email on the remote server.
+	 *
+	 * @return bool True when the message is found and read; false when unread or not found.
+	 */
+	public function get_is_marked_read( Remote_Email_Coordinates $coordinates ): bool {
+
+		/**
+		 * The authorized Google API client.
+		 *
+		 * @var Google_Client $client
+		 */
+		$client  = $this->getClient();
+		$service = new Google_Service_Gmail( $client );
+
+		$message = $this->get_message_by_remote_uid( $service, $coordinates->remote_uid )
+			?? $this->get_message_by_rfc822_id( $service, $coordinates->message_id );
+
+		if ( is_null( $message ) ) {
+			$this->logger->warning(
+				'Could not find email on the server to read its remote read/unread status.',
+				array(
+					'message_id' => $coordinates->message_id,
+					'remote_uid' => $coordinates->remote_uid,
+				)
+			);
+			return false;
+		}
+
+		return $this->is_read_from_labels( $message->getLabelIds() );
+	}
+
+	/**
+	 * Fetch a message's metadata (labels) directly by its Gmail message id.
+	 *
+	 * @param Google_Service_Gmail $service    The authorized Gmail service.
+	 * @param ?string              $remote_uid The stored Gmail message id, if any.
+	 *
+	 * @return ?Gmail_Message The message metadata, or null when absent/not retrievable.
+	 */
+	protected function get_message_by_remote_uid( Google_Service_Gmail $service, ?string $remote_uid ): ?Gmail_Message {
+		if ( is_null( $remote_uid ) || '' === $remote_uid ) {
+			return null;
+		}
+		try {
+			return $service->users_messages->get( 'me', $remote_uid, array( 'format' => 'metadata' ) );
+		} catch ( \Throwable $t ) {
+			// e.g. 404 when the message was deleted; fall back to a Message-ID search.
+			return null;
+		}
+	}
+
+	/**
+	 * Locate a message by its RFC822 Message-ID via Gmail's `rfc822msgid:` search operator.
+	 *
+	 * @param Google_Service_Gmail $service    The authorized Gmail service.
+	 * @param string               $message_id The RFC822 Message-ID header value.
+	 *
+	 * @return ?Gmail_Message The message metadata, or null when not found.
+	 */
+	protected function get_message_by_rfc822_id( Google_Service_Gmail $service, string $message_id ): ?Gmail_Message {
+		if ( '' === $message_id ) {
+			return null;
+		}
+
+		/**
+		 * The list of Gmail messages matching the search.
+		 *
+		 * @var ListMessagesResponse $r
+		 */
+		$r        = $service->users_messages->listUsersMessages( 'me', array( 'q' => 'rfc822msgid:' . $message_id ) );
+		$messages = $r->getMessages();
+
+		if ( empty( $messages ) ) {
+			return null;
+		}
+
+		return $this->get_message_by_remote_uid( $service, $messages[0]->id );
 	}
 
 	public function can_mark_read(): bool {

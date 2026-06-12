@@ -33,6 +33,9 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	 * @param ?bool       $is_remote_read        Whether the email is marked read on the remote server.
 	 * @param ?bool       $is_remote_deleted     Whether the email has been deleted on the remote server.
 	 * @param ?array<int> $attachment_ids        Array of attachment post IDs.
+	 * @param ?string     $remote_uid            Provider-native id (IMAP UID / Gmail message id) for direct lookups.
+	 * @param ?string     $remote_folder         IMAP folder/mailbox path the UID belongs to.
+	 * @param ?int        $remote_uid_validity   IMAP UIDVALIDITY of the folder when the UID was captured.
 	 */
 	public function __construct(
 		string $post_type,
@@ -48,6 +51,9 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 		public ?bool $is_remote_read = null,
 		public ?bool $is_remote_deleted = null,
 		public ?array $attachment_ids = null,
+		public ?string $remote_uid = null,
+		public ?string $remote_folder = null,
+		public ?int $remote_uid_validity = null,
 	) {
 		parent::__construct( $post_type );
 	}
@@ -76,10 +82,13 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	 */
 	protected function get_meta_input(): array {
 		return array(
-			'attachment_ids'    => $this->attachment_ids,
-			'from_address'      => $this->from_address,
-			'is_remote_read'    => $this->is_remote_read,
-			'is_remote_deleted' => $this->is_remote_deleted,
+			'attachment_ids'      => $this->attachment_ids,
+			'from_address'        => $this->from_address,
+			'is_remote_read'      => $this->is_remote_read,
+			'is_remote_deleted'   => $this->is_remote_deleted,
+			'remote_uid'          => $this->remote_uid,
+			'remote_folder'       => $this->remote_folder,
+			'remote_uid_validity' => $this->remote_uid_validity,
 		);
 	}
 

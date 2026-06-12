@@ -9,6 +9,8 @@ namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
@@ -72,7 +74,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		);
 
 		$result = $sut->save_new(
-			$email,
+			$this->make_fetched_email( $email ),
 			$this->settings,
 			$email_account
 		);
@@ -117,8 +119,8 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 			last_failed_login_time: null,
 		);
 
-		$first  = $sut->save_new( $email, $this->settings, $email_account );
-		$second = $sut->save_new( $email, $this->settings, $email_account );
+		$first  = $sut->save_new( $this->make_fetched_email( $email ), $this->settings, $email_account );
+		$second = $sut->save_new( $this->make_fetched_email( $email ), $this->settings, $email_account );
 
 		$this->assertSame(
 			$first->get_post_id(),
@@ -130,6 +132,79 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 			1,
 			$sut->count_for_account_email( $email_account ),
 			'Only one post should exist for the deduplicated email.'
+		);
+	}
+
+	/**
+	 * The remote coordinates and read state captured at fetch time must persist to post meta and
+	 * rehydrate via from_wp_post().
+	 *
+	 * @covers ::save_new
+	 */
+	public function test_save_new_persists_remote_coordinates(): void {
+
+		$post_type = 'test_post_type';
+		$sut       = new Email_WP_Post_Repository( $post_type, new BH_Email_Factory( $this->logger ), $this->logger );
+
+		$email_filepath = codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' );
+		$parser         = new MailMimeParser();
+		/** @var IMessage $email */
+		$email = $parser->parse( (string) file_get_contents( $email_filepath ), true );
+
+		$email_account = new BH_Email_Account(
+			post_id: 456,
+			post_type: $post_type,
+			local_status: 'bh_email_ac_active',
+			provider_type_class: 'SomeProvider',
+			email_address: 'test@example.com',
+			display_name: 'Test Account',
+			from_address_regex_filter: null,
+			body_identifier_regex_filter: null,
+			after_download_remote_email_action: null,
+			delete_local_emails_after_n_days: null,
+			last_successful_login_time: null,
+			last_failed_login_time: null,
+		);
+
+		$coordinates = new Remote_Email_Coordinates(
+			message_id: $email->getMessageId() ?? '',
+			remote_uid: '4242',
+			folder: 'INBOX',
+			uid_validity: 99,
+		);
+
+		$result = $sut->save_new(
+			new Fetched_Email( $email, $coordinates, true ),
+			$this->settings,
+			$email_account,
+		);
+
+		$post_id = $result->get_post_id();
+		$this->assertSame( '4242', get_post_meta( $post_id, 'remote_uid', true ) );
+		$this->assertSame( 'INBOX', get_post_meta( $post_id, 'remote_folder', true ) );
+		$this->assertSame( '99', get_post_meta( $post_id, 'remote_uid_validity', true ) );
+
+		// Rehydrate through the factory.
+		$rehydrated = $sut->find_by_post_id( $post_id );
+		$this->assertTrue( $rehydrated->is_remote_read );
+
+		$rehydrated_coordinates = $rehydrated->get_remote_coordinates();
+		$this->assertNotNull( $rehydrated_coordinates );
+		$this->assertSame( '4242', $rehydrated_coordinates->remote_uid );
+		$this->assertSame( 'INBOX', $rehydrated_coordinates->folder );
+		$this->assertSame( 99, $rehydrated_coordinates->uid_validity );
+	}
+
+	/**
+	 * Wrap a parsed message in a Fetched_Email with minimal coordinates for save_new().
+	 *
+	 * @param IMessage $email The parsed email.
+	 */
+	private function make_fetched_email( IMessage $email ): Fetched_Email {
+		return new Fetched_Email(
+			$email,
+			new Remote_Email_Coordinates( message_id: $email->getMessageId() ?? '' ),
+			false,
 		);
 	}
 

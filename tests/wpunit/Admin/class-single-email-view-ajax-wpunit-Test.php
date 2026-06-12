@@ -9,6 +9,8 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
@@ -148,7 +150,13 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 			last_failed_login_time: null,
 		);
 
-		$bh_email = $repo->save_new( $email, $mailboxes, $email_account );
+		$fetched_email = new Fetched_Email(
+			$email,
+			new Remote_Email_Coordinates( message_id: $email->getMessageId() ?? '' ),
+			false,
+		);
+
+		$bh_email = $repo->save_new( $fetched_email, $mailboxes, $email_account );
 		return $bh_email->get_post_id();
 	}
 
