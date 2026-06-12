@@ -129,6 +129,22 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	}
 
 	/**
+	 * Returns the authorized Gmail service.
+	 *
+	 * Extracted so tests can substitute a mock service (the only seam needed to unit test the
+	 * Gmail API calls without live credentials).
+	 */
+	protected function get_gmail_service(): Google_Service_Gmail {
+		/**
+		 * The authorized Google API client.
+		 *
+		 * @var Google_Client $client
+		 */
+		$client = $this->getClient();
+		return new Google_Service_Gmail( $client );
+	}
+
+	/**
 	 * TODO: Fetch from oldest to newest.
 	 *
 	 * @param DateTimeInterface $since_time The earliest date/time from which to retrieve emails.
@@ -141,13 +157,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 
 		$emails = new Collection();
 
-		/**
-		 * The authorized Google API client.
-		 *
-		 * @var Google_Client $client
-		 */
-		$client  = $this->getClient();
-		$service = new Google_Service_Gmail( $client );
+		$service = $this->get_gmail_service();
 
 		$opts = array(
 			// 'includeSpamTrash' => // bool
@@ -235,13 +245,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 */
 	public function get_is_marked_read( Remote_Email_Coordinates $coordinates ): bool {
 
-		/**
-		 * The authorized Google API client.
-		 *
-		 * @var Google_Client $client
-		 */
-		$client  = $this->getClient();
-		$service = new Google_Service_Gmail( $client );
+		$service = $this->get_gmail_service();
 
 		$message = $this->get_message_by_remote_uid( $service, $coordinates->remote_uid )
 			?? $this->get_message_by_rfc822_id( $service, $coordinates->message_id );
@@ -273,13 +277,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 */
 	public function set_is_marked_read( Remote_Email_Coordinates $coordinates, bool $is_read = true ): void {
 
-		/**
-		 * The authorized Google API client.
-		 *
-		 * @var Google_Client $client
-		 */
-		$client  = $this->getClient();
-		$service = new Google_Service_Gmail( $client );
+		$service = $this->get_gmail_service();
 
 		$message = $this->get_message_by_remote_uid( $service, $coordinates->remote_uid )
 			?? $this->get_message_by_rfc822_id( $service, $coordinates->message_id );

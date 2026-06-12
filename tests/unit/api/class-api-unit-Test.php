@@ -263,7 +263,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
-		$email_account_repository->expects( 'update' )->andReturnArg( 0 );
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->twice();
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
@@ -305,7 +305,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
-		$email_account_repository->expects( 'update' )->andReturnArg( 0 );
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->twice();
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
@@ -349,16 +349,16 @@ class API_Unit_Test extends Unit_Testcase {
 		 * `update()` is called with named arguments; PHP fills the skipped parameters with their
 		 * defaults, so `last_failed_login_time` arrives at its declared position (index 9).
 		 */
-		$captured_update_args = null;
+		$captured_update_args = array();
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
 		$email_account_repository->expects( 'update' )->andReturnUsing(
 			function ( ...$args ) use ( &$captured_update_args, $email_account ) {
-				$captured_update_args = $args;
+				$captured_update_args[] = $args;
 				return $email_account;
 			}
-		);
+		)->twice();
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
@@ -374,10 +374,10 @@ class API_Unit_Test extends Unit_Testcase {
 		$sut = $this->get_api( settings: $settings, email_account_repository: $email_account_repository );
 		$sut->check_email();
 
-		$this->assertNotNull( $captured_update_args, 'Email_Account_WP_Post_Repository::update() was not called.' );
-		$this->assertSame( $email_account, $captured_update_args[0] );
+		$this->assertNotEmpty( $captured_update_args, 'Email_Account_WP_Post_Repository::update() was not called.' );
+		$this->assertSame( $email_account, $captured_update_args[0][0] );
 
-		$last_failed_login_time = $captured_update_args[9] ?? null;
+		$last_failed_login_time = $captured_update_args[0][8] ?? null;
 		$this->assertInstanceOf( DateTimeInterface::class, $last_failed_login_time );
 		$this->assertEqualsWithDelta( time(), $last_failed_login_time->getTimestamp(), 60 );
 	}
@@ -438,7 +438,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
-		$email_account_repository->expects( 'update' )->andReturnArg( 0 );
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->twice();
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
@@ -494,7 +494,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
-		$email_account_repository->expects( 'update' )->andReturnArg( 0 );
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->twice();
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
@@ -563,7 +563,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
-		$email_account_repository->expects( 'update' )->andReturnArg( 0 );
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->twice();
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
@@ -615,7 +615,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
-		$email_account_repository->expects( 'update' )->andReturnArg( 0 );
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->twice();
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
@@ -660,7 +660,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_repository->expects( 'save_all' )->andReturn( array() );
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
-		$email_account_repository->expects( 'update' )->andReturnArg( 0 );
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->twice();
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
@@ -703,7 +703,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_repository->expects( 'save_all' )->andReturn( array() );
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
-		$email_account_repository->expects( 'update' )->andReturnArg( 0 );
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->twice();
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
@@ -747,7 +747,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
-		$email_account_repository->expects( 'update' )->andReturnArg( 0 );
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->twice();
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, $email_account )
