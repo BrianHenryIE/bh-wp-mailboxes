@@ -83,30 +83,44 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * Mark the most-recently fetched email as read on the server, then unread.
+	 * Live round-trip: set_is_marked_read() must flip the server `\Seen` flag both ways, as observed
+	 * through get_is_marked_read(). The newest inbox message's original state is restored at the end.
 	 *
-	 * Ported from the removed Ddeboer_Imap integration test (tests/integration/Providers/Ddeboer_Imap/class-mark-email-read-Test.php).
-	 * The Ddeboer provider is gone; ImapEngine's Message object exposes flag() / unflag() for this purpose.
+	 * Requires live credentials in test-credentials/.env.secret; skipped when the inbox is empty.
 	 */
 	public function test_mark_email_read_on_server(): void {
 
+		$credentials = new Imap_Credentials_Env();
+
+		$sut = new ImapEngine_Imap_Email_Fetcher( $this->settings, $this->logger );
+		$sut->set_credentials( $credentials );
+
+		$since_time = ( new DateTime() )->sub( new DateInterval( 'P30D' ) );
+		$newest     = $sut->retrieve_emails( $since_time, 1 )->first();
+
+		if ( is_null( $newest ) ) {
+			$this->markTestSkipped( 'No recent emails in inbox to test mark-read.' );
+		}
+
+		$coordinates   = $newest->coordinates;
+		$original_seen = $sut->get_is_marked_read( $coordinates );
+
 		try {
-			$sut = new ImapEngine_Imap_Email_Fetcher( $this->settings, $this->logger );
-		} catch ( ImapEngineException $e ) {
-			$this->fail( $e->getMessage() );
+			$sut->set_is_marked_read( $coordinates, true );
+			$this->assertTrue(
+				$sut->get_is_marked_read( $coordinates ),
+				'After set_is_marked_read(true) the message should be `\Seen`.'
+			);
+
+			$sut->set_is_marked_read( $coordinates, false );
+			$this->assertFalse(
+				$sut->get_is_marked_read( $coordinates ),
+				'After set_is_marked_read(false) the message should not be `\Seen`.'
+			);
+		} finally {
+			// Restore the message to the state we found it in.
+			$sut->set_is_marked_read( $coordinates, $original_seen );
 		}
-
-		$since_time = DateTime::createFromFormat( 'U', (string) ( time() - 30 * 24 * 60 * 60 ) );
-		$messages   = $sut->retrieve_emails( $since_time, 1 );
-
-		if ( $messages->isEmpty() ) {
-			$this->markTestSkipped( 'No emails found in inbox to test mark-read.' );
-		}
-
-		// The IMessage returned by retrieve_emails() is a parsed snapshot; to mark read on the
-		// server we need the underlying ImapEngine Message. That requires accessing the mailbox
-		// directly — this test serves as a living specification for the work tracked in Phase 2.
-		$this->markTestIncomplete( 'ImapEngine_Imap_Email_Fetcher does not yet expose a mark-read method. Implement per Phase 2.' );
 	}
 
 	/**
@@ -175,7 +189,7 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 			$this->markTestSkipped( 'No recent emails in inbox to read read/unread status from.' );
 		}
 
-		$message_id    = $newest->messageId(true);
+		$message_id    = $newest->messageId( true );
 		$expected_seen = $newest->isSeen();
 		$folder        = $oracle_inbox->path();
 		$status        = $oracle_inbox->status();

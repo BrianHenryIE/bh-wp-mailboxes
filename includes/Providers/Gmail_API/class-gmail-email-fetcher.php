@@ -16,6 +16,7 @@ use DateTimeInterface;
 use Exception;
 use Google\Service\Gmail\ListMessagesResponse;
 use Google\Service\Gmail\Message as Gmail_Message;
+use Google\Service\Gmail\ModifyMessageRequest;
 use Google_Client;
 use Google_Service_Gmail;
 use Illuminate\Support\Collection;
@@ -257,6 +258,51 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		}
 
 		return $this->is_read_from_labels( $message->getLabelIds() );
+	}
+
+	/**
+	 * Mark the email read or unread on the server by toggling its `UNREAD` label.
+	 *
+	 * Locates the message the same way as get_is_marked_read() — by the stored Gmail message id,
+	 * falling back to a `rfc822msgid:` search.
+	 *
+	 * @param Remote_Email_Coordinates $coordinates How to locate the email on the remote server.
+	 * @param bool                     $is_read     True to remove `UNREAD`; false to add it.
+	 *
+	 * @throws \Exception When the email cannot be found on the server.
+	 */
+	public function set_is_marked_read( Remote_Email_Coordinates $coordinates, bool $is_read = true ): void {
+
+		/**
+		 * The authorized Google API client.
+		 *
+		 * @var Google_Client $client
+		 */
+		$client  = $this->getClient();
+		$service = new Google_Service_Gmail( $client );
+
+		$message = $this->get_message_by_remote_uid( $service, $coordinates->remote_uid )
+			?? $this->get_message_by_rfc822_id( $service, $coordinates->message_id );
+
+		if ( is_null( $message ) ) {
+			$this->logger->warning(
+				'Could not find email on the server to change its remote read/unread status.',
+				array(
+					'message_id' => $coordinates->message_id,
+					'remote_uid' => $coordinates->remote_uid,
+				)
+			);
+			throw new \Exception( 'Could not find email on the server to change its remote read/unread status.' );
+		}
+
+		$request = new ModifyMessageRequest();
+		if ( $is_read ) {
+			$request->setRemoveLabelIds( array( 'UNREAD' ) );
+		} else {
+			$request->setAddLabelIds( array( 'UNREAD' ) );
+		}
+
+		$service->users_messages->modify( 'me', $message->getId(), $request );
 	}
 
 	/**

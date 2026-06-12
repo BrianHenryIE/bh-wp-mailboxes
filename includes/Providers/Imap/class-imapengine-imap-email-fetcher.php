@@ -234,6 +234,40 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	}
 
 	/**
+	 * Mark the email read or unread on the server by setting/clearing its `\Seen` flag.
+	 *
+	 * Locates the message the same way as get_is_marked_read() — direct FETCH by the stored UID,
+	 * falling back to a `HEADER "Message-ID"` search of the inbox.
+	 *
+	 * @param Remote_Email_Coordinates $coordinates How to locate the email on the remote server.
+	 * @param bool                     $is_read     True to mark `\Seen`; false to clear it.
+	 *
+	 * @throws \Exception When the email cannot be found on the server.
+	 */
+	public function set_is_marked_read( Remote_Email_Coordinates $coordinates, bool $is_read = true ): void {
+
+		$message = $this->find_message_by_uid( $coordinates )
+			?? $this->find_message_by_message_id( $coordinates->message_id );
+
+		if ( is_null( $message ) ) {
+			$this->logger->warning(
+				'Could not find email in inbox to change its remote read/unread status.',
+				array(
+					'message_id' => $coordinates->message_id,
+					'remote_uid' => $coordinates->remote_uid,
+				)
+			);
+			throw new \Exception( 'Could not find email in inbox to change its remote read/unread status.' );
+		}
+
+		if ( $is_read ) {
+			$message->markSeen();
+		} else {
+			$message->unmarkSeen();
+		}
+	}
+
+	/**
 	 * Locate the message by its stored IMAP UID, but only when the stored UIDVALIDITY still matches
 	 * the inbox — otherwise the UID is stale and could resolve to an unrelated message.
 	 *
