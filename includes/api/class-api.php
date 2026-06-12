@@ -234,7 +234,7 @@ class API implements API_Interface {
 	 * Fetches new emails for a single account and saves them.
 	 *
 	 * @param BH_Email_Account   $account The account to check.
-	 * @param ?DateTimeInterface $since Specific day to check since (only support granularity of day).
+	 * @param ?DateTimeInterface $since Time to find new emails after.
 	 *
 	 * @return array{success:bool, new_emails:BH_Email[]}
 	 * @throws \DateInvalidOperationException

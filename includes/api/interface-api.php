@@ -93,7 +93,7 @@ interface API_Interface {
 	 * Fetches new emails for a single account and saves them.
 	 *
 	 * @param BH_Email_Account  $account The account to check.
-	 * @param DateTimeInterface $since The day to check emails since.
+	 * @param DateTimeInterface $since The time to check emails since.
 	 *
 	 * @return array{success:bool, new_emails:BH_Email[]}
 	 */

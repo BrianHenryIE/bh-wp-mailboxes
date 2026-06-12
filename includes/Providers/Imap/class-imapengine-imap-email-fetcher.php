@@ -103,7 +103,7 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 
 		// TODO: validate we have had credentials set.
 
-		// `SINCE` filters by date only — go back one extra day and filter by time in PHP.
+		// IMAP `SINCE` filters by date only — go back one extra day and filter by time in PHP.
 		$previous_day = ( new \DateTime() )->setTimestamp( $since_time->getTimestamp() )->sub( new \DateInterval( 'P1D' ) );
 
 		$this->logger->debug(
