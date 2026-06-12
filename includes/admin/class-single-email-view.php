@@ -254,7 +254,7 @@ class Single_Email_View {
 		echo '</select>';
 		echo '<input type="hidden" name="hidden_post_status" value="' . esc_attr( $current_status ) . '">';
 
-		// Remote status
+		// TODO Separate remote status metabox.
 
 		// Sent: The email "Date" header.
 		$sent = $email->sent_at ? wp_date( $date_format, $email->sent_at->getTimestamp() ) : '';

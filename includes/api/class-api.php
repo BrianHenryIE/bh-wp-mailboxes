@@ -18,6 +18,7 @@ use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads;
+use DateException;
 use DateInterval;
 use DateTime;
 use DateTimeImmutable;
@@ -225,6 +226,7 @@ class API implements API_Interface {
 			return array();
 		}
 
+		// TODO: Log the number of emails found.
 		$this->email_account_repository->update( $email_account, last_checked_time: $now_time );
 
 		// Drop any emails already saved locally (same account + Message-ID) so we never duplicate.
@@ -246,8 +248,7 @@ class API implements API_Interface {
 	 * @param ?DateTimeInterface $since Time to find new emails after.
 	 *
 	 * @return array{success:bool, new_emails:BH_Email[]}
-	 * @throws \DateInvalidOperationException
-	 * @throws \DateMalformedStringException
+	 * @throws DateException In the unlikely event PHP is unable to create now@UTC.
 	 */
 	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): array {
 		$now_time = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );

@@ -74,16 +74,19 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		$this->_last_response .= (string) ob_get_clean();
 
 		if ( '' === $this->_last_response ) {
-			throw new \WPAjaxDieStopException( is_scalar( $message ) ? (string) $message : '0' );
+			throw new \WPAjaxDieStopException( esc_html( is_scalar( $message ) ? (string) $message : '0' ) );
 		}
 
-		throw new \WPAjaxDieContinueException( $message );
+		throw new \WPAjaxDieContinueException( esc_html( $message ) );
 	}
 
 	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
 
+	/**
+	 * Arrange.
+	 */
 	private function register_cpt(): void {
 		if ( ! post_type_exists( $this->post_type ) ) {
 			register_post_type(
@@ -152,7 +155,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Invoke an AJAX method, capturing its JSON output in $this->_last_response.
 	 *
-	 * ob_start() opens a dedicated buffer so that dieHandler() closes *our*
+	 * `ob_start()` opens a dedicated buffer so that dieHandler() closes *our*
 	 * buffer — not Codeception's — when it calls ob_get_clean().
 	 *
 	 * @param callable $ajax_function_under_test The AJAX method to invoke.
@@ -163,9 +166,9 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		ob_start();
 		try {
 			$ajax_function_under_test();
-		} catch ( \WPAjaxDieContinueException $e ) {
+		} catch ( \WPAjaxDieContinueException $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 			// Normal AJAX termination; dieHandler already closed the buffer.
-		} catch ( \WPAjaxDieStopException $e ) {
+		} catch ( \WPAjaxDieStopException $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 			// Error-only die; dieHandler already closed the buffer.
 		}
 		// Safety: if the callable returned without calling wp_die().

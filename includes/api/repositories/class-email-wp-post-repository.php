@@ -131,6 +131,12 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		return $count;
 	}
 
+	/**
+	 * Determine do we already have a post saved for this account+message id.
+	 *
+	 * @param string $account_email_address The account we file it under.
+	 * @param string $message_id The message uid.
+	 */
 	public function is_post_for_message_id( string $account_email_address, string $message_id ): bool {
 
 		return (bool) $this->find_post_id_by_guid( self::guid_for( $this->post_type, $account_email_address, $message_id ) );
@@ -216,16 +222,14 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 
 		// Deduplicate: the same email (account + Message-ID) may be fetched more than once.
 		// Its guid is stable, so if a post already exists we return it rather than inserting a duplicate.
-		$guid = self::guid_for(
+		$guid             = self::guid_for(
 			$post_type,
 			$email_account->get_account_email_address(),
 			$email->getMessageId() ?? ''
 		);
-		if ( null !== $guid ) {
-			$existing_post_id = $this->find_post_id_by_guid( $guid );
-			if ( null !== $existing_post_id ) {
-				return $this->find_by_post_id( $existing_post_id );
-			}
+		$existing_post_id = $this->find_post_id_by_guid( $guid );
+		if ( null !== $existing_post_id ) {
+			return $this->find_by_post_id( $existing_post_id );
 		}
 
 		$post_id = $this->insert( $query );
@@ -323,13 +327,13 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		return $this->find_by_post_id( $email->post_id );
 	}
 
-
 	/**
 	 * Builds the guid URL for the given email ID.
 	 *
 	 * TODO: test that we're never passing an existing guid, only ever the email id itself.
 	 * TODO: this URL should work for admins to load the email.
 	 *
+	 * @param string $post_type The CPT type being saved under.
 	 * @param string $account_email_address The mailbox email address.
 	 * @param string $email_id              The email message ID.
 	 *
