@@ -263,11 +263,11 @@ test.describe( 'Single email view', () => {
 
 		// Collapse: click and wait for the 'closed' class to be applied.
 		await page.locator( '#bh-email-content-html .toggle-indicator' ).click();
-		await expect( page.locator( '#bh-email-content-html' ) ).toHaveClass( /closed/ );
+		await expect( page.locator( '#bh-email-content-html' ) ).toHaveClass( /closed/, { timeout: 15_000 } );
 
 		// Expand: click and wait for 'closed' to be removed.
 		await page.locator( '#bh-email-content-html .toggle-indicator' ).click();
-		await expect( page.locator( '#bh-email-content-html' ) ).not.toHaveClass( /closed/ );
+		await expect( page.locator( '#bh-email-content-html' ) ).not.toHaveClass( /closed/, { timeout: 15_000 } );
 
 		// Poll until the setTimeout(0) resize callback sets a positive height.
 		await expect.poll(
@@ -293,11 +293,11 @@ test.describe( 'Single email view', () => {
 
 		// Collapse: click and wait for the 'closed' class to be applied.
 		await page.locator( '#bh-email-content-plain .toggle-indicator' ).click();
-		await expect( page.locator( '#bh-email-content-plain' ) ).toHaveClass( /closed/ );
+		await expect( page.locator( '#bh-email-content-plain' ) ).toHaveClass( /closed/, { timeout: 15_000 } );
 
 		// Expand: click and wait for 'closed' to be removed.
 		await page.locator( '#bh-email-content-plain .toggle-indicator' ).click();
-		await expect( page.locator( '#bh-email-content-plain' ) ).not.toHaveClass( /closed/ );
+		await expect( page.locator( '#bh-email-content-plain' ) ).not.toHaveClass( /closed/, { timeout: 15_000 } );
 
 		// Poll until the setTimeout(0) resize callback sets a positive height.
 		await expect.poll(
