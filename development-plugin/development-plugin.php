@@ -99,42 +99,42 @@ $plugins_url_fix = function ( $url, $_path, $_plugin ) {
 };
 add_filter( 'plugins_url', $plugins_url_fix, 10, 3 );
 
-
-$logger_settings = new class() implements Logger_Settings_Interface {
-	use Logger_Settings_Trait;
-
-	/**
-	 * Returns the log level.
-	 */
-	public function get_log_level(): string {
-		return 'debug';
-	}
-
-	/**
-	 * Returns the plugin slug.
-	 */
-	public function get_plugin_slug(): string {
-		return 'bh-wp-mailboxes-test-plugin';
-	}
-
-	/**
-	 * Returns the plugin basename.
-	 */
-	public function get_plugin_basename(): string {
-		return (string) defined( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' )
-			? constant( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' )
-			: 'bh-wp-mailboxes-test-plugin/bh-wp-mailboxes-test-plugin.php';
-	}
-
-	/**
-	 * Returns the plugin display name.
-	 */
-	public function get_plugin_name(): string {
-		return 'BH WP Mailboxes Test Plugin';
-	}
-};
-
-$logger = Logger::instance( $logger_settings );
+//$logger_settings = new class() implements Logger_Settings_Interface {
+//	use Logger_Settings_Trait;
+//
+//	/**
+//	 * Returns the log level.
+//	 */
+//	public function get_log_level(): string {
+//		return 'debug';
+//	}
+//
+//	/**
+//	 * Returns the plugin slug.
+//	 */
+//	public function get_plugin_slug(): string {
+//		return 'bh-wp-mailboxes-test-plugin';
+//	}
+//
+//	/**
+//	 * Returns the plugin basename.
+//	 */
+//	public function get_plugin_basename(): string {
+//		return (string) defined( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' )
+//			? constant( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' )
+//			: 'bh-wp-mailboxes-test-plugin/bh-wp-mailboxes-test-plugin.php';
+//	}
+//
+//	/**
+//	 * Returns the plugin display name.
+//	 */
+//	public function get_plugin_name(): string {
+//		return 'BH WP Mailboxes Test Plugin';
+//	}
+//};
+//
+//$logger = Logger::instance( $logger_settings );
+$logger = new NullLogger();
 
 $mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {
 	use BH_WP_Mailboxes_Settings_Defaults_Trait;
