@@ -17,7 +17,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Handles AJAX requests from the admin UI.
  */
-class Ajax {
+class Emails_List_Table_Ajax {
 
 	use LoggerAwareTrait;
 

@@ -30,6 +30,7 @@ class Unit_Testcase extends Unit {
 
 		WP_Mock::passthruFunction( 'sanitize_title' );
 		WP_Mock::passthruFunction( 'sanitize_key' );
+		WP_Mock::passthruFunction( '__' );
 
 		$this->logger = new ColorLogger();
 

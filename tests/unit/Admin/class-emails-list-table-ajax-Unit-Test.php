@@ -9,9 +9,9 @@ use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use Codeception\Stub\Expected;
 
 /**
- * @coversDefaultClass  \BrianHenryIE\WP_Mailboxes\Admin\Ajax
+ * @coversDefaultClass  \BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Table_Ajax
  */
-class AJAX_Unit_Test extends Unit_Testcase {
+class Emails_List_Table_Ajax_Unit_Test extends Unit_Testcase {
 
 	/**
 	 * @covers ::check_email
@@ -39,7 +39,7 @@ class AJAX_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		$sut = new Ajax( $api, $settings, $logger );
+		$sut = new Emails_List_Table_Ajax( $api, $settings, $logger );
 
 		// Arrange.
 
@@ -90,7 +90,7 @@ class AJAX_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		$sut = new Ajax( $api, $settings, $logger );
+		$sut = new Emails_List_Table_Ajax( $api, $settings, $logger );
 
 		// Arrange.
 
@@ -154,7 +154,7 @@ class AJAX_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		$sut = new Ajax( $api, $settings, $logger );
+		$sut = new Emails_List_Table_Ajax( $api, $settings, $logger );
 
 		// Arrange.
 
@@ -219,7 +219,7 @@ class AJAX_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		$sut = new Ajax( $api, $settings, $logger );
+		$sut = new Emails_List_Table_Ajax( $api, $settings, $logger );
 
 		// Arrange.
 

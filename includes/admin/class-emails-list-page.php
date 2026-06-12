@@ -13,6 +13,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use Psr\Log\LoggerAwareTrait;
@@ -60,10 +61,10 @@ class Emails_List_Page {
 		if ( 'top' !== $which ) {
 			return;
 		}
+
 		wp_nonce_field( 'bh-wp-mailboxes-check-email', '_wpnonce_checknow' );
 		echo '<button name="check-email" id="check-email" class="button button-primary">Check now</button>';
 	}
-
 
 	/**
 	 * Customises the column headers for the emails list table.
@@ -78,7 +79,7 @@ class Emails_List_Page {
 
 		$columns = array();
 
-		$columns['cb'] = $defaults['cb'];
+		$columns['cb'] = $defaults['cb']; // Check-box.
 
 		$columns['title'] = __( 'Subject', 'bh-wp-mailboxes' );
 		$columns['from']  = __( 'From', 'bh-wp-mailboxes' );
@@ -192,10 +193,10 @@ class Emails_List_Page {
 			return;
 		}
 
-		$handle = "{$this->settings->get_emails_cpt_dashed()}-list-script";
+		$handle = "{$this->settings->get_emails_cpt_dashed()}-list-page-script";
 
 		$js_file = plugin_dir_url( __FILE__ ) . 'js/bh-wp-mailboxes.js';
-		$version = '1.0.0';
+		$version = BH_WP_Mailboxes::get_version();
 
 		wp_enqueue_script( $handle, $js_file, array( 'jquery' ), $version, true );
 	}

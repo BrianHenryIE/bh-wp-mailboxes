@@ -7,6 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes;
 
+use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page;
 use BrianHenryIE\WP_Mailboxes\API\API;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
@@ -24,6 +25,15 @@ use Psr\Log\NullLogger;
  * Main library class; singleton wrapper around the API.
  */
 class BH_WP_Mailboxes extends API {
+
+	/**
+	 * The library version.
+	 *
+	 * Used when enqueuing scripts and styles.
+	 */
+	public static function get_version(): string {
+		return '1.0.0';
+	}
 
 	/**
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings

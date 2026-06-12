@@ -7,7 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
-use BrianHenryIE\WP_Mailboxes\Admin\Ajax;
+use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Table_Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View_Ajax;
@@ -104,7 +104,7 @@ class BH_WP_Mailboxes_Hooks {
 
 		$mailbox_list_page = new Emails_List_Page( $this->email_wp_post_repository, $this->api, $this->settings, $this->logger );
 
-		$post_type = str_replace( '-', '_', sanitize_title( $this->settings->get_emails_cpt_friendly_name() ) );
+		$post_type = $this->settings->get_emails_cpt_underscored_20();
 
 		add_action( 'manage_posts_extra_tablenav', $mailbox_list_page->print_extra_table_controls_at_top( ... ) );
 
@@ -142,7 +142,7 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function define_ajax_hooks(): void {
 
-		$ajax = new Ajax( $this->api, $this->settings, $this->logger );
+		$ajax = new Emails_List_Table_Ajax( $this->api, $this->settings, $this->logger );
 
 		add_action( 'wp_ajax_bh_wp_mailboxes_check_email', $ajax->check_email( ... ) );
 		add_action( 'wp_ajax_bh_wp_mailboxes_check_account', $ajax->check_account( ... ) );
