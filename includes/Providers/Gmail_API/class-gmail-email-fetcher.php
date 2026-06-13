@@ -128,14 +128,48 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 				}
 			}
 
-			$token_path = __DIR__ . '/token.json';
-			// Save the token to a file.
-			if ( ! file_exists( dirname( $token_path ) ) ) {
-				mkdir( dirname( $token_path ), 0700, true );
-			}
-			file_put_contents( $token_path, wp_json_encode( $client->getAccessToken() ) );
+			$this->save_access_token( __DIR__ . '/token.json', (string) wp_json_encode( $client->getAccessToken() ) );
 		}
 		return $client;
+	}
+
+	/**
+	 * Persist the OAuth access/refresh token to a file via WP_Filesystem.
+	 *
+	 * The token is a secret, so the containing directory and file are created with restrictive
+	 * permissions. Failure to write is logged but not fatal — the token is a cache and will be
+	 * re-fetched on the next run.
+	 *
+	 * @param string $token_path Absolute path to the token file.
+	 * @param string $contents   JSON-encoded access token.
+	 */
+	protected function save_access_token( string $token_path, string $contents ): void {
+
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		WP_Filesystem();
+
+		/**
+		 * The WordPress filesystem abstraction.
+		 *
+		 * @var \WP_Filesystem_Base|null $wp_filesystem
+		 */
+		global $wp_filesystem;
+
+		if ( ! $wp_filesystem instanceof \WP_Filesystem_Base ) {
+			$this->logger->warning( 'Could not initialise WP_Filesystem to save the Gmail access token.' );
+			return;
+		}
+
+		$token_dir = dirname( $token_path );
+		if ( ! $wp_filesystem->is_dir( $token_dir ) ) {
+			$wp_filesystem->mkdir( $token_dir, 0700 );
+		}
+
+		if ( ! $wp_filesystem->put_contents( $token_path, $contents, 0600 ) ) {
+			$this->logger->warning( 'Failed to save the Gmail access token to disk.', array( 'path' => $token_path ) );
+		}
 	}
 
 	/**
