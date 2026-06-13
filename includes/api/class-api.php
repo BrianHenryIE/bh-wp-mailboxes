@@ -211,7 +211,6 @@ class API implements API_Interface {
 		}
 
 		$fetcher->set_credentials( $credentials );
-		$this->email_account_repository->update( $email_account, last_successful_login_time: $now_time );
 
 		try {
 			$all_new_account_emails = $fetcher->retrieve_emails( $since_datetime );
@@ -229,6 +228,13 @@ class API implements API_Interface {
 			return array();
 		}
 
+		// The fetch authenticated and completed, so record the successful login and check time.
+		$this->email_account_repository->update(
+			$email_account,
+			last_checked_time: $now_time,
+			last_successful_login_time: $now_time,
+		);
+
 		// Drop any emails already saved locally (same account + Message-ID) so we never duplicate.
 		$all_new_account_emails = $all_new_account_emails->reject(
 			fn ( Fetched_Email $unsaved_email ): bool => $this->email_repository->is_post_for_message_id(
@@ -238,8 +244,6 @@ class API implements API_Interface {
 		);
 
 		// TODO: Log the number of emails found.
-		$this->email_account_repository->update( $email_account, last_checked_time: $now_time );
-
 		$saved = $this->email_repository->save_all( $all_new_account_emails, $this->settings, $email_account, $this->private_uploads );
 		return $saved;
 	}

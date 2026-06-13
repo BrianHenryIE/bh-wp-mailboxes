@@ -57,7 +57,7 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 		$sut      = new ImapEngine_Imap_Email_Fetcher( $settings, $this->logger );
 
 		$property = new \ReflectionProperty( ImapEngine_Imap_Email_Fetcher::class, 'mailbox' );
-		$property->setAccessible( true );
+		PHP_VERSION_ID < 80100 && $property->setAccessible( true );
 		$property->setValue( $sut, $mailbox );
 
 		return $sut;
