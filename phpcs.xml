@@ -36,6 +36,10 @@
     <rule ref="Squiz.Commenting.FunctionComment.IncorrectTypeHint">
         <exclude-pattern>*</exclude-pattern>
     </rule>
+    <!-- Allow more detailed "throws" PhpDoc. -->
+    <rule ref="Squiz.Commenting.FunctionCommentThrowTag.WrongNumber">
+        <exclude-pattern>*</exclude-pattern>
+    </rule>
 
     <!-- Enforce fewer rules on development plugin -->
 

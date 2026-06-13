@@ -58,8 +58,6 @@ interface Email_Fetcher_Interface {
 
 	/**
 	 * Perform API call to change the read status of an email on a server.
-	 *
-	 * TODO: what return value? Assume success and throw on error?
 	 */
 	public function set_is_marked_read( Remote_Email_Coordinates $coordinates, bool $is_read = true ): void;
 

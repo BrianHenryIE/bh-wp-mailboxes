@@ -17,9 +17,11 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTimeInterface;
 use DirectoryTree\ImapEngine\Enums\ImapFetchIdentifier;
+use DirectoryTree\ImapEngine\Exceptions\ImapConnectionFailedException;
 use DirectoryTree\ImapEngine\Mailbox;
 use DirectoryTree\ImapEngine\MessageInterface;
 use Illuminate\Support\Collection;
+use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use ZBateson\MailMimeParser\IMessage;
@@ -33,13 +35,15 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 
 	/**
 	 * The IMAP mailbox connection.
+	 *
+	 * @var Mailbox
 	 */
 	protected Mailbox $mailbox;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param Email_Account_Settings_Interface $settings
+	 * @param Email_Account_Settings_Interface $settings TODO: unused.
 	 * @param LoggerInterface                  $logger Logger.
 	 */
 	public function __construct(
@@ -49,6 +53,9 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		$this->setLogger( $logger );
 	}
 
+	/**
+	 * IMAP does support querying the current read status of a message. (e.g. a webhook/AWS SNS delivery of email would not).
+	 */
 	public function can_read_status(): bool {
 		return true;
 	}
@@ -61,54 +68,55 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 		return true;
 	}
 
+	/**
+	 * IMAP does support deleting messages.
+	 */
 	public function can_delete_on_server(): bool {
 		return true;
 	}
 
-
 	/**
-	 * @param Account_Credentials_Interface $credentials
 	 *
-	 * @throws \Exception When credentials are not IMAP credentials.
-	 * @throws \Throwable When the IMAP connection fails.
+	 * Port is determined from the encryption value, or overridden by server:port.
+	 *
+	 * @param IMAP_Credentials_Interface $credentials The connection settings.
+	 *
+	 * @throws InvalidArgumentException When credentials are not IMAP credentials.
+	 * @throws ImapConnectionFailedException When the IMAP connection fails.
 	 */
 	public function set_credentials( Account_Credentials_Interface $credentials ): void {
 
 		if ( ! ( $credentials instanceof IMAP_Credentials_Interface ) ) {
-			return;
+			throw new InvalidArgumentException();
 		}
 
 		$server = $credentials->get_email_imap_server();
 		$host   = $server;
-		$port   = 143;
-		$port   = 993;
+		$port   = $credentials->get_encryption() === '' ? 143 : 993;
 
 		if ( str_contains( $server, ':' ) ) {
 			[ $host, $port_str ] = explode( ':', $server, 2 );
 			$port                = (int) $port_str;
 		}
 
+		/**
+		 * Instantiate the mailbox with the IMAP connection options.
+		 *
+		 * @see Mailbox::$config
+		 */
 		$this->mailbox = Mailbox::make(
 			array(
 				'host'          => $host,
-				// 'port'          => $port, // gets determined by encryption value.
-				// 'port' => 993,
-					'username'  => $credentials->get_email_account_username(),
+				'port'          => $port,
+				'username'      => $credentials->get_email_account_username(),
 				'password'      => $credentials->get_email_account_password(),
-				// 'encryption'                           => $credentials->get_encryption(),
-												'encryption' => 'tls',
-				'validate_cert' => false,
+				'encryption'    => $credentials->get_encryption() === '' ? '' : 'ssl',
+				'validate_cert' => false, // TODO: This was for my own use. Need a convention for controlling it.
 			)
 		);
 
-		try {
-			// Connect eagerly so authentication failures surface here in the constructor.
-			$this->mailbox->connect();
-
-		} catch ( \Throwable $t ) {
-
-			throw $t;
-		}
+		// Connect eagerly so authentication failures surface here in the constructor.
+		$this->mailbox->connect();
 	}
 
 	/**
@@ -169,7 +177,11 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 			}
 		);
 
-		/** @var Collection<int, Fetched_Email> $fetched */
+		/**
+		 * Bundle the MessageInterface instance with metadata used later when deleting/marking-read individual emails.
+		 *
+		 * @var Collection<int, Fetched_Email> $fetched
+		 */
 		$fetched = new Collection(
 			array_map(
 				function ( MessageInterface $message ) use ( $folder, $uid_validity ): Fetched_Email {

@@ -20,6 +20,7 @@ use Google\Service\Gmail\ModifyMessageRequest;
 use Google_Client;
 use Google_Service_Gmail;
 use Illuminate\Support\Collection;
+use InvalidArgumentException;
 use ZBateson\MailMimeParser\MailMimeParser;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -30,6 +31,11 @@ use Psr\Log\LoggerInterface;
 class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	use LoggerAwareTrait;
 
+	/**
+	 * The Google Developer Console project credentials, and the access token.
+	 *
+	 * @var Google_API_Credentials_Interface The project and access token json.
+	 */
 	protected Google_API_Credentials_Interface $credentials;
 
 	/**
@@ -45,9 +51,15 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		$this->logger = $logger;
 	}
 
+	/**
+	 * Configure the instance with the credentials to connect with.
+	 *
+	 * @param Google_API_Credentials_Interface $credentials OAuth project credentials + access token.
+	 * @throws InvalidArgumentException If incorrect credentials type provided.
+	 */
 	public function set_credentials( Account_Credentials_Interface $credentials ): void {
 		if ( ! ( $credentials instanceof Google_API_Credentials_Interface ) ) {
-			throw new Exception( 'Credentials must implement Google_API_Credentials_Interface' );
+			throw new InvalidArgumentException( 'Credentials must implement Google_API_Credentials_Interface' );
 		}
 		$this->credentials = $credentials;
 	}
@@ -102,8 +114,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 			} else {
 				// Request authorization from the user.
 				$auth_url = $client->createAuthUrl();
-				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CLI output, not HTML.
-				printf( "Open the following link in your browser:\n%s\n", $auth_url );
+				printf( "Open the following link in your browser:\n%s\n", esc_html( $auth_url ) );
 				print 'Enter verification code: ';
 				$auth_code = trim( (string) fgets( STDIN ) );
 
@@ -113,8 +124,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 
 				// Check to see if there was an error.
 				if ( array_key_exists( 'error', $access_token ) ) {
-					// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, not direct output.
-					throw new Exception( join( ', ', $access_token ) );
+					throw new Exception( join( ', ', esc_html( $access_token ) ) );
 				}
 			}
 
@@ -123,7 +133,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 			if ( ! file_exists( dirname( $token_path ) ) ) {
 				mkdir( dirname( $token_path ), 0700, true );
 			}
-			file_put_contents( $token_path, json_encode( $client->getAccessToken() ) );
+			file_put_contents( $token_path, wp_json_encode( $client->getAccessToken() ) );
 		}
 		return $client;
 	}
@@ -169,12 +179,12 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		/**
 		 * The list of Gmail messages matching the query.
 		 *
-		 * @var ListMessagesResponse $r
+		 * @var ListMessagesResponse $response The emails!
 		 */
-		$r = $service->users_messages->listUsersMessages( 'me', $opts );
+		$response = $service->users_messages->listUsersMessages( 'me', $opts );
 
 		$parser   = new MailMimeParser();
-		$messages = $r->getMessages();
+		$messages = $response->getMessages();
 		foreach ( $messages as $message ) {
 
 			// Request format=raw to receive the full RFC 2822 message (base64url-encoded);
@@ -186,6 +196,9 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 				continue;
 			}
 
+			/**
+			 * phpcs:disable WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+			 */
 			$rfc2822  = base64_decode( strtr( $raw, '-_', '+/' ) );
 			$imessage = $parser->parse( $rfc2822, false );
 
@@ -220,7 +233,14 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	 * @see https://stackoverflow.com/questions/44218353/decode-email-body-in-php-gmail-api
 	 */
 	protected function gmail_body_decode( string $data ): string {
-		// @see https://php.net/manual/es/function.base64-decode.php#118244
+		/**
+		 * Base64-decoding for rfc4648 encoded messages.
+		 *
+		 * @see https://php.net/manual/en/function.base64-decode.php#118244
+		 * @see https://www.rfc-editor.org/info/rfc4648/
+		 *
+		 * phpcs:disable WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+		 */
 		$decoded = base64_decode( str_replace( array( '-', '_' ), array( '+', '/' ), $data ) );
 
 		// Stack Overflow says can also use `quoted_printable_decode()`.
@@ -351,14 +371,23 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 		return $this->get_message_by_remote_uid( $service, $messages[0]->id );
 	}
 
+	/**
+	 * Gmail API allows marking messages as read/unread.
+	 */
 	public function can_mark_read(): bool {
 		return true;
 	}
 
+	/**
+	 * Gmail allows deleting messages on the server.
+	 */
 	public function can_delete_on_server(): bool {
 		return true;
 	}
 
+	/**
+	 * Gmail allows querying the read/unread status of messages.
+	 */
 	public function can_read_status(): bool {
 		return true;
 	}

@@ -7,7 +7,6 @@
 
 namespace BrianHenryIE\WP_Mailboxes;
 
-use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page;
 use BrianHenryIE\WP_Mailboxes\API\API;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
@@ -18,6 +17,7 @@ use BrianHenryIE\WP_Private_Uploads\BH_WP_Private_Uploads_Hooks;
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Interface;
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Trait;
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads;
+use Exception;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
@@ -36,10 +36,12 @@ class BH_WP_Mailboxes extends API {
 	}
 
 	/**
-	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings
+	 * Create an instance of the BH_WP_Mailboxes API class.
+	 *
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings.
 	 * @param ?LoggerInterface                   $logger   PSR-3 logger.
 	 *
-	 * @throws \Exception When settings are not provided on first use.
+	 * @throws Exception When settings are not provided on first use.
 	 */
 	public static function make(
 		BH_WP_Mailboxes_Settings_Interface $settings,
@@ -85,11 +87,11 @@ class BH_WP_Mailboxes extends API {
 	 *
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings For `::get_*_cpt_underscored_20()`.
 	 *
-	 * @throws \Exception
+	 * @throws Exception When the CPT names are not unique.
 	 */
 	protected static function validate_settings( BH_WP_Mailboxes_Settings_Interface $settings ): void {
 		if ( $settings->get_emails_cpt_underscored_20() === $settings->get_email_accounts_cpt_underscored_20() ) {
-			throw new \Exception( 'The emails CPT and email accounts CPT cannot have the same slug. Please change one of them in your settings.' );
+			throw new Exception( 'The emails CPT and email accounts CPT cannot have the same slug. Please change one of them in your settings.' );
 		}
 	}
 
@@ -98,7 +100,7 @@ class BH_WP_Mailboxes extends API {
 	 *
 	 * @see https://github.com/BrianHenryIE/bh-wp-private-uploads
 	 *
-	 * @param BH_WP_Mailboxes_Settings_Interface $settings
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings The plugin name, CPT names, cron schedules.
 	 * @param LoggerInterface                    $logger PSR logger.
 	 */
 	protected static function make_private_uploads( BH_WP_Mailboxes_Settings_Interface $settings, LoggerInterface $logger ): ?Private_Uploads {

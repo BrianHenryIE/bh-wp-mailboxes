@@ -7,6 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model;
 
+use RuntimeException;
 use stdClass;
 
 /**
@@ -44,13 +45,17 @@ readonly class Credentials_Web {
 	 * @param string $file_path Path to the credentials JSON file.
 	 *
 	 * phpcs:disable WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+	 * @throws RuntimeException If the file cannot be read.
 	 */
 	public static function from_file( string $file_path ): Credentials_Web {
 		$json_string = file_get_contents( $file_path );
 		if ( false === $json_string ) {
-			throw new \RuntimeException( "Failed to read credentials file: {$file_path}" );
+			throw new RuntimeException( 'Failed to read credentials file: ' . esc_html( $file_path ) );
 		}
 		$json = json_decode( $json_string );
+		if ( null === $json ) {
+			throw new RuntimeException( 'The credentials file did not contain valid JSON: ' . esc_html( $file_path ) );
+		}
 		return self::from_json( $json );
 	}
 

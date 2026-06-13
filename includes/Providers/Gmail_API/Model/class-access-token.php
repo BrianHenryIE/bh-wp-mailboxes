@@ -41,6 +41,8 @@ readonly class Access_Token {
 	 * @param string $file_path Path to the access token JSON file.
 	 *
 	 * phpcs:disable WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+	 *
+	 * @throws RuntimeException When the file can not be read.
 	 */
 	public static function from_file( string $file_path ): Access_Token {
 		$json_string = file_get_contents( $file_path );
@@ -53,6 +55,9 @@ readonly class Access_Token {
 			);
 		}
 		$json = json_decode( $json_string );
+		if ( null === $json ) {
+			throw new RuntimeException( 'The access token file did not contain valid JSON: ' . esc_html( $file_path ) );
+		}
 		return self::from_json( $json );
 	}
 
