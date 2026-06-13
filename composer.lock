@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4c0527957ca8811454696ad01e767ff0",
+    "content-hash": "b4da84ba45dbefb3e281e72900b8e720",
     "packages": [
         {
             "name": "carbonphp/carbon-doctrine-types",
@@ -2812,6 +2812,184 @@
                 }
             ],
             "time": "2026-05-18T09:33:47+00:00"
+        },
+        {
+            "name": "brianhenryie/bh-wc-logger",
+            "version": "0.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/BrianHenryIE/bh-wc-logger.git",
+                "reference": "c2288a5c9a4a59a0890f5c09f06d260381b1c78f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/BrianHenryIE/bh-wc-logger/zipball/c2288a5c9a4a59a0890f5c09f06d260381b1c78f",
+                "reference": "c2288a5c9a4a59a0890f5c09f06d260381b1c78f",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "php": ">=8.0",
+                "psr/log": "^2.0 || ^3.0"
+            },
+            "require-dev": {
+                "php-stubs/woocommerce-stubs": "*",
+                "phpcompatibility/phpcompatibility-wp": "*",
+                "phpstan/extension-installer": "*",
+                "squizlabs/php_codesniffer": "*",
+                "szepeviktor/phpstan-wordpress": "*",
+                "wordpress/wordpress": "*",
+                "wp-cli/wp-cli-bundle": "*",
+                "wp-coding-standards/wpcs": "*",
+                "wpackagist-plugin/woocommerce": "*"
+            },
+            "type": "library",
+            "autoload": {
+                "classmap": [
+                    "src/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Brian Henry",
+                    "email": "BrianHenryIE@gmail.com"
+                }
+            ],
+            "description": "A PSR-3 wrapper for WooCommerce WC_Logger.",
+            "support": {
+                "issues": "https://github.com/BrianHenryIE/bh-wc-logger/issues",
+                "source": "https://github.com/BrianHenryIE/bh-wc-logger/tree/0.2"
+            },
+            "time": "2026-06-13T05:25:18+00:00"
+        },
+        {
+            "name": "brianhenryie/bh-wp-cli-logger",
+            "version": "v2.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/BrianHenryIE/bh-wp-cli-logger.git",
+                "reference": "54f0aaa23b99f3983c18b8b42d29702c9130ba9d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/BrianHenryIE/bh-wp-cli-logger/zipball/54f0aaa23b99f3983c18b8b42d29702c9130ba9d",
+                "reference": "54f0aaa23b99f3983c18b8b42d29702c9130ba9d",
+                "shasum": ""
+            },
+            "require": {
+                "psr/log": "^2.0 || ^3.0"
+            },
+            "require-dev": {
+                "10up/wp_mock": "*",
+                "antecedent/patchwork": "^2.1",
+                "brianhenryie/color-logger": "*",
+                "dealerdirect/phpcodesniffer-composer-installer": "*",
+                "johnpbloch/wordpress": "*",
+                "lucatume/wp-browser": "*",
+                "phpstan/extension-installer": "*",
+                "phpunit/phpcov": "*",
+                "squizlabs/php_codesniffer": "*",
+                "szepeviktor/phpstan-wordpress": "*",
+                "wordpress/wordpress": "*",
+                "wp-cli/wp-cli-tests": "*",
+                "wp-coding-standards/wpcs": "*"
+            },
+            "type": "library",
+            "autoload": {
+                "classmap": [
+                    "includes/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "BrianHenryIE",
+                    "email": "BrianHenryIE@gmail.com"
+                }
+            ],
+            "description": "A PSR logger for WP CLI commands.",
+            "support": {
+                "issues": "https://github.com/BrianHenryIE/bh-wp-cli-logger/issues",
+                "source": "https://github.com/BrianHenryIE/bh-wp-cli-logger/tree/v2.0.0"
+            },
+            "time": "2026-06-13T05:03:27+00:00"
+        },
+        {
+            "name": "brianhenryie/bh-wp-logger",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/BrianHenryIE/bh-wp-logger.git",
+                "reference": "4262ee1427c5f067184edaf6c72feb6193411c02"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/BrianHenryIE/bh-wp-logger/zipball/4262ee1427c5f067184edaf6c72feb6193411c02",
+                "reference": "4262ee1427c5f067184edaf6c72feb6193411c02",
+                "shasum": ""
+            },
+            "require": {
+                "brianhenryie/bh-wc-logger": ">=0.1.0",
+                "brianhenryie/bh-wp-cli-logger": ">=1.0",
+                "brianhenryie/bh-wp-private-uploads": ">=0.3.0",
+                "ext-json": "*",
+                "monolog/monolog": "*",
+                "php": ">=8.0",
+                "psr/log": "^2.0 || ^3.0",
+                "wptrt/admin-notices": "^1.0"
+            },
+            "require-dev": {
+                "10up/wp_mock": "^1.0",
+                "alleyinteractive/wordpress-autoloader": "^1.1",
+                "antecedent/patchwork": "^2.1",
+                "brianhenryie/color-logger": "*",
+                "brianhenryie/php-codecoverage-markdown": "*",
+                "ext-curl": "*",
+                "johnpbloch/wordpress": "*",
+                "lucatume/wp-browser": "^4.5",
+                "php-stubs/woocommerce-stubs": "*",
+                "phpstan/extension-installer": "*",
+                "phpunit/phpcov": "*",
+                "rector/rector": "*",
+                "squizlabs/php_codesniffer": "^3.7",
+                "szepeviktor/phpstan-wordpress": "*",
+                "woocommerce/woocommerce-sniffs": "*",
+                "wordpress/wordpress": "*",
+                "wp-coding-standards/wpcs": "^3.0",
+                "wpackagist-plugin/woocommerce": "*",
+                "wpackagist-theme/twentytwenty": "*"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "classmap": [
+                    "includes/",
+                    "assets"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Brian Henry",
+                    "email": "BrianHenryIE@gmail.com"
+                }
+            ],
+            "description": "A PSR logger for WordPress plugins, with a nice WP_List_Table UI.",
+            "support": {
+                "issues": "https://github.com/BrianHenryIE/bh-wp-logger/issues",
+                "source": "https://github.com/BrianHenryIE/bh-wp-logger/tree/master"
+            },
+            "time": "2026-06-13T05:38:48+00:00"
         },
         {
             "name": "brianhenryie/bh-wp-private-uploads",

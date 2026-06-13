@@ -67,6 +67,7 @@
         "10up/wp_mock": "*",
         "alleyinteractive/wordpress-autoloader": "^1.1",
         "antecedent/patchwork": "^2.1",
+        "brianhenryie/bh-wp-logger": ">0.3.3",
         "brianhenryie/bh-wp-private-uploads": "^0.3.0",
         "brianhenryie/color-logger": "*",
         "dealerdirect/phpcodesniffer-composer-installer": "*",
