@@ -231,6 +231,8 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 			}
 
 			/**
+			 * Legitimate use of `base64_decode()`.
+			 *
 			 * phpcs:disable WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
 			 */
 			$rfc2822  = base64_decode( strtr( $raw, '-_', '+/' ) );

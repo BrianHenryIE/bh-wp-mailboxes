@@ -58,6 +58,9 @@ interface Email_Fetcher_Interface {
 
 	/**
 	 * Perform API call to change the read status of an email on a server.
+	 *
+	 * @param Remote_Email_Coordinates $coordinates The data required to address a single email.
+	 * @param bool                     $is_read Mark as read or false for unread.
 	 */
 	public function set_is_marked_read( Remote_Email_Coordinates $coordinates, bool $is_read = true ): void;
 

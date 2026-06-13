@@ -101,7 +101,9 @@ class BH_Email_CPT {
 				),
 				'public'              => false, // This is required to have the edit.php page.
 				'show_ui'             => true,
-				// 'capabilities'        => array( // TODO: right now only admins can see the emails?
+				// TODO: implement capabilities so access to mailboxes can be granular.
+				// phpcs:disable Squiz.PHP.CommentedOutCode.Found
+				// 'capabilities'        => array(
 				// 'publish_posts'       => 'update_core',
 				// 'edit_others_posts'   => 'update_core',
 				// 'delete_posts'        => 'update_core',
