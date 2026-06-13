@@ -125,6 +125,8 @@ $logger_settings = new class() implements Logger_Settings_Interface {
 
 	/**
 	 * Returns the plugin basename.
+	 */
+	public function get_plugin_basename(): string {
 		return (string) defined( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' )
 			? constant( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' )
 			: 'development-plugin/development-plugin.php';
@@ -132,6 +134,8 @@ $logger_settings = new class() implements Logger_Settings_Interface {
 
 	/**
 	 * Returns the plugin display name.
+	 */
+	public function get_plugin_name(): string {
 		return 'BH WP Mailboxes Test Plugin';
 	}
 };
