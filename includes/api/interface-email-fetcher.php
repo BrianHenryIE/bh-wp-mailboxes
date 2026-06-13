@@ -72,7 +72,9 @@ interface Email_Fetcher_Interface {
 	/**
 	 * Delete the email on the remote server.
 	 *
+	 * @param Remote_Email_Coordinates $coordinates The data required to address a single email.
+	 *
 	 * @throws \Exception When the email service does not support the operation or the user does not have permission.
 	 */
-	// `public function do_delete_on_server(): bool;`.
+	public function do_delete_on_server( Remote_Email_Coordinates $coordinates ): bool;
 }

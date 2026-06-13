@@ -360,6 +360,42 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	}
 
 	/**
+	 * Delete the email on the server by moving it to Trash.
+	 *
+	 * Locates the message the same way as get_is_marked_read() — by the stored Gmail message id,
+	 * falling back to a `rfc822msgid:` search. Trash (rather than permanent `delete`) is used: it is
+	 * reversible and needs only the modify scope, whereas permanent deletion requires full mailbox
+	 * access.
+	 *
+	 * @param Remote_Email_Coordinates $coordinates How to locate the email on the remote server.
+	 *
+	 * @return bool True when the message was found and trashed.
+	 * @throws \Exception When the email cannot be found on the server.
+	 */
+	public function do_delete_on_server( Remote_Email_Coordinates $coordinates ): bool {
+
+		$service = $this->get_gmail_service();
+
+		$message = $this->get_message_by_remote_uid( $service, $coordinates->remote_uid )
+			?? $this->get_message_by_rfc822_id( $service, $coordinates->message_id );
+
+		if ( is_null( $message ) ) {
+			$this->logger->warning(
+				'Could not find email on the server to delete.',
+				array(
+					'message_id' => $coordinates->message_id,
+					'remote_uid' => $coordinates->remote_uid,
+				)
+			);
+			throw new \Exception( 'Could not find email on the server to delete.' );
+		}
+
+		$service->users_messages->trash( 'me', $message->getId() );
+
+		return true;
+	}
+
+	/**
 	 * Fetch a message's metadata (labels) directly by its Gmail message id.
 	 *
 	 * @param Google_Service_Gmail $service    The authorized Gmail service.

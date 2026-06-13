@@ -280,6 +280,38 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	}
 
 	/**
+	 * Delete the email on the server by flagging it `\Deleted` and expunging it.
+	 *
+	 * Locates the message the same way as get_is_marked_read() — direct FETCH by the stored UID,
+	 * falling back to a `HEADER "Message-ID"` search of the inbox.
+	 *
+	 * @param Remote_Email_Coordinates $coordinates How to locate the email on the remote server.
+	 *
+	 * @return bool True when the message was found and deleted.
+	 * @throws \Exception When the email cannot be found on the server.
+	 */
+	public function do_delete_on_server( Remote_Email_Coordinates $coordinates ): bool {
+
+		$message = $this->find_message_by_uid( $coordinates )
+			?? $this->find_message_by_message_id( $coordinates->message_id );
+
+		if ( is_null( $message ) ) {
+			$this->logger->warning(
+				'Could not find email in inbox to delete.',
+				array(
+					'message_id' => $coordinates->message_id,
+					'remote_uid' => $coordinates->remote_uid,
+				)
+			);
+			throw new \Exception( 'Could not find email in inbox to delete.' );
+		}
+
+		$message->markDeleted( expunge: true );
+
+		return true;
+	}
+
+	/**
 	 * Locate the message by its stored IMAP UID, but only when the stored UIDVALIDITY still matches
 	 * the inbox — otherwise the UID is stale and could resolve to an unrelated message.
 	 *
