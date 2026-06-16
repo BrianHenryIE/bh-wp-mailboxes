@@ -182,17 +182,17 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	/**
 	 * Saves a new email to the database.
 	 *
-	 * @param Fetched_Email                      $fetched_email   The email plus its remote coordinates and read state.
-	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes       The mailboxes settings.
-	 * @param BH_Email_Account                   $email_account   The email account settings.
-	 * @param ?Private_Uploads_API_Interface     $private_uploads When present, email attachments are saved to private uploads.
+	 * @param Fetched_Email                      $fetched_email    The email plus its remote coordinates and read state.
+	 * @param BH_WP_Mailboxes_Settings_Interface $mailbox_settings The mailboxes settings.
+	 * @param BH_Email_Account                   $email_account    The email account settings.
+	 * @param ?Private_Uploads_API_Interface     $private_uploads  When present, email attachments are saved to private uploads.
 	 *
 	 * @return BH_Email
 	 * @throws Exception When WordPress fails to create the post.
 	 */
 	public function save_new(
 		Fetched_Email $fetched_email,
-		BH_WP_Mailboxes_Settings_Interface $mailboxes,
+		BH_WP_Mailboxes_Settings_Interface $mailbox_settings,
 		BH_Email_Account $email_account,
 		?Private_Uploads_API_Interface $private_uploads = null
 	): BH_Email {
@@ -200,7 +200,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		$email       = $fetched_email->message;
 		$coordinates = $fetched_email->coordinates;
 
-		$post_type = $mailboxes->get_emails_cpt_underscored_20();
+		$post_type = $mailbox_settings->get_emails_cpt_underscored_20();
 
 		$attachment_parts                     = $email->getAllAttachmentParts();
 		$all_parts                            = $email->getAllParts();

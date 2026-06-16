@@ -17,6 +17,7 @@ use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface as Settings;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use ZBateson\MailMimeParser\IMessage;
 use ZBateson\MailMimeParser\MailMimeParser;
@@ -116,42 +117,6 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		/** @var API_Interface $api */
 		$api ??= \Mockery::mock( API_Interface::class )->makePartial();
 		return new Single_Email_View_Ajax( $settings, $api, $this->make_repository(), $this->logger );
-	}
-
-	/**
-	 * Save an email fixture to the database and return its post ID.
-	 *
-	 * @param string|null $filepath Path to an .eml fixture file; defaults to html-and-plaintext.eml.
-	 */
-	private function fixture_post( ?string $filepath = null ): int {
-		$filepath     ??= codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
-		$email_contents = (string) file_get_contents( $filepath );
-
-		$repo = $this->make_repository();
-
-		$parser = new MailMimeParser();
-		/** @var IMessage $email */
-		$email = $parser->parse( $email_contents, true );
-
-		$mailboxes = \Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
-		$mailboxes->expects( 'get_emails_cpt_underscored_20' )->andReturn( $this->post_type );
-
-		$email_account = BH_Email_Account_Fixture::make(
-			post_id: 321,
-			post_type: $this->post_type,
-			provider_type_class: 'SomeProvider',
-			email_address: 'contact@bhwp.ie',
-			display_name: 'Test Account',
-		);
-
-		$fetched_email = new Fetched_Email(
-			$email,
-			new Remote_Email_Coordinates( message_id: $email->getMessageId() ?? '' ),
-			false,
-		);
-
-		$bh_email = $repo->save_new( $fetched_email, $mailboxes, $email_account );
-		return $bh_email->get_post_id();
 	}
 
 	/**
@@ -256,7 +221,9 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_ajax_mark_read_returns_is_read_true_in_response(): void {
 
-		$post_id           = $this->fixture_post();
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
 		$_POST['post_id']  = (string) $post_id;
 
@@ -287,7 +254,9 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_ajax_mark_unread_returns_is_read_false_in_response(): void {
 
-		$post_id           = $this->fixture_post();
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
 		$_POST['post_id']  = (string) $post_id;
 
@@ -320,7 +289,9 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_ajax_delete_on_server_returns_is_remote_deleted_true(): void {
 
-		$post_id           = $this->fixture_post();
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
 		$_POST['post_id']  = (string) $post_id;
 
@@ -349,7 +320,9 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_handle_remote_action_returns_error_when_api_throws(): void {
 
-		$post_id           = $this->fixture_post();
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
 		$_POST['post_id']  = (string) $post_id;
 
@@ -373,7 +346,9 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_handle_remote_action_returns_null_values_when_meta_is_absent(): void {
 
-		$post_id           = $this->fixture_post();
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
 		$_POST['post_id']  = (string) $post_id;
 

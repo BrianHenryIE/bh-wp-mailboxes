@@ -15,6 +15,7 @@ use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Codeception\Stub\Expected;
@@ -46,8 +47,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Get an API instance to test.
 	 *
-	 * @param BH_Email_Account         $email_account_fixture Default: boring fixture with not filters configured.
-	 * @param bool                     $can_return_email_account If there is a correspoinding BH_Email_Account for the BH_Email.
+	 * @param BH_Email_Account          $email_account_fixture Default: boring fixture with not filters configured.
+	 * @param bool                      $can_return_email_account If there is a correspoinding BH_Email_Account for the BH_Email.
 	 * @param ?Email_Provider_Interface $provider_mock Default: mock that supports all features.
 	 */
 	protected function make_api(
@@ -150,11 +151,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		);
 
 		$filepath = codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
-
-		$post_id = $this->create_post_from_fixture(
-			$this->post_type,
-			$filepath
-		);
+		$bh_email = BH_Email_Fixture::make_from_file( $filepath );
+		$post_id  = $bh_email->post_id;
 
 		$post = get_post( $post_id );
 
@@ -191,8 +189,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
-		$post    = get_post( $post_id );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+		$post     = get_post( $post_id );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 		$sut->add_meta_boxes( $post );
@@ -215,17 +214,16 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$this->register_cpt();
 
 		// Post from plain-text-only fixture (non-multipart, no HTML part).
-		$post_id_no_html = $this->create_post_from_fixture(
-			$this->post_type,
-			codecept_root_dir( 'tests/_data/wpunit/non-multipart.eml' )
-		);
+
+		$filepath        = codecept_root_dir( 'tests/_data/wpunit/non-multipart.eml' );
+		$bh_email        = BH_Email_Fixture::make_from_file( $filepath );
+		$post_id_no_html = $bh_email->post_id;
 		$post_no_html    = get_post( $post_id_no_html );
 
 		// Post from HTML+plain-text fixture (has an HTML part).
-		$post_id_with_html = $this->create_post_from_fixture(
-			$this->post_type,
-			codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' )
-		);
+		$filepath          = codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
+		$bh_email          = BH_Email_Fixture::make_from_file( $filepath );
+		$post_id_with_html = $bh_email->post_id;
 		$post_with_html    = get_post( $post_id_with_html );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
@@ -411,7 +409,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+
 		update_post_meta( $post_id, 'Date', 'Wed, 30 Jul 2025 03:38:07 +0000' );
 		$post = get_post( $post_id );
 
@@ -437,8 +437,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
-		$post    = get_post( $post_id );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+		$post     = get_post( $post_id );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 
@@ -462,7 +463,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
 		update_post_meta( $post_id, 'is_remote_read', 'yes' );
 		$post = get_post( $post_id );
 
@@ -488,7 +490,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
 		update_post_meta( $post_id, 'bh_email_is_read', '0' );
 		$post = get_post( $post_id );
 
@@ -514,8 +517,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
-		$post    = get_post( $post_id );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+		$post     = get_post( $post_id );
 
 		$provider_mock = \Mockery::mock( Email_Provider_Interface::class );
 		$provider_mock->expects( 'can_mark_read' )->andReturnFalse();
@@ -545,7 +549,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
 
 		// Email is unread so the "Mark as read" button (not "Mark as unread") is rendered.
 		update_post_meta( $post_id, 'bh_email_is_read', '0' );
@@ -591,7 +596,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
 
 		$post = get_post( $post_id );
 
@@ -619,8 +625,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
-		$post    = get_post( $post_id );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+		$post     = get_post( $post_id );
 
 		$mailbox_settings = $this->makeEmpty(
 			Email_Account_Settings_Interface::class,

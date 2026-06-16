@@ -9,6 +9,7 @@
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Factories;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use DateTimeInterface;
 use Mockery;
@@ -43,10 +44,9 @@ class BH_Email_Factory_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WPUnit_Tes
 	 * @covers ::from_wp_post
 	 */
 	public function test_from_wp_post_html_and_plaintext(): void {
-		$post_id = $this->create_post_from_fixture(
-			$this->post_type,
-			codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' ),
-		);
+		$filepath = codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
+		$bh_email = BH_Email_Fixture::make_from_file( $filepath );
+		$post_id  = $bh_email->post_id;
 
 		$post = get_post( $post_id );
 		$this->assertInstanceOf( WP_Post::class, $post );
@@ -72,10 +72,9 @@ class BH_Email_Factory_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WPUnit_Tes
 	 * @covers ::from_wp_post
 	 */
 	public function test_from_wp_post_html_no_plain_text(): void {
-		$post_id = $this->create_post_from_fixture(
-			$this->post_type,
-			codecept_root_dir( 'tests/_data/wpunit/html-no-plain-text.eml' ),
-		);
+		$filepath = codecept_root_dir( 'tests/_data/wpunit/html-no-plain-text.eml' );
+		$bh_email = BH_Email_Fixture::make_from_file( $filepath );
+		$post_id  = $bh_email->post_id;
 
 		$post = get_post( $post_id );
 		$this->assertInstanceOf( WP_Post::class, $post );
@@ -100,10 +99,9 @@ class BH_Email_Factory_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WPUnit_Tes
 	 * @covers ::from_wp_post
 	 */
 	public function test_from_wp_post_non_multipart_plain_text_only(): void {
-		$post_id = $this->create_post_from_fixture(
-			$this->post_type,
-			codecept_root_dir( 'tests/_data/wpunit/non-multipart.eml' ),
-		);
+		$filepath = codecept_root_dir( 'tests/_data/wpunit/non-multipart.eml' );
+		$bh_email = BH_Email_Fixture::make_from_file( $filepath );
+		$post_id  = $bh_email->post_id;
 
 		$post = get_post( $post_id );
 		$this->assertInstanceOf( WP_Post::class, $post );
@@ -132,10 +130,9 @@ class BH_Email_Factory_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WPUnit_Tes
 	 * @covers ::from_wp_post
 	 */
 	public function test_from_wp_post_html_only(): void {
-		$post_id = $this->create_post_from_fixture(
-			$this->post_type,
-			codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' ),
-		);
+		$filepath = codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' );
+		$bh_email = BH_Email_Fixture::make_from_file( $filepath );
+		$post_id  = $bh_email->post_id;
 
 		$post = get_post( $post_id );
 		$this->assertInstanceOf( WP_Post::class, $post );
