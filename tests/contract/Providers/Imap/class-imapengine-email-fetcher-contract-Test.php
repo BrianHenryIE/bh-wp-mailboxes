@@ -31,7 +31,7 @@ use ZBateson\MailMimeParser\MailMimeParser;
  */
 class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
-	/** @var Email_Account_Settings_Interface Boring settings for tess. */
+	/** @var Email_Account_Settings_Interface Boring settings for tests. */
 	protected Email_Account_Settings_Interface $settings;
 
 	public function setUp(): void {
