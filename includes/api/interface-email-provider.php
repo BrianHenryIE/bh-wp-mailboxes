@@ -14,7 +14,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
 
-interface Email_Fetcher_Interface {
+interface Email_Provider_Interface {
 
 	/**
 	 * Set credentials (and presumably connect if relevant).

@@ -56,7 +56,7 @@ class Gmail_Email_Fetcher_Contract_Test extends Unit_Testcase {
 
 		$cpt = $this->settings->get_emails_cpt_underscored_20();
 
-		$sut = new Gmail_Email_Fetcher( $cpt, $mailbox_settings, $logger );
+		$sut = new Gmail_Email_Provider( $cpt, $mailbox_settings, $logger );
 
 		$since_datetime = \DateTime::createFromFormat( 'Y-m-d', '1970-1-1' );
 

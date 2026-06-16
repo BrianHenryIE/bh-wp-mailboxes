@@ -9,7 +9,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Queries;
 
-use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Provider_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use DateTimeInterface;
 
@@ -22,7 +22,7 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 	 * Constructor.
 	 *
 	 * @param string             $post_type As defined in {@see BH_WP_Mailboxes_Settings_Interface::get_email_accounts_cpt_underscored_20()}.
-	 * @param ?string            $provider_type_class The {@see Email_Fetcher_Interface} implementation used for this account.
+	 * @param ?string            $provider_type_class The {@see Email_Provider_Interface} implementation used for this account.
 	 * @param ?int               $post_id WordPress post table ID.
 	 * @param ?string            $email_address Email address for display and search.
 	 * @param ?string            $status One of "bh_email_ac_active"|"bh_email_ac_inactive"...

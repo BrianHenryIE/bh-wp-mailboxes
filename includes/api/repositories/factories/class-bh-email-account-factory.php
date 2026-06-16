@@ -7,7 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Factories;
 
-use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Provider_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Account_Query;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use DateTime;
@@ -53,7 +53,7 @@ class BH_Email_Account_Factory {
 	 *
 	 * @param WP_Post $post The wp_post row.
 	 *
-	 * @return array{post_id:int<1, max>, post_type:string, local_status:string, after_download_remote_email_action:string|null, body_identifier_regex_filter:string|null, delete_local_emails_after_n_days:int|null, display_name:string, email_address:string, from_address_regex_filter:string|null, last_checked_time:DateTimeInterface|null, last_failed_login_time:DateTimeInterface|null, last_successful_login_time:DateTimeInterface|null, provider_type_class:class-string<Email_Fetcher_Interface>} $args
+	 * @return array{post_id:int<1, max>, post_type:string, local_status:string, after_download_remote_email_action:string|null, body_identifier_regex_filter:string|null, delete_local_emails_after_n_days:int|null, display_name:string, email_address:string, from_address_regex_filter:string|null, last_checked_time:DateTimeInterface|null, last_failed_login_time:DateTimeInterface|null, last_successful_login_time:DateTimeInterface|null, provider_type_class:class-string<Email_Provider_Interface>} $args
 	 * @throws Exception When an expected value is missing or the incorrect type.
 	 */
 	protected function get_array_from_post_meta( WP_Post $post ): array {

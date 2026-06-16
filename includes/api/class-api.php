@@ -10,8 +10,8 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Fetcher;
+use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider;
+use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
@@ -507,18 +507,18 @@ class API implements API_Interface {
 	 *
 	 * @param BH_Email_Account $email_account The account to find a fetcher for.
 	 */
-	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Fetcher_Interface {
+	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Provider_Interface {
 
 		$fetcher = apply_filters( 'bh_wp_mailboxes_fetcher_for_credentials', null, $email_account );
 
-		if ( $fetcher instanceof Email_Fetcher_Interface ) {
+		if ( $fetcher instanceof Email_Provider_Interface ) {
 			return $fetcher;
 		}
 
-		if ( ImapEngine_Imap_Email_Fetcher::class === $email_account->provider_type_class ) {
-			return new ImapEngine_Imap_Email_Fetcher( $email_account, $this->logger );
+		if ( ImapEngine_Imap_Email_Provider::class === $email_account->provider_type_class ) {
+			return new ImapEngine_Imap_Email_Provider( $email_account, $this->logger );
 		} elseif ( Google_API_Credentials_Interface::class === $email_account->provider_type_class ) {
-			return new Gmail_Email_Fetcher( $email_account, $this->logger );
+			return new Gmail_Email_Provider( $email_account, $this->logger );
 		} else {
 			$this->logger->warning(
 				'No email fetcher found for provider type.',

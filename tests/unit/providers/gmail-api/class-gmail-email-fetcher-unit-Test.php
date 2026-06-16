@@ -24,7 +24,7 @@ use Mockery;
 use ZBateson\MailMimeParser\MailMimeParser;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Fetcher
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider
  */
 class Gmail_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
@@ -34,7 +34,7 @@ class Gmail_Email_Fetcher_Unit_Test extends Unit_Testcase {
 	 *
 	 * @param Gmail_Message[] $full_messages The full (format=raw) messages, keyed by Gmail id.
 	 */
-	private function make_sut_listing( array $full_messages ): Gmail_Email_Fetcher {
+	private function make_sut_listing( array $full_messages ): Gmail_Email_Provider {
 
 		$list_response = new ListMessagesResponse();
 		$list_items    = array();
@@ -56,7 +56,7 @@ class Gmail_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
 		$settings = Mockery::mock( Email_Account_Settings_Interface::class );
 
-		$sut = Mockery::mock( Gmail_Email_Fetcher::class, array( $settings, $this->logger ) )
+		$sut = Mockery::mock( Gmail_Email_Provider::class, array( $settings, $this->logger ) )
 			->makePartial()
 			->shouldAllowMockingProtectedMethods();
 		$sut->allows( 'get_gmail_service' )->andReturn( $service );
@@ -143,11 +143,11 @@ class Gmail_Email_Fetcher_Unit_Test extends Unit_Testcase {
 	 *
 	 * @param Users $users The mocked users resource.
 	 */
-	private function make_sut_with_users( Users $users ): Gmail_Email_Fetcher {
+	private function make_sut_with_users( Users $users ): Gmail_Email_Provider {
 		$service        = Mockery::mock( Google_Service_Gmail::class );
 		$service->users = $users;
 
-		$sut = Mockery::mock( Gmail_Email_Fetcher::class, array( Mockery::mock( Email_Account_Settings_Interface::class ), $this->logger ) )
+		$sut = Mockery::mock( Gmail_Email_Provider::class, array( Mockery::mock( Email_Account_Settings_Interface::class ), $this->logger ) )
 			->makePartial()
 			->shouldAllowMockingProtectedMethods();
 		$sut->allows( 'get_gmail_service' )->andReturn( $service );

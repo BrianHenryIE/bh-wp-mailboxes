@@ -7,7 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes;
 
-use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Provider_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Saved_Post;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\Cron;
@@ -21,12 +21,10 @@ readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_In
 	/**
 	 * Constructor.
 	 *
-	 * @see BH_Email_Account_CPT::register_post_statuses()
-	 *
 	 * @param int                                   $post_id The WordPress post ID for this email account.
 	 * @param string                                $post_type The post type configured by the plugin author that is used to save accounts.
 	 * @param string                                $local_status The post status: bh_email_ac_active|bh_email_ac_inactive...
-	 * @param class-string<Email_Fetcher_Interface> $provider_type_class When this account is being processed, what class should be used to fetch emails.
+	 * @param class-string<Email_Provider_Interface> $provider_type_class When this account is being processed, what class should be used to fetch emails.
 	 * @param string                                $email_address The email address for display.
 	 * @param string                                $display_name The account name for display.
 	 * @param ?string                               $from_address_regex_filter Regular expression to match sender address.
@@ -36,6 +34,9 @@ readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_In
 	 * @param ?DateTimeInterface                    $last_checked_time Record of last checked time.
 	 * @param ?DateTimeInterface                    $last_successful_login_time Record of last successful connection time.
 	 * @param ?DateTimeInterface                    $last_failed_login_time Record of last failed attempt.
+	 *
+	 *@see BH_Email_Account_CPT::register_post_statuses()
+	 *
 	 */
 	public function __construct(
 		public int $post_id,

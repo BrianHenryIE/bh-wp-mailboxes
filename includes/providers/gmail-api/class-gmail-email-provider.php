@@ -8,7 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Provider_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
@@ -28,7 +28,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Fetches emails from Gmail using the Google PHP SDK.
  */
-class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
+class Gmail_Email_Provider implements Email_Provider_Interface {
 	use LoggerAwareTrait;
 
 	/**
