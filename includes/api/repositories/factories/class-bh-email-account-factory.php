@@ -7,12 +7,15 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Factories;
 
+use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Account_Query;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use DateTime;
+use DateTimeInterface;
 use Exception;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
-use TypeError;
+use Throwable;
 use WP_Post;
 
 /**
@@ -40,44 +43,129 @@ class BH_Email_Account_Factory {
 	 */
 	public function from_wp_post( WP_Post $post ): BH_Email_Account {
 
-		// TODO: NB: Sanitize.
+		$args = $this->get_array_from_post_meta( $post );
 
-		$provider_type_class                = get_post_meta( $post->ID, 'provider_type_class', true ) ?: null;
-		$email_address                      = get_post_meta( $post->ID, 'email_address', true ) ?: null;
-		$display_name                       = get_post_meta( $post->ID, 'display_name', true ) ?: null;
-		$from_address_regex_filter          = get_post_meta( $post->ID, 'from_address_regex_filter', true ) ?: null;
-		$body_identifier_regex_filter       = get_post_meta( $post->ID, 'body_identifier_regex_filter', true ) ?: null;
-		$after_download_remote_email_action = get_post_meta( $post->ID, 'after_download_remote_email_action', true ) ?: null;
-		$delete_local_emails_after_n_days   = get_post_meta( $post->ID, 'delete_local_emails_after_n_days', true ) ?: null;
-		$last_successful_login_raw          = get_post_meta( $post->ID, 'last_successful_login_time', true );
-		$last_successful_login_time         = $last_successful_login_raw ? DateTime::createFromFormat( DateTime::ATOM, $last_successful_login_raw ) ?: null : null;
-		$last_failed_login_raw              = get_post_meta( $post->ID, 'last_failed_login_time', true );
-		$last_failed_login_time             = $last_failed_login_raw ? DateTime::createFromFormat( DateTime::ATOM, $last_failed_login_raw ) ?: null : null;
+		return new BH_Email_Account( ...$args );
+	}
 
-		try {
-			return new BH_Email_Account(
-				$post->ID,
-				$post->post_type,
-				$post->post_status,
-				$provider_type_class,
-				$email_address,
-				$display_name,
-				$from_address_regex_filter,
-				$body_identifier_regex_filter,
-				$after_download_remote_email_action,
-				$delete_local_emails_after_n_days,
-				$last_successful_login_time,
-				$last_failed_login_time,
-			);
-		} catch ( TypeError $type_error ) {
+	/**
+	 * Fetch each `get_post_meta()` value and check and sanitize its type.
+	 *
+	 * @param WP_Post $post The wp_post row.
+	 *
+	 * @return array{post_id:int<1, max>, post_type:string, local_status:string, after_download_remote_email_action:string|null, body_identifier_regex_filter:string|null, delete_local_emails_after_n_days:int|null, display_name:string, email_address:string, from_address_regex_filter:string|null, last_checked_time:DateTimeInterface|null, last_failed_login_time:DateTimeInterface|null, last_successful_login_time:DateTimeInterface|null, provider_type_class:class-string<Email_Fetcher_Interface>} $args
+	 * @throws Exception When an expected value is missing or the incorrect type.
+	 */
+	protected function get_array_from_post_meta( WP_Post $post ): array {
+		$args = array(
+			'post_id'                            => $post->ID,
+			'post_type'                          => $post->post_type,
+			'local_status'                       => $post->post_status,
+			'from_address_regex_filter'          => null,
+			'body_identifier_regex_filter'       => null,
+			'after_download_remote_email_action' => null,
+			'delete_local_emails_after_n_days'   => null,
+			'last_checked_time'                  => null,
+			'last_successful_login_time'         => null,
+			'last_failed_login_time'             => null,
+		);
 
-			// TODO: Figure out what field is missing.
+		/**
+		 * TODO: There might be a better way: use a static method for meta keys and use reflection for validation/sanitization.
+		 *
+		 * @see BH_Email_Account_Query::get_meta_input()
+		 */
+		$meta_keys = array(
+			'provider_type_class',
+			'email_address',
+			'display_name',
+			'from_address_regex_filter',
+			'body_identifier_regex_filter',
+			'after_download_remote_email_action',
+			'delete_local_emails_after_n_days',
+			'last_checked_time',
+			'last_successful_login_time',
+			'last_failed_login_time',
+		);
+
+		$required_keys = array(
+			'provider_type_class',
+			'email_address',
+			'display_name',
+		);
+
+		$string_keys = array(
+			'post_type',
+			'local_status',
+			'provider_type_class',
+			'email_address',
+			'display_name',
+			'from_address_regex_filter',
+			'body_identifier_regex_filter',
+			'after_download_remote_email_action',
+		);
+
+		$int_keys = array(
+			'post_id',
+			'delete_local_emails_after_n_days',
+		);
+
+		$datetime_keys = array(
+			'last_checked_time',
+			'last_successful_login_time',
+			'last_failed_login_time',
+		);
+
+		foreach ( $meta_keys as $meta_key ) {
+			$args[ $meta_key ] = get_post_meta( $post->ID, $meta_key, true ) ?: null;
+		}
+
+		$errors = array();
+
+		foreach ( $string_keys as $string_key ) {
+			// TODO: This is inadequate to sanitize.
+			$args[ $string_key ] = is_null( $args[ $string_key ] ) ? null : strval( $args[ $string_key ] );
+			break;
+		}
+
+		foreach ( $int_keys as $int_key ) {
+			$args[ $int_key ] = (int) $args[ $int_key ] ?: null;
+		}
+
+		foreach ( $datetime_keys as $datetime_key ) {
+			if ( ! is_null( $args[ $datetime_key ] ) ) {
+				try {
+					$args[ $datetime_key ] = DateTime::createFromFormat( DateTime::ATOM, $args[ $datetime_key ] );
+				} catch ( Throwable $throwable ) {
+					$errors[ $datetime_key ] = $throwable;
+				}
+				if ( false === $args[ $datetime_key ] ) {
+					$errors[ $datetime_key ] = 'Failed to parse date/time: ' . $args[ $datetime_key ];
+				}
+			}
+		}
+
+		foreach ( $required_keys as $required_key ) {
+			if ( empty( $args[ $required_key ] ) ) {
+				$errors[ $required_key ] = 'Required key is missing or empty.';
+			}
+		}
+
+		if ( ! empty( $errors ) ) {
 			throw new Exception(
 				sprintf(
-					'Invalid type when saving BH_Email_Account object: %s',
-					esc_html( $type_error->getMessage() )
+					'Param error hydrating BH_Email_Account from WP_Post ID %d: %s',
+					intval( $post->ID ),
+					implode( ', ', array_map( 'esc_html', array_keys( $errors ) ) )
 				)
 			);
 		}
+
+		/**
+		 * It's unhappy with post_id. TODO.
+		 *
+		 * @phpstan-ignore return.type
+		 */
+		return $args;
 	}
 }

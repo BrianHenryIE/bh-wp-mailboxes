@@ -17,6 +17,7 @@ use Exception;
 use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
+use Throwable;
 use WP_Post;
 use WP_Query;
 
@@ -172,10 +173,22 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		 */
 		$posts = (array) $wp_query->posts;
 
-		return array_map(
-			$this->bh_email_account_factory->from_wp_post( ... ),
-			$posts
-		);
+		$email_accounts = array();
+		foreach ( $posts as $post ) {
+			try {
+				$email_accounts[] = $this->bh_email_account_factory->from_wp_post( $post );
+			} catch ( Throwable $throwable ) {
+				$this->logger->error(
+					sprintf(
+						'Error parsing post %d: %s',
+						intval( $post->ID ),
+						esc_html( $throwable->getMessage() )
+					)
+				);
+
+			}
+		}
+		return $email_accounts;
 	}
 
 	/**

@@ -33,6 +33,7 @@ readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_In
 	 * @param ?string                               $body_identifier_regex_filter Regular expression to match against email content.
 	 * @param ?string                               $after_download_remote_email_action Action to execute against server after downloading an email.
 	 * @param ?int                                  $delete_local_emails_after_n_days How long to store emails before auto-delete.
+	 * @param ?DateTimeInterface                    $last_checked_time Record of last checked time.
 	 * @param ?DateTimeInterface                    $last_successful_login_time Record of last successful connection time.
 	 * @param ?DateTimeInterface                    $last_failed_login_time Record of last failed attempt.
 	 */
@@ -47,6 +48,7 @@ readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_In
 		public ?string $body_identifier_regex_filter,
 		public ?string $after_download_remote_email_action,
 		public ?int $delete_local_emails_after_n_days,
+		public ?DateTimeInterface $last_checked_time,
 		public ?DateTimeInterface $last_successful_login_time, // Not exactly last email received time.
 		public ?DateTimeInterface $last_failed_login_time,
 	) {
