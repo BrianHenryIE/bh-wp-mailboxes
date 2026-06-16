@@ -102,6 +102,7 @@ new Mailboxes()->register_hooks();
 $plugins_url_fix = function ( $url, $_path, $_plugin ) {
 	$url = str_replace( 'wp-content/plugins/var/www/html/', '', $url );
 	$url = str_replace( 'plugins/development-plugin/vendor', 'uploads/bh-wp-mailboxes/vendor', $url );
+	$url = str_replace( 'plugins/development-plugin/includes', 'uploads/bh-wp-mailboxes/includes', $url );
 	return $url;
 };
 add_filter( 'plugins_url', $plugins_url_fix, 10, 3 );
