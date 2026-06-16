@@ -55,10 +55,10 @@ class Emails_List_Table_Ajax {
 
 		$result = $this->api->check_email();
 
-		if ( $result['success'] ) {
-			wp_send_json_success( $result );
+		if ( $result->success ) {
+			wp_send_json_success( (array) $result );
 		} else {
-			wp_send_json_error( $result );
+			wp_send_json_error( (array) $result );
 		}
 	}
 
@@ -96,7 +96,7 @@ class Emails_List_Table_Ajax {
 		$result = $this->api->check_email_for_account( $account, $since );
 		wp_send_json_success(
 			array(
-				'new_email_count' => count( $result['new_emails'] ),
+				'new_email_count' => count( $result->new_emails ),
 				/* translators: shown in the status card immediately after a manual check */
 				'last_fetched'    => __( 'Just now', 'bh-wp-mailboxes' ),
 			)

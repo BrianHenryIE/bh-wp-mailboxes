@@ -4,6 +4,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use Codeception\Stub\Expected;
@@ -32,9 +33,7 @@ class Emails_List_Table_Ajax_Unit_Test extends Unit_Testcase {
 			API_Interface::class,
 			array(
 				'check_email' => Expected::once(
-					fn() => array(
-						'success' => true,
-					)
+					fn() => new Check_Email_Result( true, array() )
 				),
 			)
 		);
@@ -83,9 +82,7 @@ class Emails_List_Table_Ajax_Unit_Test extends Unit_Testcase {
 			API_Interface::class,
 			array(
 				'check_email' => Expected::once(
-					fn() => array(
-						'success' => false,
-					)
+					fn() => new Check_Email_Result( false, array() )
 				),
 			)
 		);

@@ -8,6 +8,8 @@
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
 use BrianHenryIE\WP_Mailboxes\API\API;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Mockery;
@@ -88,7 +90,7 @@ class Cron_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_background_fetch_emails_calls_check_email(): void {
 		$api = Mockery::mock( API::class );
-		$api->expects( 'check_email' )->once()->andReturn( array( 'success' => true ) );
+		$api->expects( 'check_email' )->once()->andReturn( new Check_Email_Result( true, array() ) );
 
 		$this->make_sut( api: $api )->background_fetch_emails();
 	}
@@ -100,12 +102,7 @@ class Cron_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_background_delete_local_emails_calls_delete_old_emails(): void {
 		$api = Mockery::mock( API::class );
-		$api->expects( 'delete_old_emails' )->once()->andReturn(
-			array(
-				'success' => true,
-				'deleted' => 0,
-			)
-		);
+		$api->expects( 'delete_old_emails' )->once()->andReturn( new Delete_Old_Emails_Result( true, 0 ) );
 
 		$this->make_sut( api: $api )->background_delete_local_emails();
 	}

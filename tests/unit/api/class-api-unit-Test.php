@@ -10,6 +10,7 @@ use Illuminate\Support\Collection;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
@@ -67,13 +68,9 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$result = $sut->check_email();
 
-		$this->assertIsArray( $result );
-		$this->assertArrayHasKey( 'success', $result );
-		$this->assertArrayHasKey( 'all_new_emails', $result );
-		$this->assertArrayHasKey( 'saved_emails', $result );
-
-		// If the response format changes, this test will fail.
-		$this->assertCount( 3, $result );
+		$this->assertInstanceOf( Check_Email_Result::class, $result );
+		$this->assertTrue( $result->success );
+		$this->assertSame( array(), $result->new_emails );
 	}
 
 
@@ -183,7 +180,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$result = $sut->check_email();
 
 		$this->assertTrue( $this->logger->hasDebugThatContains( 'Skipping inactive email account' ) );
-		$this->assertSame( array(), $result['all_new_emails'] );
+		$this->assertSame( array(), $result->new_emails );
 	}
 
 	/**
@@ -280,7 +277,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$result = $sut->check_email();
 
 		$this->assertFalse( $this->logger->hasInfoThatContains( 'Too soon after failed login' ) );
-		$this->assertTrue( $result['success'] );
+		$this->assertTrue( $result->success );
 	}
 
 	/**
@@ -403,7 +400,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$result = $sut->check_email();
 
 		$this->assertTrue( $this->logger->hasWarningThatContains( 'No credentials found' ) );
-		$this->assertSame( array(), $result['all_new_emails'] );
+		$this->assertSame( array(), $result->new_emails );
 	}
 
 	/**
@@ -631,7 +628,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$sut    = $this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository );
 		$result = $sut->check_email();
 
-		$this->assertSame( array( $saved_bh_email ), $result['all_new_emails'] );
+		$this->assertSame( array( $saved_bh_email ), $result->new_emails );
 	}
 
 	/**
@@ -674,8 +671,8 @@ class API_Unit_Test extends Unit_Testcase {
 		$result = $sut->check_email_for_account( $email_account, $since_datetime );
 
 		$this->assertSame( $since_datetime, $captured_since_datetime );
-		$this->assertTrue( $result['success'] );
-		$this->assertSame( array(), $result['new_emails'] );
+		$this->assertTrue( $result->success );
+		$this->assertSame( array(), $result->new_emails );
 	}
 
 	/**
@@ -862,7 +859,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$result = $this->get_api()->test_connection( $email_account, $credentials );
 
-		$this->assertTrue( $result['success'] );
+		$this->assertTrue( $result->success );
 	}
 
 	/**
@@ -885,7 +882,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$result = $this->get_api()->test_connection( $email_account, $credentials );
 
-		$this->assertFalse( $result['success'] );
-		$this->assertSame( 'AUTHENTICATIONFAILED', $result['message'] );
+		$this->assertFalse( $result->success );
+		$this->assertSame( 'AUTHENTICATIONFAILED', $result->message );
 	}
 }

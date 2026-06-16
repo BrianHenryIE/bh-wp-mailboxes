@@ -9,6 +9,9 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Test_Connection_Result;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use DateTimeInterface;
 
@@ -28,17 +31,13 @@ interface API_Interface {
 
 	/**
 	 * Deletes locally-stored emails older than the configured retention period.
-	 *
-	 * @return array{success:bool}
 	 */
-	public function delete_old_emails(): array;
+	public function delete_old_emails(): Delete_Old_Emails_Result;
 
 	/**
 	 * Fetches new emails from all configured mailboxes and saves them.
-	 *
-	 * @return array{success:bool}
 	 */
-	public function check_email(): array;
+	public function check_email(): Check_Email_Result;
 
 	/**
 	 * Mark the email as read on its remote server and update local post meta.
@@ -95,10 +94,8 @@ interface API_Interface {
 	 *
 	 * @param BH_Email_Account  $account The account to check.
 	 * @param DateTimeInterface $since The time to check emails since.
-	 *
-	 * @return array{success:bool, new_emails:BH_Email[]}
 	 */
-	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): array;
+	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): Check_Email_Result;
 
 	/**
 	 * Validate an account's credentials by connecting to the server.
@@ -109,8 +106,6 @@ interface API_Interface {
 	 *
 	 * @param BH_Email_Account               $account     The account whose provider to connect with.
 	 * @param ?Account_Credentials_Interface $credentials Candidate credentials, or null to resolve them.
-	 *
-	 * @return array{success:bool, message:string}
 	 */
-	public function test_connection( BH_Email_Account $account, ?Account_Credentials_Interface $credentials = null ): array;
+	public function test_connection( BH_Email_Account $account, ?Account_Credentials_Interface $credentials = null ): Test_Connection_Result;
 }

@@ -7,6 +7,8 @@ use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\Cron;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result;
 
 use Codeception\Stub\Expected;
 
@@ -73,7 +75,7 @@ class Cron_Unit_Test extends Unit_Testcase {
 			API_Interface::class,
 			array(
 				'check_email' => Expected::once(
-					fn() => array()
+					fn() => new Check_Email_Result( true, array() )
 				),
 			)
 		);
@@ -93,8 +95,8 @@ class Cron_Unit_Test extends Unit_Testcase {
 		$api      = $this->makeEmpty(
 			API_Interface::class,
 			array(
-				'background_delete_local_emails' => Expected::once(
-					fn() => array()
+				'delete_old_emails' => Expected::once(
+					fn() => new Delete_Old_Emails_Result( true, 0 )
 				),
 			)
 		);

@@ -15,6 +15,9 @@ use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Test_Connection_Result;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
@@ -114,10 +117,8 @@ class API implements API_Interface {
 	 * Fetches the emails and saves them to the cpt.
 	 *
 	 * Must be run after CPT is registered.
-	 *
-	 * @return array{success:bool}
 	 */
-	public function check_email(): array {
+	public function check_email(): Check_Email_Result {
 
 		/**
 		 * All configured mailbox account settings.
@@ -134,7 +135,6 @@ class API implements API_Interface {
 		 * @var BH_Email[] $all_new_emails
 		 */
 		$all_new_emails     = array();
-		$saved_emails       = array();
 		$last_fetched_times = $this->get_last_fetched_times( $email_accounts );
 
 		// The first time we run, we'll look back over one week of emails.
@@ -161,11 +161,7 @@ class API implements API_Interface {
 		 */
 		do_action( 'bh_wp_mailboxes_fetch_emails_complete', $all_new_emails );
 
-		return array(
-			'success'        => true,
-			'all_new_emails' => $all_new_emails,
-			'saved_emails'   => $saved_emails,
-		);
+		return new Check_Email_Result( success: true, new_emails: $all_new_emails );
 	}
 
 	/**
@@ -253,17 +249,13 @@ class API implements API_Interface {
 	 * @param BH_Email_Account   $account The account to check.
 	 * @param ?DateTimeInterface $since Time to find new emails after.
 	 *
-	 * @return array{success:bool, new_emails:BH_Email[]}
 	 * @throws DateException In the unlikely event PHP is unable to create now@UTC.
 	 */
-	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): array {
+	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): Check_Email_Result {
 		$now_time = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
 		$since    = $since ?? $account->last_successful_login_time ?? $now_time->sub( new DateInterval( 'P1W' ) );
 		$saved    = $this->fetch_for_account( $account, $since, $now_time );
-		return array(
-			'success'    => true,
-			'new_emails' => $saved,
-		);
+		return new Check_Email_Result( success: true, new_emails: $saved );
 	}
 
 	/**
@@ -271,37 +263,26 @@ class API implements API_Interface {
 	 *
 	 * @param BH_Email_Account               $account     The account whose provider to connect with.
 	 * @param ?Account_Credentials_Interface $credentials Candidate credentials, or null to resolve via filter.
-	 *
-	 * @return array{success:bool, message:string}
 	 */
-	public function test_connection( BH_Email_Account $account, ?Account_Credentials_Interface $credentials = null ): array {
+	public function test_connection( BH_Email_Account $account, ?Account_Credentials_Interface $credentials = null ): Test_Connection_Result {
 
 		$credentials = $credentials ?? apply_filters( 'bh_wp_mailboxes_credentials', null, $account );
 
 		if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
-			return array(
-				'success' => false,
-				'message' => 'No credentials found for ' . $account->display_name . '.',
-			);
+			return new Test_Connection_Result( success: false, message: 'No credentials found for ' . $account->display_name . '.' );
 		}
 
 		$fetcher = $this->get_provider_for_email_account( $account );
 
 		if ( is_null( $fetcher ) ) {
-			return array(
-				'success' => false,
-				'message' => 'No email provider found for ' . $account->display_name . '.',
-			);
+			return new Test_Connection_Result( success: false, message: 'No email provider found for ' . $account->display_name . '.' );
 		}
 
 		try {
 			$fetcher->set_credentials( $credentials );
 			$fetcher->test_connection();
 
-			return array(
-				'success' => true,
-				'message' => 'Connected successfully.',
-			);
+			return new Test_Connection_Result( success: true, message: 'Connected successfully.' );
 		} catch ( \Throwable $exception ) {
 			$this->logger->warning(
 				'Connection test failed for ' . $account->display_name . '. ' . $exception->getMessage(),
@@ -311,10 +292,7 @@ class API implements API_Interface {
 				)
 			);
 
-			return array(
-				'success' => false,
-				'message' => $exception->getMessage(),
-			);
+			return new Test_Connection_Result( success: false, message: $exception->getMessage() );
 		}
 	}
 
@@ -331,10 +309,8 @@ class API implements API_Interface {
 
 	/**
 	 * Delete locally-stored emails older than the configured retention period.
-	 *
-	 * @return array{success:bool, deleted:int}
 	 */
-	public function delete_old_emails(): array {
+	public function delete_old_emails(): Delete_Old_Emails_Result {
 
 		$email_accounts = $this->email_account_repository->get_all( status: 'active' );
 
@@ -348,10 +324,7 @@ class API implements API_Interface {
 
 		if ( is_null( $min_days ) ) {
 			$this->logger->debug( 'Email deletion is not configured for any mailbox.' );
-			return array(
-				'success' => true,
-				'deleted' => 0,
-			);
+			return new Delete_Old_Emails_Result( success: true, deleted_count: 0 );
 		}
 
 		$cutoff  = new DateTimeImmutable( "now - {$min_days} days", new DateTimeZone( 'UTC' ) );
@@ -359,10 +332,7 @@ class API implements API_Interface {
 
 		$this->logger->info( "Deleted {$deleted} emails older than {$min_days} days." );
 
-		return array(
-			'success' => true,
-			'deleted' => $deleted,
-		);
+		return new Delete_Old_Emails_Result( success: true, deleted_count: $deleted );
 	}
 
 	/**
