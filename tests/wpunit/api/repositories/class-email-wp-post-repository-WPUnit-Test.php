@@ -48,6 +48,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 
 	/**
 	 * @covers ::save_new
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\WP_Post_Repository_Abstract::insert
 	 */
 	public function test_save_new(): void {
 
@@ -89,6 +90,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 	 * create two posts. The second save_new should return the already-saved post.
 	 *
 	 * @covers ::save_new
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\WP_Post_Repository_Abstract::insert
 	 */
 	public function test_save_new_dedups_by_guid(): void {
 
