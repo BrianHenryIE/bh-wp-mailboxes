@@ -36,6 +36,7 @@ use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Plugins_Page;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_API;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest\Mailboxes;
+use Psr\Log\NullLogger;
 
 // If this file is called directly, abort.
 if ( ! defined( 'WPINC' ) ) {
@@ -85,7 +86,7 @@ new Authentication()->register_hooks();
 new Mailboxes()->register_hooks();
 
 
-new Plugins_Page()->register_hooks();
+
 
 
 /**
@@ -93,12 +94,18 @@ new Plugins_Page()->register_hooks();
  *
  * In wp-env: vendor is mapped to wp-content/plugins/vendor.
  * TODO: address the same issue in integration tests.
+ *
+ * /var/www/html/wp-content/uploads/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/class-admin-assets.php
+ * http://localhost:8888/wp-content/plugins/development-plugin/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
+ * http://localhost:8888/wp-content/uploads/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
  */
 $plugins_url_fix = function ( $url, $_path, $_plugin ) {
-	return str_replace( 'wp-content/plugins/var/www/html/', '', $url );
+	$url = str_replace( 'wp-content/plugins/var/www/html/', '', $url );
+	$url = str_replace( 'plugins/development-plugin/vendor', 'uploads/bh-wp-mailboxes/vendor', $url );
+	$url = str_replace( 'plugins/development-plugin/includes', 'uploads/bh-wp-mailboxes/includes', $url );
+	return $url;
 };
 add_filter( 'plugins_url', $plugins_url_fix, 10, 3 );
-
 
 $logger_settings = new class() implements Logger_Settings_Interface {
 	use Logger_Settings_Trait;
@@ -114,7 +121,7 @@ $logger_settings = new class() implements Logger_Settings_Interface {
 	 * Returns the plugin slug.
 	 */
 	public function get_plugin_slug(): string {
-		return 'bh-wp-mailboxes-test-plugin';
+		return explode( '.', basename( __FILE__ ) )[0];
 	}
 
 	/**
@@ -123,7 +130,7 @@ $logger_settings = new class() implements Logger_Settings_Interface {
 	public function get_plugin_basename(): string {
 		return (string) defined( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' )
 			? constant( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' )
-			: 'bh-wp-mailboxes-test-plugin/bh-wp-mailboxes-test-plugin.php';
+			: 'development-plugin/development-plugin.php';
 	}
 
 	/**
@@ -133,8 +140,7 @@ $logger_settings = new class() implements Logger_Settings_Interface {
 		return 'BH WP Mailboxes Test Plugin';
 	}
 };
-
-$logger = Logger::instance( $logger_settings );
+$logger          = Logger::instance( $logger_settings );
 
 $mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {
 	use BH_WP_Mailboxes_Settings_Defaults_Trait;
@@ -143,13 +149,19 @@ $mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface 
 	 * Returns the plugin slug.
 	 */
 	public function get_plugin_slug(): string {
-		return 'bh-wp-mailboxes-test-plugin';
+		return 'development-plugin';
 	}
 
+	/**
+	 * The actual CPT name used in the post_type column.
+	 */
 	public function get_emails_cpt_underscored_20(): string {
 		return 'bh_wp_mailboxes_cpt';
 	}
 
+	/**
+	 * Actual post_type name in wp_posts table.
+	 */
 	public function get_email_accounts_cpt_underscored_20(): string {
 		return 'my_plugin_account';
 	}
@@ -161,6 +173,9 @@ $mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface 
 		return 'BH WP Mailboxes – Emails CPT';
 	}
 
+	/**
+	 * A friendly display name for UI.
+	 */
 	public function get_email_accounts_cpt_friendly_name(): string {
 		return 'BH WP Mailboxes – Email Accounts CPT';
 	}
@@ -171,7 +186,11 @@ $mailboxes_api = BH_WP_Mailboxes::make( $mailboxes_settings, $logger );
 $accounts = $mailboxes_api->get_email_accounts();
 
 
-/** @var array<string, Email_Account_Settings_Interface> $mailboxes Indexed by email address. */
+/**
+ * A single plugin can define multiple mailboxes, each its own cpt, each of which can contain multiple email accounts.
+ *
+ * @var array<string, Email_Account_Settings_Interface> $mailboxes Indexed by email address.
+ */
 $mailboxes = array();
 
 $imap          = new Imap();
@@ -186,15 +205,19 @@ if ( null !== $gmail_settings ) {
 }
 
 if ( ! is_null( $imap_settings ) && ! isset( $accounts[ $imap_settings->get_account_email_address() ] ) ) {
-	$mailboxes_api->add_email_account(
-		email_address: $imap_settings->get_account_email_address(),
-		display_name: $imap_settings->get_account_unique_friendly_name(),
-		provider_type_class: \BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher::class,
-		from_address_regex_filter: null,
-		body_identifier_regex_filter: null,
-		after_download_email_action: null,
-		delete_emails_after_n_days: 1,
-	);
+	try {
+		$mailboxes_api->add_email_account(
+			email_address: $imap_settings->get_account_email_address(),
+			display_name: $imap_settings->get_account_display_friendly_name(),
+			provider_type_class: \BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher::class,
+			from_address_regex_filter: null,
+			body_identifier_regex_filter: null,
+			after_download_remote_email_action: null,
+			delete_local_emails_after_n_days: 1,
+		);
+	} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+		// Account already exists; ignore.
+	}
 }
 
 if ( $imap_settings ) {
@@ -211,3 +234,15 @@ if ( $imap_settings ) {
 		2
 	);
 }
+
+/**
+ * Fix for mapped directories. I.e. vendor is not under `wp-content/plugins/development-plugins`.
+ *
+ * @see plugin_basename()
+ */
+global $wp_plugin_paths;
+$plugin_path = '/var/www/html/wp-content/uploads/bh-wp-mailboxes/';
+$wp_plugin_paths[ WP_PLUGIN_DIR . '/development-plugin/' ] = $plugin_path;
+
+
+new Plugins_Page( $mailboxes_settings )->register_hooks();

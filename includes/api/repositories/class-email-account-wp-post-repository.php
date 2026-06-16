@@ -7,13 +7,19 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
+use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Account_Query;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Query;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
+use DateTimeInterface;
+use Exception;
 use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
+use Throwable;
 use WP_Post;
+use WP_Query;
 
 /**
  * Persists and retrieves BH_Email_Account objects as WordPress CPT posts.
@@ -44,10 +50,10 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @param string  $provider_type_class The API the account uses.
 	 * @param ?string $from_address_regex_filter Only save emails whose from address matches this regex.
 	 * @param ?string $body_identifier_regex_filter Only save emails whose body matches this regex.
-	 * @param ?string $after_download_email_action Delete or mark read or do nothing after download (if at all possible).
-	 * @param ?int    $delete_emails_after_n_days Delete locally stored emails after n days.
+	 * @param ?string $after_download_remote_email_action Delete or mark read or do nothing after download (if at all possible).
+	 * @param ?int    $delete_local_emails_after_n_days Delete locally stored emails after n days.
 	 *
-	 * @throws \Exception When wp_insert_post fails.
+	 * @throws Exception When wp_insert_post fails.
 	 */
 	public function save_new(
 		string $email_address,
@@ -55,19 +61,22 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		string $provider_type_class,
 		?string $from_address_regex_filter,
 		?string $body_identifier_regex_filter,
-		?string $after_download_email_action,
-		?int $delete_emails_after_n_days,
+		?string $after_download_remote_email_action,
+		?int $delete_local_emails_after_n_days,
 	): BH_Email_Account {
 
 		$query = new BH_Email_Account_Query(
 			post_type: $this->post_type,
-			email_address: $email_address,
-			display_name: $display_name,
 			provider_type_class: $provider_type_class,
+			post_id: null,
+			email_address: $email_address,
+			status: 'bh_email_ac_active',
+			last_checked_time: null,
+			display_name: $display_name,
 			from_address_regex_filter: $from_address_regex_filter,
 			body_identifier_regex_filter: $body_identifier_regex_filter,
-			after_download_email_action: $after_download_email_action,
-			delete_emails_after_n_days: $delete_emails_after_n_days,
+			after_download_remote_email_action: $after_download_remote_email_action,
+			delete_local_emails_after_n_days: $delete_local_emails_after_n_days,
 		);
 
 		$post_id = $this->insert( $query );
@@ -130,8 +139,9 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		return $this->run_query(
 			new BH_Email_Account_Query(
 				post_type: $this->post_type,
-				status: $status,
+				post_id: null,
 				email_address: $email_address,
+				status: $status,
 			)
 		);
 	}
@@ -155,13 +165,115 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			);
 		}
 
-		$wp_query = new \WP_Query( $query_args );
-		/** @var WP_Post[] $posts */
-		$posts = $wp_query->posts;
+		$wp_query = new WP_Query( $query_args );
+		/**
+		 * Array of WP_Post objects.
+		 *
+		 * @var WP_Post[] $posts
+		 */
+		$posts = (array) $wp_query->posts;
 
-		return array_map(
-			$this->bh_email_account_factory->from_wp_post( ... ),
-			$posts
+		$email_accounts = array();
+		foreach ( $posts as $post ) {
+			try {
+				$email_accounts[] = $this->bh_email_account_factory->from_wp_post( $post );
+			} catch ( Throwable $throwable ) {
+				$this->logger->error(
+					sprintf(
+						'Error parsing post %d: %s',
+						intval( $post->ID ),
+						esc_html( $throwable->getMessage() )
+					)
+				);
+
+			}
+		}
+		return $email_accounts;
+	}
+
+	/**
+	 * Update the account status and configuration.
+	 *
+	 * @param BH_Email_Account   $account The account to update.
+	 * @param ?string            $display_name The friendly name for UI.
+	 * @param ?string            $from_address_regex_filter Filter to only save emails whose from address matches this.
+	 * @param ?string            $body_identifier_regex_filter Filter to only save emails whose body matches this.
+	 * @param ?string            $after_download_remote_email_action Operation to perform after: delete|mark-read|nothing.
+	 * @param ?int               $delete_local_emails_after_n_days When to purge the local copies.
+	 * @param ?string            $status The optional status change.
+	 * @param ?DateTimeInterface $last_checked_time The new last checked time.
+	 * @param ?DateTimeInterface $last_successful_login_time Record of success.
+	 * @param ?DateTimeInterface $last_failed_login_time Record of failure.
+	 *
+	 * @throws Exception When WordPress fails to save the post.
+	 */
+	public function update(
+		BH_Email_Account $account,
+		// Configuration.
+		?string $display_name = null,
+		?string $from_address_regex_filter = null,
+		?string $body_identifier_regex_filter = null,
+		?string $after_download_remote_email_action = null,
+		?int $delete_local_emails_after_n_days = null,
+		// Status.
+		?string $status = null,
+		?DateTimeInterface $last_checked_time = null,
+		?DateTimeInterface $last_successful_login_time = null,
+		?DateTimeInterface $last_failed_login_time = null,
+	): BH_Email_Account {
+
+		$query = new BH_Email_Account_Query(
+			post_type: $account->get_post_type(),
+			post_id: $account->get_post_id(),
+			status: $status,
+			last_checked_time: $last_checked_time,
+			display_name: $display_name,
+			from_address_regex_filter: $from_address_regex_filter,
+			body_identifier_regex_filter: $body_identifier_regex_filter,
+			after_download_remote_email_action: $after_download_remote_email_action,
+			delete_local_emails_after_n_days: $delete_local_emails_after_n_days,
+			last_successful_login_time: $last_successful_login_time,
+			last_failed_login_time: $last_failed_login_time,
 		);
+
+		$args = $query->to_query_array();
+
+		if ( count( $args ) === 2 ) {
+			// Only the post_id + post_type remain.
+			$this->logger->warning( 'Attempted to make a no-op updated' );
+			return $account;
+		}
+
+		$result = wp_update_post( $args, true );
+
+		if ( is_wp_error( $result ) ) {
+			throw new Exception(
+				sprintf(
+					'Failed to update email account post with ID %d: %s.',
+					(int) $account->post_id,
+					esc_html( $result->get_error_message() )
+				)
+			);
+		}
+
+		if ( $account->local_status !== $status ) {
+			$this->log(
+				$account,
+				sprintf(
+					'Status changed from "%s" to "%s".',
+					$account->local_status,
+					$status
+				),
+				false,
+				array(
+					'status' => array(
+						'from' => $account->local_status,
+						'to'   => $status,
+					),
+				)
+			);
+		}
+
+		return $this->find_by_post_id( $account->post_id );
 	}
 }

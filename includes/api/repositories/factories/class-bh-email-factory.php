@@ -8,6 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Factories;
 
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use DateTime;
 use DateTimeZone;
 use Psr\Log\LoggerAwareTrait;
@@ -66,8 +67,20 @@ class BH_Email_Factory {
 		$sent_at_result = DateTime::createFromFormat( DateTime::RFC2822, $date_header );
 		$sent_at        = ( false !== $sent_at_result ) ? $sent_at_result : null;
 
-		$attachment_ids = get_post_meta( $post_id, 'attachment_ids', true );
-		$attachment_ids = (array) json_decode( $attachment_ids );
+		// Absent meta means attachment-saving was disabled (null); a present value (even `[]`) means
+		// it was enabled. This distinction drives the "Attachments disabled" vs "No attachments" UI.
+		$attachment_ids_raw = get_post_meta( $post_id, 'attachment_ids', true );
+		$attachment_ids     = ( '' === $attachment_ids_raw ) ? null : (array) json_decode( (string) $attachment_ids_raw );
+
+		$remote_uid          = get_post_meta( $post_id, 'remote_uid', true );
+		$remote_folder       = get_post_meta( $post_id, 'remote_folder', true );
+		$remote_uid_validity = get_post_meta( $post_id, 'remote_uid_validity', true );
+		$remote_coordinates  = new Remote_Email_Coordinates(
+			message_id: $message->getMessageId() ?? '',
+			remote_uid: '' !== $remote_uid ? (string) $remote_uid : null,
+			folder: '' !== $remote_folder ? (string) $remote_folder : null,
+			uid_validity: '' !== $remote_uid_validity ? (int) $remote_uid_validity : null,
+		);
 
 		return new BH_Email(
 			post_id: $post_id,
@@ -84,9 +97,10 @@ class BH_Email_Factory {
 			sent_at: $sent_at,
 			downloaded_at: new DateTime( $post->post_date, new DateTimeZone( 'UTC' ) ),
 			last_updated: new DateTime( $post->post_modified, new DateTimeZone( 'UTC' ) ),
-			post_status: $post->post_status,
+			local_status: $post->post_status,
 			is_remote_read: $is_read,
 			is_remote_deleted: $is_remote_deleted,
+			remote_coordinates: $remote_coordinates,
 		);
 	}
 }

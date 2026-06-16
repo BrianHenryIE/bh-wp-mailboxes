@@ -32,8 +32,19 @@
     <rule ref="Universal.Operators.DisallowShortTernary.Found">
         <exclude-pattern>*</exclude-pattern>
     </rule>
+    <!-- PHPStan should handle types -->
+    <rule ref="Squiz.Commenting.FunctionComment.IncorrectTypeHint">
+        <exclude-pattern>*</exclude-pattern>
+    </rule>
+    <!-- Allow more detailed "throws" PhpDoc. -->
+    <rule ref="Squiz.Commenting.FunctionCommentThrowTag.WrongNumber">
+        <exclude-pattern>*</exclude-pattern>
+    </rule>
 
     <!-- Enforce fewer rules on development plugin -->
+    <rule ref="WordPress.WP.GlobalVariablesOverride.Prohibited">
+        <exclude-pattern>*/development-plugin/*</exclude-pattern>
+    </rule>
 
     <!-- Enforce fewer rules on tests -->
     <rule ref="WordPress.Files.FileName.NotHyphenatedLowercase">
@@ -66,7 +77,13 @@
     <rule ref="WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents">
         <exclude-pattern>*/tests/*</exclude-pattern>
     </rule>
+    <rule ref="WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents">
+        <exclude-pattern>*/tests/*</exclude-pattern>
+    </rule>
     <rule ref="WordPress.WP.GlobalVariablesOverride.Prohibited">
+        <exclude-pattern>*/tests/*</exclude-pattern>
+    </rule>
+    <rule ref="PSR2.Classes.PropertyDeclaration.Underscore">
         <exclude-pattern>*/tests/*</exclude-pattern>
     </rule>
 

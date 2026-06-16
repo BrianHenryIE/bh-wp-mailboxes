@@ -1,0 +1,21 @@
+From: Sender <sender@example.com>
+To: recipient@example.com
+Subject: Email with attachment
+Date: Wed, 30 Jul 2025 03:38:07 +0000
+Message-ID: <attachment-test-123@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="BOUNDARY"
+
+--BOUNDARY
+Content-Type: text/plain; charset=UTF-8
+
+This email has an attachment.
+
+--BOUNDARY
+Content-Type: text/plain; name="hello.txt"
+Content-Disposition: attachment; filename="hello.txt"
+Content-Transfer-Encoding: base64
+
+aGVsbG8gd29ybGQK
+
+--BOUNDARY--

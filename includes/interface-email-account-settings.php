@@ -26,14 +26,14 @@ interface Email_Account_Settings_Interface {
 	/**
 	 * The friendly account name to display.
 	 */
-	public function get_account_unique_friendly_name(): string;
+	public function get_account_display_friendly_name(): string;
 
 	/**
 	 * Should the email be deleted after it is reconciled.
 	 *
 	 * @return string nothing|mark_read|delete
 	 */
-	public function after_download_email_action(): string;
+	public function after_download_remote_email_action(): string;
 
 	/**
 	 * Regex to filter email from address for further matching.

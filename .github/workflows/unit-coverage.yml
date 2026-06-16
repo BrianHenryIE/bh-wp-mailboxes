@@ -118,7 +118,7 @@ jobs:
         uses: johanvanhelden/gha-clover-test-coverage-check@2543c79a701f179bd63aa14c16c6938c509b2cec # v1
         id: coverage-percentage
         with:
-          percentage: 33
+          percentage: 45
           exit: true
           metric: statements
           filename: tests/_output/clover.xml

@@ -3,17 +3,26 @@
 namespace BrianHenryIE\WP_Mailboxes;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
+use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use Mockery;
 use Psr\Log\LoggerInterface;
 use lucatume\WPBrowser\TestCase\WPTestCase;
+use Psr\Log\Test\TestLogger;
 use ZBateson\MailMimeParser\IMessage;
 use ZBateson\MailMimeParser\MailMimeParser;
 
 class WPUnit_Testcase extends WPTestCase {
 
-	protected LoggerInterface $logger;
+	/**
+	 * Test logger for assertions and console output.
+	 *
+	 * @var LoggerInterface|TestLogger|ColorLogger
+	 */
+	protected TestLogger $logger;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -55,27 +64,33 @@ class WPUnit_Testcase extends WPTestCase {
 		/** @var IMessage $email */
 		$email = $parser->parse( $email_contents, true );
 
-		// BH_WP_Mailboxes_Settings_Interface $mailboxes,
 		$mailboxes = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$mailboxes->expects( 'get_emails_cpt_underscored_20' )->andReturn( $post_type );
 
-		// Email_Account_Settings_Interface $email_account
-		$email_account = Mockery::mock( Email_Account_Settings_Interface::class );
-		$email_account->expects( 'get_account_email_address' )->andReturn( 'contact@bhwp.ie' );
+		$email_account = new BH_Email_Account(
+			post_id: 321,
+			post_type: $post_type,
+			local_status: 'bh_email_ac_active',
+			provider_type_class: 'SomeProvider',
+			email_address: 'contact@bhwp.ie',
+			display_name: 'Test Account',
+			from_address_regex_filter: null,
+			body_identifier_regex_filter: null,
+			after_download_remote_email_action: null,
+			delete_local_emails_after_n_days: null,
+			last_checked_time: null,
+			last_successful_login_time: null,
+			last_failed_login_time: null,
+		);
 
-		$bh_email = $repo->save_new( $email, $mailboxes, $email_account );
+		$fetched_email = new Fetched_Email(
+			$email,
+			new Remote_Email_Coordinates( message_id: $email->getMessageId() ?? '' ),
+			false,
+		);
+
+		$bh_email = $repo->save_new( $fetched_email, $mailboxes, $email_account );
 
 		return $bh_email->get_post_id();
-
-		// $post = wp_insert_post(array(
-		// 'post_type' => $post_type,
-		// 'post_content' => $email_contents,
-		// 'post_status' => 'new',
-		// 'meta_input' => array(
-		// 'email_id' =>
-		// )
-		// ));
-		//
-		// return $post;
 	}
 }

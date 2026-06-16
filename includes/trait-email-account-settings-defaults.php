@@ -20,14 +20,14 @@ trait Email_Account_Settings_Defaults_Trait {
 	/**
 	 * Returns the account email address as a unique friendly name.
 	 */
-	public function get_account_unique_friendly_name(): string {
+	public function get_account_display_friendly_name(): string {
 		return $this->get_account_email_address();
 	}
 
 	/**
 	 * Returns the default post-download action.
 	 */
-	public function after_download_email_action(): string {
+	public function after_download_remote_email_action(): string {
 		return 'nothing';
 	}
 

@@ -58,7 +58,6 @@
     "require": {
         "php": ">=8.4",
         "ext-json": "*",
-        "brianhenryie/bh-wp-private-uploads": "*",
         "directorytree/imapengine": "^1.24",
         "psr/log": "*",
         "wptrt/admin-notices": "*"
@@ -68,7 +67,8 @@
         "10up/wp_mock": "*",
         "alleyinteractive/wordpress-autoloader": "^1.1",
         "antecedent/patchwork": "^2.1",
-        "brianhenryie/bh-wp-logger": "*",
+        "brianhenryie/bh-wp-logger": ">0.3.3",
+        "brianhenryie/bh-wp-private-uploads": "^0.3.0",
         "brianhenryie/color-logger": "*",
         "dealerdirect/phpcodesniffer-composer-installer": "*",
         "google/apiclient": "^2.19",
@@ -77,6 +77,8 @@
         "lucatume/wp-browser": "*",
         "phpcompatibility/phpcompatibility-wp": "*",
         "phpstan/extension-installer": "*",
+        "phpstan/phpstan-mockery": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
         "phpunit/phpcov": "*",
         "rector/rector": "^2.4",
         "squizlabs/php_codesniffer": "*",

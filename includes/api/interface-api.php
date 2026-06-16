@@ -7,8 +7,13 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
+use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Test_Connection_Result;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
+use DateTimeInterface;
 
 /**
  * Defines the public API for interacting with email mailboxes.
@@ -26,17 +31,13 @@ interface API_Interface {
 
 	/**
 	 * Deletes locally-stored emails older than the configured retention period.
-	 *
-	 * @return array{success:bool}
 	 */
-	public function delete_old_emails(): array;
+	public function delete_old_emails(): Delete_Old_Emails_Result;
 
 	/**
 	 * Fetches new emails from all configured mailboxes and saves them.
-	 *
-	 * @return array{success:bool}
 	 */
-	public function check_email(): array;
+	public function check_email(): Check_Email_Result;
 
 	/**
 	 * Mark the email as read on its remote server and update local post meta.
@@ -67,7 +68,44 @@ interface API_Interface {
 	 */
 	public function insert_email_log_note( int $post_id, string $message ): void;
 
+	/**
+	 * Return the email account for an email post, or null if the post/parent was deleted.
+	 *
+	 * @param BH_Email $email The email whose account to resolve.
+	 */
 	public function get_email_account_for_email( BH_Email $email ): ?BH_Email_Account;
 
+	/**
+	 * Return the email fetcher for a given account, or null when no provider is known.
+	 *
+	 * @param BH_Email_Account $email_account The account to find a fetcher for.
+	 */
 	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Fetcher_Interface;
+
+	/**
+	 * Returns all configured email accounts indexed by email address.
+	 *
+	 * @return BH_Email_Account[]
+	 */
+	public function get_email_accounts(): array;
+
+	/**
+	 * Fetches new emails for a single account and saves them.
+	 *
+	 * @param BH_Email_Account  $account The account to check.
+	 * @param DateTimeInterface $since The time to check emails since.
+	 */
+	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): Check_Email_Result;
+
+	/**
+	 * Validate an account's credentials by connecting to the server.
+	 *
+	 * Intended for the settings-save flow. Pass `$credentials` to validate candidate credentials
+	 * before the account is saved; otherwise they are resolved via the `bh_wp_mailboxes_credentials`
+	 * filter.
+	 *
+	 * @param BH_Email_Account               $account     The account whose provider to connect with.
+	 * @param ?Account_Credentials_Interface $credentials Candidate credentials, or null to resolve them.
+	 */
+	public function test_connection( BH_Email_Account $account, ?Account_Credentials_Interface $credentials = null ): Test_Connection_Result;
 }

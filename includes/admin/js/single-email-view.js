@@ -4,19 +4,63 @@
 	$(function () {
 		var settings = window.bhWpMailboxesSingleEmail || {};
 
+		/**
+		 * Build the same badge markup that PHP's get_remote_status_html() would produce.
+		 *
+		 * @param {boolean|null} isRead          null = unknown; true = read; false = unread.
+		 * @param {boolean|null} isRemoteDeleted null = unknown; true = deleted on server.
+		 * @return {string} HTML string.
+		 */
+		function buildRemoteStatusHtml( isRead, isRemoteDeleted ) {
+			var parts = [];
+			if ( isRead !== null && isRead !== undefined ) {
+				parts.push( isRead
+					? '<span class="bh-email-badge bh-email-badge--read">Read on server</span>'
+					: '<span class="bh-email-badge bh-email-badge--unread">Unread on server</span>'
+				);
+			}
+			if ( isRemoteDeleted ) {
+				parts.push( '<span class="bh-email-badge bh-email-badge--deleted">Deleted on server</span>' );
+			}
+			return parts.join( ' ' );
+		}
+
+		/**
+		 * Update the remote-status badge area and action-button visibility after a remote action.
+		 *
+		 * @param {boolean|null} isRead
+		 * @param {boolean|null} isRemoteDeleted
+		 */
+		function updateRemoteUi( isRead, isRemoteDeleted ) {
+			$( '.bh-email-remote-status' ).html( buildRemoteStatusHtml( isRead, isRemoteDeleted ) );
+
+			if ( isRemoteDeleted ) {
+				$( '#bh-email-mark-read, #bh-email-mark-unread, #bh-email-delete-on-server' ).closest( 'p' ).hide();
+				return;
+			}
+
+			if ( isRead === true ) {
+				$( '#bh-email-mark-read' ).closest( 'p' ).hide();
+				$( '#bh-email-mark-unread' ).closest( 'p' ).show();
+			} else if ( isRead === false ) {
+				$( '#bh-email-mark-unread' ).closest( 'p' ).hide();
+				$( '#bh-email-mark-read' ).closest( 'p' ).show();
+			}
+		}
+
 		function remoteAction( action, $btn ) {
 			$btn.prop( 'disabled', true );
 
 			$.post(
 				settings.ajaxUrl || ajaxurl,
 				{
-					action:    action,
-					post_id:   settings.postId,
-					_wpnonce:  settings.nonce,
+					action:   action,
+					post_id:  settings.postId,
+					_wpnonce: settings.nonce,
 				},
 				function ( response ) {
-					if ( response.success && response.data && response.data.status_html !== undefined ) {
-						$( '.bh-email-remote-status' ).html( response.data.status_html );
+					if ( response.success && response.data ) {
+						updateRemoteUi( response.data.is_read, response.data.is_remote_deleted );
 					}
 					$btn.prop( 'disabled', false );
 				}
