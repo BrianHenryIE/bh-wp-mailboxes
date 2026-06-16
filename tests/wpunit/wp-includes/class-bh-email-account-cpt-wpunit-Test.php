@@ -35,6 +35,7 @@ class BH_Email_Account_CPT_WPUnit_Test extends WPUnit_Testcase {
 	 * The custom post type is registered, private (not public, excluded from search), and supports
 	 * title + comments (comments are used to log changes).
 	 *
+	 * @covers ::__construct
 	 * @covers ::register_cpt
 	 */
 	public function test_register_cpt(): void {

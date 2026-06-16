@@ -39,6 +39,7 @@ class BH_Email_CPT_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Check the post type is registered.
 	 *
+	 * @covers ::__construct
 	 * @covers ::register_cpt
 	 */
 	public function test_creating_the_cpt(): void {

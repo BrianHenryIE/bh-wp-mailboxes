@@ -28,6 +28,8 @@ class BH_Email_Account_Query_Unit_Test extends Unit_Testcase {
 	 *
 	 * @covers ::__construct
 	 * @covers ::get_wp_post_fields
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::__construct
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_query_array
 	 */
 	public function test_to_query_array_includes_post_id_as_wp_post_id_field(): void {
 
@@ -47,6 +49,7 @@ class BH_Email_Account_Query_Unit_Test extends Unit_Testcase {
 	 * A null post_id (e.g. when inserting a new account) must not appear in the query array.
 	 *
 	 * @covers ::get_wp_post_fields
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_query_array
 	 */
 	public function test_to_query_array_omits_id_field_when_post_id_is_null(): void {
 
@@ -65,6 +68,7 @@ class BH_Email_Account_Query_Unit_Test extends Unit_Testcase {
 	 * DateTimeInterface meta values must be serialized in ATOM format; null meta values dropped.
 	 *
 	 * @covers ::get_meta_input
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_query_array
 	 */
 	public function test_to_query_array_formats_last_failed_login_time_as_atom_and_drops_nulls(): void {
 

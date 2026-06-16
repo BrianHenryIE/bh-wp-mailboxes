@@ -90,6 +90,7 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 	 * Each fetched message is mapped to a Fetched_Email carrying the parsed message, the IMAP
 	 * coordinates (UID, folder, UIDVALIDITY, Message-ID) and the server read state.
 	 *
+	 * @covers ::__construct
 	 * @covers ::retrieve_emails
 	 */
 	public function test_retrieve_emails_maps_messages_to_fetched_emails(): void {

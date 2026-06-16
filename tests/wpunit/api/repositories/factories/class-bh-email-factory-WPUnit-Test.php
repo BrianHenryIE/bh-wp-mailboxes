@@ -68,6 +68,7 @@ class BH_Email_Factory_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WPUnit_Tes
 	/**
 	 * Html-no-plain-text.eml: text/html only — HTML present, plain text absent.
 	 *
+	 * @covers ::__construct
 	 * @covers ::from_wp_post
 	 */
 	public function test_from_wp_post_html_no_plain_text(): void {

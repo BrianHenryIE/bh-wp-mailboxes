@@ -15,7 +15,6 @@ use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Codeception\Stub\Expected;
@@ -106,6 +105,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	// -------------------------------------------------------------------------
 
 	/**
+	 * @covers ::__construct
 	 * @covers \BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT::register_post_statuses
 	 */
 	public function test_post_statuses_are_registered_after_init(): void {

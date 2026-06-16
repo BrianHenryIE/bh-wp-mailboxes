@@ -250,6 +250,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * After a successful mark_read the response must include is_read: true.
 	 *
+	 * @covers ::__construct
 	 * @covers ::handle_remote_action
 	 * @covers ::ajax_mark_read
 	 */

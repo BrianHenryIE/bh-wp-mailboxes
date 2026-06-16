@@ -7,7 +7,6 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
-use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract;
 use Exception;
 

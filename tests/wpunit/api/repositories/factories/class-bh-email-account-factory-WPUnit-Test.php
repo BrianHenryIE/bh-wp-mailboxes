@@ -78,6 +78,7 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Every meta field is hydrated onto the BH_Email_Account, with the post id/type/status from the post.
 	 *
+	 * @covers ::__construct
 	 * @covers ::from_wp_post
 	 * @covers ::get_array_from_post_meta
 	 */

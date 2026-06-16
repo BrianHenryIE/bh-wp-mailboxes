@@ -84,6 +84,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Nothing should be printed when the current screen has a different post type.
 	 *
+	 * @covers ::__construct
 	 * @covers ::display
 	 */
 	public function test_display_outputs_nothing_for_wrong_post_type(): void {

@@ -41,6 +41,7 @@ class Cron_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * The fetch and delete hook names are distinct and derived from the emails CPT slug.
 	 *
+	 * @covers ::__construct
 	 * @covers ::get_fetch_emails_cron_hook_name
 	 * @covers ::get_delete_local_emails_cron_hook_name
 	 */
