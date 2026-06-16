@@ -125,7 +125,6 @@ class BH_Email_Account_Factory {
 		foreach ( $string_keys as $string_key ) {
 			// TODO: This is inadequate to sanitize.
 			$args[ $string_key ] = is_null( $args[ $string_key ] ) ? null : strval( $args[ $string_key ] );
-			break;
 		}
 
 		foreach ( $int_keys as $int_key ) {
