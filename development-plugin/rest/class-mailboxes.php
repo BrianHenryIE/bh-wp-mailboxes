@@ -216,6 +216,7 @@ class Mailboxes {
 		// on post_content) can read it correctly. Bypass content_save_pre to avoid filter mangling.
 		if ( '' !== $body_plain || '' !== $body_html ) {
 			global $wpdb;
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->update( $wpdb->posts, array( 'post_content' => $this->build_mime( $body_plain, $body_html ) ), array( 'ID' => $post_id ) );
 			clean_post_cache( $post_id );
 		}

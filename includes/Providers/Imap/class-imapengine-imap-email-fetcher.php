@@ -81,7 +81,7 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	 *
 	 * Port is determined from the encryption value, or overridden by server:port.
 	 *
-	 * @param IMAP_Credentials_Interface $credentials The connection settings.
+	 * @param Account_Credentials_Interface|IMAP_Credentials_Interface $credentials The connection settings.
 	 *
 	 * @throws InvalidArgumentException When credentials are not IMAP credentials.
 	 */

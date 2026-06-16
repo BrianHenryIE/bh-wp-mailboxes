@@ -13,6 +13,11 @@ use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
  * Adds custom action links to the development plugin row on the Plugins admin page.
  */
 class Plugins_Page {
+	/**
+	 * Construct.
+	 *
+	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes_settings Settings – to match the correct CPT.
+	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $mailboxes_settings
 	) {

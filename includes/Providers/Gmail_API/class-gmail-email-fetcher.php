@@ -54,7 +54,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	/**
 	 * Configure the instance with the credentials to connect with.
 	 *
-	 * @param Google_API_Credentials_Interface $credentials OAuth project credentials + access token.
+	 * @param Account_Credentials_Interface|Google_API_Credentials_Interface $credentials OAuth project credentials + access token.
 	 * @throws InvalidArgumentException If incorrect credentials type provided.
 	 */
 	public function set_credentials( Account_Credentials_Interface $credentials ): void {
@@ -135,7 +135,7 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 
 				// Check to see if there was an error.
 				if ( array_key_exists( 'error', $access_token ) ) {
-					throw new Exception( join( ', ', esc_html( $access_token ) ) );
+					throw new Exception( join( ', ', array_map( 'esc_html', $access_token ) ) );
 				}
 			}
 

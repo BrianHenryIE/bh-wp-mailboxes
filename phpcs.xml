@@ -42,6 +42,9 @@
     </rule>
 
     <!-- Enforce fewer rules on development plugin -->
+    <rule ref="WordPress.WP.GlobalVariablesOverride.Prohibited">
+        <exclude-pattern>*/development-plugin/*</exclude-pattern>
+    </rule>
 
     <!-- Enforce fewer rules on tests -->
     <rule ref="WordPress.Files.FileName.NotHyphenatedLowercase">

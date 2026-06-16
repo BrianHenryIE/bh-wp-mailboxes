@@ -31,6 +31,7 @@ use ZBateson\MailMimeParser\MailMimeParser;
  */
 class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
+	/** @var Email_Account_Settings_Interface Boring settings for tess. */
 	protected Email_Account_Settings_Interface $settings;
 
 	public function setUp(): void {
@@ -143,9 +144,6 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
 		$this->assertNotEmpty( $messages->count() );
 
-		// Don't accidentally save anything.
-		return;
-
 		/** @var \BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email $fetched */
 		foreach ( $messages as $fetched ) {
 			$email          = $fetched->message;
@@ -157,6 +155,7 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
 			$this->save_to_file(
 				$email,
+				// phpcs:disable WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 				codecept_root_dir() . 'tests/_data/temp/' . base64_encode( $email->getHeaderValue( 'Message-ID' ) ) . '.eml',
 			);
 		}

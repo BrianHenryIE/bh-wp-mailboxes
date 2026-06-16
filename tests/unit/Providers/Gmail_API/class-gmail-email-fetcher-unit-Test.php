@@ -74,7 +74,12 @@ class Gmail_Email_Fetcher_Unit_Test extends Unit_Testcase {
 		$rfc2822 = (string) file_get_contents( codecept_root_dir( 'tests/_data/wpunit/' . $fixture_filename ) );
 
 		$message = new Gmail_Message();
-		// Gmail returns the raw message base64url-encoded.
+
+		/**
+		 * Gmail returns the raw message base64url-encoded.
+		 *
+		 * phpcs:disable WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+		 */
 		$message->setRaw( strtr( base64_encode( $rfc2822 ), '+/', '-_' ) );
 		$message->setLabelIds( $label_ids );
 

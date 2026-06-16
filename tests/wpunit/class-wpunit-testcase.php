@@ -11,12 +11,18 @@ use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use Mockery;
 use Psr\Log\LoggerInterface;
 use lucatume\WPBrowser\TestCase\WPTestCase;
+use Psr\Log\Test\TestLogger;
 use ZBateson\MailMimeParser\IMessage;
 use ZBateson\MailMimeParser\MailMimeParser;
 
 class WPUnit_Testcase extends WPTestCase {
 
-	protected LoggerInterface $logger;
+	/**
+	 * Test logger for assertions and console output.
+	 *
+	 * @var LoggerInterface|TestLogger|ColorLogger
+	 */
+	protected TestLogger $logger;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -58,7 +64,6 @@ class WPUnit_Testcase extends WPTestCase {
 		/** @var IMessage $email */
 		$email = $parser->parse( $email_contents, true );
 
-		// BH_WP_Mailboxes_Settings_Interface $mailboxes,
 		$mailboxes = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$mailboxes->expects( 'get_emails_cpt_underscored_20' )->andReturn( $post_type );
 
@@ -86,16 +91,5 @@ class WPUnit_Testcase extends WPTestCase {
 		$bh_email = $repo->save_new( $fetched_email, $mailboxes, $email_account );
 
 		return $bh_email->get_post_id();
-
-		// $post = wp_insert_post(array(
-		// 'post_type' => $post_type,
-		// 'post_content' => $email_contents,
-		// 'post_status' => 'new',
-		// 'meta_input' => array(
-		// 'email_id' =>
-		// )
-		// ));
-		//
-		// return $post;
 	}
 }

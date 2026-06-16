@@ -27,25 +27,23 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Returns an API instance with all it dependencies mocked unless they are specified.
 	 *
-	 * @param ?BH_WP_Mailboxes_Settings_Interface $settings
-	 * @param ?Email_WP_Post_Repository           $email_repository
-	 * @param ?Email_Account_WP_Post_Repository   $email_account_repository
-	 * @param ?Private_Uploads                    $private_uploads
-	 * @param ?LoggerInterface                    $logger
+	 * @param ?BH_WP_Mailboxes_Settings_Interface $settings Plugin slug, cpt name, cron schedules.
+	 * @param ?Email_WP_Post_Repository           $email_repository Respository to save emails.
+	 * @param ?Email_Account_WP_Post_Repository   $email_account_repository Repository to save email accounts.
+	 * @param ?Private_Uploads                    $private_uploads Library to save attachments.
 	 */
 	protected function get_api(
 		?BH_WP_Mailboxes_Settings_Interface $settings = null,
 		?Email_WP_Post_Repository $email_repository = null,
 		?Email_Account_WP_Post_Repository $email_account_repository = null,
 		?Private_Uploads $private_uploads = null,
-		?LoggerInterface $logger = null
 	): API {
 		return new API(
 			$settings ?? \Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class ),
 			$email_repository ?? \Mockery::mock( Email_WP_Post_Repository::class ),
 			$email_account_repository ?? \Mockery::mock( Email_Account_WP_Post_Repository::class ),
 			$private_uploads ?? \Mockery::mock( Private_Uploads::class ),
-			$logger ?? $this->logger,
+			$this->logger,
 		);
 	}
 

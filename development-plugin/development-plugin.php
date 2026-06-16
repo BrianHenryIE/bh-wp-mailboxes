@@ -151,10 +151,16 @@ $mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface 
 		return 'development-plugin';
 	}
 
+	/**
+	 * The actual CPT name used in the post_type column.
+	 */
 	public function get_emails_cpt_underscored_20(): string {
 		return 'bh_wp_mailboxes_cpt';
 	}
 
+	/**
+	 * Actual post_type name in wp_posts table.
+	 */
 	public function get_email_accounts_cpt_underscored_20(): string {
 		return 'my_plugin_account';
 	}
@@ -166,6 +172,9 @@ $mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface 
 		return 'BH WP Mailboxes – Emails CPT';
 	}
 
+	/**
+	 * A friendly display name for UI.
+	 */
 	public function get_email_accounts_cpt_friendly_name(): string {
 		return 'BH WP Mailboxes – Email Accounts CPT';
 	}
@@ -176,7 +185,11 @@ $mailboxes_api = BH_WP_Mailboxes::make( $mailboxes_settings, $logger );
 $accounts = $mailboxes_api->get_email_accounts();
 
 
-/** @var array<string, Email_Account_Settings_Interface> $mailboxes Indexed by email address. */
+/**
+ * A single plugin can define multiple mailboxes, each its own cpt, each of which can contain multiple email accounts.
+ *
+ * @var array<string, Email_Account_Settings_Interface> $mailboxes Indexed by email address.
+ */
 $mailboxes = array();
 
 $imap          = new Imap();
@@ -201,7 +214,7 @@ if ( ! is_null( $imap_settings ) && ! isset( $accounts[ $imap_settings->get_acco
 			after_download_remote_email_action: null,
 			delete_local_emails_after_n_days: 1,
 		);
-	} catch ( \Exception $e ) {
+	} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 		// Account already exists; ignore.
 	}
 }
@@ -221,13 +234,13 @@ if ( $imap_settings ) {
 	);
 }
 
-// /var/www/html/wp-content/uploads/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/class-admin-notices.php
 /**
+ * Fix for mapped directories. I.e. vendor is not under `wp-content/plugins/development-plugins`.
+ *
  * @see plugin_basename()
  */
 global $wp_plugin_paths;
 $plugin_path = '/var/www/html/wp-content/uploads/bh-wp-mailboxes/';
-// $wp_plugin_paths[ WP_PLUGIN_DIR . '/development-plugin/development-plugin.php' ] = $plugin_path;
 $wp_plugin_paths[ WP_PLUGIN_DIR . '/development-plugin/' ] = $plugin_path;
 
 

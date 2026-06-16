@@ -28,6 +28,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	/** @var string CPT slug used across tests. */
 	private string $post_type = 'test_mailbox_emails';
 
+	/** @var BH_Email_Factory Fetch BH_Email instances from WP_Posts table. */
 	protected BH_Email_Factory $bh_email_factory;
 
 	/** @return BH_WP_Mailboxes_Settings_Interface&\Codeception\Stub\StubMarshaler */
