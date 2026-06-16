@@ -12,9 +12,11 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use DateTimeImmutable;
 use DateTimeZone;
+use Mockery;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Admin\Status_View
@@ -53,34 +55,12 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		);
 	}
 
-	/**
-	 * Build a minimal BH_Email_Account stub.
-	 *
-	 * @param array<string, mixed> $overrides Field overrides.
-	 */
-	private function make_account( array $overrides = array() ): BH_Email_Account {
-		return new BH_Email_Account(
-			post_id: $overrides['post_id'] ?? 1,
-			post_type: $overrides['post_type'] ?? $this->post_type,
-			local_status: $overrides['status'] ?? 'bh_email_ac_active',
-			provider_type_class: $overrides['provider_type_class'] ?? 'SomeProvider',
-			email_address: $overrides['email_address'] ?? 'test@example.com',
-			display_name: $overrides['display_name'] ?? 'Test Account',
-			from_address_regex_filter: $overrides['from_address_regex_filter'] ?? null,
-			body_identifier_regex_filter: $overrides['body_identifier_regex_filter'] ?? null,
-			after_download_remote_email_action: $overrides['after_download_remote_email_action'] ?? null,
-			delete_local_emails_after_n_days: $overrides['delete_local_emails_after_n_days'] ?? null,
-			last_successful_login_time: $overrides['last_successful_login_time'] ?? null,
-			last_failed_login_time: $overrides['last_failed_login_time'] ?? null,
-		);
-	}
-
 	private function make_sut(
 		API_Interface $api,
 		?Email_WP_Post_Repository $repo = null,
 	): Status_View {
 		/** @var BH_WP_Mailboxes_Settings_Interface $settings */
-		$settings = \Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
+		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $this->post_type );
 
 		return new Status_View(
@@ -110,7 +90,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		set_current_screen( 'edit-post' );
 
 		/** @var API_Interface $api */
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->shouldNotReceive( 'get_email_accounts' );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
@@ -126,7 +106,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		set_current_screen( 'post' );
 
 		/** @var API_Interface $api */
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->shouldNotReceive( 'get_email_accounts' );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
@@ -144,7 +124,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_display_shows_no_accounts_message_when_empty(): void {
 		/** @var API_Interface $api */
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array() );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
@@ -164,10 +144,10 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers ::display
 	 */
 	public function test_display_shows_account_email_address(): void {
-		$account = $this->make_account( array( 'email_address' => 'inbox@example.com' ) );
+		$account = BH_Email_Account_Fixture::make( email_address: 'inbox@example.com' );
 
 		/** @var API_Interface $api */
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
@@ -183,10 +163,10 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers ::format_time
 	 */
 	public function test_display_shows_never_when_last_fetched_is_null(): void {
-		$account = $this->make_account( array( 'last_successful_login_time' => null ) );
+		$account = BH_Email_Account_Fixture::make( last_successful_login_time: null );
 
 		/** @var API_Interface $api */
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
@@ -201,10 +181,10 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers ::format_time
 	 */
 	public function test_display_shows_never_when_last_failure_is_null(): void {
-		$account = $this->make_account( array( 'last_failed_login_time' => null ) );
+		$account = BH_Email_Account_Fixture::make( last_failed_login_time: null );
 
 		/** @var API_Interface $api */
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
@@ -220,10 +200,10 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_display_shows_relative_time_when_last_fetched_is_set(): void {
 		$one_hour_ago = new DateTimeImmutable( '-1 hour', new DateTimeZone( 'UTC' ) );
-		$account      = $this->make_account( array( 'last_successful_login_time' => $one_hour_ago ) );
+		$account      = BH_Email_Account_Fixture::make( last_successful_login_time: $one_hour_ago );
 
 		/** @var API_Interface $api */
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
@@ -251,15 +231,13 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 			);
 		}
 
-		$account = $this->make_account(
-			array(
-				'email_address' => $account_email,
-				'post_id'       => 321,
-			)
+		$account = BH_Email_Account_Fixture::make(
+			post_id: 321,
+			email_address: $account_email,
 		);
 
 		/** @var API_Interface $api */
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
@@ -273,10 +251,10 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers ::display
 	 */
 	public function test_display_shows_active_label_for_active_account(): void {
-		$account = $this->make_account( array( 'status' => 'bh_email_ac_active' ) );
+		$account = BH_Email_Account_Fixture::make( local_status: 'bh_email_ac_active' );
 
 		/** @var API_Interface $api */
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
@@ -290,10 +268,10 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers ::display
 	 */
 	public function test_display_shows_inactive_label_for_inactive_account(): void {
-		$account = $this->make_account( array( 'status' => 'bh_email_ac_inactive' ) );
+		$account = BH_Email_Account_Fixture::make( local_status: 'bh_email_ac_inactive' );
 
 		/** @var API_Interface $api */
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );

@@ -78,6 +78,7 @@ class WPUnit_Testcase extends WPTestCase {
 			body_identifier_regex_filter: null,
 			after_download_remote_email_action: null,
 			delete_local_emails_after_n_days: null,
+			last_checked_time: null,
 			last_successful_login_time: null,
 			last_failed_login_time: null,
 		);

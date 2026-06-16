@@ -21,7 +21,7 @@ class BH_Email_Account_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_is_active_returns_true_for_active_status(): void {
 
-		$sut = BH_Email_Account_Fixture::make( status: 'bh_email_ac_active' );
+		$sut = BH_Email_Account_Fixture::make( local_status: 'bh_email_ac_active' );
 
 		$this->assertTrue( $sut->is_active() );
 	}
@@ -33,7 +33,7 @@ class BH_Email_Account_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_is_active_returns_false_for_inactive_status(): void {
 
-		$sut = BH_Email_Account_Fixture::make( status: 'bh_email_ac_inactive' );
+		$sut = BH_Email_Account_Fixture::make( local_status: 'bh_email_ac_inactive' );
 
 		$this->assertFalse( $sut->is_active() );
 	}

@@ -14,6 +14,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads_API;
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Interface;
@@ -62,19 +63,13 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		/** @var IMessage $email */
 		$email = $parser->parse( $email_contents, true );
 
-		$email_account = new BH_Email_Account(
+		$email_account = BH_Email_Account_Fixture::make(
 			post_id: 456,
 			post_type: $post_type,
-			local_status: 'bh_email_ac_active',
 			provider_type_class: 'SomeProvider',
 			email_address: 'test@example.com',
 			display_name: 'Test Account',
-			from_address_regex_filter: null,
-			body_identifier_regex_filter: null,
-			after_download_remote_email_action: null,
 			delete_local_emails_after_n_days: null,
-			last_successful_login_time: null,
-			last_failed_login_time: null,
 		);
 
 		$result = $sut->save_new(
@@ -108,19 +103,13 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		/** @var IMessage $email */
 		$email = $parser->parse( $email_contents, true );
 
-		$email_account = new BH_Email_Account(
+		$email_account = BH_Email_Account_Fixture::make(
 			post_id: 456,
 			post_type: $post_type,
-			local_status: 'bh_email_ac_active',
 			provider_type_class: 'SomeProvider',
 			email_address: 'test@example.com',
 			display_name: 'Test Account',
-			from_address_regex_filter: null,
-			body_identifier_regex_filter: null,
-			after_download_remote_email_action: null,
 			delete_local_emails_after_n_days: null,
-			last_successful_login_time: null,
-			last_failed_login_time: null,
 		);
 
 		$first  = $sut->save_new( $this->make_fetched_email( $email ), $this->settings, $email_account );
@@ -155,19 +144,13 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		/** @var IMessage $email */
 		$email = $parser->parse( (string) file_get_contents( $email_filepath ), true );
 
-		$email_account = new BH_Email_Account(
+		$email_account = BH_Email_Account_Fixture::make(
 			post_id: 456,
 			post_type: $post_type,
-			local_status: 'bh_email_ac_active',
 			provider_type_class: 'SomeProvider',
 			email_address: 'test@example.com',
 			display_name: 'Test Account',
-			from_address_regex_filter: null,
-			body_identifier_regex_filter: null,
-			after_download_remote_email_action: null,
 			delete_local_emails_after_n_days: null,
-			last_successful_login_time: null,
-			last_failed_login_time: null,
 		);
 
 		$coordinates = new Remote_Email_Coordinates(
@@ -238,7 +221,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$result = $sut->save_new(
 			$this->make_fetched_email( $email ),
 			$this->settings,
-			$this->make_email_account( $post_type ),
+			BH_Email_Account_Fixture::make( post_type: $post_type ),
 			$private_uploads,
 		);
 
@@ -284,33 +267,11 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$result = $sut->save_new(
 			$this->make_fetched_email( $email ),
 			$this->settings,
-			$this->make_email_account( $post_type ),
+			BH_Email_Account_Fixture::make( post_type: $post_type ),
 		);
 
 		$this->assertNull( $result->attachment_ids );
 		$this->assertSame( '', get_post_meta( $result->get_post_id(), 'attachment_ids', true ) );
-	}
-
-	/**
-	 * Build a minimal BH_Email_Account for save_new().
-	 *
-	 * @param string $post_type The emails CPT slug.
-	 */
-	private function make_email_account( string $post_type ): BH_Email_Account {
-		return new BH_Email_Account(
-			post_id: 456,
-			post_type: $post_type,
-			local_status: 'bh_email_ac_active',
-			provider_type_class: 'SomeProvider',
-			email_address: 'test@example.com',
-			display_name: 'Test Account',
-			from_address_regex_filter: null,
-			body_identifier_regex_filter: null,
-			after_download_remote_email_action: null,
-			delete_local_emails_after_n_days: null,
-			last_successful_login_time: null,
-			last_failed_login_time: null,
-		);
 	}
 
 	/**

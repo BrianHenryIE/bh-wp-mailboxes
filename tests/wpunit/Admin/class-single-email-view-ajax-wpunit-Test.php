@@ -16,6 +16,7 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface as Settings;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use ZBateson\MailMimeParser\IMessage;
 use ZBateson\MailMimeParser\MailMimeParser;
@@ -135,19 +136,12 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		$mailboxes = \Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$mailboxes->expects( 'get_emails_cpt_underscored_20' )->andReturn( $this->post_type );
 
-		$email_account = new BH_Email_Account(
+		$email_account = BH_Email_Account_Fixture::make(
 			post_id: 321,
 			post_type: $this->post_type,
-			local_status: 'bh_email_ac_active',
 			provider_type_class: 'SomeProvider',
 			email_address: 'contact@bhwp.ie',
 			display_name: 'Test Account',
-			from_address_regex_filter: null,
-			body_identifier_regex_filter: null,
-			after_download_remote_email_action: null,
-			delete_local_emails_after_n_days: null,
-			last_successful_login_time: null,
-			last_failed_login_time: null,
 		);
 
 		$fetched_email = new Fetched_Email(
