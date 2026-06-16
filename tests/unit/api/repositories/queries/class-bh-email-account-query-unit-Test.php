@@ -26,6 +26,7 @@ class BH_Email_Account_Query_Unit_Test extends Unit_Testcase {
 	 * Regression test: previously `post_id` was accepted but never mapped, so every
 	 * `Email_Account_WP_Post_Repository::update()` call ran `wp_update_post()` without an ID.
 	 *
+	 * @covers ::__constuct
 	 * @covers ::get_wp_post_fields
 	 */
 	public function test_to_query_array_includes_post_id_as_wp_post_id_field(): void {
