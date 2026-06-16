@@ -7,6 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
+use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use DateTimeInterface;
@@ -98,4 +99,18 @@ interface API_Interface {
 	 * @return array{success:bool, new_emails:BH_Email[]}
 	 */
 	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): array;
+
+	/**
+	 * Validate an account's credentials by connecting to the server.
+	 *
+	 * Intended for the settings-save flow. Pass `$credentials` to validate candidate credentials
+	 * before the account is saved; otherwise they are resolved via the `bh_wp_mailboxes_credentials`
+	 * filter.
+	 *
+	 * @param BH_Email_Account               $account     The account whose provider to connect with.
+	 * @param ?Account_Credentials_Interface $credentials Candidate credentials, or null to resolve them.
+	 *
+	 * @return array{success:bool, message:string}
+	 */
+	public function test_connection( BH_Email_Account $account, ?Account_Credentials_Interface $credentials = null ): array;
 }

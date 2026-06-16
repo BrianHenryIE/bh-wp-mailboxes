@@ -76,13 +76,14 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 	}
 
 	/**
+	 * Configure the mailbox connection. This is a pure setter — no network I/O happens here; the
+	 * connection is established lazily on the first query, or eagerly via test_connection().
 	 *
 	 * Port is determined from the encryption value, or overridden by server:port.
 	 *
 	 * @param IMAP_Credentials_Interface $credentials The connection settings.
 	 *
 	 * @throws InvalidArgumentException When credentials are not IMAP credentials.
-	 * @throws ImapConnectionFailedException When the IMAP connection fails.
 	 */
 	public function set_credentials( Account_Credentials_Interface $credentials ): void {
 
@@ -114,9 +115,17 @@ class ImapEngine_Imap_Email_Fetcher implements Email_Fetcher_Interface {
 				'validate_cert' => false, // TODO: This was for my own use. Need a convention for controlling it.
 			)
 		);
+	}
 
-		// Connect eagerly so authentication failures surface here in the constructor.
+	/**
+	 * Connect to the IMAP server, surfacing authentication/connection failures.
+	 *
+	 * @return bool True when the connection and login succeed.
+	 * @throws ImapConnectionFailedException When the IMAP connection or authentication fails.
+	 */
+	public function test_connection(): bool {
 		$this->mailbox->connect();
+		return true;
 	}
 
 	/**

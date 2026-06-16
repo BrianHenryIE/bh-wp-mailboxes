@@ -841,4 +841,51 @@ class API_Unit_Test extends Unit_Testcase {
 		$this->assertNull( $result );
 		$this->assertTrue( $this->logger->hasWarningThatContains( 'No email fetcher found for provider type' ) );
 	}
+
+	/**
+	 * Connecting without an exception is reported as success.
+	 *
+	 * @covers ::test_connection
+	 */
+	public function test_test_connection_returns_success(): void {
+
+		$email_account = BH_Email_Account_Fixture::make();
+		$credentials   = Mockery::mock( Account_Credentials_Interface::class );
+
+		$fetcher = Mockery::mock( Email_Fetcher_Interface::class );
+		$fetcher->expects( 'set_credentials' )->with( $credentials );
+		$fetcher->expects( 'test_connection' )->andReturn( true );
+
+		\WP_Mock::onFilter( 'bh_wp_mailboxes_fetcher_for_credentials' )
+				->with( null, $email_account )
+				->reply( $fetcher );
+
+		$result = $this->get_api()->test_connection( $email_account, $credentials );
+
+		$this->assertTrue( $result['success'] );
+	}
+
+	/**
+	 * A provider exception is reported as a failure with its message.
+	 *
+	 * @covers ::test_connection
+	 */
+	public function test_test_connection_reports_failure_message(): void {
+
+		$email_account = BH_Email_Account_Fixture::make();
+		$credentials   = Mockery::mock( Account_Credentials_Interface::class );
+
+		$fetcher = Mockery::mock( Email_Fetcher_Interface::class );
+		$fetcher->allows( 'set_credentials' );
+		$fetcher->allows( 'test_connection' )->andThrow( new \Exception( 'AUTHENTICATIONFAILED' ) );
+
+		\WP_Mock::onFilter( 'bh_wp_mailboxes_fetcher_for_credentials' )
+				->with( null, $email_account )
+				->reply( $fetcher );
+
+		$result = $this->get_api()->test_connection( $email_account, $credentials );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertSame( 'AUTHENTICATIONFAILED', $result['message'] );
+	}
 }

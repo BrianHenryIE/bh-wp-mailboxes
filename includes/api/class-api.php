@@ -210,9 +210,8 @@ class API implements API_Interface {
 			return array();
 		}
 
-		$fetcher->set_credentials( $credentials );
-
 		try {
+			$fetcher->set_credentials( $credentials );
 			$all_new_account_emails = $fetcher->retrieve_emails( $since_datetime );
 		} catch ( Exception $exception ) {
 			$this->logger->error(
@@ -265,6 +264,58 @@ class API implements API_Interface {
 			'success'    => true,
 			'new_emails' => $saved,
 		);
+	}
+
+	/**
+	 * Validate an account's credentials by connecting to the server.
+	 *
+	 * @param BH_Email_Account               $account     The account whose provider to connect with.
+	 * @param ?Account_Credentials_Interface $credentials Candidate credentials, or null to resolve via filter.
+	 *
+	 * @return array{success:bool, message:string}
+	 */
+	public function test_connection( BH_Email_Account $account, ?Account_Credentials_Interface $credentials = null ): array {
+
+		$credentials = $credentials ?? apply_filters( 'bh_wp_mailboxes_credentials', null, $account );
+
+		if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
+			return array(
+				'success' => false,
+				'message' => 'No credentials found for ' . $account->display_name . '.',
+			);
+		}
+
+		$fetcher = $this->get_provider_for_email_account( $account );
+
+		if ( is_null( $fetcher ) ) {
+			return array(
+				'success' => false,
+				'message' => 'No email provider found for ' . $account->display_name . '.',
+			);
+		}
+
+		try {
+			$fetcher->set_credentials( $credentials );
+			$fetcher->test_connection();
+
+			return array(
+				'success' => true,
+				'message' => 'Connected successfully.',
+			);
+		} catch ( \Throwable $exception ) {
+			$this->logger->warning(
+				'Connection test failed for ' . $account->display_name . '. ' . $exception->getMessage(),
+				array(
+					'account'   => $account->display_name,
+					'exception' => $exception,
+				)
+			);
+
+			return array(
+				'success' => false,
+				'message' => $exception->getMessage(),
+			);
+		}
 	}
 
 	/**

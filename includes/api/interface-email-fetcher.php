@@ -35,9 +35,12 @@ interface Email_Fetcher_Interface {
 	public function retrieve_emails( DateTimeInterface $since_time ): Collection;
 
 	/**
-	 * Test the account connection without returning emails.
+	 * Connect to the server and verify the credentials authenticate, without returning emails.
+	 *
+	 * @return bool True when the connection and authentication succeed.
+	 * @throws \Throwable When the connection or authentication fails.
 	 */
-	// `public function test_connection();`.
+	public function test_connection(): bool;
 
 	/**
 	 * Does the email service support reading the read/unread status of emails on the server.

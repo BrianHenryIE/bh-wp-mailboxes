@@ -274,10 +274,11 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
 		$credentials = new Imap_Credentials_Env();
 
+		$exception = null;
 		try {
 			$imap = new ImapEngine_Imap_Email_Fetcher( $settings, $logger );
 			$imap->set_credentials( $credentials );
-			$imap->retrieve_emails( DateTime::createFromFormat( 'U', time() - YEAR_IN_SECONDS ) );
+			$imap->test_connection();
 		} catch ( ImapConnectionFailedException $e ) {
 			$exception = $e;
 		} catch ( ImapEngineException $e ) {
@@ -313,6 +314,7 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 		try {
 			$fetcher = new ImapEngine_Imap_Email_Fetcher( $settings, $logger );
 			$fetcher->set_credentials( $credentials );
+			$fetcher->test_connection();
 		} catch ( ImapCommandException $exception ) {
 			$imap_command_exception = $exception;
 		} catch ( ImapEngineException $exception ) {

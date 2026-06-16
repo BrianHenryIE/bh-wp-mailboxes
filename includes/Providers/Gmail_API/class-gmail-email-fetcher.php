@@ -65,6 +65,17 @@ class Gmail_Email_Fetcher implements Email_Fetcher_Interface {
 	}
 
 	/**
+	 * Verify the credentials authenticate by making a cheap authorized API call (the user profile).
+	 *
+	 * @return bool True when the call succeeds.
+	 * @throws \Throwable When authorization or the API call fails.
+	 */
+	public function test_connection(): bool {
+		$this->get_gmail_service()->users->getProfile( 'me' );
+		return true;
+	}
+
+	/**
 	 * Returns an authorized API client.
 	 *
 	 * @return ?Google_Client the authorized client object.

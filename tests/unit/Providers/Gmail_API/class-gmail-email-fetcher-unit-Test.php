@@ -16,6 +16,8 @@ use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use DateTime;
 use Google\Service\Gmail\ListMessagesResponse;
 use Google\Service\Gmail\Message as Gmail_Message;
+use Google\Service\Gmail\Profile;
+use Google\Service\Gmail\Resource\Users;
 use Google\Service\Gmail\Resource\UsersMessages;
 use Google_Service_Gmail;
 use Mockery;
@@ -128,5 +130,48 @@ class Gmail_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
 		$this->assertFalse( $by_uid['unread-id'] );
 		$this->assertTrue( $by_uid['read-id'] );
+	}
+
+	/**
+	 * Build the fetcher with `get_gmail_service()` overridden to return a service whose `users`
+	 * resource is the given mock.
+	 *
+	 * @param Users $users The mocked users resource.
+	 */
+	private function make_sut_with_users( Users $users ): Gmail_Email_Fetcher {
+		$service        = Mockery::mock( Google_Service_Gmail::class );
+		$service->users = $users;
+
+		$sut = Mockery::mock( Gmail_Email_Fetcher::class, array( Mockery::mock( Email_Account_Settings_Interface::class ), $this->logger ) )
+			->makePartial()
+			->shouldAllowMockingProtectedMethods();
+		$sut->allows( 'get_gmail_service' )->andReturn( $service );
+
+		return $sut;
+	}
+
+	/**
+	 * Making the getProfile call returns true on success.
+	 *
+	 * @covers ::test_connection
+	 */
+	public function test_test_connection_returns_true_on_success(): void {
+		$users = Mockery::mock( Users::class );
+		$users->expects( 'getProfile' )->with( 'me' )->once()->andReturn( new Profile() );
+
+		$this->assertTrue( $this->make_sut_with_users( $users )->test_connection() );
+	}
+
+	/**
+	 * An authorization failure propagates from test_connection().
+	 *
+	 * @covers ::test_connection
+	 */
+	public function test_test_connection_rethrows_on_failure(): void {
+		$users = Mockery::mock( Users::class );
+		$users->allows( 'getProfile' )->andThrow( new \RuntimeException( 'invalid_grant' ) );
+
+		$this->expectException( \RuntimeException::class );
+		$this->make_sut_with_users( $users )->test_connection();
 	}
 }

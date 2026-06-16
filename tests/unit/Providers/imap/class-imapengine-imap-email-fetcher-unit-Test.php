@@ -151,4 +151,44 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 		$this->assertCount( 1, $fetched );
 		$this->assertSame( '11', $fetched[0]->coordinates->remote_uid );
 	}
+
+	/**
+	 * Build the fetcher with a given mocked Mailbox injected.
+	 *
+	 * @param Mailbox $mailbox The mocked mailbox.
+	 */
+	private function make_sut_with_mailbox( Mailbox $mailbox ): ImapEngine_Imap_Email_Fetcher {
+		$sut = new ImapEngine_Imap_Email_Fetcher( Mockery::mock( Email_Account_Settings_Interface::class ), $this->logger );
+
+		$property = new \ReflectionProperty( ImapEngine_Imap_Email_Fetcher::class, 'mailbox' );
+		PHP_VERSION_ID < 80100 && $property->setAccessible( true );
+		$property->setValue( $sut, $mailbox );
+
+		return $sut;
+	}
+
+	/**
+	 * Connecting the mailbox returns true on success.
+	 *
+	 * @covers ::test_connection
+	 */
+	public function test_test_connection_connects_and_returns_true(): void {
+		$mailbox = Mockery::mock( Mailbox::class );
+		$mailbox->expects( 'connect' )->once();
+
+		$this->assertTrue( $this->make_sut_with_mailbox( $mailbox )->test_connection() );
+	}
+
+	/**
+	 * A connection failure propagates from test_connection().
+	 *
+	 * @covers ::test_connection
+	 */
+	public function test_test_connection_rethrows_on_failure(): void {
+		$mailbox = Mockery::mock( Mailbox::class );
+		$mailbox->allows( 'connect' )->andThrow( new \RuntimeException( 'AUTHENTICATIONFAILED' ) );
+
+		$this->expectException( \RuntimeException::class );
+		$this->make_sut_with_mailbox( $mailbox )->test_connection();
+	}
 }
