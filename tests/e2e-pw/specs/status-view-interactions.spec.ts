@@ -43,7 +43,7 @@ test.describe( 'Status_View — Check now button', () => {
 			await route.continue();
 		} );
 
-		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
 		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
 
 		const notice = page.locator( `.bh-check-notice[data-account-id="${ postId }"]` );
@@ -60,7 +60,7 @@ test.describe( 'Status_View — Check now button', () => {
 	test( 'notice updates to blue with "no new emails" message after a successful check', async ( { admin, page, request } ) => {
 		const email = `check-done-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
-		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
 
 		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
 		await waitForCheckResponse( page, postId );
@@ -87,7 +87,7 @@ test.describe( 'Status_View — Check now button', () => {
 			await route.continue();
 		} );
 
-		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
 		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
 
 		const notice = page.locator( `.bh-check-notice[data-account-id="${ postId }"]` );
@@ -99,7 +99,7 @@ test.describe( 'Status_View — Check now button', () => {
 	test( 'notice is dismissible after the check completes', async ( { admin, page, request } ) => {
 		const email = `dismiss-done-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
-		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
 
 		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
 		await waitForCheckResponse( page, postId );
@@ -113,7 +113,7 @@ test.describe( 'Status_View — Check now button', () => {
 	test( '"Last fetched" updates to "Just now" in the card without a full page reload', async ( { admin, page, request } ) => {
 		const email = `last-fetched-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
-		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
 
 		const lastFetched = page
 			.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` )
@@ -132,7 +132,7 @@ test.describe( 'Status_View — Since (clock) button', () => {
 	test( 'date input is hidden initially and appears below the actions row after clicking clock', async ( { admin, page, request } ) => {
 		const email = `clock-toggle-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
-		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
 
 		const card   = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
 		const input  = card.locator( '.bh-fetch-since-input' );
@@ -152,7 +152,7 @@ test.describe( 'Status_View — Since (clock) button', () => {
 	test( 'date input is pre-populated with one week ago for a new account', async ( { admin, page, request } ) => {
 		const email = `since-prefill-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
-		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
 
 		const value = await page
 			.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"] .bh-fetch-since-input` )
@@ -174,7 +174,7 @@ test.describe( 'Status_View — Since (clock) button', () => {
 			await route.continue();
 		} );
 
-		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
 
 		const card  = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
 		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
@@ -196,7 +196,7 @@ test.describe( 'Status_View — Since (clock) button', () => {
 	test( 'since input hides after a successful check', async ( { admin, page, request } ) => {
 		const email = `since-hide-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
-		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
 
 		const card  = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
 		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
