@@ -23,13 +23,27 @@ class Mailboxes {
 	const NAMESPACE = 'bh-wp-mailboxes-dev/v1';
 
 	/**
-	 * The custom post type the library registers for stored emails.
+	 * The emails CPT registered by the fixtures mailbox instance (friendly name "Fixtures Email").
 	 *
+	 * @see development-plugin.php — $fixtures_mailboxes_settings
 	 * @see \BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT
 	 */
-	const EMAIL_POST_TYPE = 'bh_wp_mailboxes_cpt';
+	const EMAIL_POST_TYPE = 'fixtures_email';
 
-	const ACCOUNT_POST_TYPE = 'my_plugin_account';
+	/**
+	 * The accounts CPT registered by the fixtures mailbox instance (friendly name "Fixtures Accounts").
+	 *
+	 * @see development-plugin.php — $fixtures_mailboxes_settings
+	 */
+	const ACCOUNT_POST_TYPE = 'fixtures_accounts';
+
+	/**
+	 * The provider class the fixtures mailbox uses; accounts must reference it so the
+	 * `bh_wp_mailboxes_provider_for_account` filter resolves the fixtures provider for them.
+	 *
+	 * @see \BrianHenryIE\WP_Mailboxes_Development_Plugin\Providers\Mock_Mailbox_Fixtures_Provider
+	 */
+	const ACCOUNT_PROVIDER_CLASS = 'BrianHenryIE\\WP_Mailboxes_Development_Plugin\\Providers\\Mock_Mailbox_Fixtures_Provider';
 
 	/**
 	 * Register the REST routes.
@@ -171,7 +185,7 @@ class Mailboxes {
 
 		update_post_meta( $post_id, 'email_address', $email_address );
 		update_post_meta( $post_id, 'display_name', $display_name );
-		update_post_meta( $post_id, 'provider_type_class', 'BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap' );
+		update_post_meta( $post_id, 'provider_type_class', self::ACCOUNT_PROVIDER_CLASS );
 
 		return new WP_REST_Response( array( 'post_id' => $post_id ), 201 );
 	}
