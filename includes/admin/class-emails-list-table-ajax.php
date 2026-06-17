@@ -39,7 +39,9 @@ class Emails_List_Table_Ajax {
 	/**
 	 * Triggers an immediate email check for the current mailbox.
 	 *
-	 * @hooked wp_ajax_bh_wp_mailboxes_check_email
+	 * The action is suffixed with the emails CPT so each library instance only handles its own request.
+	 *
+	 * @hooked wp_ajax_bh_wp_mailboxes_check_email_{emails_cpt}
 	 */
 	public function check_email(): void {
 
@@ -65,7 +67,10 @@ class Emails_List_Table_Ajax {
 	/**
 	 * Triggers an immediate email check for a single account.
 	 *
-	 * @hooked wp_ajax_bh_wp_mailboxes_check_account
+	 * The action is suffixed with the accounts CPT so each library instance only handles its own request.
+	 *
+	 * @hooked wp_ajax_bh_wp_mailboxes_check_account_{accounts_cpt}
+	 * @hooked wp_ajax_bh_wp_mailboxes_set_fetch_since_{accounts_cpt}
 	 */
 	public function check_account(): void {
 
@@ -76,7 +81,8 @@ class Emails_List_Table_Ajax {
 
 		$account_post_id = (int) $_POST['account_post_id'];
 		$account         = null;
-		foreach ( $this->api->get_email_accounts() as $candidate ) {
+		$all_accounts    = $this->api->get_email_accounts();
+		foreach ( $all_accounts as $candidate ) {
 			if ( $candidate->get_post_id() === $account_post_id ) {
 				$account = $candidate;
 				break;
