@@ -26,6 +26,8 @@
     }
 
     function handleCheckResponse( response, $card, $notice ) {
+        var accountName = $card.data( 'account-name' );
+        var prefix      = accountName ? accountName + ': ' : '';
         if ( response.success ) {
             var count = response.data.new_email_count;
             $card.find( '[data-field="last-fetched"]' ).text( response.data.last_fetched );
@@ -37,10 +39,10 @@
             var msg = count > 0
                 ? 'Email checked successfully, ' + count + ' new email' + ( count !== 1 ? 's' : '' ) + ' found.'
                 : 'Email checked successfully, no new emails.';
-            finishNotice( $notice, msg, count > 0 ? '#00a32a' : '#72aee6' );
+            finishNotice( $notice, prefix + msg, count > 0 ? '#00a32a' : '#72aee6' );
         } else {
             var errMsg = ( response.data && response.data.message ) ? response.data.message : 'Check failed.';
-            finishNotice( $notice, errMsg, '#d63638' );
+            finishNotice( $notice, prefix + errMsg, '#d63638' );
         }
     }
 
@@ -59,12 +61,31 @@
         $( '#check-email' ).on( 'click', function( event ) {
             event.preventDefault();
             var urlParams = new URLSearchParams( window.location.search );
+
+            // Name the account(s) being checked, taken from the status cards.
+            var names = $( '.bh-mailboxes-account-card' ).map( function() {
+                return $( this ).data( 'account-name' );
+            } ).get().filter( Boolean );
+            var label = names.length ? names.join( ', ' ) : 'all accounts';
+
+            var $notice = makeCheckNotice( 'all', label );
+
             $.post( ajaxurl, {
                 action:        bh_wp_mailboxes_ajax.check_email_action,
                 mailboxes_cpt: urlParams.get( 'post_type' ),
                 _wpnonce:      $( '#_wpnonce_checknow' ).val(),
-            }, function( response ) {
-                console.log( response );
+            } ).done( function( response ) {
+                var newEmails = ( response.data && response.data.new_emails ) || [];
+                var count     = newEmails.length;
+                var msg = count > 0
+                    ? 'Email checked successfully, ' + count + ' new email' + ( count !== 1 ? 's' : '' ) + ' found.'
+                    : 'Email checked successfully, no new emails.';
+                finishNotice( $notice, label + ': ' + msg, count > 0 ? '#00a32a' : '#72aee6' );
+                if ( count > 0 ) {
+                    refreshTable();
+                }
+            } ).fail( function() {
+                finishNotice( $notice, label + ': Check failed: server error.', '#d63638' );
             } );
         } );
 
@@ -73,7 +94,7 @@
             var $btn        = $( this );
             var accountId   = $btn.data( 'account-id' );
             var $card       = $( '.bh-mailboxes-account-card[data-account-id="' + accountId + '"]' );
-            var accountName = $card.find( '.bh-mailboxes-account-card__title' ).text();
+            var accountName = $card.data( 'account-name' );
             var origLabel   = $btn.text();
             $btn.prop( 'disabled', true ).text( 'Checking…' );
 
@@ -103,7 +124,7 @@
             var $input      = $( this );
             var accountId   = $input.data( 'account-id' );
             var $card       = $( '.bh-mailboxes-account-card[data-account-id="' + accountId + '"]' );
-            var accountName = $card.find( '.bh-mailboxes-account-card__title' ).text();
+            var accountName = $card.data( 'account-name' );
 
             $input.hide();
             var $notice = makeCheckNotice( accountId, accountName );

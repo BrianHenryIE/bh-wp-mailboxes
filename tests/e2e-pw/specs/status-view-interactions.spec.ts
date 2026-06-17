@@ -62,6 +62,11 @@ test.describe( 'Status_View — Check now button', () => {
 		const postId = await createAccount( request, email );
 		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
 
+		// First check saves the fixture emails for this account...
+		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
+		await waitForCheckResponse( page, postId );
+
+		// ...so the second check finds them all already saved (deduped) → no new emails.
 		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
 		await waitForCheckResponse( page, postId );
 		await page.waitForTimeout( 350 ); // CSS transition: border-left-color 0.3s

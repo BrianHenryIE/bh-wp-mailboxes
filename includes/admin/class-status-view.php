@@ -89,7 +89,7 @@ class Status_View {
 			$since_value  = ( $account->last_successful_login_time ?? ( new DateTimeImmutable() )->sub( new DateInterval( 'P1W' ) ) )->format( 'Y-m-d' );
 			$account_id   = (string) $account->get_post_id();
 
-			echo '<div class="bh-mailboxes-account-card" data-account-id="' . esc_attr( $account_id ) . '">';
+			echo '<div class="bh-mailboxes-account-card" data-account-id="' . esc_attr( $account_id ) . '" data-account-name="' . esc_attr( $account->display_name ) . '">';
 			echo '<div class="bh-mailboxes-account-card__title">' . esc_html( $account->email_address ) . '</div>';
 			echo '<dl class="bh-mailboxes-account-card__details">';
 			echo '<dt>' . esc_html__( 'Status', 'bh-wp-mailboxes' ) . '</dt>';
