@@ -64,18 +64,32 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 	 * The custom post type key "Must not exceed 20 characters" and conventionally uses underscores for separators.
 	 *
 	 * @see https://developer.wordpress.org/reference/functions/register_post_type/
+	 *
+	 * @return non-empty-lowercase-string
 	 */
 	public function get_emails_cpt_underscored_20(): string {
-		$cpt_underscored = str_replace( '-', '_', $this->get_emails_cpt_dashed() );
-		return substr( $cpt_underscored, 0, 20 );
+		$cpt_underscored = substr( str_replace( '-', '_', $this->get_emails_cpt_dashed() ), 0, 20 );
+		/**
+		 * `sanitize_title()` returns a lowercase string and the friendly name is a required, non-empty setting.
+		 *
+		 * @var non-empty-lowercase-string $cpt_underscored
+		 */
+		return $cpt_underscored;
 	}
 
 	/**
 	 * The custom post type key/name (not title) for configured email accounts.
+	 *
+	 * @return non-empty-lowercase-string
 	 */
 	public function get_email_accounts_cpt_underscored_20(): string {
-		$cpt_underscored = str_replace( '-', '_', $this->get_email_accounts_cpt_dashed() );
-		return substr( $cpt_underscored, 0, 20 );
+		$cpt_underscored = substr( str_replace( '-', '_', $this->get_email_accounts_cpt_dashed() ), 0, 20 );
+		/**
+		 * `sanitize_title()` returns a lowercase string and the friendly name is a required, non-empty setting.
+		 *
+		 * @var non-empty-lowercase-string $cpt_underscored
+		 */
+		return $cpt_underscored;
 	}
 
 	/**
