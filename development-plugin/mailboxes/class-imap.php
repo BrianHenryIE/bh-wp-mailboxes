@@ -44,7 +44,8 @@ class Imap {
 			 * Returns the IMAP account email address.
 			 */
 			public function get_account_email_address(): string {
-				return 'support@brianhenryie.com';
+				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- loaded from dotenv file, not user input.
+				return $_ENV['IMAP_USERNAME'] ?? '';
 			}
 
 
@@ -93,7 +94,7 @@ class Imap {
 			 * Returns the encryption method.
 			 */
 			public function get_encryption(): string {
-				return '';
+				return 'TLS';
 			}
 		};
 	}
