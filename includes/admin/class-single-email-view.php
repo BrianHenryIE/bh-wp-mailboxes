@@ -333,13 +333,18 @@ class Single_Email_View {
 			echo '</div>';
 		}
 
-		// Remote action buttons — shown only when the mailbox supports them.
+		// Remote read/unread buttons — shown only when the mailbox supports changing read status.
+		// Both are rendered (the inactive one hidden); the JS reveals the relevant one based on the
+		// live status from the on-load refresh (see updateRemoteUi() in single-email-view.js). This is
+		// why a "Mark as unread on server" button appears once the email shows as read on the server.
 		if ( $provider?->can_mark_read() && ! $email->is_remote_deleted ) {
-			if ( $is_read ) {
-				echo '<p><button id="bh-email-mark-unread" class="button">' . esc_html__( 'Mark as unread on server', 'bh-wp-mailboxes' ) . '</button></p>';
-			} else {
-				echo '<p><button id="bh-email-mark-read" class="button">' . esc_html__( 'Mark as read on server', 'bh-wp-mailboxes' ) . '</button></p>';
-			}
+			$mark_read_class   = 'bh-email-mark-read-action' . ( $is_read ? ' bh-email-hidden' : '' );
+			$mark_unread_class = 'bh-email-mark-unread-action' . ( $is_read ? '' : ' bh-email-hidden' );
+
+			echo '<p class="' . esc_attr( $mark_read_class ) . '"><button id="bh-email-mark-read" class="button">'
+				. esc_html__( 'Mark as read on server', 'bh-wp-mailboxes' ) . '</button></p>';
+			echo '<p class="' . esc_attr( $mark_unread_class ) . '"><button id="bh-email-mark-unread" class="button">'
+				. esc_html__( 'Mark as unread on server', 'bh-wp-mailboxes' ) . '</button></p>';
 		}
 
 		if ( $provider?->can_delete_on_server() && ! $email->is_remote_deleted ) {

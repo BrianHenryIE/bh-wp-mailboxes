@@ -129,7 +129,7 @@ class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface {
 	 *
 	 * @return mixed 'yes'/'no' to override the stored status, otherwise the unchanged `$value`.
 	 */
-	public function meta_filter( $value, $object_id, $meta_key, $single, $meta_type ) {
+	public function meta_filter( $value, $object_id, $meta_key, $single = true, $meta_type = 'user' ) {
 
 		// Per-user fixture state only applies to a logged-in user; without one (cron, unit tests)
 		// get_user_meta() returns false rather than an array, so there is nothing to override.
@@ -149,7 +149,7 @@ class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface {
 			if ( in_array( (string) $object_id, $user_remote_read_post_ids, true ) ) {
 				return 'yes';
 			}
-			$user_remote_unread_post_ids = get_user_meta( user_id: get_current_user_id(), key:'_mock_mailbox_fixtures_provider_is_remote_read', single: false );
+			$user_remote_unread_post_ids = get_user_meta( user_id: get_current_user_id(), key:'_mock_mailbox_fixtures_provider_is_remote_unread', single: false );
 			if ( in_array( (string) $object_id, $user_remote_unread_post_ids, true ) ) {
 				return 'no';
 			}
@@ -221,7 +221,9 @@ class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface {
 	 * @param Remote_Email_Coordinates $coordinates The data required to address a single email.
 	 */
 	public function get_is_marked_read( Remote_Email_Coordinates $coordinates ): bool {
-		return true;
+
+		$post_id = $this->get_post_id_for_coordinates( $coordinates );
+		return (bool) $this->meta_filter( null, $post_id, 'is_remote_read' );
 	}
 
 	/**
@@ -239,17 +241,28 @@ class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface {
 	 */
 	public function set_is_marked_read( Remote_Email_Coordinates $coordinates, bool $is_read = true ): void {
 
-		add_user_meta(
-			user_id: get_current_user_id(),
-			meta_key: '_mock_mailbox_fixtures_provider_is_remote_' . ( $is_read ? 'read' : 'unread' ),
-			meta_value: $this->get_post_id_for_coordinates( $coordinates )
-		);
+		$post_id  = $this->get_post_id_for_coordinates( $coordinates );
+		$usermeta = get_user_meta( get_current_user_id() );
 
-		delete_user_meta(
-			user_id: get_current_user_id(),
-			meta_key: '_mock_mailbox_fixtures_provider_is_remote_' . ( $is_read ? 'unread' : 'read' ),
-			meta_value: $this->get_post_id_for_coordinates( $coordinates )
-		);
+		$add_meta_key = '_mock_mailbox_fixtures_provider_is_remote_' . ( $is_read ? 'read' : 'unread' );
+		if ( ! isset( $usermeta[ $add_meta_key ] )
+		|| ( isset( $usermeta[ $add_meta_key ] ) && ! in_array( (string) $post_id, $usermeta[ $add_meta_key ], true ) )
+		) {
+			add_user_meta(
+				user_id: get_current_user_id(),
+				meta_key: $add_meta_key,
+				meta_value: $post_id,
+			);
+		}
+
+		$delete_meta_key = '_mock_mailbox_fixtures_provider_is_remote_' . ( $is_read ? 'unread' : 'read' );
+		if ( isset( $usermeta[ $delete_meta_key ] ) ) {
+			delete_user_meta(
+				user_id: get_current_user_id(),
+				meta_key: $delete_meta_key,
+				meta_value: $post_id,
+			);
+		}
 	}
 
 	/**

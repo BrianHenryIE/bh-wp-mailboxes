@@ -511,7 +511,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$bh_email = BH_Email_Fixture::make_from_file();
 		$post_id  = $bh_email->post_id;
 
-		// Email is unread so the "Mark as read" button (not "Mark as unread") is rendered.
+		// Email is unread so "Mark as read" is shown; "Mark as unread" is also rendered (hidden) so the
+		// JS can reveal it once the server reports the email as read.
 		update_post_meta( $post_id, 'bh_email_is_read', '0' );
 		$post = get_post( $post_id );
 
@@ -541,6 +542,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'bh-email-mark-read', $html, '"Mark as read on server" button should appear' );
+		$this->assertStringContainsString( 'bh-email-mark-unread', $html, '"Mark as unread on server" button should also be rendered (hidden) when the provider can mark read' );
 	}
 
 	/**

@@ -164,13 +164,13 @@ class Single_Email_View_Ajax {
 			wp_send_json_error( array( 'message' => $e->getMessage() ), 500 );
 		}
 
-		$is_read_raw       = get_post_meta( $post_id, 'bh_email_is_read', true );
-		$deleted_on_server = get_post_meta( $post_id, 'bh_email_deleted_on_server', true );
+		// Refresh.
+		$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
 
 		wp_send_json_success(
 			array(
-				'is_read'           => '' === $is_read_raw ? null : ( '1' === $is_read_raw ),
-				'is_remote_deleted' => '' === $deleted_on_server ? null : ( '1' === $deleted_on_server ),
+				'is_read'           => $email->is_remote_read,
+				'is_remote_deleted' => $email->is_remote_deleted,
 			)
 		);
 	}

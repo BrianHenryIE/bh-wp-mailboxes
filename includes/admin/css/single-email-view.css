@@ -212,6 +212,11 @@
 	margin: 8px 0 0;
 }
 
+/* Initial-state hide for the read/unread buttons; the JS shows the relevant one (inline style wins). */
+.bh-email-hidden {
+	display: none;
+}
+
 /* Grey full-width footer like the comment-edit Save box. The negative margins cancel the
    metabox .inside padding so the grey bar reaches the metabox edges. */
 #bh-email-status-box #major-publishing-actions {
