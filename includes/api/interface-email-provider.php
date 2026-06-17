@@ -17,15 +17,6 @@ use Illuminate\Support\Collection;
 interface Email_Provider_Interface {
 
 	/**
-	 * Set credentials (and presumably connect if relevant).
-	 *
-	 * Can be no-op (until we create a super-class/interface for all email services).
-	 *
-	 * @param Account_Credentials_Interface $credentials From the `bh_wp_mailboxes_credentials` filter.
-	 */
-	public function set_credentials( Account_Credentials_Interface $credentials ): void;
-
-	/**
 	 * Typically, check for emails since the time of the last email or the last time emails were checked for.
 	 *
 	 * @param DateTimeInterface $since_time The earliest time to retrieve emails from.

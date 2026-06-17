@@ -28,10 +28,12 @@ use DateTime;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
+use DirectoryTree\ImapEngine\Exceptions\ImapConnectionClosedException;
 use Exception;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Throwable;
 
 /**
  * Main API for fetching, saving, and managing emails.
@@ -174,6 +176,8 @@ class API implements API_Interface {
 	 * @param DateTimeImmutable $now_time        Current time, used to update last-checked meta.
 	 *
 	 * @return BH_Email[] Newly saved emails for the account.
+	 *
+	 * @throws Exception When required credentials are not found.
 	 */
 	protected function fetch_for_account( BH_Email_Account $email_account, DateTimeInterface $since_datetime, DateTimeImmutable $now_time ): array {
 
@@ -182,34 +186,57 @@ class API implements API_Interface {
 			return array();
 		}
 
-		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $email_account );
+		$plugin_slug = $this->settings->get_plugin_slug();
 
-		if ( is_null( $credentials ) || ! ( $credentials instanceof Account_Credentials_Interface ) ) {
-			$this->logger->warning( 'No credentials found for ' . $email_account->display_name );
-			return array();
-		}
+		$provider = $this->get_provider_for_email_account( $email_account );
 
-		if ( ! is_null( $email_account->last_failed_login_time ) ) {
-			if ( $email_account->last_failed_login_time > ( new DateTime() )->sub( new DateInterval( 'PT4H' ) ) ) {
-				$this->logger->info(
-					'Too soon after failed login, please check your password and save settings to try again.',
-					array( 'account_name' => $email_account->display_name )
-				);
-				return array();
-			}
-		}
-
-		$fetcher = $this->get_provider_for_email_account( $email_account );
-
-		if ( is_null( $fetcher ) ) {
+		if ( is_null( $provider ) ) {
 			$this->logger->warning( 'No fetcher found for ' . $email_account->display_name );
 			return array();
 		}
 
+		if ( $provider instanceof Requires_Credentials ) {
+
+			try {
+				/**
+				 * Given the email account, get the credentials required for its provider.
+				 *
+				 * @param ?Account_Credentials_Interface $credentials The null value being filtered which should return Account_Credentials_Interface instance.
+				 * @param string $plugin_slug To allow multiple plugins (and potentially library verions) to use this same filter name.
+				 * @param BH_Email_Account $email_account The account config to get credentials for {@see BH_Email_Account::$provider_type_class}.
+				 */
+				$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $email_account );
+			} catch ( Throwable $throwable ) {
+
+				// E.g. "Too few arguments to function..." which means the `add_filter()` implementation is incorrect.
+				$this->logger->error( $throwable->getMessage() );
+
+				throw new Exception( 'Error discovering account credentials.' );
+			}
+
+			if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
+				$this->logger->warning( 'No credentials found for ' . $email_account->display_name );
+
+				return array();
+			}
+
+			// Only rate limit cron jobs. Manual fetching should alway attempt.
+			if ( ! is_null( $email_account->last_failed_login_time ) && wp_doing_cron() ) {
+				if ( $email_account->last_failed_login_time > ( new DateTime() )->sub( new DateInterval( 'PT4H' ) ) ) {
+					$this->logger->info(
+						'Too soon after failed login, please check your password and save settings to try again.',
+						array( 'account_name' => $email_account->display_name )
+					);
+
+					return array();
+				}
+			}
+			$provider->set_credentials( $credentials );
+		}
+
 		try {
-			$fetcher->set_credentials( $credentials );
-			$all_new_account_emails = $fetcher->retrieve_emails( $since_datetime );
-		} catch ( Exception $exception ) {
+			$all_new_account_emails = $provider->retrieve_emails( $since_datetime );
+		} catch ( Exception | ImapConnectionClosedException $exception ) {
 			$this->logger->error(
 				'Error fetching emails for ' . $email_account->display_name . '. ' . $exception->getMessage(),
 				array(
@@ -220,6 +247,7 @@ class API implements API_Interface {
 			);
 			// Record the failure time so the next four hours of cron runs skip this account.
 			$this->email_account_repository->update( $email_account, last_failed_login_time: $now_time );
+
 			return array();
 		}
 
@@ -261,29 +289,34 @@ class API implements API_Interface {
 	/**
 	 * Validate an account's credentials by connecting to the server.
 	 *
+	 * If a provider doesn't need credentials, return the last email time and the user can use that to infer the health.
+	 *
 	 * @param BH_Email_Account               $account     The account whose provider to connect with.
 	 * @param ?Account_Credentials_Interface $credentials Candidate credentials, or null to resolve via filter.
 	 */
 	public function test_connection( BH_Email_Account $account, ?Account_Credentials_Interface $credentials = null ): Test_Connection_Result {
 
-		$credentials = $credentials ?? apply_filters( 'bh_wp_mailboxes_credentials', null, $account );
+		$provider = $this->get_provider_for_email_account( $account );
 
-		if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
-			return new Test_Connection_Result( success: false, message: 'No credentials found for ' . $account->display_name . '.' );
-		}
-
-		$fetcher = $this->get_provider_for_email_account( $account );
-
-		if ( is_null( $fetcher ) ) {
+		if ( is_null( $provider ) ) {
 			return new Test_Connection_Result( success: false, message: 'No email provider found for ' . $account->display_name . '.' );
 		}
 
+		if ( $provider instanceof Requires_Credentials ) {
+			$credentials = $credentials ?? apply_filters( 'bh_wp_mailboxes_credentials', null, $account );
+
+			if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
+				return new Test_Connection_Result( success: false, message: 'No credentials found for ' . $account->display_name . '.' );
+			}
+
+			$provider->set_credentials( $credentials );
+		}
+
 		try {
-			$fetcher->set_credentials( $credentials );
-			$fetcher->test_connection();
+			$provider->test_connection();
 
 			return new Test_Connection_Result( success: true, message: 'Connected successfully.' );
-		} catch ( \Throwable $exception ) {
+		} catch ( Throwable $exception ) {
 			$this->logger->warning(
 				'Connection test failed for ' . $account->display_name . '. ' . $exception->getMessage(),
 				array(
@@ -374,74 +407,57 @@ class API implements API_Interface {
 	 *
 	 * @param string   $action One of: mark_read, mark_unread, delete_on_server.
 	 * @param BH_Email $email  The email to act on.
+	 *
+	 * @throws Exception When expected email account / provider / remote coordinates are not found.
 	 */
 	protected function perform_remote_email_action( string $action, BH_Email $email ): void {
 
-		$mailbox_settings = $this->resolve_email_account_for_email( $email );
+		$email_account = $this->get_email_account_for_email( $email );
 
-		/**
-		 * Filter: bh_wp_mailboxes_remote_email_action_{$action}
-		 *
-		 * Provider implementations should hook here to perform the remote operation.
-		 * Return true to signal success, false/null to signal failure/unhandled.
-		 *
-		 * @param bool|null                 $handled          Start null; return true on success.
-		 * @param BH_Email                  $email            The email to act on.
-		 * @param ?Email_Account_Settings_Interface $mailbox_settings The resolved mailbox config, or null.
-		 * @param LoggerInterface           $logger
-		 */
-		$handled = apply_filters( "bh_wp_mailboxes_remote_email_action_{$action}", null, $email, $mailbox_settings, $this->logger );
-
-		$post_id = $email->get_post_id();
-
-		if ( true !== $handled ) {
-			$this->logger->warning(
-				"No handler for remote email action '{$action}'.",
-				array(
-					'post_id'  => $post_id,
-					'email_id' => $email->message_id,
-				)
-			);
+		if ( is_null( $email_account ) ) {
+			throw new Exception( 'failed to get BH_Email_Account for email ' . esc_html( $email->post_type ) );
 		}
 
-		// Update post meta to reflect the new remote state.
+		$provider = $this->get_provider_for_email_account( $email_account );
+		$post_id  = $email->get_post_id();
+
+		if ( is_null( $provider ) ) {
+			throw new Exception( 'No provider found for ' . esc_html( $email_account->display_name ) );
+		}
+
+		if ( is_null( $email->get_remote_coordinates() ) ) {
+			throw new Exception( 'No remote coordinates found for ' . esc_html( $email_account->display_name ) );
+		}
+
 		switch ( $action ) {
 			case 'mark_read':
-				update_post_meta( $post_id, 'bh_email_is_read', '1' );
+				try {
+					$provider->set_is_marked_read( $email->get_remote_coordinates(), true );
+					$this->email_repository->update( $email, is_remote_read: true );
+					$this->insert_email_log_note( $post_id, 'Marked as read on server' );
+				} catch ( Throwable $exception ) {
+					$this->insert_email_log_note( $post_id, 'Failed to mark as read on server.' );
+				}
 				break;
 			case 'mark_unread':
-				update_post_meta( $post_id, 'bh_email_is_read', '0' );
+				try {
+					$provider->set_is_marked_read( $email->get_remote_coordinates(), false );
+					$this->email_repository->update( $email, is_remote_read: false );
+					$this->insert_email_log_note( $post_id, 'Marked as unread on server' );
+				} catch ( Throwable $exception ) {
+					$this->insert_email_log_note( $post_id, 'Failed to mark as unread on server.' );
+				}
 				break;
 			case 'delete_on_server':
-				update_post_meta( $post_id, 'bh_email_deleted_on_server', '1' );
+				try {
+					$provider->do_delete_on_server( $email->get_remote_coordinates() );
+					$this->email_repository->update( $email, is_remote_deleted: true );
+					$this->insert_email_log_note( $post_id, 'Deleted on server' );
+				} catch ( Throwable $exception ) {
+					$this->insert_email_log_note( $post_id, 'Failed delete email on server.' );
+				}
 				break;
 		}
-
-		$action_label = match ( $action ) {
-			'mark_read'       => 'Marked as read on server',
-			'mark_unread'     => 'Marked as unread on server',
-			'delete_on_server' => 'Deleted on server',
-			default           => $action,
-		};
-
-		$this->insert_email_log_note( $post_id, $action_label . ( true !== $handled ? ' (no remote handler found)' : '' ) );
-	}
-
-	/**
-	 * Find the Mailbox_Settings_Interface for the email's account taxonomy term.
-	 *
-	 * Returns null when the account cannot be matched (e.g. term was deleted).
-	 *
-	 * @param BH_Email $email The email to resolve the account for.
-	 */
-	protected function resolve_email_account_for_email( BH_Email $email ): ?Email_Account_Settings_Interface {
-
-		$post             = get_post( $email->get_post_id() );
-		$email_account_id = $post ? $post->post_parent : 0;
-
-		// TODO: Previously the idea was to use taxonomies. I think it's better to use a CPT for each email_account and use it as the parent_post id.
-
-		return null;
 	}
 
 	/**
@@ -521,8 +537,8 @@ class API implements API_Interface {
 			return new Gmail_Email_Provider( $email_account, $this->logger );
 		} else {
 			$this->logger->warning(
-				'No email fetcher found for provider type.',
-				array( 'credentials_class' => $email_account->provider_type_class )
+				'No email fetcher found for provider type: {provider_type_class}',
+				array( 'provider_type_class' => $email_account->provider_type_class )
 			);
 			return null;
 		}

@@ -51,6 +51,7 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 		$folder->allows( 'messages' )->andReturn( $query );
 
 		$mailbox = Mockery::mock( Mailbox::class );
+		$mailbox->allows( 'connect' );
 		$mailbox->allows( 'inbox' )->andReturn( $folder );
 
 		$settings = Mockery::mock( Email_Account_Settings_Interface::class );

@@ -14,6 +14,7 @@ use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Provider_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
+use BrianHenryIE\WP_Mailboxes\API\Requires_Credentials;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTimeInterface;
 use DirectoryTree\ImapEngine\Enums\ImapFetchIdentifier;
@@ -24,12 +25,11 @@ use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
-use ZBateson\MailMimeParser\IMessage;
 
 /**
  * Uses ImapEngine library to fetch emails since last run.
  */
-class ImapEngine_Imap_Email_Provider implements Email_Provider_Interface {
+class ImapEngine_Imap_Email_Provider implements Email_Provider_Interface, Requires_Credentials {
 
 	use LoggerAwareTrait;
 
@@ -91,9 +91,10 @@ class ImapEngine_Imap_Email_Provider implements Email_Provider_Interface {
 			throw new InvalidArgumentException();
 		}
 
-		$server = $credentials->get_email_imap_server();
-		$host   = $server;
-		$port   = $credentials->get_encryption() === '' ? 143 : 993;
+		$server     = $credentials->get_email_imap_server();
+		$host       = $server;
+		$port       = $credentials->get_encryption() === '' ? 143 : 993;
+		$encryption = $credentials->get_encryption() === '' ? '' : 'TLS';
 
 		if ( str_contains( $server, ':' ) ) {
 			[ $host, $port_str ] = explode( ':', $server, 2 );
@@ -111,7 +112,7 @@ class ImapEngine_Imap_Email_Provider implements Email_Provider_Interface {
 				'port'          => $port,
 				'username'      => $credentials->get_email_account_username(),
 				'password'      => $credentials->get_email_account_password(),
-				'encryption'    => $credentials->get_encryption() === '' ? '' : 'ssl',
+				'encryption'    => $encryption,
 				'validate_cert' => false, // TODO: This was for my own use. Need a convention for controlling it.
 			)
 		);
@@ -142,6 +143,8 @@ class ImapEngine_Imap_Email_Provider implements Email_Provider_Interface {
 	public function retrieve_emails( DateTimeInterface $since_time, int $limit = 100 ): Collection {
 
 		// TODO: validate we have had credentials set.
+
+		$this->mailbox->connect();
 
 		$inbox  = $this->mailbox->inbox();
 		$folder = $inbox->path();
