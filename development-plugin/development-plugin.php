@@ -27,6 +27,8 @@ use BrianHenryIE\WP_Logger\Logger;
 use BrianHenryIE\WP_Logger\Logger_Settings_Interface;
 use BrianHenryIE\WP_Logger\Logger_Settings_Trait;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Defaults_Trait;
@@ -36,7 +38,6 @@ use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Providers\Mock_Mailbox_Fixtures_Provider;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest\Mailboxes;
-use Psr\Log\NullLogger;
 
 // If this file is called directly, abort.
 if ( ! defined( 'WPINC' ) ) {
@@ -244,7 +245,7 @@ $on_plugins_loaded = function () {
 
 	if ( ! isset( $fixtures_mailboxes_accounts[ $fixtures_settings->get_account_email_address() ] ) ) {
 		try {
-			$fixtures_mailboxes_api->add_email_account(
+			$fixtures_email_account = $fixtures_mailboxes_api->add_email_account(
 				email_address: $fixtures_settings->get_account_email_address(),
 				display_name: $fixtures_settings->get_account_display_friendly_name(),
 				provider_type_class: Mock_Mailbox_Fixtures_Provider::class,
@@ -255,8 +256,17 @@ $on_plugins_loaded = function () {
 			);
 		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 			// Account already exists; ignore.
+			$fixtures_email_account = $fixtures_mailboxes_accounts[ $fixtures_settings->get_account_email_address() ];
 		}
+	} else {
+		$fixtures_email_account = $fixtures_mailboxes_accounts[ $fixtures_settings->get_account_email_address() ];
 	}
+	$email_factory     = new Email_WP_Post_Repository(
+		$fixtures_mailboxes_settings->get_emails_cpt_underscored_20(),
+		new BH_Email_Factory( $logger ),
+		$logger,
+	);
+	$fixtures_provider = new Mock_Mailbox_Fixtures_Provider( $fixtures_mailboxes_settings, $fixtures_email_account, $email_factory );
 
 	// Add a top-level "Mailboxes" menu with a submenu linking to the emails and accounts list for each
 	// configured mailbox (the IMAP/ENV mailbox and the fixtures mailbox).

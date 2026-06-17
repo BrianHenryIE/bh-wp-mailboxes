@@ -19,6 +19,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTimeInterface;
@@ -65,7 +66,54 @@ class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface {
 	 * Register the WordPress hooks this provider uses.
 	 */
 	public function register_hooks(): void {
+		add_filter( 'bh_wp_mailboxes_provider_for_account', array( $this, 'provider' ), 10, 3 );
 		add_filter( 'get_post_metadata', array( $this, 'meta_filter' ), 10, 5 );
+		add_action( 'manage_posts_extra_tablenav', array( $this, 'print_extra_table_controls_at_top' ), 10, 1 );
+	}
+
+	/**
+	 * Return our custom provider (this) for accounts configured to use it.
+	 *
+	 * @hooked bh_wp_mailboxes_provider_for_account
+	 *
+	 * @see API::get_provider_for_email_account()
+	 *
+	 * @param mixed|Email_Provider_Interface|null $value Existing filtered value – begins as null – should be `Email_Provider_Interface` but WordPress does not enforce types in filters.
+	 * @param string                              $plugin_slug Is the API instance from this plugin (otherwise it may be a different, incompatible version).
+	 * @param BH_Email_Account                    $email_account The account whose email is being checked.
+	 *
+	 * @return mixed|Email_Provider_Interface|null
+	 */
+	public function provider( mixed $value, string $plugin_slug, BH_Email_Account $email_account ): mixed {
+		if ( $this->mailbox_settings->get_plugin_slug() === $plugin_slug
+			&& get_class( $this ) === $email_account->provider_type_class ) {
+			return $this;
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Prints extra table nav controls at the top of the list table.
+	 *
+	 * @hooked manage_posts_extra_tablenav
+	 * @param string $which The location of the extra table nav markup: 'top' or 'bottom'.
+	 */
+	public function print_extra_table_controls_at_top( string $which ): void {
+
+		// Only add to our cpt edit screen.
+		$screen    = get_current_screen();
+		$post_type = $this->mailbox_settings->get_emails_cpt_underscored_20();
+		if ( null === $screen || $screen->post_type !== $post_type ) {
+			return;
+		}
+
+		if ( 'top' !== $which ) {
+			return;
+		}
+
+		wp_nonce_field( 'bh-wp-mailboxes-reset-fixtures', '_wpnonce_checknow' );
+		echo '<button name="reset-fixtures" id="reset-fixtures" class="button button-primary">Reset</button>';
 	}
 
 	/**
@@ -130,7 +178,7 @@ class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface {
 	 * @return Collection<int, Fetched_Email>
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time ): Collection {
-		$files            = glob( $this->fixtures_directory . '/*.json' ) ?: array();
+		$files            = glob( $this->fixtures_directory . '/*.eml' ) ?: array();
 		$email_collection = new Collection();
 		$parser           = new MailMimeParser();
 		foreach ( $files as $filepath ) {
