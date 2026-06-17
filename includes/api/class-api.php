@@ -518,17 +518,24 @@ class API implements API_Interface {
 	/**
 	 * Return the email fetcher for a given account.
 	 *
-	 * Applies filter `bh_wp_mailboxes_fetcher_for_credentials` so callers can inject a custom
+	 * Applies filter `bh_wp_mailboxes_provider_for_account` so callers can inject a custom
 	 * fetcher (e.g. a stub in tests or the development plugin).
 	 *
 	 * @param BH_Email_Account $email_account The account to find a fetcher for.
 	 */
 	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Provider_Interface {
 
-		$fetcher = apply_filters( 'bh_wp_mailboxes_fetcher_for_credentials', null, $email_account );
+		$plugin_slug = $this->settings->get_plugin_slug();
 
-		if ( $fetcher instanceof Email_Provider_Interface ) {
-			return $fetcher;
+		/**
+		 * @var mixed|Email_Provider_Interface  $provider The email fetcher for the account, or null if none is found.
+		 * @param string $plugin_slug To allow multiple plugins (and potentially library verions) to use this same filter name.
+		 * @param BH_Email_Account $email_account The account config to get provider for {@see BH_Email_Account::$provider_type_class}.
+		 */
+		$provider = apply_filters( 'bh_wp_mailboxes_provider_for_account', null, $plugin_slug, $email_account );
+
+		if ( $provider instanceof Email_Provider_Interface ) {
+			return $provider;
 		}
 
 		if ( ImapEngine_Imap_Email_Provider::class === $email_account->provider_type_class ) {
