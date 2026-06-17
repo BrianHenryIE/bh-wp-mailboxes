@@ -85,7 +85,6 @@
         "szepeviktor/phpstan-wordpress": "*",
         "vlucas/phpdotenv": "*",
         "wordpress/wordpress": "*",
-        "wp-cli/dist-archive-command": "*",
         "wp-coding-standards/wpcs": "*",
         "wpackagist-plugin/wp-crontrol": "^1.21",
         "wpackagist-theme/twentytwenty": "*"
