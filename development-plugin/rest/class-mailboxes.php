@@ -43,7 +43,7 @@ class Mailboxes {
 	 *
 	 * @see \BrianHenryIE\WP_Mailboxes_Development_Plugin\Providers\Mock_Mailbox_Fixtures_Provider
 	 */
-	const ACCOUNT_PROVIDER_CLASS = 'BrianHenryIE\\WP_Mailboxes_Development_Plugin\\Providers\\Mock_Mailbox_Fixtures_Provider';
+	const ACCOUNT_PROVIDER_CLASS = 'BrianHenryIE\\\\WP_Mailboxes_Development_Plugin\\\\Providers\\\\Mock_Mailbox_Fixtures_Provider';
 
 	/**
 	 * Register the REST routes.
