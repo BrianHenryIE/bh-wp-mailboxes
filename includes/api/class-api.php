@@ -384,7 +384,7 @@ class API implements API_Interface {
 		$cutoff  = new DateTimeImmutable( "now - {$min_days} days", new DateTimeZone( 'UTC' ) );
 		$deleted = $this->email_repository->delete_older_than( $cutoff );
 
-		$this->logger->info( "Deleted {$deleted} emails older than {$min_days} days." );
+		$this->logger->info( "Deleted {$deleted} local emails older than {$min_days} days." );
 
 		return new Delete_Old_Emails_Result( success: true, deleted_count: $deleted );
 	}

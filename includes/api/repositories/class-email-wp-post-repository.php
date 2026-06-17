@@ -126,7 +126,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		}
 
 		$this->logger->info(
-			"Deleted {$count} emails older than " . $cutoff->format( 'Y-m-d H:i:s' ) . '.',
+			"Deleted {$count} local emails older than " . $cutoff->format( 'Y-m-d H:i:s' ) . '.',
 			array( 'cutoff' => $cutoff->format( DateTimeInterface::ATOM ) )
 		);
 
