@@ -90,6 +90,26 @@
 			remoteAction( settings.deleteOnServerAction, $( this ) );
 		} );
 
+		// The status is the only mutable field. Save it through the API (which records the change in the
+		// email's log) rather than the native post save, then reload to show the new status and log entry.
+		$( '#bh-email-status-box #save' ).on( 'click', function ( e ) {
+			e.preventDefault();
+			var $btn = $( this ).prop( 'disabled', true );
+			$.post(
+				settings.ajaxUrl || ajaxurl,
+				{
+					action:   settings.updateStatusAction,
+					post_id:  settings.postId,
+					status:   $( 'input[name="post_status"]:checked' ).val(),
+					_wpnonce: settings.nonce,
+				}
+			).done( function () {
+				window.location.reload();
+			} ).fail( function () {
+				$btn.prop( 'disabled', false );
+			} );
+		} );
+
 		// On load, the remote badges are shown dimmed with a spinner; fetch the live status and update them.
 		var $remoteStatus = $( '.bh-email-remote-status.is-loading' );
 		if ( $remoteStatus.length && settings.getRemoteStatusAction ) {

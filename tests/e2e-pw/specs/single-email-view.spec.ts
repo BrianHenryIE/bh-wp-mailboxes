@@ -113,15 +113,15 @@ test.describe( 'Single email view', () => {
 		await expect( page.locator( '#title' ) ).toHaveValue( originalSubject );
 	} );
 
-	test( 'status select includes custom email statuses', async ( { admin, page, request } ) => {
+	test( 'status is a radio select including the custom email statuses', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		const statusSelect = page.locator( '#bh-post-status' );
-		await expect( statusSelect ).toBeVisible();
-		await expect( statusSelect.locator( 'option[value="bh_email_new"]' ) ).toBeAttached();
-		await expect( statusSelect.locator( 'option[value="bh_email_processed"]' ) ).toBeAttached();
-		await expect( statusSelect.locator( 'option[value="bh_email_saved"]' ) ).toBeAttached();
+		const options = page.locator( '.bh-email-status__options' );
+		await expect( options ).toBeVisible();
+		await expect( options.locator( 'input[type="radio"][name="post_status"][value="bh_email_new"]' ) ).toBeAttached();
+		await expect( options.locator( 'input[type="radio"][name="post_status"][value="bh_email_processed"]' ) ).toBeAttached();
+		await expect( options.locator( 'input[type="radio"][name="post_status"][value="bh_email_saved"]' ) ).toBeAttached();
 	} );
 
 	// -------------------------------------------------------------------------
@@ -338,5 +338,72 @@ test.describe( 'Single email view', () => {
 		await expect(
 			page.locator( '#side-sortables #bh-email-attachments' )
 		).toBeVisible();
+	} );
+
+	// -------------------------------------------------------------------------
+	// Local status metabox: trash link, in-mailbox link, icons, selectable title
+	// -------------------------------------------------------------------------
+
+	test( 'local status metabox has a red "Move to Trash" link', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		const trash = page.locator( '#bh-email-local-status .submitdelete' );
+		await expect( trash ).toBeVisible();
+		await expect( trash ).toContainText( 'Move to Trash' );
+	} );
+
+	test( 'local status metabox has an "In mailbox:" link back to the list', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		const link = page.locator( '#bh-email-local-status .bh-email-in-mailbox a' );
+		await expect( link ).toContainText( 'In mailbox:' );
+		await expect( link ).toHaveAttribute( 'href', /edit\.php\?post_type=fixtures_email/ );
+	} );
+
+	test( 'status and datetime fields render dashicon markers', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		await expect(
+			page.locator( '#bh-email-local-status .bh-email-field__icon--status' )
+		).toHaveCount( 1 );
+		await expect(
+			page.locator( '#bh-email-local-status .bh-email-field__icon--datetime' ).first()
+		).toBeVisible();
+	} );
+
+	test( 'the immutable title is read-only but still selectable', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		const title = page.locator( '#title' );
+		await expect( title ).toHaveAttribute( 'readonly', '' );
+
+		// pointer-events:none would prevent text selection; it must not be set.
+		const pointerEvents = await title.evaluate( ( el ) => window.getComputedStyle( el ).pointerEvents );
+		expect( pointerEvents ).not.toBe( 'none' );
+	} );
+
+	test( 'changing the status records a log entry with the old and new status', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request, { post_status: 'bh_email_new' } );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		await page.locator( 'input[name="post_status"][value="bh_email_processed"]' ).check();
+
+		// Save goes through the API (AJAX) rather than the native post save.
+		const updateResponse = page.waitForResponse(
+			( res ) =>
+				res.url().includes( 'admin-ajax.php' ) &&
+				( res.request().postData() ?? '' ).includes( 'bh_wp_mailboxes_update_status' )
+		);
+		await page.locator( '#bh-email-status-box #save' ).click();
+		await updateResponse;
+
+		// The JS reloads on success; the log metabox then shows the status change.
+		const log = page.locator( '#bh-email-log-notes' );
+		await expect( log ).toContainText( 'Status changed', { timeout: 10_000 } );
+		await expect( log ).toContainText( 'bh_email_processed' );
 	} );
 } );

@@ -211,7 +211,7 @@ class Mailboxes {
 
 		$post_status = is_string( $request->get_param( 'post_status' ) )
 			? sanitize_key( $request->get_param( 'post_status' ) )
-			: 'publish';
+			: 'bh_email_new';
 
 		$post_id = wp_insert_post(
 			array(

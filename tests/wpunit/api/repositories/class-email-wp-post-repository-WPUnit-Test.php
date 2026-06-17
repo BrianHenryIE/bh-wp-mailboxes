@@ -121,6 +121,43 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 	}
 
 	/**
+	 * Updating an email's local status records a "status changed" log entry (no WordPress hook involved).
+	 *
+	 * @covers ::update
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\WP_Post_Repository_Abstract::log
+	 */
+	public function test_update_logs_status_change(): void {
+
+		$post_type = 'test_post_type';
+		$sut       = new Email_WP_Post_Repository( $post_type, new BH_Email_Factory( $this->logger ), $this->logger );
+
+		$parser = new MailMimeParser();
+		/** @var IMessage $email */
+		$email = $parser->parse( (string) file_get_contents( codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' ) ), true );
+
+		$saved = $sut->save_new(
+			$this->make_fetched_email( $email ),
+			$this->settings,
+			BH_Email_Account_Fixture::make( post_type: $post_type ),
+		);
+
+		$sut->update( $saved, local_status: 'bh_email_processed' );
+
+		$log_notes = get_comments(
+			array(
+				'post_id' => $saved->get_post_id(),
+				'type'    => 'bh_email_log',
+			)
+		);
+
+		$messages = array_map( fn( $comment ) => (string) $comment->comment_content, $log_notes );
+		$this->assertNotEmpty(
+			array_filter( $messages, fn( $message ) => str_contains( $message, 'Status changed' ) ),
+			'A "status changed" log note should be recorded on update.'
+		);
+	}
+
+	/**
 	 * Fetching the same email twice (same account + Message-ID, i.e. same guid) must not
 	 * create two posts. The second save_new should return the already-saved post.
 	 *

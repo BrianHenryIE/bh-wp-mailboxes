@@ -61,6 +61,14 @@ interface API_Interface {
 	public function delete_email_on_server( BH_Email $email ): void;
 
 	/**
+	 * Change an email's local status, recording the change in its log.
+	 *
+	 * @param BH_Email $email        The email to update.
+	 * @param string   $local_status The new local (WordPress post) status.
+	 */
+	public function update_email_status( BH_Email $email, string $local_status ): BH_Email;
+
+	/**
 	 * Insert a WooCommerce-style log note (wp comment) on the email post.
 	 *
 	 * @param int    $post_id The email CPT post ID.

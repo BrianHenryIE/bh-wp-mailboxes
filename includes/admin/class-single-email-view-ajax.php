@@ -72,6 +72,32 @@ class Single_Email_View_Ajax {
 	}
 
 	/**
+	 * Change an email's local status via the API, which records the change in the email's log.
+	 *
+	 * @hooked wp_ajax_bh_wp_mailboxes_update_status_{emails_cpt}
+	 */
+	public function ajax_update_status(): void {
+
+		if ( ! isset( $_POST['_wpnonce'], $_POST['post_id'], $_POST['status'] )
+			|| ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-remote-action' ) ) {
+			wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
+		}
+
+		$post_id = (int) $_POST['post_id'];
+		$status  = sanitize_key( wp_unslash( $_POST['status'] ) );
+
+		try {
+			$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
+		} catch ( \InvalidArgumentException $exception ) {
+			wp_send_json_error( array( 'message' => 'Invalid post.' ), 400 );
+		}
+
+		$updated = $this->api->update_email_status( $email, $status );
+
+		wp_send_json_success( array( 'status' => $updated->local_status ) );
+	}
+
+	/**
 	 * Return the live remote read/deleted status for an email.
 	 *
 	 * Called on page load so the displayed status reflects the server, not just cached local meta.

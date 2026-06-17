@@ -420,6 +420,18 @@ class API implements API_Interface {
 	}
 
 	/**
+	 * Change an email's local status. The repository records the change in the email's log.
+	 *
+	 * @param BH_Email $email        The email to update.
+	 * @param string   $local_status The new local (WordPress post) status.
+	 *
+	 * @throws Exception On failure to save.
+	 */
+	public function update_email_status( BH_Email $email, string $local_status ): BH_Email {
+		return $this->email_repository->update( $email, local_status: $local_status );
+	}
+
+	/**
 	 * Shared implementation for the three remote email actions.
 	 *
 	 * Fires filter `bh_wp_mailboxes_remote_email_action_{$action}` with the email and resolved mailbox

@@ -10,12 +10,12 @@
 	display: none !important;
 }
 
-/* Make the subject (title) input read-only in appearance. */
+/* Make the subject (title) input read-only in appearance, but still selectable.
+   (readonly is set in JS; we avoid pointer-events:none so the text can be selected/copied.) */
 #title {
 	background: transparent;
 	box-shadow: none;
-	cursor: default;
-	pointer-events: none;
+	cursor: text;
 	color: #1d2327;
 	font-size: 1.5em;
 	font-weight: 600;
@@ -27,7 +27,7 @@
 }
 
 /* Email content metabox: flush iframe. */
-#bh-email-content-html .inside {
+#bh-email-local-status .inside, #bh-email-content-html .inside {
 	padding: 0;
 	margin: 0;
 }
@@ -169,8 +169,80 @@
 	padding: 4px 0;
 }
 
-/* Status metabox save button row */
-#publishing-action {
-	margin-top: 12px;
+/* Local/Remote status field icons (dashicons glyphs to the left of each label). */
+.bh-email-field__icon::before {
+	font-family: dashicons;
+	-webkit-font-smoothing: antialiased;
+	font-size: 16px;
+	line-height: 1;
+	vertical-align: text-bottom;
+	margin-right: 4px;
+	color: #646970;
+	display: inline-block;
+}
+
+.bh-email-field__icon--datetime::before {
+	content: "\f145";
+}
+
+.bh-email-field__icon--status::before {
+	content: "\f173";
+}
+
+.bh-email-field__icon--mailbox::before {
+	content: "\f465";
+}
+
+/* Status radio options. */
+.bh-email-status__label {
+	margin-bottom: 4px;
+}
+
+.bh-email-status__options {
+	margin: 0 0 8px 20px;
+	padding: 0;
+	list-style: none;
+}
+
+.bh-email-status__options li {
+	margin: 0 0 2px;
+}
+
+.bh-email-in-mailbox {
+	margin: 8px 0 0;
+}
+
+/* Grey full-width footer like the comment-edit Save box. The negative margins cancel the
+   metabox .inside padding so the grey bar reaches the metabox edges. */
+#bh-email-status-box #major-publishing-actions {
+	background: #f6f7f7;
+	border-top: 1px solid #dcdcde;
+	overflow: hidden;
+}
+.bh-email-status-box__fields {
+	padding: 0 10px;
+}
+
+#bh-email-status-box #delete-action {
+	float: left;
+	line-height: 28px;
+}
+
+#bh-email-status-box #publishing-action {
+	float: right;
 	text-align: right;
+}
+
+#bh-email-status-box .submitdelete {
+	color: #b32d2e;
+	text-decoration: none;
+}
+
+#bh-email-status-box .submitdelete:hover {
+	color: #b32d2e;
+	text-decoration: underline;
+}
+
+#bh-email-status-box .clear {
+	clear: both;
 }

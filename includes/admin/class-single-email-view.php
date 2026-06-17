@@ -202,6 +202,7 @@ class Single_Email_View {
 				'markUnreadAction'      => 'bh_wp_mailboxes_mark_unread_' . $this->post_type,
 				'deleteOnServerAction'  => 'bh_wp_mailboxes_delete_on_server_' . $this->post_type,
 				'getRemoteStatusAction' => 'bh_wp_mailboxes_get_remote_status_' . $this->post_type,
+				'updateStatusAction'    => 'bh_wp_mailboxes_update_status_' . $this->post_type,
 			)
 		);
 		if ( is_string( $js_settings ) ) {
@@ -226,7 +227,8 @@ class Single_Email_View {
 	 */
 	public function render_local_status_metabox( WP_Post $post ): void {
 
-		$email = $this->get_email_for_post( $post );
+		$email   = $this->get_email_for_post( $post );
+		$post_id = $post->ID;
 		unset( $post );
 
 		$statuses = array(
@@ -236,38 +238,63 @@ class Single_Email_View {
 		);
 
 		$current_status = $email->local_status;
+		$date_format    = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 
 		echo '<div class="submitbox" id="bh-email-status-box">';
+		echo '<div class="bh-email-status-box__fields">';
 
-		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
-
-		// Downloaded at: when the email was fetched into WordPress (post_date).
+		// Downloaded at: when the email was fetched into WordPress (post_date). The label is plain; the value is bold.
 		$downloaded = $email->downloaded_at ? wp_date( $date_format, $email->downloaded_at->getTimestamp() ) : '';
-		echo '<p><strong>' . esc_html__( 'Downloaded at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( (string) $downloaded ) . '</p>';
+		echo '<p><span class="bh-email-field__icon bh-email-field__icon--datetime" aria-hidden="true"></span>'
+			. esc_html__( 'Downloaded at:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( (string) $downloaded ) . '</strong></p>';
 
 		// Updated at: last time the post record was modified (post_modified).
 		$updated = $email->last_updated ? wp_date( $date_format, $email->last_updated->getTimestamp() ) : '';
-		echo '<p><strong>' . esc_html__( 'Updated at:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( (string) $updated ) . '</p>';
+		echo '<p><span class="bh-email-field__icon bh-email-field__icon--datetime" aria-hidden="true"></span>'
+			. esc_html__( 'Updated at:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( (string) $updated ) . '</strong></p>';
 
-		// Local status selector.
-		echo '<p><label for="bh-post-status"><strong>' . esc_html__( 'Status:', 'bh-wp-mailboxes' ) . '</strong></label></p>';
-		echo '<select id="bh-post-status" name="post_status">';
+		// Local status — radio select.
+		echo '<p class="bh-email-status__label"><span class="bh-email-field__icon bh-email-field__icon--status" aria-hidden="true"></span>'
+			. esc_html__( 'Status:', 'bh-wp-mailboxes' ) . '</p>';
+		echo '<ul class="bh-email-status__options">';
 		foreach ( $statuses as $value => $label ) {
-			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- selected() returns safe HTML attribute.
-			echo '<option value="' . esc_attr( $value ) . '"' . selected( $current_status, $value, false ) . '>' . esc_html( $label ) . '</option>';
+			$checked = checked( $current_status, $value, false );
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- checked() returns a safe HTML attribute.
+			echo '<li><label><input type="radio" name="post_status" value="' . esc_attr( $value ) . '"' . $checked . '> ' . esc_html( $label ) . '</label></li>';
 		}
 		// Show legacy status if not one of the custom ones.
 		if ( ! array_key_exists( $current_status, $statuses ) ) {
 			$this->logger->warning( 'Problem with email status. Unexpectedly found ' . $current_status );
-			echo '<option value="' . esc_attr( $current_status ) . '" selected="selected">' . esc_html( ucfirst( $current_status ) ) . '</option>';
+			echo '<li><label><input type="radio" name="post_status" value="' . esc_attr( $current_status ) . '" checked="checked"> ' . esc_html( ucfirst( $current_status ) ) . '</label></li>';
 		}
-		echo '</select>';
+		echo '</ul>';
 		echo '<input type="hidden" name="hidden_post_status" value="' . esc_attr( $current_status ) . '">';
 
+		// Link back to this mailbox's full email list.
+		$list_url = admin_url( 'edit.php?post_type=' . $this->post_type );
+		echo '<p><span class="bh-email-field__icon bh-email-field__icon--mailbox" aria-hidden="true"></span>'
+			. esc_html__( 'In mailbox:', 'bh-wp-mailboxes' ) . ' <strong>' . sprintf(
+				'<a href="%s">%s</a></p>',
+				esc_url( $list_url ),
+				esc_html( $this->settings->get_emails_cpt_friendly_name() )
+			) . '</strong></p>';
+
+		echo '</div>'; // .bh-email-status-box__fields
+
+		// Footer: "Move to Trash" (left, red) + Save (right), on a grey bar like the comment-edit Save box.
+		echo '<div id="major-publishing-actions">';
+		$trash_link = get_delete_post_link( $post_id );
+		if ( is_string( $trash_link ) ) {
+			echo '<div id="delete-action"><a class="submitdelete deletion" href="' . esc_url( $trash_link ) . '">'
+				. esc_html__( 'Move to Trash', 'bh-wp-mailboxes' ) . '</a></div>';
+		}
 		echo '<div id="publishing-action">';
 		submit_button( __( 'Save', 'bh-wp-mailboxes' ), 'primary', 'save', false );
 		echo '</div>';
-		echo '</div>';
+		echo '<div class="clear"></div>';
+		echo '</div>'; // #major-publishing-actions
+
+		echo '</div>'; // .submitbox
 	}
 
 	/**
@@ -292,9 +319,10 @@ class Single_Email_View {
 
 		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 
-		// Sent: the email "Date" header.
+		// Sent: the email "Date" header. The label is plain; the value is bold.
 		$sent = $email->sent_at ? wp_date( $date_format, $email->sent_at->getTimestamp() ) : '';
-		echo '<p><strong>' . esc_html__( 'Sent:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( (string) $sent ) . '</p>';
+		echo '<p><span class="bh-email-field__icon bh-email-field__icon--datetime" aria-hidden="true"></span>'
+			. esc_html__( 'Sent:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( (string) $sent ) . '</strong></p>';
 
 		if ( $provider?->can_read_status() ) {
 			$badges = $this->get_remote_status_html( $is_read, $deleted_on_server );

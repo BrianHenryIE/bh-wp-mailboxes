@@ -390,18 +390,21 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		}
 
 		/**
-		 * So far only logging staus update
-		 * TODO: delete, mark-read updates.
-		 * TODO: document how plugins can print to the log.
+		 * Log the local status change. Guarded so updates to other fields (e.g. remote read state,
+		 * which pass a null status) do not record a spurious "status changed" entry.
 		 */
-		if ( $email->local_status !== $local_status ) {
+		if ( ! is_null( $local_status ) && $email->local_status !== $local_status ) {
 			$this->log(
 				$email,
 				sprintf(
-					'Status changed from "%s" to "%s".',
+					/* translators: 1: previous status, 2: new status */
+					__( 'Status changed from "%1$s" to "%2$s".', 'bh-wp-mailboxes' ),
 					$email->local_status,
 					$local_status
-				)
+				),
+				false,
+				array(),
+				'info'
 			);
 		}
 

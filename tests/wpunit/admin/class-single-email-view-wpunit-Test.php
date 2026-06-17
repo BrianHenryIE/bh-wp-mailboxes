@@ -18,7 +18,6 @@ use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
-use Codeception\Stub\Expected;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View
@@ -288,47 +287,6 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertSame( $original_title, $result['post_title'] );
 		$this->assertSame( $original_content, $result['post_content'] );
-	}
-
-	// -------------------------------------------------------------------------
-	// Status change logging
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Log_status_change inserts a comment when the post status changes.
-	 */
-	public function test_log_status_change_inserts_log_comment(): void {
-
-		$this->markTestSkipped( 'this is in the wrong place' );
-
-		register_post_type(
-			$this->post_type,
-			array(
-				'public'  => false,
-				'show_ui' => true,
-			)
-		);
-
-		$post_id = $this->factory()->post->create(
-			array(
-				'post_type'   => $this->post_type,
-				'post_status' => 'bh_email_new',
-			)
-		);
-
-		$post_before             = get_post( $post_id );
-		$post_after              = clone $post_before;
-		$post_after->post_status = 'bh_email_processed';
-
-		$api = $this->makeEmpty(
-			API_Interface::class,
-			array(
-				'insert_email_log_note' => Expected::once(),
-			)
-		);
-
-		$sut = new Single_Email_View( $this->make_settings(), $api, $this->make_repository(), $this->logger );
-		$sut->log_status_change( $post_id, $post_after, $post_before );
 	}
 
 	// -------------------------------------------------------------------------
