@@ -61,7 +61,8 @@ test.describe( 'Single email view', () => {
 		const postId = await createEmail( request, { body_plain: 'Header grid test body.' } );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		await expect( page.locator( '#bh-email-headers .bh-email-headers-grid' ) ).toBeVisible();
+		// toBeAttached (not toBeVisible): the postbox may be collapsed by a parallel test (shared user meta).
+		await expect( page.locator( '#bh-email-headers .bh-email-headers-grid' ) ).toBeAttached();
 		await expect( page.locator( '#bh-email-headers table' ) ).toHaveCount( 0 );
 	} );
 
@@ -348,8 +349,9 @@ test.describe( 'Single email view', () => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
+		// toBeAttached (not toBeVisible): postbox collapse state is shared per-user across parallel tests.
 		const trash = page.locator( '#bh-email-local-status .submitdelete' );
-		await expect( trash ).toBeVisible();
+		await expect( trash ).toBeAttached();
 		await expect( trash ).toContainText( 'Move to Trash' );
 	} );
 
@@ -357,9 +359,12 @@ test.describe( 'Single email view', () => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		const link = page.locator( '#bh-email-local-status .bh-email-in-mailbox a' );
-		await expect( link ).toContainText( 'In mailbox:' );
-		await expect( link ).toHaveAttribute( 'href', /edit\.php\?post_type=fixtures_email/ );
+		const metabox = page.locator( '#bh-email-local-status' );
+		await expect( metabox ).toContainText( 'In mailbox:' );
+
+		// The mailbox name links back to this CPT's list.
+		const link = metabox.locator( 'a[href*="edit.php?post_type=fixtures_email"]' );
+		await expect( link ).toBeAttached();
 	} );
 
 	test( 'status and datetime fields render dashicon markers', async ( { admin, page, request } ) => {
@@ -371,7 +376,7 @@ test.describe( 'Single email view', () => {
 		).toHaveCount( 1 );
 		await expect(
 			page.locator( '#bh-email-local-status .bh-email-field__icon--datetime' ).first()
-		).toBeVisible();
+		).toBeAttached();
 	} );
 
 	test( 'the immutable title is read-only but still selectable', async ( { admin, page, request } ) => {
