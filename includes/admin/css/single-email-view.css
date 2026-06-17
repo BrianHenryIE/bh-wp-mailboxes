@@ -27,14 +27,15 @@
 }
 
 /* Headers table */
-#bh-email-headers .inside {
-	padding-left: 0;
+#bh-email-headers .inside, #bh-email-content-html .inside {
+	padding: 0;
+	margin: 0;
 }
 
 .bh-email-headers-table {
 	overflow-x: auto;
 	display: block;
-	border: 0;
+	border: 0 !important;
 }
 
 .bh-email-headers-table th {
