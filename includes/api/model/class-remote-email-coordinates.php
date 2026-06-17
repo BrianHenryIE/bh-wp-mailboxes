@@ -14,8 +14,12 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Model;
 
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+
 /**
  * Immutable coordinates identifying an email on the remote server.
+ *
+ * @see Email_WP_Post_Repository::guid_for()
  */
 readonly class Remote_Email_Coordinates {
 
