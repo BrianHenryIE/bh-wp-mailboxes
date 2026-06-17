@@ -60,7 +60,7 @@
             event.preventDefault();
             var urlParams = new URLSearchParams( window.location.search );
             $.post( ajaxurl, {
-                action:        'bh_wp_mailboxes_check_email',
+                action:        bh_wp_mailboxes_ajax.check_email_action,
                 mailboxes_cpt: urlParams.get( 'post_type' ),
                 _wpnonce:      $( '#_wpnonce_checknow' ).val(),
             }, function( response ) {
@@ -80,7 +80,7 @@
             var $notice = makeCheckNotice( accountId, accountName );
 
             $.post( ajaxurl, {
-                action:          'bh_wp_mailboxes_check_account',
+                action:          bh_wp_mailboxes_ajax.check_account_action,
                 account_post_id: accountId,
                 _wpnonce:        $( '#_wpnonce_account_actions' ).val(),
             } ).done( function( response ) {
@@ -109,7 +109,7 @@
             var $notice = makeCheckNotice( accountId, accountName );
 
             $.post( ajaxurl, {
-                action:          'bh_wp_mailboxes_check_account',
+                action:          bh_wp_mailboxes_ajax.check_account_action,
                 account_post_id: accountId,
                 since_date:      $input.val(),
                 _wpnonce:        $( '#_wpnonce_account_actions' ).val(),

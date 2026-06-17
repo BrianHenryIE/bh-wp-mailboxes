@@ -130,9 +130,12 @@ class BH_WP_Mailboxes_Hooks {
 
 		$ajax = new Single_Email_View_Ajax( $this->settings, $this->api, $this->email_wp_post_repository, $this->logger );
 
-		add_action( 'wp_ajax_bh_wp_mailboxes_mark_read', $ajax->ajax_mark_read( ... ) );
-		add_action( 'wp_ajax_bh_wp_mailboxes_mark_unread', $ajax->ajax_mark_unread( ... ) );
-		add_action( 'wp_ajax_bh_wp_mailboxes_delete_on_server', $ajax->ajax_delete_on_server( ... ) );
+		// Scope the AJAX actions to this instance's emails CPT. Otherwise, with more than one library
+		// instance registered, every instance's handler runs for the shared action name and the first
+		// non-matching one calls wp_send_json_*() and terminates the request before the right one runs.
+		add_action( "wp_ajax_bh_wp_mailboxes_mark_read_{$post_type}", $ajax->ajax_mark_read( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_mark_unread_{$post_type}", $ajax->ajax_mark_unread( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_delete_on_server_{$post_type}", $ajax->ajax_delete_on_server( ... ) );
 	}
 
 	/**
@@ -144,8 +147,14 @@ class BH_WP_Mailboxes_Hooks {
 
 		$ajax = new Emails_List_Table_Ajax( $this->api, $this->settings, $this->logger );
 
-		add_action( 'wp_ajax_bh_wp_mailboxes_check_email', $ajax->check_email( ... ) );
-		add_action( 'wp_ajax_bh_wp_mailboxes_check_account', $ajax->check_account( ... ) );
-		add_action( 'wp_ajax_bh_wp_mailboxes_set_fetch_since', $ajax->check_account( ... ) );
+		// Scope the AJAX actions to this instance's post types. Otherwise, with more than one library
+		// instance registered, every instance's handler runs for the shared action name and the first
+		// non-matching one calls wp_send_json_*() and terminates the request before the right one runs.
+		$emails_cpt   = $this->settings->get_emails_cpt_underscored_20();
+		$accounts_cpt = $this->settings->get_email_accounts_cpt_underscored_20();
+
+		add_action( "wp_ajax_bh_wp_mailboxes_check_email_{$emails_cpt}", $ajax->check_email( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_check_account_{$accounts_cpt}", $ajax->check_account( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_set_fetch_since_{$accounts_cpt}", $ajax->check_account( ... ) );
 	}
 }

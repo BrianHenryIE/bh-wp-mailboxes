@@ -71,12 +71,12 @@
 
 		$( '#bh-email-mark-read' ).on( 'click', function ( e ) {
 			e.preventDefault();
-			remoteAction( 'bh_wp_mailboxes_mark_read', $( this ) );
+			remoteAction( settings.markReadAction, $( this ) );
 		} );
 
 		$( '#bh-email-mark-unread' ).on( 'click', function ( e ) {
 			e.preventDefault();
-			remoteAction( 'bh_wp_mailboxes_mark_unread', $( this ) );
+			remoteAction( settings.markUnreadAction, $( this ) );
 		} );
 
 		$( '#bh-email-delete-on-server' ).on( 'click', function ( e ) {
@@ -84,7 +84,7 @@
 			if ( ! window.confirm( 'Delete this email on the remote server?' ) ) {
 				return;
 			}
-			remoteAction( 'bh_wp_mailboxes_delete_on_server', $( this ) );
+			remoteAction( settings.deleteOnServerAction, $( this ) );
 		} );
 
 		function resizeIframe( iframe ) {

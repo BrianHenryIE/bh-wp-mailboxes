@@ -199,5 +199,16 @@ class Emails_List_Page {
 		$version = BH_WP_Mailboxes::get_version();
 
 		wp_enqueue_script( $handle, $js_file, array( 'jquery' ), $version, true );
+
+		// The AJAX actions are scoped to this instance's post types (see BH_WP_Mailboxes_Hooks::define_ajax_hooks()),
+		// so the JS must post the matching, suffixed action names.
+		wp_localize_script(
+			$handle,
+			'bh_wp_mailboxes_ajax',
+			array(
+				'check_email_action'   => 'bh_wp_mailboxes_check_email_' . $this->settings->get_emails_cpt_underscored_20(),
+				'check_account_action' => 'bh_wp_mailboxes_check_account_' . $this->settings->get_email_accounts_cpt_underscored_20(),
+			)
+		);
 	}
 }

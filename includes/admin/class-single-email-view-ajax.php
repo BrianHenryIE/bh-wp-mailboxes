@@ -41,7 +41,9 @@ class Single_Email_View_Ajax {
 	/**
 	 * Mark email as read on the remote server.
 	 *
-	 * @hooked wp_ajax_bh_wp_mailboxes_mark_read
+	 * The action is suffixed with the emails CPT so each library instance only handles its own request.
+	 *
+	 * @hooked wp_ajax_bh_wp_mailboxes_mark_read_{emails_cpt}
 	 */
 	public function ajax_mark_read(): void {
 		$this->handle_remote_action( 'mark_read' );
@@ -50,7 +52,9 @@ class Single_Email_View_Ajax {
 	/**
 	 * Mark email as unread on the remote server.
 	 *
-	 * @hooked wp_ajax_bh_wp_mailboxes_mark_unread
+	 * The action is suffixed with the emails CPT so each library instance only handles its own request.
+	 *
+	 * @hooked wp_ajax_bh_wp_mailboxes_mark_unread_{emails_cpt}
 	 */
 	public function ajax_mark_unread(): void {
 		$this->handle_remote_action( 'mark_unread' );
@@ -59,7 +63,9 @@ class Single_Email_View_Ajax {
 	/**
 	 * Delete the email on the remote server.
 	 *
-	 * @hooked wp_ajax_bh_wp_mailboxes_delete_on_server
+	 * The action is suffixed with the emails CPT so each library instance only handles its own request.
+	 *
+	 * @hooked wp_ajax_bh_wp_mailboxes_delete_on_server_{emails_cpt}
 	 */
 	public function ajax_delete_on_server(): void {
 		$this->handle_remote_action( 'delete_on_server' );

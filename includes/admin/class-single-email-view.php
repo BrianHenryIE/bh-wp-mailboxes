@@ -182,11 +182,16 @@ class Single_Email_View {
 			'after'
 		);
 
+		// The AJAX actions are scoped to this instance's emails CPT (see BH_WP_Mailboxes_Hooks::define_single_email_view_hooks()),
+		// so the JS must post the matching, suffixed action names.
 		$js_settings = wp_json_encode(
 			array(
-				'postId'  => (int) get_the_ID(),
-				'nonce'   => wp_create_nonce( 'bh-wp-mailboxes-remote-action' ),
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'postId'               => (int) get_the_ID(),
+				'nonce'                => wp_create_nonce( 'bh-wp-mailboxes-remote-action' ),
+				'ajaxUrl'              => admin_url( 'admin-ajax.php' ),
+				'markReadAction'       => 'bh_wp_mailboxes_mark_read_' . $this->post_type,
+				'markUnreadAction'     => 'bh_wp_mailboxes_mark_unread_' . $this->post_type,
+				'deleteOnServerAction' => 'bh_wp_mailboxes_delete_on_server_' . $this->post_type,
 			)
 		);
 		if ( is_string( $js_settings ) ) {
