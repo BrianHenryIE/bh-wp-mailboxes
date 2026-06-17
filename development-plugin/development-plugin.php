@@ -77,17 +77,11 @@ Autoloader::generate(
 	$includes_dir,
 )->register();
 
-// wp-env fixes (cron / self-referential URLs).
-new WP_Env()->register_hooks();
-
 // Authentication shortcuts for e2e arrangement (login-as-user, treat REST callers as admin).
 new Authentication()->register_hooks();
 
 // Custom REST endpoints for arranging/asserting e2e tests.
 new Mailboxes()->register_hooks();
-
-
-
 
 
 /**
