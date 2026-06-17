@@ -83,8 +83,13 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$this->assertCount( 1, $comments, 'Exactly one bh_email_log comment should exist' );
-		$this->assertSame( 'bh_email_log', $comments[0]->comment_type );
-		$this->assertStringContainsString( 'bh_email_processed', $comments[0]->comment_content );
+		// The email also carries an automatic "downloaded" log entry, so locate the status-change note.
+		$status_notes = array_values(
+			array_filter( $comments, fn( $comment ) => str_contains( $comment->comment_content, 'bh_email_processed' ) )
+		);
+
+		$this->assertCount( 1, $status_notes, 'Exactly one status-change bh_email_log comment should exist' );
+		$this->assertSame( 'bh_email_log', $status_notes[0]->comment_type );
+		$this->assertStringContainsString( 'bh_email_processed', $status_notes[0]->comment_content );
 	}
 }

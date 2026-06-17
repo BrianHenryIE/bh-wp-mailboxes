@@ -86,6 +86,41 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 	}
 
 	/**
+	 * Saving a new email records an info-level "downloaded" entry in its log.
+	 *
+	 * @covers ::save_new
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\WP_Post_Repository_Abstract::log
+	 */
+	public function test_save_new_logs_downloaded(): void {
+
+		$post_type = 'test_post_type';
+		$sut       = new Email_WP_Post_Repository( $post_type, new BH_Email_Factory( $this->logger ), $this->logger );
+
+		$parser = new MailMimeParser();
+		/** @var IMessage $email */
+		$email = $parser->parse( (string) file_get_contents( codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' ) ), true );
+
+		$result = $sut->save_new(
+			$this->make_fetched_email( $email ),
+			$this->settings,
+			BH_Email_Account_Fixture::make( post_type: $post_type ),
+		);
+
+		$log_notes = get_comments(
+			array(
+				'post_id' => $result->get_post_id(),
+				'type'    => 'bh_email_log',
+			)
+		);
+
+		$messages = array_map( fn( $comment ) => strtolower( (string) $comment->comment_content ), $log_notes );
+		$this->assertNotEmpty(
+			array_filter( $messages, fn( $message ) => str_contains( $message, 'downloaded' ) ),
+			'A "downloaded" log note should be recorded on save.'
+		);
+	}
+
+	/**
 	 * Fetching the same email twice (same account + Message-ID, i.e. same guid) must not
 	 * create two posts. The second save_new should return the already-saved post.
 	 *

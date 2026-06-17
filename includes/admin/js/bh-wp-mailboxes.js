@@ -34,7 +34,7 @@
             if ( count > 0 ) {
                 var $countEl = $card.find( '[data-field="email-count"]' );
                 $countEl.text( parseInt( $countEl.text(), 10 ) + count );
-                refreshTable();
+                refreshTable( response.data.new_email_ids );
             }
             var msg = count > 0
                 ? 'Email checked successfully, ' + count + ' new email' + ( count !== 1 ? 's' : '' ) + ' found.'
@@ -46,13 +46,27 @@
         }
     }
 
-    function refreshTable() {
+    function refreshTable( newIds ) {
         $.get( location.href, function( html ) {
             var $newRows = $( html ).find( '#the-list' );
             if ( $newRows.length ) {
                 $( '#the-list' ).replaceWith( $newRows );
+                highlightNewRows( newIds );
             }
         } );
+    }
+
+    // Briefly highlight the freshly-fetched rows; the CSS animation fades the highlight out.
+    function highlightNewRows( newIds ) {
+        if ( ! newIds || ! newIds.length ) {
+            return;
+        }
+        newIds.forEach( function( id ) {
+            $( '#post-' + id ).addClass( 'bh-email-row--new' );
+        } );
+        setTimeout( function() {
+            $( '.bh-email-row--new' ).removeClass( 'bh-email-row--new' );
+        }, 3000 );
     }
 
     $( function() {
@@ -89,7 +103,7 @@
                     : 'Email checked successfully, no new emails.';
                 finishNotice( $notice, label + ': ' + msg, count > 0 ? '#00a32a' : '#72aee6' );
                 if ( count > 0 ) {
-                    refreshTable();
+                    refreshTable( newEmails.map( function( email ) { return email.post_id; } ) );
                 }
             } ).fail( function() {
                 finishNotice( $notice, label + ': Check failed: server error.', '#d63638' );
@@ -116,6 +130,7 @@
                 handleCheckResponse( response, $card, $notice );
             } ).fail( function() {
                 $btn.prop( 'disabled', false ).text( origLabel );
+                // TODO: message should come from the server. E.g. "could not find saved account".
                 finishNotice( $notice, 'Check failed: server error.', '#d63638' );
             } );
         } );
@@ -132,18 +147,25 @@
             var accountId   = $input.data( 'account-id' );
             var $card       = $( '.bh-mailboxes-account-card[data-account-id="' + accountId + '"]' );
             var accountName = $card.data( 'account-name' );
+            var sinceDate   = $input.val();
 
             $input.hide();
+            // Clear the value so re-opening and picking the same date fires `change` again — a date
+            // input does not emit `change` when re-committed with an unchanged value, which otherwise
+            // limited this to one check per page load.
+            $input.val( '' );
+
             var $notice = makeCheckNotice( accountId, accountName );
 
             $.post( ajaxurl, {
                 action:          bh_wp_mailboxes_ajax.check_account_action,
                 account_post_id: accountId,
-                since_date:      $input.val(),
+                since_date:      sinceDate,
                 _wpnonce:        $( '#_wpnonce_account_actions' ).val(),
             } ).done( function( response ) {
                 handleCheckResponse( response, $card, $notice );
             } ).fail( function() {
+                // TODO: message should come from the server. E.g. "could not find saved account". Unless, of course, it is a timeout.
                 finishNotice( $notice, 'Check failed: server error.', '#d63638' );
             } );
         } );

@@ -93,7 +93,9 @@ class Emails_List_Page {
 
 		$columns['title'] = __( 'Subject', 'bh-wp-mailboxes' );
 		$columns['from']  = __( 'From', 'bh-wp-mailboxes' );
-		$columns['date']  = __( 'Date', 'bh-wp-mailboxes' );
+		// "Sent" is the email's Date header; the standard "Date" column is when it was downloaded.
+		$columns['sent'] = __( 'Sent', 'bh-wp-mailboxes' );
+		$columns['date'] = __( 'Date', 'bh-wp-mailboxes' );
 
 		return $columns;
 	}
@@ -115,6 +117,16 @@ class Emails_List_Page {
 		switch ( $column_name ) {
 			case 'from':
 				echo esc_html( $email->get_from_email() );
+				break;
+			case 'sent':
+				$sent_at = $email->get_sent_at();
+				echo esc_html(
+					(string) (
+						$sent_at
+							? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $sent_at->getTimestamp() )
+							: ''
+					)
+				);
 				break;
 			default:
 				break;
@@ -219,6 +231,13 @@ class Emails_List_Page {
 				'check_email_action'   => 'bh_wp_mailboxes_check_email_' . $this->settings->get_emails_cpt_underscored_20(),
 				'check_account_action' => 'bh_wp_mailboxes_check_account_' . $this->settings->get_email_accounts_cpt_underscored_20(),
 			)
+		);
+
+		// Highlight newly-fetched rows for a few seconds, fading the highlight out (see refreshTable() in the JS).
+		wp_add_inline_style(
+			'wp-admin',
+			'@keyframes bh-email-row-highlight { from { background-color: #fcf9e8; } to { background-color: transparent; } }'
+			. ' tr.bh-email-row--new td { animation: bh-email-row-highlight 3s ease-out; }'
 		);
 	}
 }

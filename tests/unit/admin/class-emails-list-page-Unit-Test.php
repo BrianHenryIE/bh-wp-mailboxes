@@ -131,6 +131,9 @@ class Emails_List_Page_Unit_Test extends Unit_Testcase {
 		// The scoped AJAX action names are localised for the JS (see enqueue_scripts()).
 		\WP_Mock::userFunction( 'wp_localize_script' );
 
+		// New-row highlight CSS is injected inline.
+		\WP_Mock::userFunction( 'wp_add_inline_style' );
+
 		$wp_screen            = new stdClass();
 		$wp_screen->post_type = $emails_cpt_underscored;
 

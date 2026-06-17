@@ -250,7 +250,12 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			update_post_meta( $post_id, 'attachment_ids', (string) wp_json_encode( $attachment_ids ) );
 		}
 
-		return $this->find_by_post_id( $post_id );
+		$bh_email = $this->find_by_post_id( $post_id );
+
+		// Record the download in the email's log.
+		$this->log( $bh_email, 'Email downloaded.', false, array(), 'info' );
+
+		return $bh_email;
 	}
 
 	/**

@@ -51,4 +51,17 @@ test.describe( 'Emails list page — check button', () => {
 
 		await expect( page.locator( '#check-email' ) ).toHaveText( 'Check all' );
 	} );
+
+	test( 'the list table has a "Sent" column to the left of the "Date" column', async ( { admin, page } ) => {
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+
+		await expect( page.locator( 'thead th#sent' ) ).toHaveText( 'Sent' );
+
+		// "Sent" must come before the standard "Date" column.
+		const headerIds = await page
+			.locator( 'thead#the-list-head th, thead th' )
+			.evaluateAll( ( els ) => els.map( ( el ) => el.id ).filter( Boolean ) );
+		expect( headerIds.indexOf( 'sent' ) ).toBeGreaterThan( -1 );
+		expect( headerIds.indexOf( 'sent' ) ).toBeLessThan( headerIds.indexOf( 'date' ) );
+	} );
 } );

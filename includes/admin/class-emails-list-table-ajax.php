@@ -103,6 +103,8 @@ class Emails_List_Table_Ajax {
 		wp_send_json_success(
 			array(
 				'new_email_count' => count( $result->new_emails ),
+				// Post IDs of the new emails, so the JS can highlight their rows in the list table.
+				'new_email_ids'   => array_map( fn( $email ) => $email->get_post_id(), $result->new_emails ),
 				/* translators: shown in the status card immediately after a manual check */
 				'last_fetched'    => __( 'Just now', 'bh-wp-mailboxes' ),
 			)

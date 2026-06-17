@@ -268,6 +268,27 @@ class API implements API_Interface {
 
 		// TODO: Log the number of emails found.
 		$saved = $this->email_repository->save_all( $all_new_account_emails, $this->settings, $email_account, $this->private_uploads );
+
+		// If the mailbox is configured to mark-as-read or delete emails on the server after downloading,
+		// perform that action now. The mark/delete methods record their own log entry on each email.
+		$after_download_action = $email_account->after_download_remote_email_action();
+		if ( in_array( $after_download_action, array( 'mark_read', 'delete' ), true ) ) {
+			foreach ( $saved as $bh_email ) {
+				try {
+					if ( 'mark_read' === $after_download_action ) {
+						$this->mark_email_read( $bh_email );
+					} else {
+						$this->delete_email_on_server( $bh_email );
+					}
+				} catch ( Throwable $exception ) {
+					$this->logger->warning(
+						'Post-download action "' . $after_download_action . '" failed: ' . $exception->getMessage(),
+						array( 'post_id' => $bh_email->get_post_id() )
+					);
+				}
+			}
+		}
+
 		return $saved;
 	}
 

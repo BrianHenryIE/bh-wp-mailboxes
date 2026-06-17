@@ -198,6 +198,47 @@ test.describe( 'Status_View — Since (clock) button', () => {
 		await expect( notice.locator( '.spinner' ) ).not.toBeAttached();
 	} );
 
+	test( 'newly-fetched email rows are briefly highlighted after a check', async ( { admin, page, request } ) => {
+		const email  = `highlight-${ Date.now() }@example.com`;
+		const postId = await createAccount( request, email );
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+
+		// A fresh account's first check fetches the fixture emails as new.
+		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
+		await waitForCheckResponse( page, postId );
+
+		// After the table refreshes, the new rows carry the (transient, fading) highlight class.
+		await expect( page.locator( '#the-list tr.bh-email-row--new' ).first() ).toBeAttached( { timeout: 5000 } );
+	} );
+
+	test( 'set-date check can be triggered more than once per page load', async ( { admin, page, request } ) => {
+		const email = `since-twice-${ Date.now() }@example.com`;
+		const postId = await createAccount( request, email );
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+
+		const card  = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
+		const input = card.locator( '.bh-fetch-since-input' );
+
+		// First set-date check.
+		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
+		await expect( input ).toBeVisible();
+		await input.fill( '2026-01-01' );
+		const first = waitForCheckResponse( page, postId );
+		await input.dispatchEvent( 'change' );
+		await first;
+
+		// The input is cleared after a check, so re-selecting the same date counts as a change.
+		await expect( input ).toHaveValue( '' );
+
+		// Second set-date check — re-open and pick the SAME date. Should fire another request.
+		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
+		await expect( input ).toBeVisible();
+		await input.fill( '2026-01-01' );
+		const second = waitForCheckResponse( page, postId );
+		await input.dispatchEvent( 'change' );
+		await second;
+	} );
+
 	test( 'since input hides after a successful check', async ( { admin, page, request } ) => {
 		const email = `since-hide-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
