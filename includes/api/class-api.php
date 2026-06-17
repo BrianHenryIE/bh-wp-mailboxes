@@ -528,7 +528,9 @@ class API implements API_Interface {
 		$plugin_slug = $this->settings->get_plugin_slug();
 
 		/**
-		 * @var mixed|Email_Provider_Interface  $provider The email fetcher for the account, or null if none is found.
+		 * Get an Email_Provider_Interface instance for a BH_Email_Account.
+		 *
+		 * @param mixed|Email_Provider_Interface  $provider The email fetcher for the account, or null if none is found.
 		 * @param string $plugin_slug To allow multiple plugins (and potentially library verions) to use this same filter name.
 		 * @param BH_Email_Account $email_account The account config to get provider for {@see BH_Email_Account::$provider_type_class}.
 		 */
