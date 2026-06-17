@@ -57,6 +57,13 @@
 
     $( function() {
 
+        // ── Move the check button into the page title, replacing "Add New Email" ─
+        var $checkBtn = $( '#check-email' );
+        if ( $checkBtn.length ) {
+            $( 'a.page-title-action' ).remove();
+            $checkBtn.insertAfter( $( 'h1.wp-heading-inline' ).first() ).show();
+        }
+
         // ── Global check-all button ────────────────────────────────────────────
         $( '#check-email' ).on( 'click', function( event ) {
             event.preventDefault();

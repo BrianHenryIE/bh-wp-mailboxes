@@ -79,10 +79,12 @@ abstract class WP_Post_Repository_Abstract {
 	 * @param string              $message The message to log. Will be sanitized with wp_kses_post.
 	 * @param bool                $is_internal Was the message added by the library's automations or by an explicit action.
 	 * @param array<string,mixed> $meta List of values changed.
+	 * @param string              $level The log level: one of `info`, `notice`, `warning`, `error`. Reversible
+	 *                                   changes are `info`; intentional irreversible changes are `notice`.
 	 */
-	public function log( Saved_Post $saved_post, string $message, bool $is_internal = false, array $meta = array() ): void {
+	public function log( Saved_Post $saved_post, string $message, bool $is_internal = false, array $meta = array(), string $level = 'info' ): void {
 
-		wp_insert_comment(
+		$comment_id = wp_insert_comment(
 			array(
 				'comment_post_ID'    => $saved_post->get_post_id(),
 				'comment_content'    => wp_kses_post( $message ),
@@ -94,5 +96,9 @@ abstract class WP_Post_Repository_Abstract {
 				'comment_approved'   => 1,
 			)
 		);
+
+		if ( is_int( $comment_id ) ) {
+			add_comment_meta( $comment_id, 'bh_email_log_level', sanitize_key( $level ) );
+		}
 	}
 }

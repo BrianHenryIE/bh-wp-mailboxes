@@ -62,8 +62,18 @@ class Emails_List_Page {
 			return;
 		}
 
+		// "Check all" when the mailbox has more than one account, otherwise "Check now".
+		$label = count( $this->api->get_email_accounts() ) > 1
+			? __( 'Check all', 'bh-wp-mailboxes' )
+			: __( 'Check now', 'bh-wp-mailboxes' );
+
 		wp_nonce_field( 'bh-wp-mailboxes-check-email', '_wpnonce_checknow' );
-		echo '<button name="check-email" id="check-email" class="button button-primary">Check now</button>';
+
+		// Rendered hidden here; the JS moves it into the page title, replacing the "Add New" button.
+		printf(
+			'<button type="button" id="check-email" class="page-title-action" style="display:none;">%s</button>',
+			esc_html( $label )
+		);
 	}
 
 	/**

@@ -167,7 +167,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		// remove_meta_box() sets entries to false rather than unsetting — filter before asserting.
 		$side_high_ids = array_keys( array_filter( $registered_boxes['side']['high'] ?? array() ) );
-		$this->assertContains( 'bh-email-status', $side_high_ids, 'Email Status metabox should be in side/high' );
+		$this->assertContains( 'bh-email-local-status', $side_high_ids, 'Local status metabox should be in side/high' );
+		$this->assertContains( 'bh-email-remote-status', $side_high_ids, 'Remote status metabox should be in side/high' );
 		$this->assertNotContains( 'submitdiv', $side_high_ids, 'submitdiv should be removed' );
 	}
 
@@ -471,7 +472,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_local_status_metabox( $post );
+		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'bh-email-badge--read', $html );
@@ -498,7 +499,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_local_status_metabox( $post );
+		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'bh-email-badge--unread', $html );
@@ -530,7 +531,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_local_status_metabox( $post );
+		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringNotContainsString( 'bh-email-badge--read', $html );
@@ -578,7 +579,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_local_status_metabox( $post );
+		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'bh-email-mark-read', $html, '"Mark as read on server" button should appear' );
@@ -605,7 +606,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_local_status_metabox( $post );
+		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringNotContainsString( 'bh-email-mark-read', $html );
@@ -651,7 +652,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_local_status_metabox( $post );
+		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'bh-email-delete-on-server', $html );

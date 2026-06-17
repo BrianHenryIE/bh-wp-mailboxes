@@ -93,9 +93,18 @@ class Single_Email_View {
 		remove_meta_box( 'commentsdiv', $this->post_type, 'normal' );
 
 		add_meta_box(
-			'bh-email-status',
-			__( 'Email Status', 'bh-wp-mailboxes' ),
+			'bh-email-local-status',
+			__( 'Local status', 'bh-wp-mailboxes' ),
 			$this->render_local_status_metabox( ... ),
+			$this->post_type,
+			'side',
+			'high'
+		);
+
+		add_meta_box(
+			'bh-email-remote-status',
+			__( 'Remote status', 'bh-wp-mailboxes' ),
+			$this->render_remote_status_metabox( ... ),
 			$this->post_type,
 			'side',
 			'high'
@@ -186,12 +195,13 @@ class Single_Email_View {
 		// so the JS must post the matching, suffixed action names.
 		$js_settings = wp_json_encode(
 			array(
-				'postId'               => (int) get_the_ID(),
-				'nonce'                => wp_create_nonce( 'bh-wp-mailboxes-remote-action' ),
-				'ajaxUrl'              => admin_url( 'admin-ajax.php' ),
-				'markReadAction'       => 'bh_wp_mailboxes_mark_read_' . $this->post_type,
-				'markUnreadAction'     => 'bh_wp_mailboxes_mark_unread_' . $this->post_type,
-				'deleteOnServerAction' => 'bh_wp_mailboxes_delete_on_server_' . $this->post_type,
+				'postId'                => (int) get_the_ID(),
+				'nonce'                 => wp_create_nonce( 'bh-wp-mailboxes-remote-action' ),
+				'ajaxUrl'               => admin_url( 'admin-ajax.php' ),
+				'markReadAction'        => 'bh_wp_mailboxes_mark_read_' . $this->post_type,
+				'markUnreadAction'      => 'bh_wp_mailboxes_mark_unread_' . $this->post_type,
+				'deleteOnServerAction'  => 'bh_wp_mailboxes_delete_on_server_' . $this->post_type,
+				'getRemoteStatusAction' => 'bh_wp_mailboxes_get_remote_status_' . $this->post_type,
 			)
 		);
 		if ( is_string( $js_settings ) ) {
@@ -210,7 +220,7 @@ class Single_Email_View {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Render the Email Status metabox (replaces the default submitdiv).
+	 * Render the Local Status metabox: when the email was downloaded/updated locally, and its local status.
 	 *
 	 * @param WP_Post $post The email post being edited.
 	 */
@@ -225,12 +235,7 @@ class Single_Email_View {
 			'bh_email_saved'     => __( 'Saved', 'bh-wp-mailboxes' ),
 		);
 
-		$current_status    = $email->local_status;
-		$is_read           = $email->is_remote_read;
-		$deleted_on_server = $email->is_remote_deleted;
-
-		$email_account = $this->api->get_email_account_for_email( $email );
-		$provider      = $email_account ? $this->api->get_provider_for_email_account( $email_account ) : null;
+		$current_status = $email->local_status;
 
 		echo '<div class="submitbox" id="bh-email-status-box">';
 
@@ -259,17 +264,45 @@ class Single_Email_View {
 		echo '</select>';
 		echo '<input type="hidden" name="hidden_post_status" value="' . esc_attr( $current_status ) . '">';
 
-		// TODO Separate remote status metabox.
+		echo '<div id="publishing-action">';
+		submit_button( __( 'Save', 'bh-wp-mailboxes' ), 'primary', 'save', false );
+		echo '</div>';
+		echo '</div>';
+	}
 
-		// Sent: The email "Date" header.
+	/**
+	 * Render the Remote Status metabox: when the email was sent, its read/deleted state on the server,
+	 * and the buttons to change that state.
+	 *
+	 * The read/deleted badges are rendered from cached local meta but shown dimmed with a spinner; the
+	 * JS refreshes them from the server on load (see single-email-view.js).
+	 *
+	 * @param WP_Post $post The email post being edited.
+	 */
+	public function render_remote_status_metabox( WP_Post $post ): void {
+
+		$email = $this->get_email_for_post( $post );
+		unset( $post );
+
+		$is_read           = $email->is_remote_read;
+		$deleted_on_server = $email->is_remote_deleted;
+
+		$email_account = $this->api->get_email_account_for_email( $email );
+		$provider      = $email_account ? $this->api->get_provider_for_email_account( $email_account ) : null;
+
+		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
+
+		// Sent: the email "Date" header.
 		$sent = $email->sent_at ? wp_date( $date_format, $email->sent_at->getTimestamp() ) : '';
 		echo '<p><strong>' . esc_html__( 'Sent:', 'bh-wp-mailboxes' ) . '</strong> ' . esc_html( (string) $sent ) . '</p>';
 
 		if ( $provider?->can_read_status() ) {
 			$badges = $this->get_remote_status_html( $is_read, $deleted_on_server );
-			if ( '' !== $badges ) {
-				echo '<div class="bh-email-remote-status">' . wp_kses_post( $badges ) . '</div>';
-			}
+			// `is-loading` dims the badges and the spinner indicates the live refresh in progress.
+			echo '<div class="bh-email-remote-status is-loading">';
+			echo '<span class="spinner is-active" aria-hidden="true"></span>';
+			echo '<span class="bh-email-remote-badges">' . wp_kses_post( $badges ) . '</span>';
+			echo '</div>';
 		}
 
 		// Remote action buttons — shown only when the mailbox supports them.
@@ -284,11 +317,6 @@ class Single_Email_View {
 		if ( $provider?->can_delete_on_server() && ! $email->is_remote_deleted ) {
 			echo '<p><button id="bh-email-delete-on-server" class="button button-link-delete">' . esc_html__( 'Delete on server', 'bh-wp-mailboxes' ) . '</button></p>';
 		}
-
-		echo '<div id="publishing-action">';
-		submit_button( __( 'Save', 'bh-wp-mailboxes' ), 'primary', 'save', false );
-		echo '</div>';
-		echo '</div>';
 	}
 
 	/**
@@ -308,25 +336,23 @@ class Single_Email_View {
 			return;
 		}
 
-		echo '<table class="widefat bh-email-headers-table">';
-		echo '<tbody>';
+		// A grid (rather than a table) so name/value pairs sit horizontally on desktop and stack
+		// vertically on narrow screens (see single-email-view.css).
+		echo '<dl class="bh-email-headers-grid">';
 
 		foreach ( $headers as $header ) {
 
 			$parts = explode( ':', (string) $header, 2 );
 			$name  = $parts[0];
-			$value = $parts[1];
+			$value = $parts[1] ?? '';
 
-			if ( '' !== $value ) {
-				echo '<tr>';
-				echo '<th scope="row">' . esc_html( $name ) . '</th>';
-				echo '<td>' . esc_html( $value ) . '</td>';
-				echo '</tr>';
+			if ( '' !== trim( $value ) ) {
+				echo '<dt>' . esc_html( $name ) . '</dt>';
+				echo '<dd>' . esc_html( trim( $value ) ) . '</dd>';
 			}
 		}
 
-		echo '</tbody>';
-		echo '</table>';
+		echo '</dl>';
 	}
 
 	/**
@@ -383,8 +409,15 @@ class Single_Email_View {
 		// NB: The post type of the private uploads attachments is not `attachments`.
 		$attachment_ids = $email->attachment_ids;
 
+		// `null` means the mailbox is not configured to save attachments (the directory is empty or the
+		// Private_Uploads dependency is missing). If the email actually carried attachments, they were
+		// discarded rather than saved.
 		if ( is_null( $attachment_ids ) ) {
-			echo '<p class="bh-email-attachments--empty">' . esc_html__( 'Attachments disabled.', 'bh-wp-mailboxes' ) . '</p>';
+			$had_attachments = count( $email->imessage->getAllAttachmentParts() ) > 0;
+			$message         = $had_attachments
+				? __( 'Attachments discarded.', 'bh-wp-mailboxes' )
+				: __( 'No attachments.', 'bh-wp-mailboxes' );
+			echo '<p class="bh-email-attachments--empty">' . esc_html( $message ) . '</p>';
 			return;
 		}
 
@@ -417,11 +450,12 @@ class Single_Email_View {
 	 */
 	public function render_log_notes_metabox( WP_Post $post ): void {
 
+		// Newest first.
 		$notes = get_comments(
 			array(
 				'post_id' => $post->ID,
 				'type'    => 'bh_email_log',
-				'order'   => 'ASC',
+				'order'   => 'DESC',
 				'status'  => 'approve',
 			)
 		);
@@ -436,10 +470,28 @@ class Single_Email_View {
 			if ( ! ( $note instanceof \WP_Comment ) ) {
 				continue;
 			}
+
+			$level = get_comment_meta( (int) $note->comment_ID, 'bh_email_log_level', true );
+			$level = in_array( $level, array( 'info', 'notice', 'warning', 'error' ), true ) ? (string) $level : 'info';
+
 			$date_formatted = mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $note->comment_date );
-			echo '<li class="bh-email-log-note">';
+
+			echo '<li class="bh-email-log-note bh-email-log-note--' . esc_attr( $level ) . '">';
 			echo '<div class="bh-email-log-note__content"><p>' . wp_kses_post( $note->comment_content ) . '</p></div>';
-			echo '<p class="bh-email-log-note__meta"><time datetime="' . esc_attr( $note->comment_date ) . '">' . esc_html( (string) $date_formatted ) . '</time></p>';
+			echo '<p class="bh-email-log-note__meta">';
+			echo '<time datetime="' . esc_attr( $note->comment_date ) . '">' . esc_html( (string) $date_formatted ) . '</time>';
+
+			// When a logged-in user performed the action (rather than cron, which runs as user 0),
+			// show their name below the message.
+			$user_id = (int) $note->user_id;
+			if ( $user_id > 0 ) {
+				$user = get_userdata( $user_id );
+				if ( $user instanceof \WP_User ) {
+					echo ' <span class="bh-email-log-note__user">' . esc_html( $user->display_name ) . '</span>';
+				}
+			}
+
+			echo '</p>';
 			echo '</li>';
 		}
 		echo '</ul>';

@@ -131,6 +131,12 @@ class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface {
 	 */
 	public function meta_filter( $value, $object_id, $meta_key, $single, $meta_type ) {
 
+		// Per-user fixture state only applies to a logged-in user; without one (cron, unit tests)
+		// get_user_meta() returns false rather than an array, so there is nothing to override.
+		if ( 0 === get_current_user_id() ) {
+			return $value;
+		}
+
 		if ( 'is_remote_deleted' === $meta_key ) {
 			$user_remote_deleted_post_ids = get_user_meta( user_id: get_current_user_id(), key:'_mock_mailbox_fixtures_provider_is_remote_deleted', single: false );
 			if ( in_array( (string) $object_id, $user_remote_deleted_post_ids, true ) ) {

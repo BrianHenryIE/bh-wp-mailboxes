@@ -26,33 +26,55 @@
 	display: none !important;
 }
 
-/* Headers table */
-#bh-email-headers .inside, #bh-email-content-html .inside {
+/* Email content metabox: flush iframe. */
+#bh-email-content-html .inside {
 	padding: 0;
 	margin: 0;
 }
 
-.bh-email-headers-table {
-	overflow-x: auto;
-	display: block;
-	border: 0 !important;
+/* Headers grid: name/value pairs horizontal on desktop, stacked on narrow screens. */
+.bh-email-headers-grid {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: 4px 12px;
+	margin: 0;
 }
 
-.bh-email-headers-table th {
+.bh-email-headers-grid dt {
 	font-weight: 600;
 	white-space: nowrap;
-	width: 1%;
-	padding-right: 12px;
-	vertical-align: top;
+	color: #646970;
 }
 
-.bh-email-headers-table td {
+.bh-email-headers-grid dd {
+	margin: 0;
 	word-break: break-word;
+}
+
+@media screen and (max-width: 782px) {
+	.bh-email-headers-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.bh-email-headers-grid dt {
+		padding-top: 8px;
+	}
 }
 
 /* Remote status badges */
 .bh-email-remote-status {
 	margin: 8px 0;
+}
+
+/* While the live status is being fetched on load, dim the cached badges and show a spinner. */
+.bh-email-remote-status.is-loading .bh-email-remote-badges {
+	opacity: 0.4;
+}
+
+.bh-email-remote-status .spinner {
+	float: none;
+	margin: 0 6px 0 0;
+	vertical-align: middle;
 }
 
 .bh-email-badge {
@@ -118,6 +140,27 @@
 	margin: 0;
 	font-size: 11px;
 	color: #757575;
+}
+
+.bh-email-log-note__user {
+	font-weight: 600;
+}
+
+/* Log level — border colour by severity. */
+.bh-email-log-note--info {
+	border-left-color: #72aee6;
+}
+
+.bh-email-log-note--notice {
+	border-left-color: #dba617;
+}
+
+.bh-email-log-note--warning {
+	border-left-color: #d68a00;
+}
+
+.bh-email-log-note--error {
+	border-left-color: #d63638;
 }
 
 .bh-email-log-note--empty, .bh-email-attachments--empty {

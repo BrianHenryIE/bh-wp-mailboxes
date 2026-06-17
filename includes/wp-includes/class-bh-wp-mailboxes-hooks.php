@@ -136,6 +136,7 @@ class BH_WP_Mailboxes_Hooks {
 		add_action( "wp_ajax_bh_wp_mailboxes_mark_read_{$post_type}", $ajax->ajax_mark_read( ... ) );
 		add_action( "wp_ajax_bh_wp_mailboxes_mark_unread_{$post_type}", $ajax->ajax_mark_unread( ... ) );
 		add_action( "wp_ajax_bh_wp_mailboxes_delete_on_server_{$post_type}", $ajax->ajax_delete_on_server( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_get_remote_status_{$post_type}", $ajax->ajax_get_remote_status( ... ) );
 	}
 
 	/**

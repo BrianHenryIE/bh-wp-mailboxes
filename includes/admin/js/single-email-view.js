@@ -32,7 +32,10 @@
 		 * @param {boolean|null} isRemoteDeleted
 		 */
 		function updateRemoteUi( isRead, isRemoteDeleted ) {
-			$( '.bh-email-remote-status' ).html( buildRemoteStatusHtml( isRead, isRemoteDeleted ) );
+			var $container = $( '.bh-email-remote-status' );
+			$container.removeClass( 'is-loading' );
+			$container.find( '.spinner' ).remove();
+			$container.find( '.bh-email-remote-badges' ).html( buildRemoteStatusHtml( isRead, isRemoteDeleted ) );
 
 			if ( isRemoteDeleted ) {
 				$( '#bh-email-mark-read, #bh-email-mark-unread, #bh-email-delete-on-server' ).closest( 'p' ).hide();
@@ -86,6 +89,28 @@
 			}
 			remoteAction( settings.deleteOnServerAction, $( this ) );
 		} );
+
+		// On load, the remote badges are shown dimmed with a spinner; fetch the live status and update them.
+		var $remoteStatus = $( '.bh-email-remote-status.is-loading' );
+		if ( $remoteStatus.length && settings.getRemoteStatusAction ) {
+			$.post(
+				settings.ajaxUrl || ajaxurl,
+				{
+					action:   settings.getRemoteStatusAction,
+					post_id:  settings.postId,
+					_wpnonce: settings.nonce,
+				},
+				function ( response ) {
+					if ( response.success && response.data ) {
+						updateRemoteUi( response.data.is_read, response.data.is_remote_deleted );
+					} else {
+						$remoteStatus.removeClass( 'is-loading' ).find( '.spinner' ).remove();
+					}
+				}
+			).fail( function () {
+				$remoteStatus.removeClass( 'is-loading' ).find( '.spinner' ).remove();
+			} );
+		}
 
 		function resizeIframe( iframe ) {
 			try {

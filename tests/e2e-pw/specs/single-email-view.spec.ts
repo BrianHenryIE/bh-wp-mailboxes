@@ -46,7 +46,7 @@ test.describe( 'Single email view', () => {
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
 		await expect( page.locator( '#submitdiv' ) ).not.toBeAttached();
-		await expect( page.locator( '#bh-email-status' ) ).toBeVisible();
+		await expect( page.locator( '#bh-email-local-status' ) ).toBeVisible();
 	} );
 
 	test( 'Email Headers postbox is present', async ( { admin, page, request } ) => {
@@ -54,6 +54,15 @@ test.describe( 'Single email view', () => {
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
 		await expect( page.locator( '#bh-email-headers' ) ).toBeVisible();
+	} );
+
+	test( 'Email Headers are rendered as a responsive grid (not a table)', async ( { admin, page, request } ) => {
+		// A body gives the stored MIME Content-Type / MIME-Version headers to display.
+		const postId = await createEmail( request, { body_plain: 'Header grid test body.' } );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		await expect( page.locator( '#bh-email-headers .bh-email-headers-grid' ) ).toBeVisible();
+		await expect( page.locator( '#bh-email-headers table' ) ).toHaveCount( 0 );
 	} );
 
 	test( 'HTML content metabox shows an iframe when email has HTML body', async ( { admin, page, request } ) => {
@@ -119,13 +128,22 @@ test.describe( 'Single email view', () => {
 	// Requirement 3: Email Status metabox title
 	// -------------------------------------------------------------------------
 
-	test( 'Email Status metabox title says "Email Status"', async ( { admin, page, request } ) => {
+	test( 'Local status metabox title says "Local status"', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		const metaboxTitle = page.locator( '#bh-email-status .postbox-header h2' );
+		const metaboxTitle = page.locator( '#bh-email-local-status .postbox-header h2' );
 		await expect( metaboxTitle ).toBeVisible();
-		await expect( metaboxTitle ).toContainText( 'Email Status' );
+		await expect( metaboxTitle ).toContainText( 'Local status' );
+	} );
+
+	test( 'Remote status metabox title says "Remote status"', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		const metaboxTitle = page.locator( '#bh-email-remote-status .postbox-header h2' );
+		await expect( metaboxTitle ).toBeVisible();
+		await expect( metaboxTitle ).toContainText( 'Remote status' );
 	} );
 
 	// -------------------------------------------------------------------------
@@ -148,32 +166,32 @@ test.describe( 'Single email view', () => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		const statusBox = page.locator( '#bh-email-status' );
+		const statusBox = page.locator( '#bh-email-local-status' );
 		await expect( statusBox ).toContainText( 'Downloaded at:' );
 		await expect( statusBox ).not.toContainText( 'Published on' );
 	} );
 
-	test( 'status metabox shows "Sent:" from the email Date header when present', async ( { admin, page, request } ) => {
+	test( 'remote status metabox shows "Sent:" from the email Date header when present', async ( { admin, page, request } ) => {
 		const dateHeader = 'Mon, 01 Jan 2024 10:30:00 +0000';
 		const postId = await createEmail( request, { date_header: dateHeader } );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		const statusBox = page.locator( '#bh-email-status' );
+		const statusBox = page.locator( '#bh-email-remote-status' );
 		await expect( statusBox ).toContainText( 'Sent:' );
 	} );
 
-	test( 'status metabox always "Sent:" even when email has no Date header', async ( { admin, page, request } ) => {
+	test( 'remote status metabox always shows "Sent:" even when email has no Date header', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		await expect( page.locator( '#bh-email-status' ) ).toContainText( 'Sent:' );
+		await expect( page.locator( '#bh-email-remote-status' ) ).toContainText( 'Sent:' );
 	} );
 
-	test( 'status metabox always shows "Updated at:"', async ( { admin, page, request } ) => {
+	test( 'local status metabox always shows "Updated at:"', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		await expect( page.locator( '#bh-email-status' ) ).toContainText( 'Updated at:' );
+		await expect( page.locator( '#bh-email-local-status' ) ).toContainText( 'Updated at:' );
 	} );
 
 	// -------------------------------------------------------------------------

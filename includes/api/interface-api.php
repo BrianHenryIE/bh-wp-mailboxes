@@ -65,8 +65,9 @@ interface API_Interface {
 	 *
 	 * @param int    $post_id The email CPT post ID.
 	 * @param string $message The note text.
+	 * @param string $level   Log level: `info`, `notice`, `warning`, or `error`.
 	 */
-	public function insert_email_log_note( int $post_id, string $message ): void;
+	public function insert_email_log_note( int $post_id, string $message, string $level = 'info' ): void;
 
 	/**
 	 * Return the email account for an email post, or null if the post/parent was deleted.
@@ -74,6 +75,16 @@ interface API_Interface {
 	 * @param BH_Email $email The email whose account to resolve.
 	 */
 	public function get_email_account_for_email( BH_Email $email ): ?BH_Email_Account;
+
+	/**
+	 * Fetch the live read status from the remote server for an email.
+	 *
+	 * Makes a remote API call via the email's provider. Returns null when the status cannot be
+	 * determined (no account, provider, or remote coordinates, or the provider cannot read status).
+	 *
+	 * @param BH_Email $email The email to query.
+	 */
+	public function get_remote_read_status( BH_Email $email ): ?bool;
 
 	/**
 	 * Return the email fetcher for a given account, or null when no provider is known.

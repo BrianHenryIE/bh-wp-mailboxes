@@ -72,6 +72,38 @@ class Single_Email_View_Ajax {
 	}
 
 	/**
+	 * Return the live remote read/deleted status for an email.
+	 *
+	 * Called on page load so the displayed status reflects the server, not just cached local meta.
+	 *
+	 * @hooked wp_ajax_bh_wp_mailboxes_get_remote_status_{emails_cpt}
+	 */
+	public function ajax_get_remote_status(): void {
+
+		if ( ! isset( $_POST['_wpnonce'], $_POST['post_id'] )
+			|| ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-remote-action' ) ) {
+			wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
+		}
+
+		$post_id = (int) $_POST['post_id'];
+
+		try {
+			$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
+		} catch ( \InvalidArgumentException $exception ) {
+			wp_send_json_error( array( 'message' => 'Invalid post.' ), 400 );
+		}
+
+		// `get_remote_read_status()` makes the live API call; deleted status has no remote query, so the
+		// local meta value is returned for it.
+		wp_send_json_success(
+			array(
+				'is_read'           => $this->api->get_remote_read_status( $email ),
+				'is_remote_deleted' => $email->is_remote_deleted,
+			)
+		);
+	}
+
+	/**
 	 * Shared AJAX handler for remote email actions.
 	 *
 	 * @param string $action One of: mark_read, mark_unread, delete_on_server.

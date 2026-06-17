@@ -434,27 +434,30 @@ class API implements API_Interface {
 				try {
 					$provider->set_is_marked_read( $email->get_remote_coordinates(), true );
 					$this->email_repository->update( $email, is_remote_read: true );
-					$this->insert_email_log_note( $post_id, 'Marked as read on server' );
+					// Reversible change → info.
+					$this->insert_email_log_note( $post_id, 'Marked as read on server', 'info' );
 				} catch ( Throwable $exception ) {
-					$this->insert_email_log_note( $post_id, 'Failed to mark as read on server.' );
+					$this->insert_email_log_note( $post_id, 'Failed to mark as read on server.', 'error' );
 				}
 				break;
 			case 'mark_unread':
 				try {
 					$provider->set_is_marked_read( $email->get_remote_coordinates(), false );
 					$this->email_repository->update( $email, is_remote_read: false );
-					$this->insert_email_log_note( $post_id, 'Marked as unread on server' );
+					// Reversible change → info.
+					$this->insert_email_log_note( $post_id, 'Marked as unread on server', 'info' );
 				} catch ( Throwable $exception ) {
-					$this->insert_email_log_note( $post_id, 'Failed to mark as unread on server.' );
+					$this->insert_email_log_note( $post_id, 'Failed to mark as unread on server.', 'error' );
 				}
 				break;
 			case 'delete_on_server':
 				try {
 					$provider->do_delete_on_server( $email->get_remote_coordinates() );
 					$this->email_repository->update( $email, is_remote_deleted: true );
-					$this->insert_email_log_note( $post_id, 'Deleted on server' );
+					// Intentional irreversible change → notice.
+					$this->insert_email_log_note( $post_id, 'Deleted on server', 'notice' );
 				} catch ( Throwable $exception ) {
-					$this->insert_email_log_note( $post_id, 'Failed delete email on server.' );
+					$this->insert_email_log_note( $post_id, 'Failed delete email on server.', 'error' );
 				}
 				break;
 		}
@@ -465,12 +468,45 @@ class API implements API_Interface {
 	 *
 	 * @param int    $post_id The email CPT post ID.
 	 * @param string $message The note text.
+	 * @param string $level   Log level: `info`, `notice`, `warning`, or `error`.
 	 */
-	public function insert_email_log_note( int $post_id, string $message ): void {
+	public function insert_email_log_note( int $post_id, string $message, string $level = 'info' ): void {
 
 		$email = $this->email_repository->find_by_post_id( $post_id );
 
-		$this->email_repository->log( $email, $message );
+		$this->email_repository->log( $email, $message, false, array(), $level );
+	}
+
+	/**
+	 * Fetch the live read status from the remote server for an email.
+	 *
+	 * @param BH_Email $email The email to query.
+	 *
+	 * @return ?bool True/false when known, null when it cannot be determined.
+	 */
+	public function get_remote_read_status( BH_Email $email ): ?bool {
+
+		$email_account = $this->get_email_account_for_email( $email );
+		if ( is_null( $email_account ) ) {
+			return null;
+		}
+
+		$provider    = $this->get_provider_for_email_account( $email_account );
+		$coordinates = $email->get_remote_coordinates();
+
+		if ( is_null( $provider ) || is_null( $coordinates ) || ! $provider->can_read_status() ) {
+			return null;
+		}
+
+		try {
+			return $provider->get_is_marked_read( $coordinates );
+		} catch ( Throwable $exception ) {
+			$this->logger->warning(
+				'Failed to fetch remote read status: ' . $exception->getMessage(),
+				array( 'post_id' => $email->get_post_id() )
+			);
+			return null;
+		}
 	}
 
 	/**
