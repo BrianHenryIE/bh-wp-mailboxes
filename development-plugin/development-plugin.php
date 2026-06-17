@@ -33,8 +33,6 @@ use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Plugins_Page;
-use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_API;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Providers\Mock_Mailbox_Fixtures_Provider;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest\Mailboxes;
@@ -109,198 +107,195 @@ $plugins_url_fix = function ( $url, $_path, $_plugin ) {
 };
 add_filter( 'plugins_url', $plugins_url_fix, 10, 3 );
 
+$on_plugins_loaded = function () {
 
-add_action(
-	'plugins_loaded',
-	function () {
+	$logger_settings = new class() implements Logger_Settings_Interface {
+		use Logger_Settings_Trait;
 
-		$logger_settings = new class() implements Logger_Settings_Interface {
-			use Logger_Settings_Trait;
+		/**
+		 * Returns the log level.
+		 */
+		public function get_log_level(): string {
+			return 'debug';
+		}
 
-			/**
-			 * Returns the log level.
-			 */
-			public function get_log_level(): string {
-				return 'debug';
-			}
+		/**
+		 * Returns the plugin slug.
+		 */
+		public function get_plugin_slug(): string {
+			return explode( '.', basename( __FILE__ ) )[0];
+		}
 
-			/**
-			 * Returns the plugin slug.
-			 */
-			public function get_plugin_slug(): string {
-				return explode( '.', basename( __FILE__ ) )[0];
-			}
-
-			/**
-			 * Returns the plugin basename.
-			 */
-			public function get_plugin_basename(): string {
-				return (string) defined( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' )
+		/**
+		 * Returns the plugin basename.
+		 */
+		public function get_plugin_basename(): string {
+			return (string) defined( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' )
 				? constant( 'BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME' )
 				: 'development-plugin/development-plugin.php';
-			}
-
-			/**
-			 * Returns the plugin display name.
-			 */
-			public function get_plugin_name(): string {
-				return 'BH WP Mailboxes Test Plugin';
-			}
-		};
-		$logger          = Logger::instance( $logger_settings );
-
-		$imap_mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {
-			use BH_WP_Mailboxes_Settings_Defaults_Trait;
-
-			/**
-			 * Returns the plugin slug.
-			 */
-			public function get_plugin_slug(): string {
-				return 'development-plugin';
-			}
-
-			/**
-			 * Returns the CPT friendly name.
-			 */
-			public function get_emails_cpt_friendly_name(): string {
-				return 'IMAP Email ENV';
-			}
-
-			/**
-			 * A friendly display name for UI.
-			 */
-			public function get_email_accounts_cpt_friendly_name(): string {
-				return 'IMAP Accounts ENV';
-			}
-		};
-		$imap_mailboxes_api      = BH_WP_Mailboxes::make( $imap_mailboxes_settings, $logger );
-		$imap_accounts           = $imap_mailboxes_api->get_email_accounts();
-
-		$imap_env_settings = new Imap()->get_mailbox_settings();
-
-		if ( ! is_null( $imap_env_settings ) && ! isset( $imap_accounts[ $imap_env_settings->get_account_email_address() ] ) ) {
-			try {
-				$imap_mailboxes_api->add_email_account(
-					email_address: $imap_env_settings->get_account_email_address(),
-					display_name: $imap_env_settings->get_account_display_friendly_name(),
-					provider_type_class: \BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::class,
-					from_address_regex_filter: null,
-					body_identifier_regex_filter: null,
-					after_download_remote_email_action: null,
-					delete_local_emails_after_n_days: 1,
-				);
-			} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
-				// Account already exists; ignore.
-			}
 		}
 
-		if ( $imap_env_settings ) {
-			add_filter(
-				'bh_wp_mailboxes_credentials',
-				function ( ?Account_Credentials_Interface $value, string $plugin_slug, BH_Email_Account $account ) use ( $imap_env_settings ) {
-					if ( $account->email_address === $imap_env_settings->get_account_email_address() ) {
-						return new Imap()->get_credentials();
-					}
+		/**
+		 * Returns the plugin display name.
+		 */
+		public function get_plugin_name(): string {
+			return 'BH WP Mailboxes Test Plugin';
+		}
+	};
+	$logger          = Logger::instance( $logger_settings );
 
-					return $value;
-				},
-				10,
-				3
+	$imap_mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {
+		use BH_WP_Mailboxes_Settings_Defaults_Trait;
+
+		/**
+		 * Returns the plugin slug.
+		 */
+		public function get_plugin_slug(): string {
+			return 'development-plugin';
+		}
+
+		/**
+		 * Returns the CPT friendly name.
+		 */
+		public function get_emails_cpt_friendly_name(): string {
+			return 'IMAP Email ENV';
+		}
+
+		/**
+		 * A friendly display name for UI.
+		 */
+		public function get_email_accounts_cpt_friendly_name(): string {
+			return 'IMAP Accounts ENV';
+		}
+	};
+	$imap_mailboxes_api      = BH_WP_Mailboxes::make( $imap_mailboxes_settings, $logger );
+	$imap_accounts           = $imap_mailboxes_api->get_email_accounts();
+
+	$imap_env_settings = new Imap()->get_mailbox_settings();
+
+	if ( ! is_null( $imap_env_settings ) && ! isset( $imap_accounts[ $imap_env_settings->get_account_email_address() ] ) ) {
+		try {
+			$imap_mailboxes_api->add_email_account(
+				email_address: $imap_env_settings->get_account_email_address(),
+				display_name: $imap_env_settings->get_account_display_friendly_name(),
+				provider_type_class: \BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::class,
+				from_address_regex_filter: null,
+				body_identifier_regex_filter: null,
+				after_download_remote_email_action: null,
+				delete_local_emails_after_n_days: 1,
 			);
+		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+			// Account already exists; ignore.
 		}
-
-		$fixtures_mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {
-			use BH_WP_Mailboxes_Settings_Defaults_Trait;
-
-			/**
-			 * Returns the plugin slug.
-			 */
-			public function get_plugin_slug(): string {
-				return 'development-plugin';
-			}
-
-			/**
-			 * Returns the CPT friendly name.
-			 */
-			public function get_emails_cpt_friendly_name(): string {
-				return 'Fixtures Email';
-			}
-
-			/**
-			 * A friendly display name for UI.
-			 */
-			public function get_email_accounts_cpt_friendly_name(): string {
-				return 'Fixtures Accounts';
-			}
-		};
-		$fixtures_mailboxes_api      = BH_WP_Mailboxes::make( $fixtures_mailboxes_settings, $logger );
-		$fixtures_mailboxes_accounts = $fixtures_mailboxes_api->get_email_accounts();
-
-		$fixtures_settings = new class() implements Email_Account_Settings_Interface {
-			use Email_Account_Settings_Defaults_Trait;
-
-			/**
-			 * The fixtures account email address.
-			 */
-			public function get_account_email_address(): string {
-				return 'fixture@example.com';
-			}
-		};
-
-		if ( ! isset( $fixtures_mailboxes_accounts[ $fixtures_settings->get_account_email_address() ] ) ) {
-			try {
-				$fixtures_mailboxes_api->add_email_account(
-					email_address: $fixtures_settings->get_account_email_address(),
-					display_name: $fixtures_settings->get_account_display_friendly_name(),
-					provider_type_class: Mock_Mailbox_Fixtures_Provider::class,
-					from_address_regex_filter: null,
-					body_identifier_regex_filter: null,
-					after_download_remote_email_action: null,
-					delete_local_emails_after_n_days: 1,
-				);
-			} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
-				// Account already exists; ignore.
-			}
-		}
-
-		// Add a top-level "Mailboxes" menu with a submenu linking to the emails and accounts list for each
-		// configured mailbox (the IMAP/ENV mailbox and the fixtures mailbox).
-		$add_menus = function () use ( $fixtures_mailboxes_settings, $imap_mailboxes_settings ) {
-
-			// The top-level menu points at the IMAP emails list, so clicking "Mailboxes" lands somewhere useful.
-			$parent_slug = 'edit.php?post_type=' . $imap_mailboxes_settings->get_emails_cpt_underscored_20();
-
-			add_menu_page(
-				'Mailboxes',
-				'Mailboxes',
-				'manage_options',
-				$parent_slug,
-				'',
-				'dashicons-email',
-				25
-			);
-
-			foreach ( array( $imap_mailboxes_settings, $fixtures_mailboxes_settings ) as $mailbox_settings ) {
-				add_submenu_page(
-					$parent_slug,
-					$mailbox_settings->get_emails_cpt_friendly_name(),
-					$mailbox_settings->get_emails_cpt_friendly_name(),
-					'manage_options',
-					'edit.php?post_type=' . $mailbox_settings->get_emails_cpt_underscored_20()
-				);
-
-				add_submenu_page(
-					$parent_slug,
-					$mailbox_settings->get_email_accounts_cpt_friendly_name(),
-					$mailbox_settings->get_email_accounts_cpt_friendly_name(),
-					'manage_options',
-					'edit.php?post_type=' . $mailbox_settings->get_email_accounts_cpt_underscored_20()
-				);
-			}
-		};
-		add_action( 'admin_menu', $add_menus );
 	}
-);
+
+	if ( $imap_env_settings ) {
+		add_filter(
+			'bh_wp_mailboxes_credentials',
+			function ( ?Account_Credentials_Interface $value, string $plugin_slug, BH_Email_Account $account ) use ( $imap_env_settings ) {
+				if ( $account->email_address === $imap_env_settings->get_account_email_address() ) {
+					return new Imap()->get_credentials();
+				}
+
+				return $value;
+			},
+			10,
+			3
+		);
+	}
+
+	$fixtures_mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {
+		use BH_WP_Mailboxes_Settings_Defaults_Trait;
+
+		/**
+		 * Returns the plugin slug.
+		 */
+		public function get_plugin_slug(): string {
+			return 'development-plugin';
+		}
+
+		/**
+		 * Returns the CPT friendly name.
+		 */
+		public function get_emails_cpt_friendly_name(): string {
+			return 'Fixtures Email';
+		}
+
+		/**
+		 * A friendly display name for UI.
+		 */
+		public function get_email_accounts_cpt_friendly_name(): string {
+			return 'Fixtures Accounts';
+		}
+	};
+	$fixtures_mailboxes_api      = BH_WP_Mailboxes::make( $fixtures_mailboxes_settings, $logger );
+	$fixtures_mailboxes_accounts = $fixtures_mailboxes_api->get_email_accounts();
+
+	$fixtures_settings = new class() implements Email_Account_Settings_Interface {
+		use Email_Account_Settings_Defaults_Trait;
+
+		/**
+		 * The fixtures account email address.
+		 */
+		public function get_account_email_address(): string {
+			return 'fixture@example.com';
+		}
+	};
+
+	if ( ! isset( $fixtures_mailboxes_accounts[ $fixtures_settings->get_account_email_address() ] ) ) {
+		try {
+			$fixtures_mailboxes_api->add_email_account(
+				email_address: $fixtures_settings->get_account_email_address(),
+				display_name: $fixtures_settings->get_account_display_friendly_name(),
+				provider_type_class: Mock_Mailbox_Fixtures_Provider::class,
+				from_address_regex_filter: null,
+				body_identifier_regex_filter: null,
+				after_download_remote_email_action: null,
+				delete_local_emails_after_n_days: 1,
+			);
+		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+			// Account already exists; ignore.
+		}
+	}
+
+	// Add a top-level "Mailboxes" menu with a submenu linking to the emails and accounts list for each
+	// configured mailbox (the IMAP/ENV mailbox and the fixtures mailbox).
+	$add_menus = function () use ( $fixtures_mailboxes_settings, $imap_mailboxes_settings ) {
+
+		// The top-level menu points at the IMAP emails list, so clicking "Mailboxes" lands somewhere useful.
+		$parent_slug = 'edit.php?post_type=' . $imap_mailboxes_settings->get_emails_cpt_underscored_20();
+
+		add_menu_page(
+			'Mailboxes',
+			'Mailboxes',
+			'manage_options',
+			$parent_slug,
+			'',
+			'dashicons-email',
+			25
+		);
+
+		foreach ( array( $imap_mailboxes_settings, $fixtures_mailboxes_settings ) as $mailbox_settings ) {
+			add_submenu_page(
+				$parent_slug,
+				$mailbox_settings->get_emails_cpt_friendly_name(),
+				$mailbox_settings->get_emails_cpt_friendly_name(),
+				'manage_options',
+				'edit.php?post_type=' . $mailbox_settings->get_emails_cpt_underscored_20()
+			);
+
+			add_submenu_page(
+				$parent_slug,
+				$mailbox_settings->get_email_accounts_cpt_friendly_name(),
+				$mailbox_settings->get_email_accounts_cpt_friendly_name(),
+				'manage_options',
+				'edit.php?post_type=' . $mailbox_settings->get_email_accounts_cpt_underscored_20()
+			);
+		}
+	};
+	add_action( 'admin_menu', $add_menus );
+};
+add_action( 'plugins_loaded', $on_plugins_loaded );
 
 /**
  * Fix for mapped directories. I.e. vendor is not under `wp-content/plugins/development-plugins`.
