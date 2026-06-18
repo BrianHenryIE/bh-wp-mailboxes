@@ -433,6 +433,39 @@ class API implements API_Interface {
 	}
 
 	/**
+	 * Apply the account's credentials to a provider that requires them.
+	 *
+	 * Resolves the credentials via the `bh_wp_mailboxes_credentials` filter (args: value, plugin_slug, account)
+	 * and sets them on the provider. No-op for providers that do not implement {@see Requires_Credentials}.
+	 *
+	 * @param Email_Provider_Interface $provider      The provider to credential.
+	 * @param BH_Email_Account         $email_account The account whose credentials to resolve.
+	 *
+	 * @throws \InvalidArgumentException When the filter does not return an Account_Credentials_Interface.
+	 */
+	protected function set_provider_credentials( Email_Provider_Interface $provider, BH_Email_Account $email_account ): void {
+
+		if ( ! ( $provider instanceof Requires_Credentials ) ) {
+			return;
+		}
+
+		$plugin_slug = $this->settings->get_plugin_slug();
+
+		/**
+		 * Resolve the account's credentials.
+		 *
+		 * @see API::fetch_for_account()
+		 */
+		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $email_account );
+
+		if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
+			throw new \InvalidArgumentException( 'Credentials were not Account_Credentials_Interface' );
+		}
+
+		$provider->set_credentials( $credentials );
+	}
+
+	/**
 	 * Shared implementation for the three remote email actions.
 	 *
 	 * Fires filter `bh_wp_mailboxes_remote_email_action_{$action}` with the email and resolved mailbox
@@ -459,23 +492,7 @@ class API implements API_Interface {
 			throw new Exception( 'No provider found for ' . esc_html( $email_account->display_name ) );
 		}
 
-		if ( $provider instanceof Requires_Credentials ) {
-
-			$plugin_slug = $this->settings->get_plugin_slug();
-
-			/**
-			 * Resolve the account's credentials. Args match the filter elsewhere: (value, plugin_slug, account).
-			 *
-			 * @see API::fetch_for_account()
-			 */
-			$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $email_account );
-
-			if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
-				throw new \InvalidArgumentException( 'Credentials were not Account_Credentials_Interface' );
-			}
-
-			$provider->set_credentials( $credentials );
-		}
+		$this->set_provider_credentials( $provider, $email_account );
 
 		if ( is_null( $email->get_remote_coordinates() ) ) {
 			throw new Exception( 'No remote coordinates found for ' . esc_html( $email_account->display_name ) );
@@ -551,6 +568,7 @@ class API implements API_Interface {
 		}
 
 		try {
+			$this->set_provider_credentials( $provider, $email_account );
 			return $provider->get_is_marked_read( $coordinates );
 		} catch ( Throwable $exception ) {
 			$this->logger->warning(

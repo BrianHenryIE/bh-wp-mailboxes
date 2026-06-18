@@ -211,6 +211,8 @@
 .bh-email-status__options li {
 	margin: 0 0 2px;
 	padding: 1px 6px;
+	/* Anchor the current-status ::after cloud icon to the option row (not a distant positioned ancestor). */
+	position: relative;
 }
 
 /* The radio matching the current server status gets a cloud icon to its right (Remote Status metabox). */

@@ -215,4 +215,26 @@ class BH_Email_CPT {
 
 		return $data;
 	}
+
+	/**
+	 * Disable autosave on the email edit screen.
+	 *
+	 * Emails are immutable copies of received messages, so there is nothing to autosave; dequeuing the
+	 * script prevents pointless autosave/heartbeat requests against these posts.
+	 *
+	 * @hooked admin_enqueue_scripts
+	 */
+	public function disable_autosave(): void {
+
+		$screen = get_current_screen();
+		if ( is_null( $screen ) ) {
+			return;
+		}
+
+		if ( $this->settings->get_emails_cpt_underscored_20() !== $screen->post_type ) {
+			return;
+		}
+
+		wp_dequeue_script( 'autosave' );
+	}
 }
