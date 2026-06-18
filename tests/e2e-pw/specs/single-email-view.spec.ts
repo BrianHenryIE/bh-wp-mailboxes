@@ -461,4 +461,36 @@ test.describe( 'Single email view', () => {
 		await updateAndReload( 'read', 'mark_read' );
 		await updateAndReload( 'unread', 'mark_unread' );
 	} );
+
+	test( 'a remote action updates the Email Log immediately, without a page reload', async ( { admin, page, request } ) => {
+		const accountRes = await request.post( `${ DEV_REST }/accounts`, {
+			data: { email_address: `log-update-${ Date.now() }@example.com` },
+		} );
+		expect( accountRes.status() ).toBe( 201 );
+		const accountId = ( await accountRes.json() ).post_id as number;
+
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		const checkResponse = page.waitForResponse(
+			( res ) =>
+				res.url().includes( 'admin-ajax.php' ) &&
+				( res.request().postData() ?? '' ).includes( `account_post_id=${ accountId }` )
+		);
+		await page.locator( `.bh-check-account[data-account-id="${ accountId }"]` ).click( { force: true } );
+		const emailId = ( await ( await checkResponse ).json() ).data.new_email_ids[ 0 ] as number;
+		expect( emailId ).toBeTruthy();
+
+		await admin.visitAdminPage( 'post.php', `post=${ emailId }&action=edit` );
+		await expect( page.locator( '#bh-email-read-status-options' ) ).not.toHaveClass( /is-loading/ );
+
+		const log = page.locator( '#bh-email-log-notes' );
+		await expect( log ).not.toContainText( 'Marked as read on server' );
+
+		// Mark read + Update. The log must reflect the new entry without navigating/reloading.
+		const urlBefore = page.url();
+		await page.locator( 'input[name="bh_email_remote_read"][value="read"]' ).check( { force: true } );
+		await page.locator( '#bh-email-remote-save' ).click( { force: true } );
+
+		await expect( log ).toContainText( 'Marked as read on server', { timeout: 10_000 } );
+		expect( page.url() ).toBe( urlBefore );
+	} );
 } );

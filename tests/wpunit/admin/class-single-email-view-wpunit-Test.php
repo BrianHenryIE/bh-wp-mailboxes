@@ -557,6 +557,41 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
+	 * When the email is deleted on the server, the Status says "Deleted" and the radios are not shown.
+	 *
+	 * @covers ::render_remote_status_metabox
+	 */
+	public function test_render_remote_status_metabox_shows_deleted_when_deleted(): void {
+
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+
+		$this->register_cpt();
+
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+		update_post_meta( $post_id, 'is_remote_deleted', 'yes' );
+		$post = get_post( $post_id );
+
+		$provider_mock = \Mockery::mock( Email_Provider_Interface::class );
+		$provider_mock->allows( 'can_mark_read' )->andReturnTrue();
+		$provider_mock->allows( 'can_delete_on_server' )->andReturnTrue();
+		$provider_mock->allows( 'can_read_status' )->andReturnTrue();
+
+		$api_mock = $this->make_api( provider_mock: $provider_mock );
+		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
+
+		ob_start();
+		$sut->render_remote_status_metabox( $post );
+		$html = (string) ob_get_clean();
+
+		// The Status field shows "Deleted" (visible, not the hidden class) and the radios are absent.
+		$this->assertStringContainsString( 'id="bh-email-remote-deleted" class="bh-email-status__deleted"', $html );
+		$this->assertStringContainsString( 'Deleted', $html );
+		$this->assertStringNotContainsString( 'bh-email-read-status-options', $html );
+	}
+
+	/**
 	 * Requirement 11: no remote buttons shown when no mailbox is resolved (no taxonomy term on post).
 	 *
 	 * @covers ::render_local_status_metabox

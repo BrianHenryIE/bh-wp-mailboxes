@@ -42,6 +42,7 @@
 			if ( isRemoteDeleted ) {
 				// Nothing further can be changed once the email is deleted on the server.
 				$( '#bh-email-read-status-options, #bh-email-remote-publishing-actions' ).hide();
+				$( '#bh-email-remote-deleted' ).show();
 				return;
 			}
 
@@ -54,6 +55,17 @@
 				$input.prop( 'checked', true );
 				$input.closest( '.bh-email-status__option' ).addClass( 'bh-email-status__option--current' );
 			}
+		}
+
+		// Re-fetch the Email Log metabox so new entries (including a failed remote action) appear without
+		// a page reload.
+		function refreshLog() {
+			$.get( location.href, function ( html ) {
+				var $fresh = $( html ).find( '#bh-email-log-notes .bh-email-log-notes' );
+				if ( $fresh.length ) {
+					$( '#bh-email-log-notes .bh-email-log-notes' ).replaceWith( $fresh );
+				}
+			} );
 		}
 
 		function remoteAction( action, $btn ) {
@@ -70,6 +82,8 @@
 					if ( response.success && response.data ) {
 						updateRemoteUi( response.data.is_read, response.data.is_remote_deleted );
 					}
+					// The action records a log entry (success or failure); reflect it immediately.
+					refreshLog();
 					$btn.prop( 'disabled', false );
 				}
 			).fail( function () {

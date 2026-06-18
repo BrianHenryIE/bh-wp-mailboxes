@@ -354,13 +354,22 @@ class Single_Email_View {
 			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $unread_current/$unread_checked are constant attributes.
 			echo '<li class="bh-email-status__option' . esc_attr( $unread_current ) . '"><label><input type="radio" name="bh_email_remote_read" value="unread"' . $unread_checked . '> ' . esc_html__( 'Unread on server', 'bh-wp-mailboxes' ) . '</label></li>';
 			echo '</ul>';
-		} elseif ( $provider?->can_read_status() ) {
-			// Provider can read but not change the status (e.g. the email is deleted on the server): show a badge.
+		} elseif ( ! $email->is_remote_deleted && $provider?->can_read_status() ) {
+			// Provider can read but not change the status: show a read/unread badge.
 			$badges = $this->get_remote_status_html( $is_read, $deleted_on_server );
 			echo '<div class="bh-email-remote-status is-loading">';
 			echo '<span class="spinner is-active" aria-hidden="true"></span>';
 			echo '<span class="bh-email-remote-badges">' . wp_kses_post( $badges ) . '</span>';
 			echo '</div>';
+		}
+
+		// "Status: Deleted" — shown when the email is deleted on the server. Rendered (hidden until then)
+		// whenever a provider is resolved, so the JS can reveal it after a delete action or live refresh.
+		if ( null !== $provider ) {
+			$deleted_class = $email->is_remote_deleted ? '' : ' bh-email-hidden';
+			echo '<p id="bh-email-remote-deleted" class="bh-email-status__deleted' . esc_attr( $deleted_class ) . '">'
+				. '<span class="bh-email-field__icon bh-email-field__icon--read-status" aria-hidden="true"></span>'
+				. esc_html__( 'Status:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html__( 'Deleted', 'bh-wp-mailboxes' ) . '</strong></p>';
 		}
 
 		echo '</div>'; // .bh-email-status-box__fields
