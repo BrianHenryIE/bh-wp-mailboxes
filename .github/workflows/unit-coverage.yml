@@ -42,7 +42,7 @@ jobs:
         php: [ '8.4' ]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Value already defaults to true, but `persist-credentials` is required to push new commits to the repository.
           persist-credentials: true
@@ -50,7 +50,7 @@ jobs:
 
       - name: Checkout GitHub Pages branch for code coverage report
         if: ${{ matrix.php == env.COVERAGE_PHP_VERSION }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: gh-pages
           path: gh-pages
