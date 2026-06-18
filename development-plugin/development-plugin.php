@@ -185,18 +185,13 @@ $on_plugins_loaded = function () {
 	}
 
 	if ( $imap_env_settings ) {
-		add_filter(
-			'bh_wp_mailboxes_credentials',
-			function ( ?Account_Credentials_Interface $value, string $plugin_slug, BH_Email_Account $account ) use ( $imap_env_settings ) {
-				if ( $account->email_address === $imap_env_settings->get_account_email_address() ) {
-					return new Imap()->get_credentials();
-				}
-
-				return $value;
-			},
-			10,
-			3
-		);
+		$imap_credentials = function ( mixed $value, mixed $plugin_slug, mixed $account ) use ( $imap_env_settings ) {
+			if ( $account->email_address === $imap_env_settings->get_account_email_address() ) {
+				return new Imap()->get_credentials();
+			}
+			return $value;
+		};
+		add_filter( 'bh_wp_mailboxes_credentials', $imap_credentials, 10, 3 );
 	}
 
 	$fixtures_mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {

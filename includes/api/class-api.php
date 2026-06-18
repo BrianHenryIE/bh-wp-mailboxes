@@ -324,7 +324,8 @@ class API implements API_Interface {
 		}
 
 		if ( $provider instanceof Requires_Credentials ) {
-			$credentials = $credentials ?? apply_filters( 'bh_wp_mailboxes_credentials', null, $account );
+			$plugin_slug = $this->settings->get_plugin_slug();
+			$credentials = $credentials ?? apply_filters( 'bh_wp_mailboxes_credentials', $plugin_slug, null, $account );
 
 			if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
 				return new Test_Connection_Result( success: false, message: 'No credentials found for ' . $account->display_name . '.' );
@@ -456,6 +457,24 @@ class API implements API_Interface {
 
 		if ( is_null( $provider ) ) {
 			throw new Exception( 'No provider found for ' . esc_html( $email_account->display_name ) );
+		}
+
+		if ( $provider instanceof Requires_Credentials ) {
+
+			$plugin_slug = $this->settings->get_plugin_slug();
+
+			/**
+			 * Resolve the account's credentials. Args match the filter elsewhere: (value, plugin_slug, account).
+			 *
+			 * @see API::fetch_for_account()
+			 */
+			$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $email_account );
+
+			if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
+				throw new \InvalidArgumentException( 'Credentials were not Account_Credentials_Interface' );
+			}
+
+			$provider->set_credentials( $credentials );
 		}
 
 		if ( is_null( $email->get_remote_coordinates() ) ) {

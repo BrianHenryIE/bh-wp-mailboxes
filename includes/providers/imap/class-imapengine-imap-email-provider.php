@@ -270,6 +270,8 @@ class ImapEngine_Imap_Email_Provider implements Email_Provider_Interface, Requir
 	 */
 	public function set_is_marked_read( Remote_Email_Coordinates $coordinates, bool $is_read = true ): void {
 
+		$this->mailbox->connect();
+
 		$message = $this->find_message_by_uid( $coordinates )
 			?? $this->find_message_by_message_id( $coordinates->message_id );
 
