@@ -223,7 +223,8 @@ class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface {
 	public function get_is_marked_read( Remote_Email_Coordinates $coordinates ): bool {
 
 		$post_id = $this->get_post_id_for_coordinates( $coordinates );
-		return (bool) $this->meta_filter( null, $post_id, 'is_remote_read' );
+		// meta_filter returns 'yes' (read), 'no' (unread) or null; only 'yes' means read.
+		return 'yes' === $this->meta_filter( null, $post_id, 'is_remote_read' );
 	}
 
 	/**

@@ -319,37 +319,70 @@ class Single_Email_View {
 
 		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 
+		$can_mark_read = (bool) $provider?->can_mark_read() && ! $email->is_remote_deleted;
+		$can_delete    = (bool) $provider?->can_delete_on_server() && ! $email->is_remote_deleted;
+
+		echo '<div class="submitbox" id="bh-email-remote-status-box">';
+		echo '<div class="bh-email-status-box__fields">';
+
 		// Sent: the email "Date" header. The label is plain; the value is bold.
 		$sent = $email->sent_at ? wp_date( $date_format, $email->sent_at->getTimestamp() ) : '';
 		echo '<p><span class="bh-email-field__icon bh-email-field__icon--datetime" aria-hidden="true"></span>'
 			. esc_html__( 'Sent:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( (string) $sent ) . '</strong></p>';
 
-		if ( $provider?->can_read_status() ) {
+		// Account: the mailbox account this email belongs to.
+		if ( $email_account instanceof \BrianHenryIE\WP_Mailboxes\BH_Email_Account ) {
+			echo '<p><span class="bh-email-field__icon bh-email-field__icon--mailbox" aria-hidden="true"></span>'
+				. esc_html__( 'Account:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( $email_account->display_name ) . '</strong></p>';
+		}
+
+		if ( $can_mark_read ) {
+			// "Status" as a radio select; the current server status is highlighted. The JS keeps the
+			// highlight in sync with the live status (on-load refresh) and after a save.
+			$read_checked   = true === $is_read ? ' checked="checked"' : '';
+			$unread_checked = false === $is_read ? ' checked="checked"' : '';
+			$read_current   = true === $is_read ? ' bh-email-status__option--current' : '';
+			$unread_current = false === $is_read ? ' bh-email-status__option--current' : '';
+			// Inside this branch $provider is guaranteed non-null (can_mark_read was true).
+			$options_loading = $provider->can_read_status() ? ' is-loading' : '';
+
+			echo '<p class="bh-email-status__label"><span class="bh-email-field__icon bh-email-field__icon--read-status" aria-hidden="true"></span>'
+				. esc_html__( 'Status', 'bh-wp-mailboxes' ) . '</p>';
+			echo '<ul class="bh-email-status__options' . esc_attr( $options_loading ) . '" id="bh-email-read-status-options">';
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $read_current/$read_checked are constant attributes.
+			echo '<li class="bh-email-status__option' . esc_attr( $read_current ) . '"><label><input type="radio" name="bh_email_remote_read" value="read"' . $read_checked . '> ' . esc_html__( 'Read on server', 'bh-wp-mailboxes' ) . '</label></li>';
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $unread_current/$unread_checked are constant attributes.
+			echo '<li class="bh-email-status__option' . esc_attr( $unread_current ) . '"><label><input type="radio" name="bh_email_remote_read" value="unread"' . $unread_checked . '> ' . esc_html__( 'Unread on server', 'bh-wp-mailboxes' ) . '</label></li>';
+			echo '</ul>';
+		} elseif ( $provider?->can_read_status() ) {
+			// Provider can read but not change the status (e.g. the email is deleted on the server): show a badge.
 			$badges = $this->get_remote_status_html( $is_read, $deleted_on_server );
-			// `is-loading` dims the badges and the spinner indicates the live refresh in progress.
 			echo '<div class="bh-email-remote-status is-loading">';
 			echo '<span class="spinner is-active" aria-hidden="true"></span>';
 			echo '<span class="bh-email-remote-badges">' . wp_kses_post( $badges ) . '</span>';
 			echo '</div>';
 		}
 
-		// Remote read/unread buttons — shown only when the mailbox supports changing read status.
-		// Both are rendered (the inactive one hidden); the JS reveals the relevant one based on the
-		// live status from the on-load refresh (see updateRemoteUi() in single-email-view.js). This is
-		// why a "Mark as unread on server" button appears once the email shows as read on the server.
-		if ( $provider?->can_mark_read() && ! $email->is_remote_deleted ) {
-			$mark_read_class   = 'bh-email-mark-read-action' . ( $is_read ? ' bh-email-hidden' : '' );
-			$mark_unread_class = 'bh-email-mark-unread-action' . ( $is_read ? '' : ' bh-email-hidden' );
+		echo '</div>'; // .bh-email-status-box__fields
 
-			echo '<p class="' . esc_attr( $mark_read_class ) . '"><button id="bh-email-mark-read" class="button">'
-				. esc_html__( 'Mark as read on server', 'bh-wp-mailboxes' ) . '</button></p>';
-			echo '<p class="' . esc_attr( $mark_unread_class ) . '"><button id="bh-email-mark-unread" class="button">'
-				. esc_html__( 'Mark as unread on server', 'bh-wp-mailboxes' ) . '</button></p>';
+		// Footer: red "Delete on server" link (left) + Save (right), on a grey bar like the Local Status box.
+		if ( $can_mark_read || $can_delete ) {
+			echo '<div class="bh-email-submit-footer" id="bh-email-remote-publishing-actions">';
+			if ( $can_delete ) {
+				echo '<div class="bh-email-delete-action"><a id="bh-email-delete-on-server" class="submitdelete deletion" href="#">'
+					. esc_html__( 'Delete on server', 'bh-wp-mailboxes' ) . '</a></div>';
+			}
+			if ( $can_mark_read ) {
+				echo '<div class="bh-email-publishing-action">';
+				// "Update" rather than "Save" — this changes the read state on the server, it doesn't save the post.
+				submit_button( __( 'Update', 'bh-wp-mailboxes' ), 'primary', 'bh-email-remote-save', false );
+				echo '</div>';
+			}
+			echo '<div class="clear"></div>';
+			echo '</div>';
 		}
 
-		if ( $provider?->can_delete_on_server() && ! $email->is_remote_deleted ) {
-			echo '<p><button id="bh-email-delete-on-server" class="button button-link-delete">' . esc_html__( 'Delete on server', 'bh-wp-mailboxes' ) . '</button></p>';
-		}
+		echo '</div>'; // .submitbox
 	}
 
 	/**
@@ -425,7 +458,7 @@ class Single_Email_View {
 			return;
 		}
 
-		$srcdoc = '<pre style="white-space:pre-wrap;word-break:break-word;font-family:monospace;margin:0;padding:12px;">' . esc_html( $body_plain_text ) . '</pre>';
+		$srcdoc = '<pre style="white-space:pre-wrap;word-break:break-word;font-family:monospace;margin:0;padding:0px;">' . esc_html( $body_plain_text ) . '</pre>';
 		echo '<iframe class="bh-email-plain-body" srcdoc="' . esc_attr( $srcdoc ) . '" sandbox="allow-same-origin" style="width:100%;border:0;min-height:200px;" title="' . esc_attr__( 'Email plain text content', 'bh-wp-mailboxes' ) . '"></iframe>';
 	}
 

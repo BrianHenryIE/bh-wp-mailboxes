@@ -411,4 +411,54 @@ test.describe( 'Single email view', () => {
 		await expect( log ).toContainText( 'Status changed', { timeout: 10_000 } );
 		await expect( log ).toContainText( 'bh_email_processed' );
 	} );
+
+	test( 'remote read status: changing the radio and clicking Update persists across reload', async ( { admin, page, request } ) => {
+		// An account using the fixtures provider (which supports marking read) is needed so the
+		// single-email view shows the read-status radios. Fetch emails for it so they are linked to it.
+		const accountRes = await request.post( `${ DEV_REST }/accounts`, {
+			data: { email_address: `remote-update-${ Date.now() }@example.com` },
+		} );
+		expect( accountRes.status() ).toBe( 201 );
+		const accountId = ( await accountRes.json() ).post_id as number;
+
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		const checkResponse = page.waitForResponse(
+			( res ) =>
+				res.url().includes( 'admin-ajax.php' ) &&
+				( res.request().postData() ?? '' ).includes( `account_post_id=${ accountId }` )
+		);
+		await page.locator( `.bh-check-account[data-account-id="${ accountId }"]` ).click( { force: true } );
+		const checkBody = await ( await checkResponse ).json();
+		const emailId = checkBody.data.new_email_ids[ 0 ] as number;
+		expect( emailId ).toBeTruthy();
+
+		// Open the fetched email and wait for the on-load remote-status refresh to settle.
+		const openEmail = async () => {
+			await admin.visitAdminPage( 'post.php', `post=${ emailId }&action=edit` );
+			const options = page.locator( '#bh-email-read-status-options' );
+			await expect( options ).toBeAttached();
+			await expect( options ).not.toHaveClass( /is-loading/ );
+		};
+
+		// Update the read status through both states and confirm each sticks after a reload. This is
+		// independent of the (shared) initial state, proving the Update button persists the change.
+		const updateAndReload = async ( value: 'read' | 'unread', actionFragment: string ) => {
+			await openEmail();
+			await page.locator( `input[name="bh_email_remote_read"][value="${ value }"]` ).check( { force: true } );
+			const markResponse = page.waitForResponse(
+				( res ) =>
+					res.url().includes( 'admin-ajax.php' ) &&
+					( res.request().postData() ?? '' ).includes( actionFragment )
+			);
+			await page.locator( '#bh-email-remote-save' ).click( { force: true } );
+			await markResponse;
+
+			await openEmail();
+			await expect( page.locator( `input[name="bh_email_remote_read"][value="${ value }"]` ) ).toBeChecked();
+		};
+
+		// "mark_unread" contains "mark_", but only the read action contains "mark_read".
+		await updateAndReload( 'read', 'mark_read' );
+		await updateAndReload( 'unread', 'mark_unread' );
+	} );
 } );

@@ -411,11 +411,11 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * Requirement 10: "Read on server" badge shown when bh_email_is_read meta is truthy.
+	 * The current server status (read) is shown by highlighting its radio option.
 	 *
-	 * @covers ::render_local_status_metabox
+	 * @covers ::render_remote_status_metabox
 	 */
-	public function test_render_local_status_metabox_shows_read_badge_when_is_read_meta_set(): void {
+	public function test_render_remote_status_metabox_highlights_read_when_read(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
@@ -433,16 +433,20 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
-		$this->assertStringContainsString( 'bh-email-badge--read', $html );
 		$this->assertStringContainsString( 'Read on server', $html );
+		$this->assertMatchesRegularExpression(
+			'/bh-email-status__option--current"><label><input[^>]*value="read"/',
+			$html,
+			'The "Read on server" radio should be highlighted as the current status.'
+		);
 	}
 
 	/**
-	 * Requirement 10: "Unread on server" badge shown when bh_email_is_read meta is explicitly false.
+	 * The current server status (unread) is shown by highlighting its radio option.
 	 *
-	 * @covers ::render_local_status_metabox
+	 * @covers ::render_remote_status_metabox
 	 */
-	public function test_render_local_status_metabox_shows_unread_badge_when_is_read_meta_is_false(): void {
+	public function test_render_remote_status_metabox_highlights_unread_when_unread(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
@@ -451,7 +455,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$bh_email = BH_Email_Fixture::make_from_file();
 		$post_id  = $bh_email->post_id;
-		update_post_meta( $post_id, 'bh_email_is_read', '0' );
+		update_post_meta( $post_id, 'is_remote_read', 'no' );
 		$post = get_post( $post_id );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
@@ -460,8 +464,12 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
-		$this->assertStringContainsString( 'bh-email-badge--unread', $html );
 		$this->assertStringContainsString( 'Unread on server', $html );
+		$this->assertMatchesRegularExpression(
+			'/bh-email-status__option--current"><label><input[^>]*value="unread"/',
+			$html,
+			'The "Unread on server" radio should be highlighted as the current status.'
+		);
 	}
 
 	/**
@@ -497,11 +505,11 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * Requirement 11: mark-read button shown when the resolved mailbox reports can_mark_read() = true.
+	 * Read status is a radio select (Read/Unread on server) with a Save button when the mailbox can mark read.
 	 *
-	 * @covers ::render_local_status_metabox
+	 * @covers ::render_remote_status_metabox
 	 */
-	public function test_render_local_status_metabox_shows_mark_read_button_when_mailbox_can_mark_read(): void {
+	public function test_render_remote_status_metabox_shows_read_status_radios(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
@@ -511,8 +519,6 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$bh_email = BH_Email_Fixture::make_from_file();
 		$post_id  = $bh_email->post_id;
 
-		// Email is unread so "Mark as read" is shown; "Mark as unread" is also rendered (hidden) so the
-		// JS can reveal it once the server reports the email as read.
 		update_post_meta( $post_id, 'bh_email_is_read', '0' );
 		$post = get_post( $post_id );
 
@@ -541,8 +547,13 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
-		$this->assertStringContainsString( 'bh-email-mark-read', $html, '"Mark as read on server" button should appear' );
-		$this->assertStringContainsString( 'bh-email-mark-unread', $html, '"Mark as unread on server" button should also be rendered (hidden) when the provider can mark read' );
+		$this->assertStringContainsString( 'name="bh_email_remote_read"', $html, 'Read status should be a radio group.' );
+		$this->assertStringContainsString( 'Read on server', $html );
+		$this->assertStringContainsString( 'Unread on server', $html );
+		$this->assertStringContainsString( 'bh-email-remote-save', $html, 'An Update button should be present for the read status.' );
+		$this->assertStringContainsString( 'value="Update"', $html, 'The remote status button should be labelled "Update".' );
+		$this->assertStringContainsString( 'bh-email-field__icon--read-status', $html, 'The Status label should have its icon.' );
+		$this->assertStringContainsString( 'Account:', $html, 'The account name should be shown.' );
 	}
 
 	/**
