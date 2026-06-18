@@ -55,6 +55,10 @@
             "type": "git"
         }
     },
+    "suggest": {
+        "brianhenryie/bh-wp-private-uploads": "Enables attachments.",
+        "google/apiclient": "Enables Gmail API support via console.cloud.google.com (Google Developers console)."
+    },
     "require": {
         "php": ">=8.4",
         "ext-json": "*",
