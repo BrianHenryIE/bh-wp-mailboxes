@@ -58,7 +58,7 @@
     "require": {
         "php": ">=8.4",
         "ext-json": "*",
-        "directorytree/imapengine": "^1.24",
+        "directorytree/imapengine": "^1.25",
         "psr/log": "*",
         "wptrt/admin-notices": "*"
     },
