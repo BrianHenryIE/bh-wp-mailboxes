@@ -13,6 +13,7 @@ use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View_Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Status_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
@@ -65,7 +66,7 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function define_cpt_hooks(): void {
 
-		$account_cpt = new BH_Email_CPT( $this->settings, $this->logger );
+		$account_cpt = new BH_Email_Account_CPT( $this->settings, $this->logger );
 
 		add_action( 'init', $account_cpt->register_cpt( ... ) );
 		add_action( 'init', $account_cpt->register_post_statuses( ... ) );
