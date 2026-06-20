@@ -255,13 +255,17 @@ $on_plugins_loaded = function () {
 	);
 	$fixtures_provider = new Mock_Mailbox_Fixtures_Provider( $fixtures_mailboxes_settings, $fixtures_settings, $email_factory );
 
+	// The top-level menu points at the IMAP emails list, so clicking "Mailboxes" lands somewhere useful.
+	$mailboxes_menu_slug = 'edit.php?post_type=' . $imap_mailboxes_settings->get_emails_cpt_underscored_20();
+
 	// Add a top-level "Mailboxes" menu with a submenu linking to the emails and accounts list for each
 	// configured mailbox (the IMAP/ENV mailbox and the fixtures mailbox).
-	$add_menus = function () use ( $fixtures_mailboxes_settings, $imap_mailboxes_settings ) {
+	$add_menus = function () use ( $fixtures_mailboxes_settings, $imap_mailboxes_settings, $mailboxes_menu_slug ) {
 
-		// The top-level menu points at the IMAP emails list, so clicking "Mailboxes" lands somewhere useful.
-		$parent_slug = 'edit.php?post_type=' . $imap_mailboxes_settings->get_emails_cpt_underscored_20();
+		$parent_slug = $mailboxes_menu_slug;
 
+		// Position 3 places "Mailboxes" between Dashboard (2) and Posts (5); WordPress's core separator (4)
+		// sits below it, and the custom separator added below (2.5) sits above it.
 		add_menu_page(
 			'Mailboxes',
 			'Mailboxes',
@@ -269,8 +273,13 @@ $on_plugins_loaded = function () {
 			$parent_slug,
 			'',
 			'dashicons-email',
-			25
+			3
 		);
+
+		// Add a spacer above "Mailboxes" (between it and Dashboard). WordPress renders any $menu entry
+		// whose class list contains `wp-menu-separator` as a spacer; key 2.5 slots it between 2 and 3.
+		global $menu;
+		$menu['2.5'] = array( '', 'read', 'bh-mailboxes-separator-top', '', 'wp-menu-separator' );
 
 		foreach ( array( $imap_mailboxes_settings, $fixtures_mailboxes_settings ) as $mailbox_settings ) {
 			add_submenu_page(
@@ -291,6 +300,22 @@ $on_plugins_loaded = function () {
 		}
 	};
 	add_action( 'admin_menu', $add_menus );
+
+	// Tint the development "Mailboxes" top-level menu green so the test-harness menu is obvious. The item
+	// is matched by its anchor href (its generated id is derived from the slug) and styled via the parent
+	// <li> and the anchor itself.
+	add_action(
+		'admin_head',
+		function () use ( $mailboxes_menu_slug ) {
+			$href = $mailboxes_menu_slug;
+			// !important so the green wins over the admin colour scheme's current/hover menu states.
+			echo '<style id="bh-wp-mailboxes-dev-menu-style">'
+				. '#adminmenu li.menu-top:has( > a.menu-top[href="' . esc_attr( $href ) . '"] ),'
+				. '#adminmenu li.menu-top:has( > a.menu-top[href="' . esc_attr( $href ) . '"] ) a.menu-top,'
+				. '#adminmenu a.menu-top[href="' . esc_attr( $href ) . '"] { background-color: green !important; }'
+				. '</style>';
+		}
+	);
 };
 add_action( 'plugins_loaded', $on_plugins_loaded );
 
