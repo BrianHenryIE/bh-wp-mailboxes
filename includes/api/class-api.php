@@ -491,6 +491,12 @@ class API implements API_Interface {
 			throw new Exception( 'No provider found for ' . esc_html( $email_account->display_name ) );
 		}
 
+		// Remote read/delete actions live on Supports_Fetching: a provider that cannot be queried cannot
+		// perform them.
+		if ( ! ( $provider instanceof Supports_Fetching ) ) {
+			throw new Exception( 'Provider does not support remote actions for ' . esc_html( $email_account->display_name ) );
+		}
+
 		$this->set_provider_credentials( $provider, $email_account );
 
 		if ( is_null( $email->get_remote_coordinates() ) ) {
@@ -562,7 +568,7 @@ class API implements API_Interface {
 		$provider    = $this->get_provider_for_email_account( $email_account );
 		$coordinates = $email->get_remote_coordinates();
 
-		if ( is_null( $provider ) || is_null( $coordinates ) || ! $provider->can_read_status() ) {
+		if ( is_null( $provider ) || is_null( $coordinates ) || ! ( $provider instanceof Supports_Fetching ) || ! $provider->can_read_status() ) {
 			return null;
 		}
 

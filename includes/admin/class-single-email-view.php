@@ -8,6 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
@@ -316,6 +317,12 @@ class Single_Email_View {
 
 		$email_account = $this->api->get_email_account_for_email( $email );
 		$provider      = $email_account ? $this->api->get_provider_for_email_account( $email_account ) : null;
+
+		// Remote read/delete status lives on Supports_Fetching: a provider that cannot be queried cannot
+		// report or change it, so treat a non-fetching provider as none for this metabox's status section.
+		if ( ! ( $provider instanceof Supports_Fetching ) ) {
+			$provider = null;
+		}
 
 		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 
