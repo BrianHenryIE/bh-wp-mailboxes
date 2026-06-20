@@ -135,6 +135,39 @@
             } );
         } );
 
+        // ── Row action: Delete on server (with confirmation) ───────────────────
+        $( document ).on( 'click', '.bh-email-delete-on-server', function( event ) {
+            event.preventDefault();
+            var $link  = $( this );
+            var postId = $link.data( 'post-id' );
+
+            if ( ! window.confirm( 'Delete this email on the remote server? This cannot be undone.' ) ) {
+                return;
+            }
+
+            var origLabel = $link.text();
+            $link.text( 'Deleting…' );
+
+            $.post( ajaxurl, {
+                action:   bh_wp_mailboxes_ajax.delete_on_server_action,
+                post_id:  postId,
+                _wpnonce: bh_wp_mailboxes_ajax.remote_action_nonce,
+            } ).done( function( response ) {
+                if ( response.success ) {
+                    // The email is now deleted on the server; reload the table so the row reflects it
+                    // (and no longer offers "Delete on server").
+                    refreshTable( [] );
+                } else {
+                    var msg = ( response.data && response.data.message ) ? response.data.message : 'Delete on server failed.';
+                    window.alert( msg );
+                    $link.text( origLabel );
+                }
+            } ).fail( function() {
+                window.alert( 'Delete on server failed: server error.' );
+                $link.text( origLabel );
+            } );
+        } );
+
         // ── Per-account: Since toggle ──────────────────────────────────────────
         $( document ).on( 'click', '.bh-fetch-since-toggle', function() {
             var accountId = $( this ).data( 'account-id' );

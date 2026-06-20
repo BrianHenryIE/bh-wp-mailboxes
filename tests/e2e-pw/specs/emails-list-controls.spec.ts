@@ -65,3 +65,64 @@ test.describe( 'Emails list page — check button', () => {
 		expect( headerIds.indexOf( 'sent' ) ).toBeLessThan( headerIds.indexOf( 'date' ) );
 	} );
 } );
+
+test.describe( 'Emails list page — row actions', () => {
+	test( '"Trash" is relabelled "Trash locally" and "Delete on server" is offered with confirmation', async ( {
+		admin,
+		page,
+		request,
+	} ) => {
+		// The fixtures provider supports delete-on-server; fetch an email so a row links to its account.
+		const accountId = await createAccount(
+			request,
+			`row-delete-${ Date.now() }@example.com`
+		);
+
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+
+		const checkResponse = page.waitForResponse(
+			( res ) =>
+				res.url().includes( 'admin-ajax.php' ) &&
+				( res.request().postData() ?? '' ).includes(
+					`account_post_id=${ accountId }`
+				)
+		);
+		await page
+			.locator( `.bh-check-account[data-account-id="${ accountId }"]` )
+			.click( { force: true } );
+		const checkBody = await ( await checkResponse ).json();
+		const emailId = checkBody.data.new_email_ids[ 0 ] as number;
+		expect( emailId ).toBeTruthy();
+
+		// Reload the list so the fetched email's row is present.
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+
+		const row = page.locator( `#post-${ emailId }` );
+		await expect( row ).toBeAttached();
+
+		// "Trash" became "Trash locally".
+		await expect( row.locator( '.row-actions' ) ).toContainText( 'Trash locally' );
+
+		// "Delete on server" is offered, coloured the same red as the core "Trash" action.
+		const deleteOnServer = row.locator( '.bh-email-delete-on-server' );
+		await expect( deleteOnServer ).toBeAttached();
+		await expect( deleteOnServer ).toHaveCSS( 'color', 'rgb(179, 45, 46)' );
+
+		// Clicking shows a confirm() modal; accept it and confirm the delete request is sent. The row
+		// actions are hidden off-screen until hover, so dispatch the click directly to the delegated
+		// handler rather than relying on a viewport-positioned click.
+		page.once( 'dialog', ( dialog ) => dialog.accept() );
+		const deleteResponse = page.waitForResponse(
+			( res ) =>
+				res.url().includes( 'admin-ajax.php' ) &&
+				( res.request().postData() ?? '' ).includes( `post_id=${ emailId }` )
+		);
+		await deleteOnServer.dispatchEvent( 'click' );
+		await deleteResponse;
+
+		// The table reloads; once deleted on the server, the row no longer offers "Delete on server".
+		await expect(
+			page.locator( `#post-${ emailId } .bh-email-delete-on-server` )
+		).toHaveCount( 0, { timeout: 10_000 } );
+	} );
+} );

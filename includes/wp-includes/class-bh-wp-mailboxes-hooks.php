@@ -114,6 +114,7 @@ class BH_WP_Mailboxes_Hooks {
 		add_filter( "manage_{$post_type}_posts_columns", $mailbox_list_page->table_head( ... ) );
 		add_action( "manage_{$post_type}_posts_custom_column", $mailbox_list_page->table_content( ... ), 10, 2 );
 		add_action( 'restrict_manage_posts', $mailbox_list_page->table_filters( ... ) );
+		add_filter( 'post_row_actions', $mailbox_list_page->row_actions( ... ), 10, 2 );
 
 		add_action( 'admin_enqueue_scripts', $mailbox_list_page->enqueue_styles( ... ) );
 		add_action( 'admin_enqueue_scripts', $mailbox_list_page->enqueue_scripts( ... ) );

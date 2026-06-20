@@ -13,11 +13,13 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
+use WP_Post;
 
 /**
  * Renders the emails list table page with custom columns and controls.
@@ -25,6 +27,14 @@ use Psr\Log\LoggerInterface;
 class Emails_List_Page {
 
 	use LoggerAwareTrait;
+
+	/**
+	 * Memoised "provider can delete on server" result, keyed by account post ID, so a list of many emails
+	 * from one account resolves the provider only once per page render.
+	 *
+	 * @var array<int, bool>
+	 */
+	private array $account_can_delete_on_server = array();
 
 	/**
 	 * Constructor.
@@ -134,6 +144,72 @@ class Emails_List_Page {
 	}
 
 	/**
+	 * Customise the row actions for email posts.
+	 *
+	 * Renames "Trash" to "Trash locally" (it only removes the locally-saved copy), and adds a "Delete on
+	 * server" action — gated on the email's provider supporting it ({@see Supports_Fetching::can_delete_on_server()})
+	 * and the email not already being deleted on the server. The action is handled by JS with a confirmation.
+	 *
+	 * @hooked post_row_actions
+	 *
+	 * @param array<string, string> $actions The existing row actions.
+	 * @param WP_Post               $post    The email post for this row.
+	 *
+	 * @return array<string, string>
+	 */
+	public function row_actions( array $actions, WP_Post $post ): array {
+
+		if ( $post->post_type !== $this->settings->get_emails_cpt_underscored_20() ) {
+			return $actions;
+		}
+
+		// "Trash" removes only the locally-saved copy, so relabel it.
+		if ( isset( $actions['trash'] ) ) {
+			$actions['trash'] = str_replace(
+				'>' . __( 'Trash', 'default' ) . '<',
+				'>' . esc_html__( 'Trash locally', 'bh-wp-mailboxes' ) . '<',
+				$actions['trash']
+			);
+		}
+
+		$email = $this->email_wp_post_repository->find_by_post_id( $post->ID );
+
+		if ( ! $email->is_remote_deleted && $this->provider_can_delete_on_server( $email ) ) {
+			$actions['bh_delete_on_server'] = sprintf(
+				'<a href="#" class="bh-email-delete-on-server submitdelete" data-post-id="%d">%s</a>',
+				(int) $post->ID,
+				esc_html__( 'Delete on server', 'bh-wp-mailboxes' )
+			);
+		}
+
+		return $actions;
+	}
+
+	/**
+	 * Whether the email's account provider can delete emails on the remote server.
+	 *
+	 * @param BH_Email $email The email whose provider capability to check.
+	 */
+	private function provider_can_delete_on_server( BH_Email $email ): bool {
+
+		$account = $this->api->get_email_account_for_email( $email );
+		if ( is_null( $account ) ) {
+			return false;
+		}
+
+		$account_id = $account->get_post_id();
+
+		if ( ! isset( $this->account_can_delete_on_server[ $account_id ] ) ) {
+			$provider = $this->api->get_provider_for_email_account( $account );
+
+			$this->account_can_delete_on_server[ $account_id ] =
+				$provider instanceof Supports_Fetching && $provider->can_delete_on_server();
+		}
+
+		return $this->account_can_delete_on_server[ $account_id ];
+	}
+
+	/**
 	 * Outputs filter controls above the emails list table.
 	 *
 	 * @hooked restrict_manage_posts
@@ -228,16 +304,21 @@ class Emails_List_Page {
 			$handle,
 			'bh_wp_mailboxes_ajax',
 			array(
-				'check_email_action'   => 'bh_wp_mailboxes_check_email_' . $this->settings->get_emails_cpt_underscored_20(),
-				'check_account_action' => 'bh_wp_mailboxes_check_account_' . $this->settings->get_email_accounts_cpt_underscored_20(),
+				'check_email_action'      => 'bh_wp_mailboxes_check_email_' . $this->settings->get_emails_cpt_underscored_20(),
+				'check_account_action'    => 'bh_wp_mailboxes_check_account_' . $this->settings->get_email_accounts_cpt_underscored_20(),
+				'delete_on_server_action' => 'bh_wp_mailboxes_delete_on_server_' . $this->settings->get_emails_cpt_underscored_20(),
+				'remote_action_nonce'     => wp_create_nonce( 'bh-wp-mailboxes-remote-action' ),
 			)
 		);
 
 		// Highlight newly-fetched rows for a few seconds, fading the highlight out (see refreshTable() in the JS).
+		// Also colour the "Delete on server" row action the same red as the core "Trash" action — WordPress
+		// only reddens the .trash/.delete/.spam wrapper spans, not our custom action.
 		wp_add_inline_style(
 			'wp-admin',
 			'@keyframes bh-email-row-highlight { from { background-color: #fcf9e8; } to { background-color: transparent; } }'
 			. ' tr.bh-email-row--new td { animation: bh-email-row-highlight 3s ease-out; }'
+			. ' .row-actions .bh-email-delete-on-server, .row-actions .bh-email-delete-on-server:hover { color: #b32d2e; }'
 		);
 	}
 }

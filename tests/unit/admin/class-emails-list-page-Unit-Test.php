@@ -128,7 +128,8 @@ class Emails_List_Page_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		// The scoped AJAX action names are localised for the JS (see enqueue_scripts()).
+		// The scoped AJAX action names + remote-action nonce are localised for the JS (see enqueue_scripts()).
+		\WP_Mock::userFunction( 'wp_create_nonce', array( 'return' => 'test-nonce' ) );
 		\WP_Mock::userFunction( 'wp_localize_script' );
 
 		// New-row highlight CSS is injected inline.
