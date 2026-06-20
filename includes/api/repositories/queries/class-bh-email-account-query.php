@@ -67,7 +67,10 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 			'ID'          => $this->post_id,
 			'post_type'   => $this->post_type,
 			'post_status' => $this->status,
-			'post_name'   => $this->email_address, // will be auto-sanitized?
+			// URL-encode before WordPress sanitises the slug: this preserves distinguishing characters
+			// (e.g. `@`, `+`, `.`) that sanitize_title() would otherwise strip, keeping the slug a faithful,
+			// unique key for the address. The raw address is kept in the email_address meta.
+			'post_name'   => is_null( $this->email_address ) ? null : rawurlencode( $this->email_address ),
 		);
 	}
 

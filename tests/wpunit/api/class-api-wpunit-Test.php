@@ -9,7 +9,9 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
@@ -91,5 +93,46 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertCount( 1, $status_notes, 'Exactly one status-change bh_email_log comment should exist' );
 		$this->assertSame( 'bh_email_log', $status_notes[0]->comment_type );
 		$this->assertStringContainsString( 'bh_email_processed', $status_notes[0]->comment_content );
+	}
+
+	/**
+	 * The add_email_account() duplicate check must only reject a genuinely duplicate address; a second,
+	 * distinct account must be allowed even when one already exists.
+	 *
+	 * Regression: the dedup query filtered by post_name/meta_input (both ignored by WP_Query), so it
+	 * matched every existing account and false-positived "already exists" once any account existed.
+	 *
+	 * @covers ::add_email_account
+	 */
+	public function test_add_email_account_allows_distinct_addresses_and_rejects_duplicates(): void {
+
+		$post_type = 'test_api_account';
+
+		$settings = \Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
+		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( $post_type );
+		$settings->allows( 'get_email_accounts_cpt_friendly_name' )->andReturn( 'Test API Accounts' );
+
+		$cpt = new BH_Email_Account_CPT( $settings, $this->logger );
+		$cpt->register_cpt();
+		$cpt->register_post_statuses();
+
+		$account_repository = new Email_Account_WP_Post_Repository(
+			$post_type,
+			new BH_Email_Account_Factory( $this->logger ),
+			$this->logger,
+		);
+
+		$api = $this->get_api( settings: $settings, email_account_repository: $account_repository );
+
+		$first = $api->add_email_account( 'first@example.com', 'First', 'SomeProvider', null, null, null, null );
+		// A second, distinct account must be allowed even though one already exists.
+		$second = $api->add_email_account( 'second@example.com', 'Second', 'SomeProvider', null, null, null, null );
+
+		$this->assertSame( 'first@example.com', $first->email_address );
+		$this->assertSame( 'second@example.com', $second->email_address );
+
+		// A genuine duplicate is still rejected.
+		$this->expectException( \Exception::class );
+		$api->add_email_account( 'first@example.com', 'Dup', 'SomeProvider', null, null, null, null );
 	}
 }

@@ -37,7 +37,7 @@ abstract class WP_Post_Repository_Abstract {
 		 *
 		 * @var WpUpdatePostArray $args
 		 */
-		$args = $query->to_query_array();
+		$args = $query->to_wp_post_array();
 
 		$filter_name = 'content_save_pre';
 		/**

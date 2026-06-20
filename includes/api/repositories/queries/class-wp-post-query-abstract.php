@@ -5,7 +5,8 @@
  *
  * Enums are parsed to their backing value.
  *
- * Extend this class to suit a specific post_type; use `::to_query_array()` in calls to `update_post()` etc.
+ * Extend this class to suit a specific post_type; use `::to_wp_post_array()` in calls to `wp_update_post()`
+ * etc., and `::to_wp_query_args()` for `WP_Query`.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -19,7 +20,7 @@ use InvalidArgumentException;
 /**
  * Abstract query object mapping domain data to WP_Post fields.
  *
- * @phpstan-type WpUpdatePostArray array{ID?: int, post_type?:string, post_status?:string, post_author?: int, post_date?: string, post_date_gmt?: string, post_content?: string, post_content_filtered?: string, post_title?: string, post_excerpt?: string, meta_input?:array<string,mixed>}
+ * @phpstan-type WpUpdatePostArray array{ID?: int, post_type?:string, post_status?:string, post_name?: string, post_author?: int, post_date?: string, post_date_gmt?: string, post_content?: string, post_content_filtered?: string, post_title?: string, post_excerpt?: string, meta_input?:array<string,mixed>}
  */
 abstract readonly class WP_Post_Query_Abstract {
 
@@ -88,12 +89,18 @@ abstract readonly class WP_Post_Query_Abstract {
 	}
 
 	/**
+	 * Build the normalised WP_Post field array shared by both public conversions.
+	 *
+	 * Maps domain values to WP_Post columns and `meta_input`, converts enums/bools/dates/arrays to their
+	 * stored representation, and drops null values. This is the write shape (a `$postarr` for
+	 * wp_insert_post()/wp_update_post()); {@see self::to_wp_query_args()} adapts it for WP_Query.
+	 *
 	 * TODO: need a convention for excluding fields that the caller knows aren't important/helpful.
 	 *
 	 * @return WpUpdatePostArray
 	 * @throws InvalidArgumentException When an unknown field is used.
 	 */
-	public function to_query_array(): array {
+	protected function normalise_fields(): array {
 
 		// TODO: are the field names case sensitive?
 		$wp_post_fields = $this->get_wp_post_fields();
@@ -159,5 +166,50 @@ abstract readonly class WP_Post_Query_Abstract {
 		}
 
 		return $wp_post_fields;
+	}
+
+	/**
+	 * Returns the post array (`$postarr`) for wp_insert_post() / wp_update_post().
+	 *
+	 * @return WpUpdatePostArray
+	 * @throws InvalidArgumentException When an unknown field is used.
+	 */
+	public function to_wp_post_array(): array {
+		return $this->normalise_fields();
+	}
+
+	/**
+	 * Returns the arguments for a WP_Query, adapted from the write-shaped {@see self::normalise_fields()}.
+	 *
+	 * `meta_input` key/values become a `meta_query`; WP_Query silently ignores `meta_input`. The
+	 * `post_name` slug is dropped: it is a lossy sanitisation of its source value, and combining `name`
+	 * with custom post statuses makes WP_Query treat the request as a single-post lookup with default
+	 * `publish`-only statuses. Query on the exact meta value instead.
+	 *
+	 * @return array<string,mixed> WP_Query arguments.
+	 * @throws InvalidArgumentException When an unknown field is used.
+	 */
+	public function to_wp_query_args(): array {
+
+		$query_args = $this->normalise_fields();
+
+		unset( $query_args['post_name'] );
+
+		if ( isset( $query_args['meta_input'] ) ) {
+			$meta_query = array();
+			foreach ( $query_args['meta_input'] as $meta_key => $meta_value ) {
+				$meta_query[] = array(
+					'key'   => $meta_key,
+					'value' => $meta_value,
+				);
+			}
+			if ( ! empty( $meta_query ) ) {
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Lookups are infrequent and the set is tiny.
+				$query_args['meta_query'] = $meta_query;
+			}
+			unset( $query_args['meta_input'] );
+		}
+
+		return $query_args;
 	}
 }

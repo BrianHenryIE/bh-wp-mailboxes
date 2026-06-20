@@ -369,7 +369,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			is_remote_deleted: $is_remote_deleted !== $email->is_remote_deleted ? $is_remote_deleted : null,
 		);
 
-		$args = $query->to_query_array();
+		$args = $query->to_wp_post_array();
 
 		if ( count( $args ) === 2 ) {
 			// Only the post_id remains.

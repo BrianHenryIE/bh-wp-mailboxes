@@ -96,15 +96,8 @@ class API implements API_Interface {
 		?string $after_download_remote_email_action,
 		?int $delete_local_emails_after_n_days,
 	): BH_Email_Account {
-		$email_accounts_repository = $this->email_account_repository;
-		if ( ! empty(
-			$email_accounts_repository->query(
-				email_address: $email_address
-			)
-		) ) {
-			throw new Exception( 'already exists' );
-		}
-		return $email_accounts_repository->save_new(
+		// Uniqueness (no existing account for this address) is enforced by the repository's save_new().
+		return $this->email_account_repository->save_new(
 			email_address: $email_address,
 			display_name: $display_name,
 			provider_type_class: $provider_type_class,

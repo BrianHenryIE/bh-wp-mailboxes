@@ -24,9 +24,9 @@ class BH_Email_Query_Unit_Test extends Unit_Testcase {
 	 *
 	 * @covers ::__construct
 	 * @covers ::get_wp_post_fields
-	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_query_array
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_wp_post_array
 	 */
-	public function test_to_query_array_includes_post_id_as_wp_post_id_field(): void {
+	public function test_to_wp_post_array_includes_post_id_as_wp_post_id_field(): void {
 
 		$sut = new BH_Email_Query(
 			post_type: 'bh_email',
@@ -34,7 +34,7 @@ class BH_Email_Query_Unit_Test extends Unit_Testcase {
 			local_status: 'bh_email_processed',
 		);
 
-		$result = $sut->to_query_array();
+		$result = $sut->to_wp_post_array();
 
 		$this->assertArrayHasKey( 'ID', $result );
 		$this->assertSame( 789, $result['ID'] );
@@ -45,16 +45,16 @@ class BH_Email_Query_Unit_Test extends Unit_Testcase {
 	 * A null post_id (a new email being inserted) must not appear in the query array.
 	 *
 	 * @covers ::get_wp_post_fields
-	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_query_array
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_wp_post_array
 	 */
-	public function test_to_query_array_omits_id_field_when_post_id_is_null(): void {
+	public function test_to_wp_post_array_omits_id_field_when_post_id_is_null(): void {
 
 		$sut = new BH_Email_Query(
 			post_type: 'bh_email',
 			subject: 'Test subject',
 		);
 
-		$result = $sut->to_query_array();
+		$result = $sut->to_wp_post_array();
 
 		$this->assertArrayNotHasKey( 'ID', $result );
 		$this->assertSame( 'Test subject', $result['post_title'] );

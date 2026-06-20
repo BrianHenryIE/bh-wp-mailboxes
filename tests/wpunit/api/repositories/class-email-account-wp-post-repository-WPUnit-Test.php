@@ -107,6 +107,104 @@ class Email_Account_WP_Post_Repository_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
+	 * Returns the matching account via its slug, or null when none exists.
+	 *
+	 * @covers ::find_by_email_address
+	 */
+	public function test_find_by_email_address(): void {
+		$sut = $this->make_sut();
+
+		$saved = $this->save_account( $sut, 'lookup@example.com' );
+
+		$found = $sut->find_by_email_address( 'lookup@example.com' );
+		$this->assertNotNull( $found );
+		$this->assertSame( $saved->get_post_id(), $found->get_post_id() );
+
+		$this->assertNull( $sut->find_by_email_address( 'absent@example.com' ) );
+	}
+
+	/**
+	 * The account slug is URL-encoded so distinguishing characters survive sanitisation.
+	 *
+	 * @covers ::save_new
+	 */
+	public function test_save_new_url_encodes_the_slug(): void {
+		$sut = $this->make_sut();
+
+		$saved = $this->save_account( $sut, 'a.b+tag@example.com' );
+
+		$slug = get_post( $saved->get_post_id() )->post_name;
+		$this->assertStringContainsString( '%40', $slug, 'The @ should be URL-encoded in the slug.' );
+		$this->assertStringContainsString( '%2b', $slug, 'The + should be URL-encoded in the slug.' );
+		// The raw address is retained in meta.
+		$this->assertSame( 'a.b+tag@example.com', $saved->email_address );
+	}
+
+	/**
+	 * Saving a duplicate address throws and creates no second account: save_new() enforces address
+	 * uniqueness in code, so no "-2"-suffixed slug arises.
+	 *
+	 * @covers ::save_new
+	 * @covers ::find_by_email_address
+	 */
+	public function test_save_new_throws_for_duplicate_email_address(): void {
+		$sut = $this->make_sut();
+
+		$first = $this->save_account( $sut, 'dupe@example.com' );
+
+		$threw = false;
+		try {
+			$this->save_account( $sut, 'dupe@example.com' );
+		} catch ( \Exception $e ) {
+			$threw = true;
+		}
+
+		$this->assertTrue( $threw, 'Saving a duplicate address must throw.' );
+
+		// No second (e.g. "-2"-suffixed) account was created.
+		$all = $sut->get_all();
+		$this->assertCount( 1, $all );
+		$this->assertSame( $first->get_post_id(), $all[0]->get_post_id() );
+	}
+
+	/**
+	 * Filtering by email address returns only the matching account, even when others exist.
+	 *
+	 * Regression: the query mapped email_address to `post_name`/`meta_input`, which WP_Query ignores, so
+	 * every account was returned once any existed (and add_email_account()'s dedup check false-positived).
+	 *
+	 * @covers ::query
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_wp_query_args
+	 */
+	public function test_query_by_email_address_returns_only_matching_account(): void {
+		$sut = $this->make_sut();
+
+		$this->save_account( $sut, 'one@example.com' );
+		$this->save_account( $sut, 'two@example.com' );
+
+		$result = $sut->query( email_address: 'two@example.com' );
+
+		$this->assertCount( 1, $result );
+		$this->assertSame( 'two@example.com', $result[0]->email_address );
+	}
+
+	/**
+	 * A query for an address that does not exist returns nothing, even when other accounts exist.
+	 *
+	 * @covers ::query
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_wp_query_args
+	 */
+	public function test_query_by_unknown_email_address_returns_empty(): void {
+		$sut = $this->make_sut();
+
+		$this->save_account( $sut, 'one@example.com' );
+
+		$result = $sut->query( email_address: 'absent@example.com' );
+
+		$this->assertCount( 0, $result );
+	}
+
+	/**
 	 * Updating an account cannot change its email address — update() has no such parameter, so a
 	 * config update leaves the address unchanged while applying the other change.
 	 *
