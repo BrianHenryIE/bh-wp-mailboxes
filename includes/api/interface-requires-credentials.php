@@ -13,6 +13,9 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 
+/**
+ * Always used with {@see Email_Provider_Interface}.
+ */
 interface Requires_Credentials {
 
 	/**

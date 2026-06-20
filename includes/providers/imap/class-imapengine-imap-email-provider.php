@@ -15,6 +15,7 @@ use BrianHenryIE\WP_Mailboxes\API\Email_Provider_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Requires_Credentials;
+use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTimeInterface;
 use DirectoryTree\ImapEngine\Enums\ImapFetchIdentifier;
@@ -29,7 +30,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Uses ImapEngine library to fetch emails since last run.
  */
-class ImapEngine_Imap_Email_Provider implements Email_Provider_Interface, Requires_Credentials {
+class ImapEngine_Imap_Email_Provider implements Email_Provider_Interface, Requires_Credentials, Supports_Fetching {
 
 	use LoggerAwareTrait;
 

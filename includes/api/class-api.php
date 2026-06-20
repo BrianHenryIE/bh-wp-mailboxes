@@ -195,6 +195,12 @@ class API implements API_Interface {
 			return array();
 		}
 
+		// Receive-only providers (e.g. webhook / AWS SNS) cannot be polled; there is nothing to fetch.
+		if ( ! ( $provider instanceof Supports_Fetching ) ) {
+			$this->logger->debug( $email_account->display_name . ' provider does not support fetching; skipping.' );
+			return array();
+		}
+
 		if ( $provider instanceof Requires_Credentials ) {
 
 			try {

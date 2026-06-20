@@ -9,21 +9,9 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
-use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
-use DateTimeInterface;
-use Illuminate\Support\Collection;
 
 interface Email_Provider_Interface {
-
-	/**
-	 * Typically, check for emails since the time of the last email or the last time emails were checked for.
-	 *
-	 * @param DateTimeInterface $since_time The earliest time to retrieve emails from.
-	 *
-	 * @return Collection<int, \BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email> Unsaved emails with their remote coordinates.
-	 */
-	public function retrieve_emails( DateTimeInterface $since_time ): Collection;
 
 	/**
 	 * Connect to the server and verify the credentials authenticate, without returning emails.

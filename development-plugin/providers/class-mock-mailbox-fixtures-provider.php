@@ -19,6 +19,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
@@ -31,7 +32,7 @@ use ZBateson\MailMimeParser\MailMimeParser;
  *
  * Reads emails from a directory of JSON files and records read/deleted operations per-user in user meta.
  */
-class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface {
+class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface, Supports_Fetching {
 
 	/**
 	 * Absolute path to the directory of `.json` email fixtures.
