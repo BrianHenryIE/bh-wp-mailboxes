@@ -16,7 +16,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WP_Post;
@@ -39,13 +39,13 @@ class Emails_List_Page {
 	/**
 	 * Constructor.
 	 *
-	 * @param Email_WP_Post_Repository           $email_wp_post_repository Repository for email CPT posts.
+	 * @param Email_Repository_Interface         $email_wp_post_repository Repository for email CPT posts.
 	 * @param API_Interface                      $api                      Main API instance.
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings                 Plugin settings.
 	 * @param LoggerInterface                    $logger                   PSR-3 logger.
 	 */
 	public function __construct(
-		protected Email_WP_Post_Repository $email_wp_post_repository,
+		protected Email_Repository_Interface $email_wp_post_repository,
 		protected API_Interface $api,
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		LoggerInterface $logger,

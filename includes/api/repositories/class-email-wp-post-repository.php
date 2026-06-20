@@ -30,7 +30,7 @@ use ZBateson\MailMimeParser\Message\IMessagePart;
  *
  * @phpstan-type WpUpdatePostArray array{ID?: int, post_author?: int, post_date?: string, post_date_gmt?: string, post_content?: string, post_content_filtered?: string, post_title?: string, post_excerpt?: string}
  */
-class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
+class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Email_Repository_Interface {
 
 	use LoggerAwareTrait;
 
@@ -141,28 +141,38 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 */
 	public function is_post_for_message_id( string $account_email_address, string $message_id ): bool {
 
-		return (bool) $this->find_post_id_by_guid( self::guid_for( $this->post_type, $account_email_address, $message_id ) );
+		return ! is_null( $this->find_post_id_for_message_id( $account_email_address, $message_id ) );
 	}
 
 	/**
-	 * Query the WordPress posts table for a post with the given guid.
+	 * Find the saved post ID for an account + Message-ID via its (indexed) slug.
 	 *
-	 * @param string $guid The guid to search for.
+	 * The account+Message-ID key is stored as the post_name, an indexed column, so this matches directly
+	 * against the index. (get_page_by_path() can't be used: it only resolves top-level posts, whereas
+	 * emails are parented to their account.)
+	 *
+	 * @param string $account_email_address The account the email is filed under.
+	 * @param string $message_id            The email Message-ID.
 	 *
 	 * @return ?int The post ID, or null if not found.
 	 */
-	protected function find_post_id_by_guid( string $guid ): ?int {
+	protected function find_post_id_for_message_id( string $account_email_address, string $message_id ): ?int {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$result = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM $wpdb->posts WHERE guid=%s", $guid ) );
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT ID FROM $wpdb->posts WHERE post_name = %s AND post_type = %s LIMIT 1",
+				self::message_id_slug( $account_email_address, $message_id ),
+				$this->post_type
+			)
+		);
 		return is_numeric( $result ) ? (int) $result : null;
 	}
 
 	/**
 	 * Returns the number of saved emails for a given account email address.
 	 *
-	 * The account address is encoded in each email's GUID, so this uses a LIKE
-	 * query rather than a meta lookup.
+	 * Emails record their account as the post_parent (an indexed column), so this counts directly by it.
 	 *
 	 * @param BH_Email_Account $email_account The mailbox, e.g. "contact@example.com".
 	 */
@@ -231,14 +241,12 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			remote_uid_validity: $coordinates->uid_validity,
 		);
 
-		// Deduplicate: the same email (account + Message-ID) may be fetched more than once.
-		// Its guid is stable, so if a post already exists we return it rather than inserting a duplicate.
-		$guid             = self::guid_for(
-			$post_type,
+		// Deduplicate: the same email (account + Message-ID) may be fetched more than once. The key is
+		// stored as the post slug, so if a post already exists we return it rather than inserting a duplicate.
+		$existing_post_id = $this->find_post_id_for_message_id(
 			$email_account->get_account_email_address(),
 			$email->getMessageId() ?? ''
 		);
-		$existing_post_id = $this->find_post_id_by_guid( $guid );
 		if ( null !== $existing_post_id ) {
 			return $this->find_by_post_id( $existing_post_id );
 		}
@@ -412,25 +420,16 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	}
 
 	/**
-	 * Builds the guid URL for the given email ID.
+	 * Builds the stable, slug-safe key that uniquely identifies an email by account + Message-ID.
 	 *
-	 * TODO: test that we're never passing an existing guid, only ever the email id itself.
-	 * TODO: this URL should work for admins to load the email.
+	 * Stored as the email's post_name (an indexed column) so the same email fetched twice deduplicates
+	 * against the index rather than scanning. The md5 hex (plus prefix) survives sanitize_title()
+	 * unchanged and fits within the 200-character post_name column regardless of Message-ID length.
 	 *
-	 * @param string $post_type The CPT type being saved under.
 	 * @param string $account_email_address The mailbox email address.
-	 * @param string $email_id              The email message ID.
-	 *
-	 * @example https://bhwp.ie/my-mailbox/contact@bhwp.ie/q1w2e3r4t5
+	 * @param string $email_id              The email Message-ID.
 	 */
-	public static function guid_for( string $post_type, string $account_email_address, string $email_id ): string {
-		$site_url = get_site_url();
-		return sprintf(
-			'%s/%s/%s/%s',
-			$site_url,
-			$post_type,
-			rawurlencode( $account_email_address ),
-			rawurlencode( sanitize_key( $email_id ) )
-		);
+	public static function message_id_slug( string $account_email_address, string $email_id ): string {
+		return 'bh-' . md5( $account_email_address . '|' . $email_id );
 	}
 }

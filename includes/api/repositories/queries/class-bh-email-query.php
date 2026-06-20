@@ -24,8 +24,8 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	 * @param string      $post_type             The CPT slug.
 	 * @param ?int        $post_id The email's ID in the WordPress posts table.
 	 * @param ?int        $post_parent WP post_id for the BH_Email_Account.
-	 * @param ?string     $account_email_address The mailbox email address (used for guid).
-	 * @param ?string     $email_id              The unique email ID (used for guid).
+	 * @param ?string     $account_email_address The mailbox email address (used for the dedup slug).
+	 * @param ?string     $email_id              The unique email ID (used for the dedup slug).
 	 * @param ?string     $subject               The email subject.
 	 * @param ?string     $from_address          The sender email address.
 	 * @param ?string     $original_email        The raw email content.
@@ -41,8 +41,8 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 		string $post_type,
 		public ?int $post_id = null,
 		public ?int $post_parent = null,
-		public ?string $account_email_address = null, // for guid (but not the full URL guid).
-		public ?string $email_id = null, // for guid (but not the full URL guid).
+		public ?string $account_email_address = null, // for the dedup slug.
+		public ?string $email_id = null, // for the dedup slug.
 		public ?string $subject = null,
 		public ?string $from_address = null, // We'll save this in meta because if it matches a user account it is relevant.
 		public ?string $original_email = null,
@@ -72,7 +72,7 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 			'post_status'  => $this->local_status,
 			'post_parent'  => $this->post_parent, // mailbox id.
 			'post_content' => $this->original_email,
-			'guid'         => $this->get_guid(),
+			'post_name'    => $this->get_slug(),
 		);
 	}
 
@@ -94,13 +94,14 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	}
 
 	/**
-	 * The guid uniquely identifies an email by account + Message-ID, so the repository can
-	 * deduplicate the same email fetched twice. Returns null when either component is absent.
+	 * The slug uniquely identifies an email by account + Message-ID (stored in the indexed post_name), so
+	 * the repository can deduplicate the same email fetched twice. Returns null when either component is
+	 * absent (e.g. an update query), leaving the existing slug untouched.
 	 */
-	public function get_guid(): ?string {
+	public function get_slug(): ?string {
 		if ( null === $this->account_email_address || null === $this->email_id ) {
 			return null;
 		}
-		return Email_WP_Post_Repository::guid_for( $this->post_type, $this->account_email_address, $this->email_id );
+		return Email_WP_Post_Repository::message_id_slug( $this->account_email_address, $this->email_id );
 	}
 }

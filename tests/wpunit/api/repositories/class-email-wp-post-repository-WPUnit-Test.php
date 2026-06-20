@@ -158,13 +158,14 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 	}
 
 	/**
-	 * Fetching the same email twice (same account + Message-ID, i.e. same guid) must not
-	 * create two posts. The second save_new should return the already-saved post.
+	 * Fetching the same email twice (same account + Message-ID) must not create two posts. The second
+	 * save_new should return the already-saved post, matched on the indexed message-id slug.
 	 *
 	 * @covers ::save_new
+	 * @covers ::message_id_slug
 	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\WP_Post_Repository_Abstract::insert
 	 */
-	public function test_save_new_dedups_by_guid(): void {
+	public function test_save_new_dedups_by_message_id(): void {
 
 		$post_type        = 'test_post_type';
 		$bh_email_factory = new BH_Email_Factory( $this->logger );
@@ -186,7 +187,12 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 			delete_local_emails_after_n_days: null,
 		);
 
-		$first  = $sut->save_new( $this->make_fetched_email( $email ), $this->settings, $email_account );
+		$first = $sut->save_new( $this->make_fetched_email( $email ), $this->settings, $email_account );
+
+		// The dedup key is stored in the indexed post_name (slug).
+		$expected_slug = Email_WP_Post_Repository::message_id_slug( 'test@example.com', $email->getMessageId() ?? '' );
+		$this->assertSame( $expected_slug, get_post( $first->get_post_id() )->post_name );
+
 		$second = $sut->save_new( $this->make_fetched_email( $email ), $this->settings, $email_account );
 
 		$this->assertSame(

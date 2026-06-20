@@ -20,7 +20,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Test_Connection_Result;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads;
 use DateException;
 use DateInterval;
@@ -46,14 +46,14 @@ class API implements API_Interface {
 	 * Constructor.
 	 *
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings                 Plugin settings.
-	 * @param Email_WP_Post_Repository           $email_repository         Repository for saved emails.
+	 * @param Email_Repository_Interface         $email_repository         Repository for saved emails.
 	 * @param Email_Account_WP_Post_Repository   $email_account_repository Repository for email accounts.
 	 * @param ?Private_Uploads                   $private_uploads          Private uploads API, or null to skip attachment saving.
 	 * @param ?LoggerInterface                   $logger                   PSR-3 logger.
 	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
-		protected Email_WP_Post_Repository $email_repository,
+		protected Email_Repository_Interface $email_repository,
 		protected Email_Account_WP_Post_Repository $email_account_repository,
 		protected ?Private_Uploads $private_uploads,
 		?LoggerInterface $logger = null

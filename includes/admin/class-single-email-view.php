@@ -12,7 +12,7 @@ use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WP_Post;
@@ -43,13 +43,13 @@ class Single_Email_View {
 	 *
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings                Plugin settings.
 	 * @param API_Interface                      $api                     Main API for remote actions.
-	 * @param Email_WP_Post_Repository           $email_wp_post_repository Email repository.
+	 * @param Email_Repository_Interface         $email_wp_post_repository Email repository.
 	 * @param LoggerInterface                    $logger                  PSR-3 logger.
 	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		protected API_Interface $api,
-		protected Email_WP_Post_Repository $email_wp_post_repository,
+		protected Email_Repository_Interface $email_wp_post_repository,
 		LoggerInterface $logger,
 	) {
 		$this->setLogger( $logger );

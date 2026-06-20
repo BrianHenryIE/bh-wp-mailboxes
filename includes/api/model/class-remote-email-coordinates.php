@@ -19,7 +19,7 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 /**
  * Immutable coordinates identifying an email on the remote server.
  *
- * @see Email_WP_Post_Repository::guid_for()
+ * @see Email_WP_Post_Repository::message_id_slug()
  */
 readonly class Remote_Email_Coordinates {
 

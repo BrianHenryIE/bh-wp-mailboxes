@@ -10,7 +10,7 @@
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use DateInterval;
 use DateTimeImmutable;
@@ -30,13 +30,13 @@ class Status_View {
 	 *
 	 * @param API_Interface                      $api                     Main API instance.
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings                Plugin settings.
-	 * @param Email_WP_Post_Repository           $email_wp_post_repository Email repository (for counts).
+	 * @param Email_Repository_Interface         $email_wp_post_repository Email repository (for counts).
 	 * @param LoggerInterface                    $logger                  PSR-3 logger.
 	 */
 	public function __construct(
 		protected API_Interface $api,
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
-		protected Email_WP_Post_Repository $email_wp_post_repository,
+		protected Email_Repository_Interface $email_wp_post_repository,
 		LoggerInterface $logger,
 	) {
 		$this->setLogger( $logger );

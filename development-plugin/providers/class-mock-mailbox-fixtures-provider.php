@@ -294,7 +294,7 @@ class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface, Suppor
 	}
 
 	/**
-	 * Use the message id and wp_post guid to get the post_id.
+	 * Resolve the post_id for an email by its account + Message-ID, via the indexed dedup slug.
 	 *
 	 * @param Remote_Email_Coordinates $coordinates The data required to address a single email.
 	 *
@@ -302,15 +302,20 @@ class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface, Suppor
 	 */
 	protected function get_post_id_for_coordinates( Remote_Email_Coordinates $coordinates ): int {
 
-		$post_guid = Email_WP_Post_Repository::guid_for(
-			post_type: $this->mailbox_settings->get_emails_cpt_underscored_20(),
+		$slug = Email_WP_Post_Repository::message_id_slug(
 			account_email_address: $this->email_account_settings->get_account_email_address(),
 			email_id: $coordinates->message_id
 		);
 
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$post_id = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM $wpdb->posts WHERE guid = %s", $post_guid ) );
+		$post_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT ID FROM $wpdb->posts WHERE post_name = %s AND post_type = %s LIMIT 1",
+				$slug,
+				$this->mailbox_settings->get_emails_cpt_underscored_20()
+			)
+		);
 
 		return is_numeric( $post_id ) ? (int) $post_id : 0;
 	}
