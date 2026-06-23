@@ -24,6 +24,11 @@ use ZBateson\MailMimeParser\IMessage;
  */
 class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 
+	/**
+	 * The emails CPT name used across these tests.
+	 *
+	 * @var string
+	 */
 	private string $post_type = 'test_list_email';
 
 	/**

@@ -36,11 +36,22 @@ class BH_WP_Mailboxes extends API {
 		return '1.0.0';
 	}
 
-	/** @var BH_WP_Mailboxes[] */
+	/**
+	 * Every mailbox instance created via {@see self::make()}, for the registry filter.
+	 *
+	 * @var API_Interface[]
+	 */
 	protected static array $mailboxes = array();
 
 	/**
+	 * Append this plugin's registered mailbox instances to the registry.
+	 *
 	 * @hooked bh_wp_mailboxes_registered_mailboxes
+	 *
+	 * @param API_Interface[] $mailboxes   Mailboxes registered so far.
+	 * @param string          $plugin_slug The plugin slug whose mailboxes are being requested.
+	 *
+	 * @return API_Interface[]
 	 */
 	public static function filter( array $mailboxes, string $plugin_slug ): array {
 

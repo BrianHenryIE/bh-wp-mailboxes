@@ -13,6 +13,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Test_Connection_Result;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
+use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use DateTimeInterface;
 
 /**
@@ -107,6 +108,11 @@ interface API_Interface {
 	 * @return BH_Email_Account[]
 	 */
 	public function get_email_accounts(): array;
+
+	/**
+	 * Return the settings used to configure the instance.
+	 */
+	public function get_settings(): BH_WP_Mailboxes_Settings_Interface;
 
 	/**
 	 * Fetches new emails for a single account and saves them.
