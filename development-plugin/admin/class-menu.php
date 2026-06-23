@@ -23,9 +23,13 @@ class Menu {
 	}
 
 	/**
-	 * Tint the development "Mailboxes" top-level menu green so the test-harness menu is obvious. The item
-	 * is matched by its anchor href (its generated id is derived from the slug) and styled via the parent
-	 * <li> and the anchor itself.
+	 * Tint the development "Mailboxes" top-level menu green so the test-harness menu is obvious, and keep
+	 * its submenu permanently expanded — even when another menu is the current one.
+	 *
+	 * The item is matched by its anchor href (its generated id is derived from the slug). WordPress only
+	 * expands a top-level menu's submenu inline while that menu is "current"; otherwise the submenu is a
+	 * hover-only flyout. Forcing `display: block; position: relative` reproduces the open/inline state at
+	 * all times, and `.wp-submenu-head` (the title row shown only in the flyout) is hidden to match.
 	 */
 	public function add_menu_style(): void {
 		/**
@@ -35,14 +39,20 @@ class Menu {
 		 */
 		$mailboxes = apply_filters( 'bh_wp_mailboxes_registered_mailboxes', array(), 'development-plugin' );
 		// The top-level menu points at the IMAP emails list, so clicking "Mailboxes" lands somewhere useful.
-		$first_mailbox_edit_href = 'edit.php?post_type=' . $mailboxes[0]->get_settings()->get_emails_cpt_underscored_20();
+		$href = 'edit.php?post_type=' . $mailboxes[0]->get_settings()->get_emails_cpt_underscored_20();
 
-		$href = $first_mailbox_edit_href;
-		// !important so the green wins over the admin colour scheme's current/hover menu states.
+		// !important so the rules win over the admin colour scheme's current/hover menu states.
 		echo '<style id="bh-wp-mailboxes-dev-menu-style">'
 			. '#adminmenu li.menu-top:has( > a.menu-top[href="' . esc_attr( $href ) . '"] ),'
 			. '#adminmenu li.menu-top:has( > a.menu-top[href="' . esc_attr( $href ) . '"] ) a.menu-top,'
 			. '#adminmenu a.menu-top[href="' . esc_attr( $href ) . '"] { background-color: green !important; }'
+			// Keep the submenu expanded inline at all times, overriding the hover-only flyout WordPress
+			// uses for non-current menus.
+			. '#adminmenu li.menu-top:has( > a.menu-top[href="' . esc_attr( $href ) . '"] ) .wp-submenu {'
+			. ' display: block !important; position: relative !important; left: auto !important;'
+			. ' top: auto !important; margin: 0 !important; min-width: 0 !important; box-shadow: none !important; }'
+			. '#adminmenu li.menu-top:has( > a.menu-top[href="' . esc_attr( $href ) . '"] ) .wp-submenu .wp-submenu-head {'
+			. ' display: none !important; }'
 			. '</style>';
 	}
 
@@ -92,5 +102,14 @@ class Menu {
 				'edit.php?post_type=' . $mailbox_settings->get_emails_cpt_underscored_20()
 			);
 		}
+
+		// Add bottom submenu link to logs page.
+		add_submenu_page(
+			parent_slug: $first_mailbox_edit_href,
+			page_title: 'BH WP Mailboxes Logs',
+			menu_title: 'Logs',
+			capability: 'manage_options',
+			menu_slug: 'admin.php?page=development-plugin-logs'
+		);
 	}
 }
