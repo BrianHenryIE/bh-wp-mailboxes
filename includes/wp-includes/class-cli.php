@@ -115,7 +115,7 @@ class CLI {
 	 */
 	public function list_mailboxes( array $_args, array $assoc_args ): void {
 
-		$fields = array( 'slug', 'emails_cpt', 'accounts_cpt', 'name', 'accounts' );
+		$fields = array( 'emails', 'emails_cpt', 'accounts', 'accounts_cpt', 'accounts_count' );
 
 		$plugin_slug = dirname( plugin_basename( __DIR__ ), 2 );
 
@@ -133,11 +133,11 @@ class CLI {
 			$api      = $mailbox;
 
 			$items[] = array(
-				'slug'         => $settings->get_plugin_slug(),
-				'emails_cpt'   => $settings->get_emails_cpt_underscored_20(),
-				'accounts_cpt' => $settings->get_email_accounts_cpt_underscored_20(),
-				'name'         => $settings->get_emails_cpt_friendly_name(),
-				'accounts'     => count( $api->get_email_accounts() ),
+				'emails'         => $settings->get_emails_cpt_friendly_name(),
+				'emails_cpt'     => $settings->get_emails_cpt_underscored_20(),
+				'accounts'       => $settings->get_email_accounts_cpt_friendly_name(),
+				'accounts_cpt'   => $settings->get_email_accounts_cpt_underscored_20(),
+				'accounts_count' => count( $api->get_email_accounts() ),
 			);
 		}
 
