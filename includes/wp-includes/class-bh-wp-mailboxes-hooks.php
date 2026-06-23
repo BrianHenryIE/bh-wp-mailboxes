@@ -74,6 +74,10 @@ class BH_WP_Mailboxes_Hooks {
 		$cli = new CLI( $this->api, $this->settings, $this->logger );
 
 		add_action( 'cli_init', $cli->register_commands( ... ) );
+
+		$gmail_cli = new Gmail_CLI( $this->api, $this->settings, $this->logger );
+
+		add_action( 'cli_init', $gmail_cli->register_commands( ... ) );
 	}
 
 	/**

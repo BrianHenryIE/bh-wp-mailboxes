@@ -35,6 +35,8 @@ use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_API;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_CLI;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Providers\Mock_Mailbox_Fixtures_Provider;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest\Mailboxes;
@@ -194,6 +196,51 @@ $on_plugins_loaded = function () {
 		add_filter( 'bh_wp_mailboxes_credentials', $imap_credentials, 10, 3 );
 	}
 
+	// Gmail mailbox. Wired only when the OAuth client secret is present. The account itself is created,
+	// and its first auth token obtained, via `wp development-plugin gmail connect` (see Gmail_CLI).
+	$gmail_api_helper = new Gmail_API();
+	if ( $gmail_api_helper->is_client_secret_present() ) {
+
+		$gmail_mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {
+			use BH_WP_Mailboxes_Settings_Defaults_Trait;
+
+			/**
+			 * Returns the plugin slug.
+			 */
+			public function get_plugin_slug(): string {
+				return 'development-plugin';
+			}
+
+			/**
+			 * Returns the CPT friendly name.
+			 */
+			public function get_emails_cpt_friendly_name(): string {
+				return 'Gmail Email';
+			}
+
+			/**
+			 * A friendly display name for UI.
+			 */
+			public function get_email_accounts_cpt_friendly_name(): string {
+				return 'Gmail Accounts';
+			}
+		};
+
+		$gmail_mailboxes_api = BH_WP_Mailboxes::make( $gmail_mailboxes_settings, $logger );
+
+		// Resolve the Gmail account's credentials from /var/www/test-credentials.
+		$gmail_credentials = function ( mixed $value, mixed $plugin_slug, mixed $account ) use ( $gmail_api_helper ) {
+			if ( $account->email_address === $gmail_api_helper->get_account_email_address() ) {
+				return $gmail_api_helper->get_credentials();
+			}
+			return $value;
+		};
+		add_filter( 'bh_wp_mailboxes_credentials', $gmail_credentials, 10, 3 );
+
+		$gmail_cli = new Gmail_CLI( $gmail_mailboxes_api, $gmail_mailboxes_settings, $gmail_api_helper, $logger );
+		add_action( 'cli_init', $gmail_cli->register_commands( ... ) );
+	}
+
 	$fixtures_mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {
 		use BH_WP_Mailboxes_Settings_Defaults_Trait;
 
@@ -260,7 +307,7 @@ $on_plugins_loaded = function () {
 
 	// Add a top-level "Mailboxes" menu with a submenu linking to the emails and accounts list for each
 	// configured mailbox (the IMAP/ENV mailbox and the fixtures mailbox).
-	$add_menus = function () use ( $fixtures_mailboxes_settings, $imap_mailboxes_settings, $mailboxes_menu_slug ) {
+	$add_menus = function () use ( $fixtures_mailboxes_settings, $imap_mailboxes_settings, $mailboxes_menu_slug, $gmail_mailboxes_settings ) {
 
 		$parent_slug = $mailboxes_menu_slug;
 
@@ -281,7 +328,7 @@ $on_plugins_loaded = function () {
 		global $menu;
 		$menu['2.5'] = array( '', 'read', 'bh-mailboxes-separator-top', '', 'wp-menu-separator' );
 
-		foreach ( array( $imap_mailboxes_settings, $fixtures_mailboxes_settings ) as $mailbox_settings ) {
+		foreach ( array( $imap_mailboxes_settings, $fixtures_mailboxes_settings, $gmail_mailboxes_settings ) as $mailbox_settings ) {
 			add_submenu_page(
 				$parent_slug,
 				$mailbox_settings->get_emails_cpt_friendly_name(),
@@ -289,14 +336,14 @@ $on_plugins_loaded = function () {
 				'manage_options',
 				'edit.php?post_type=' . $mailbox_settings->get_emails_cpt_underscored_20()
 			);
-
-			add_submenu_page(
-				$parent_slug,
-				$mailbox_settings->get_email_accounts_cpt_friendly_name(),
-				$mailbox_settings->get_email_accounts_cpt_friendly_name(),
-				'manage_options',
-				'edit.php?post_type=' . $mailbox_settings->get_email_accounts_cpt_underscored_20()
-			);
+			//
+			// add_submenu_page(
+			// $parent_slug,
+			// $mailbox_settings->get_email_accounts_cpt_friendly_name(),
+			// $mailbox_settings->get_email_accounts_cpt_friendly_name(),
+			// 'manage_options',
+			// 'edit.php?post_type=' . $mailbox_settings->get_email_accounts_cpt_underscored_20()
+			// );
 		}
 	};
 	add_action( 'admin_menu', $add_menus );

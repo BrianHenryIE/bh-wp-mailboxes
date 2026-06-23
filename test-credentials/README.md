@@ -11,7 +11,7 @@ Copy `.env.secret.example` to `.env.secret` and fill in the values.
 # Google Developer Console Project
 
 Place the Google Developer project credentials in this directory as: 
-* `credentials.json`
+* `client_secret.json`
 * `access_token.json`
 
 Gmail allows IMAP application passwords for accounts with 2FA, you don't necessarily need to set up a Google Developer Console project.

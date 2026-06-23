@@ -18,6 +18,16 @@ The core library this is built around is [zbateson/mail-mime-parser](https://git
 
 TODO: we should annotate PhpDoc with RFCs relevant to the functions. 
 
+// Document / remove actions
+do_action( 'bh_wp_mailboxes_fetch_emails_saved_' . $this->settings->get_plugin_slug(), $all_new_emails );
+
+/**
+ * Fires once check_email() has finished, regardless of how many emails were saved.
+ *
+ * @param BH_Email[] $all_new_emails Every newly saved BH_Email object.
+ */
+do_action( 'bh_wp_mailboxes_fetch_emails_complete', $all_new_emails );
+
 ## Goals
 
 * Handle bad credentials – servers block IPs that have too many bad login attempts, so delay a few hours after each failed attempt, admin_notice to alert admins of problem (warning -> error)
@@ -73,31 +83,10 @@ The default setting is to delete emails after 7 days. NB: if you're using a shar
 // TODO: find a tool that documents filters and actions in the codebase. Then create a github action that updates the README with that output.
 <!-- /filters -->
 
-### Google API client
+### Gmail
 
-There is code in the plugin to support Google Developer Console projects but the Composer dependency is not included by default. If you want to use that:
-
-```
-{
-    "require": {
-        "google/apiclient": "^2.12.1"
-    },
-    "scripts": {
-        "pre-autoload-dump": ["Google\\Task\\Composer::cleanup"]
-    },
-    "extra": {
-        "google/apiclient-services": [
-            "Gmail"        
-        ]
-    }
-}
-```
-
-```bash
-jq '.scripts["pre-autoload-dump"] |= ((. // []) + ["Google\\Task\\Composer::cleanup"]) | unique' composer.json | sponge composer.json
-jq '.extra["google/apiclient-services"] |= ((. // []) + ["Gmail"]) | unique' composer.json | sponge composer.json
-composer require google/apiclient
-```
+* Gmail can use regular IMAP via application passwords when the account has 2FA enabled.
+* To use the Gmail API, see includes/providers/gmail-api/README-GMAIL.md for configuring a Google Developer Console project. I think supporting this in distributed plugins is probably too much work!
 
 ## Contributing
 

@@ -14,6 +14,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Requires_Credentials;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token;
 use DateTimeInterface;
 use Exception;
 use Google\Service\Gmail\ListMessagesResponse;
@@ -99,7 +100,7 @@ class Gmail_Email_Provider implements Email_Provider_Interface, Requires_Credent
 			return null;
 		}
 
-		$client = new Google_Client();
+		$client = $this->make_client();
 		$client->setLogger( $this->logger );
 
 		// TODO: Replace with a configurable application name.
@@ -143,6 +144,144 @@ class Gmail_Email_Provider implements Email_Provider_Interface, Requires_Credent
 
 			$this->save_access_token( __DIR__ . '/token.json', (string) wp_json_encode( $client->getAccessToken() ) );
 		}
+		return $client;
+	}
+
+	/**
+	 * Use the stored refresh token to obtain a fresh access token, without saving it anywhere.
+	 *
+	 * Unlike {@see getClient()} — which refreshes as a side effect and writes the new token to disk —
+	 * this returns the new {@see Access_Token} for the caller to do with as they please (e.g. print it,
+	 * fire an action). Google omits the refresh token from a refresh response, so the original is
+	 * carried over to keep the returned value object complete.
+	 *
+	 * @return Access_Token The freshly minted access token.
+	 * @throws Exception When no credentials/refresh token are set, or the refresh request fails.
+	 */
+	public function refresh_access_token(): Access_Token {
+
+		if ( ! isset( $this->credentials ) ) {
+			throw new Exception( 'No credentials set on the Gmail provider.' );
+		}
+
+		$existing_token = $this->credentials->get_access_token();
+
+		if ( is_null( $existing_token ) || '' === $existing_token->refresh_token ) {
+			throw new Exception( 'No refresh token available to refresh the Gmail access token.' );
+		}
+
+		$client = $this->make_oauth_client();
+
+		/**
+		 * The Google token endpoint response.
+		 *
+		 * @var array<string,mixed> $new_token
+		 */
+		$new_token = $client->fetchAccessTokenWithRefreshToken( $existing_token->refresh_token );
+
+		if ( isset( $new_token['error'] ) ) {
+			throw new Exception(
+				'Failed to refresh Gmail access token: ' . esc_html( implode( ', ', array_map( 'strval', $new_token ) ) )
+			);
+		}
+
+		// Google omits fields that are unchanged from the original token (notably the refresh token);
+		// carry them over so the returned value object is complete.
+		$data = (object) array(
+			'access_token'  => $new_token['access_token'],
+			'expires_in'    => $new_token['expires_in'] ?? $existing_token->expires_in,
+			'scope'         => $new_token['scope'] ?? $existing_token->scope,
+			'token_type'    => $new_token['token_type'] ?? $existing_token->token_type,
+			'created'       => $new_token['created'] ?? time(),
+			'refresh_token' => $new_token['refresh_token'] ?? $existing_token->refresh_token,
+		);
+
+		return Access_Token::from_json( $data );
+	}
+
+	/**
+	 * The Google consent-screen URL a user visits to authorize this application for the first time.
+	 *
+	 * @return string The authorization URL.
+	 * @throws Exception When no credentials are set.
+	 */
+	public function get_authorization_url(): string {
+		return $this->make_oauth_client()->createAuthUrl();
+	}
+
+	/**
+	 * Exchange a first-time authorization code for an access token, without saving it anywhere.
+	 *
+	 * @param string $auth_code The verification code from the consent screen.
+	 *
+	 * @return Access_Token The newly minted access token (including the long-lived refresh token).
+	 * @throws Exception When no credentials are set, the exchange fails, or no refresh token is returned.
+	 */
+	public function fetch_access_token_with_auth_code( string $auth_code ): Access_Token {
+
+		$client = $this->make_oauth_client();
+
+		/**
+		 * The Google token endpoint response.
+		 *
+		 * @var array<string,mixed> $new_token
+		 */
+		$new_token = $client->fetchAccessTokenWithAuthCode( $auth_code );
+
+		if ( isset( $new_token['error'] ) ) {
+			throw new Exception(
+				'Failed to fetch Gmail access token: ' . esc_html( implode( ', ', array_map( 'strval', $new_token ) ) )
+			);
+		}
+
+		// The whole point of the first-auth flow is to obtain the long-lived refresh token; without it
+		// the token is useless, so fail loudly (it requires offline access + the consent prompt).
+		if ( empty( $new_token['refresh_token'] ) ) {
+			throw new Exception( 'No refresh token returned; ensure offline access and the consent prompt are requested.' );
+		}
+
+		$data = (object) array(
+			'access_token'  => $new_token['access_token'],
+			'expires_in'    => $new_token['expires_in'] ?? 3599,
+			'scope'         => $new_token['scope'] ?? Google_Service_Gmail::GMAIL_READONLY,
+			'token_type'    => $new_token['token_type'] ?? 'Bearer',
+			'created'       => $new_token['created'] ?? time(),
+			'refresh_token' => $new_token['refresh_token'],
+		);
+
+		return Access_Token::from_json( $data );
+	}
+
+	/**
+	 * Instantiate a Google API client.
+	 *
+	 * Extracted so tests can substitute a mock client (the only seam needed to exercise the OAuth
+	 * token flows without live credentials).
+	 */
+	protected function make_client(): Google_Client {
+		return new Google_Client();
+	}
+
+	/**
+	 * A Google client configured from the project credentials for the read-only Gmail OAuth flow.
+	 *
+	 * Shared by the refresh, authorization-URL, and auth-code-exchange flows.
+	 *
+	 * @throws Exception When no credentials are set.
+	 */
+	protected function make_oauth_client(): Google_Client {
+
+		if ( ! isset( $this->credentials ) ) {
+			throw new Exception( 'No credentials set on the Gmail provider.' );
+		}
+
+		$client = $this->make_client();
+		$client->setLogger( $this->logger );
+		$client->setScopes( Google_Service_Gmail::GMAIL_READONLY );
+		$client->setAuthConfig( (array) $this->credentials->get_project_credentials() );
+		$client->setAccessType( 'offline' );
+		$client->setPrompt( 'consent' );
+
 		return $client;
 	}
 
