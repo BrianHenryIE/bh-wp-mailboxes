@@ -24,7 +24,7 @@ class BH_Email_Fixture {
 		$file_path     ??= codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
 		$email_contents = (string) file_get_contents( $file_path );
 
-		$mailbox_settings ??= BH_WP_Mailboxes_Settings::make();
+		$mailbox_settings ??= BH_WP_Mailboxes_Settings_Fixture::make();
 
 		$repo ??= new Email_WP_Post_Repository(
 			$mailbox_settings->get_emails_cpt_underscored_20(),

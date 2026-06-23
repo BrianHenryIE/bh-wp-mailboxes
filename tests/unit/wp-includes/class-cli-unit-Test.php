@@ -13,6 +13,9 @@ namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\BH_WP_Mailboxes_API_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\BH_WP_Mailboxes_Settings_Fixture;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use DateTimeImmutable;
@@ -118,46 +121,28 @@ class CLI_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * A registered mailbox descriptor for the filter to return.
-	 *
-	 * @param string $slug          The plugin slug.
-	 * @param string $emails_cpt    The emails CPT name.
-	 * @param string $accounts_cpt  The accounts CPT name.
-	 * @param string $friendly_name The emails CPT friendly name.
-	 * @param int    $account_count How many accounts the mailbox's API returns.
-	 *
-	 * @return array{api:API_Interface,settings:BH_WP_Mailboxes_Settings_Interface}
-	 */
-	private function make_mailbox( string $slug, string $emails_cpt, string $accounts_cpt, string $friendly_name, int $account_count ): array {
-
-		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
-		$settings->allows( 'get_plugin_slug' )->andReturn( $slug );
-		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $emails_cpt );
-		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( $accounts_cpt );
-		$settings->allows( 'get_emails_cpt_friendly_name' )->andReturn( $friendly_name );
-
-		$api = Mockery::mock( API_Interface::class );
-		$api->allows( 'get_email_accounts' )->andReturn( array_fill( 0, $account_count, 'account' ) );
-
-		return array(
-			'api'      => $api,
-			'settings' => $settings,
-		);
-	}
-
-	/**
 	 * Each registered mailbox becomes a row, including its account count.
 	 *
 	 * @covers ::list_mailboxes
 	 */
 	public function test_list_mailboxes_outputs_rows(): void {
 
+		$imap_settings = BH_WP_Mailboxes_Settings_Fixture::make( 'development-plugin', 'imap_email_env', 'imap_accounts_env', 'IMAP Email ENV' );
+		$imap_accounts = array( BH_Email_Account_Fixture::make() );
+
+		$fixtures_settings = BH_WP_Mailboxes_Settings_Fixture::make( 'development-plugin', 'fixtures_email', 'fixtures_accounts', 'Fixtures Email' );
+		$fixtures_accounts = array( BH_Email_Account_Fixture::make(), BH_Email_Account_Fixture::make() );
+
 		$mailboxes = array(
-			$this->make_mailbox( 'development-plugin', 'imap_email_env', 'imap_accounts_env', 'IMAP Email ENV', 1 ),
-			$this->make_mailbox( 'development-plugin', 'fixtures_email', 'fixtures_accounts', 'Fixtures Email', 2 ),
+			BH_WP_Mailboxes_API_Fixture::make( $imap_settings, $imap_accounts, ),
+			BH_WP_Mailboxes_API_Fixture::make( $fixtures_settings, $fixtures_accounts, ),
 		);
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_registered_mailboxes' )->with( array() )->reply( $mailboxes );
+		$plugin_slug = 'test-plugin';
+
+		\WP_Mock::userFunction( 'plugin_basename' )->andReturn( "$plugin_slug/includes/subdir/" );
+
+		\WP_Mock::onFilter( 'bh_wp_mailboxes_registered_mailboxes' )->with( array(), $plugin_slug )->reply( $mailboxes );
 
 		\WP_CLI\Utils::$format_items = array();
 
@@ -182,13 +167,18 @@ class CLI_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_list_mailboxes_skips_invalid_entries(): void {
 
+		$imap_settings = BH_WP_Mailboxes_Settings_Fixture::make( 'test-plugin', 'imap_email_env', 'imap_accounts_env', 'IMAP Email ENV' );
+		$imap_accounts = array( BH_Email_Account_Fixture::make() );
+
 		$mailboxes = array(
-			'not-an-array',
-			array( 'settings' => 'wrong-type' ),
-			$this->make_mailbox( 'development-plugin', 'imap_email_env', 'imap_accounts_env', 'IMAP Email ENV', 0 ),
+			BH_WP_Mailboxes_API_Fixture::make( $imap_settings, $imap_accounts, ),
 		);
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_registered_mailboxes' )->with( array() )->reply( $mailboxes );
+		$plugin_slug = 'test-plugin';
+
+		\WP_Mock::userFunction( 'plugin_basename' )->andReturn( "$plugin_slug/includes/subdir/" );
+
+		\WP_Mock::onFilter( 'bh_wp_mailboxes_registered_mailboxes' )->with( array(), $plugin_slug )->reply( $mailboxes );
 
 		\WP_CLI\Utils::$format_items = array();
 

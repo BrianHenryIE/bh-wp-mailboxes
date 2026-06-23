@@ -6,7 +6,7 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\Models\BH_WP_Mailboxes_Settings;
+use BrianHenryIE\WP_Mailboxes\Models\BH_WP_Mailboxes_Settings_Fixture;
 use Illuminate\Support\Collection;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
@@ -43,7 +43,7 @@ class API_Unit_Test extends Unit_Testcase {
 		?LoggerInterface $logger = null
 	): API {
 		return new API(
-			$settings ?? BH_WP_Mailboxes_Settings::make(),
+			$settings ?? BH_WP_Mailboxes_Settings_Fixture::make(),
 			$email_repository ?? \Mockery::mock( Email_WP_Post_Repository::class ),
 			$email_account_repository ?? \Mockery::mock( Email_Account_WP_Post_Repository::class ),
 			$private_uploads ?? \Mockery::mock( Private_Uploads::class ),
