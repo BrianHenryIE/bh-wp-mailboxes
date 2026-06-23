@@ -26,10 +26,9 @@ use Alley_Interactive\Autoloader\Autoloader;
 use BrianHenryIE\WP_Logger\Logger;
 use BrianHenryIE\WP_Logger\Logger_Settings_Interface;
 use BrianHenryIE\WP_Logger\Logger_Settings_Trait;
-use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Menu;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
-use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
@@ -84,6 +83,8 @@ new Authentication()->register_hooks();
 
 // Custom REST endpoints for arranging/asserting e2e tests.
 new Mailboxes()->register_hooks();
+
+new Menu()->register_hooks();
 
 
 /**
@@ -301,68 +302,6 @@ $on_plugins_loaded = function () {
 		$logger,
 	);
 	$fixtures_provider = new Mock_Mailbox_Fixtures_Provider( $fixtures_mailboxes_settings, $fixtures_settings, $email_factory );
-
-	// The top-level menu points at the IMAP emails list, so clicking "Mailboxes" lands somewhere useful.
-	$mailboxes_menu_slug = 'edit.php?post_type=' . $imap_mailboxes_settings->get_emails_cpt_underscored_20();
-
-	// Add a top-level "Mailboxes" menu with a submenu linking to the emails and accounts list for each
-	// configured mailbox (the IMAP/ENV mailbox and the fixtures mailbox).
-	$add_menus = function () use ( $fixtures_mailboxes_settings, $imap_mailboxes_settings, $mailboxes_menu_slug, $gmail_mailboxes_settings ) {
-
-		$parent_slug = $mailboxes_menu_slug;
-
-		// Position 3 places "Mailboxes" between Dashboard (2) and Posts (5); WordPress's core separator (4)
-		// sits below it, and the custom separator added below (2.5) sits above it.
-		add_menu_page(
-			'Mailboxes',
-			'Mailboxes',
-			'manage_options',
-			$parent_slug,
-			'',
-			'dashicons-email',
-			3
-		);
-
-		// Add a spacer above "Mailboxes" (between it and Dashboard). WordPress renders any $menu entry
-		// whose class list contains `wp-menu-separator` as a spacer; key 2.5 slots it between 2 and 3.
-		global $menu;
-		$menu['2.5'] = array( '', 'read', 'bh-mailboxes-separator-top', '', 'wp-menu-separator' );
-
-		foreach ( array( $imap_mailboxes_settings, $fixtures_mailboxes_settings, $gmail_mailboxes_settings ) as $mailbox_settings ) {
-			add_submenu_page(
-				$parent_slug,
-				$mailbox_settings->get_emails_cpt_friendly_name(),
-				$mailbox_settings->get_emails_cpt_friendly_name(),
-				'manage_options',
-				'edit.php?post_type=' . $mailbox_settings->get_emails_cpt_underscored_20()
-			);
-			//
-			// add_submenu_page(
-			// $parent_slug,
-			// $mailbox_settings->get_email_accounts_cpt_friendly_name(),
-			// $mailbox_settings->get_email_accounts_cpt_friendly_name(),
-			// 'manage_options',
-			// 'edit.php?post_type=' . $mailbox_settings->get_email_accounts_cpt_underscored_20()
-			// );
-		}
-	};
-	add_action( 'admin_menu', $add_menus );
-
-	// Tint the development "Mailboxes" top-level menu green so the test-harness menu is obvious. The item
-	// is matched by its anchor href (its generated id is derived from the slug) and styled via the parent
-	// <li> and the anchor itself.
-	add_action(
-		'admin_head',
-		function () use ( $mailboxes_menu_slug ) {
-			$href = $mailboxes_menu_slug;
-			// !important so the green wins over the admin colour scheme's current/hover menu states.
-			echo '<style id="bh-wp-mailboxes-dev-menu-style">'
-				. '#adminmenu li.menu-top:has( > a.menu-top[href="' . esc_attr( $href ) . '"] ),'
-				. '#adminmenu li.menu-top:has( > a.menu-top[href="' . esc_attr( $href ) . '"] ) a.menu-top,'
-				. '#adminmenu a.menu-top[href="' . esc_attr( $href ) . '"] { background-color: green !important; }'
-				. '</style>';
-		}
-	);
 };
 add_action( 'plugins_loaded', $on_plugins_loaded );
 
