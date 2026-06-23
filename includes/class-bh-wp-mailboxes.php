@@ -8,6 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\API\API;
+use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
@@ -35,6 +36,31 @@ class BH_WP_Mailboxes extends API {
 		return '1.0.0';
 	}
 
+	/** @var BH_WP_Mailboxes[] */
+	protected static array $mailboxes = array();
+
+	/**
+	 * @hooked bh_wp_mailboxes_registered_mailboxes
+	 */
+	public static function filter( array $mailboxes, string $plugin_slug ): array {
+
+		$file_plugin_slug = dirname( plugin_basename( __DIR__ ) );
+		if ( $file_plugin_slug !== $plugin_slug ) {
+			return $mailboxes;
+		}
+
+		return array_merge( $mailboxes, self::$mailboxes );
+	}
+
+	/**
+	 * Idempotently initialize the library.
+	 *
+	 * Hooked at 100 so the default runs before this.
+	 */
+	public static function init(): void {
+		add_filter( 'bh_wp_mailboxes_registered_mailboxes', __CLASS__ . '::filter', 100, 2 );
+	}
+
 	/**
 	 * Create an instance of the BH_WP_Mailboxes API class.
 	 *
@@ -47,6 +73,8 @@ class BH_WP_Mailboxes extends API {
 		BH_WP_Mailboxes_Settings_Interface $settings,
 		?LoggerInterface $logger = null
 	): API {
+		self::init();
+
 		self::validate_settings( $settings );
 		$logger ??= new NullLogger();
 
@@ -76,6 +104,9 @@ class BH_WP_Mailboxes extends API {
 			$logger
 		);
 		new BH_WP_Mailboxes_Hooks( $mailboxes_api, $settings, $logger );
+
+		self::$mailboxes[] = $mailboxes_api;
+
 		return $mailboxes_api;
 	}
 

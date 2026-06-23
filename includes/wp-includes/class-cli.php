@@ -7,6 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
+use BrianHenryIE\WP_Mailboxes\API\API;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use Exception;
@@ -116,20 +117,20 @@ class CLI {
 
 		$fields = array( 'slug', 'emails_cpt', 'accounts_cpt', 'name', 'accounts' );
 
-		$mailboxes = apply_filters( 'bh_wp_mailboxes_registered_mailboxes', array() );
+		$plugin_slug = dirname( plugin_basename( __DIR__ ), 2 );
+
+		$mailboxes = apply_filters( 'bh_wp_mailboxes_registered_mailboxes', array(), $plugin_slug );
 
 		$items = array();
 		foreach ( (array) $mailboxes as $mailbox ) {
 
-			if ( ! is_array( $mailbox )
-				|| ! ( ( $mailbox['settings'] ?? null ) instanceof BH_WP_Mailboxes_Settings_Interface )
-				|| ! ( ( $mailbox['api'] ?? null ) instanceof API_Interface )
-			) {
+			if ( ! ( $mailbox instanceof API_Interface ) ) {
+				// TODO: Log.
 				continue;
 			}
 
-			$settings = $mailbox['settings'];
-			$api      = $mailbox['api'];
+			$settings = $mailbox->get_settings();
+			$api      = $mailbox;
 
 			$items[] = array(
 				'slug'         => $settings->get_plugin_slug(),
