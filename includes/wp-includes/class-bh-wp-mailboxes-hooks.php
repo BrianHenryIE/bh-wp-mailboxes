@@ -18,6 +18,7 @@ use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_CLI;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -61,6 +62,7 @@ class BH_WP_Mailboxes_Hooks {
 		$this->define_single_email_view_hooks();
 		$this->define_ajax_hooks();
 		$this->define_cli_hooks();
+	}
 
 	/**
 	 * Register WP-CLI commands when running under WP-CLI.
