@@ -60,6 +60,20 @@ class BH_WP_Mailboxes_Hooks {
 		$this->define_admin_ui_hooks();
 		$this->define_single_email_view_hooks();
 		$this->define_ajax_hooks();
+		$this->define_cli_hooks();
+
+	/**
+	 * Register WP-CLI commands when running under WP-CLI.
+	 */
+	protected function define_cli_hooks(): void {
+
+		if ( ! ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+			return;
+		}
+
+		$cli = new CLI( $this->api, $this->settings, $this->logger );
+
+		add_action( 'cli_init', $cli->register_commands( ... ) );
 	}
 
 	/**

@@ -143,4 +143,13 @@ class BH_WP_Mailboxes_Settings_Defaults_Trait_WPUnit_Test extends WPUnit_Testcas
 			$this->make_settings()->get_cron_schedules(),
 		);
 	}
+
+	/**
+	 * The CLI base defaults to the plugin slug.
+	 *
+	 * @covers ::get_cli_base
+	 */
+	public function test_get_cli_base_defaults_to_plugin_slug(): void {
+		$this->assertSame( 'my-mailboxes', $this->make_settings( plugin_slug: 'my-mailboxes' )->get_cli_base() );
+	}
 }

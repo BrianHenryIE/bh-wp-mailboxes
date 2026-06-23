@@ -90,4 +90,13 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	 * @return array<string, string>
 	 */
 	public function get_cron_schedules(): array;
+
+	/**
+	 * The base namespace for this instance's WP-CLI commands, e.g. `wp {cli_base} accounts list`.
+	 *
+	 * Return `null` to disable registering CLI commands for this instance.
+	 *
+	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_cli_base() Defaults to the plugin slug.
+	 */
+	public function get_cli_base(): ?string;
 }

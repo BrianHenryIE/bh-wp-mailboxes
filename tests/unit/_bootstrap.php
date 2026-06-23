@@ -8,6 +8,8 @@
 WP_Mock::setUsePatchwork( true );
 WP_Mock::bootstrap();
 
+require_once __DIR__ . '/../_support/stubs/wp-cli-stubs.php';
+
 if ( ! defined( 'MINUTE_IN_SECONDS' ) ) {
 	define( 'MINUTE_IN_SECONDS', 60 );
 }

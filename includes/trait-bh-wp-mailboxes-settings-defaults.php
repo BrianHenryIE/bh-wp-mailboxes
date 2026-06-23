@@ -116,4 +116,13 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 			'delete_local_emails' => 'daily',
 		);
 	}
+
+	/**
+	 * The base namespace for WP-CLI commands. Defaults to the plugin slug.
+	 *
+	 * @see BH_WP_Mailboxes_Settings_Interface::get_cli_base()
+	 */
+	public function get_cli_base(): ?string {
+		return $this->get_plugin_slug();
+	}
 }
