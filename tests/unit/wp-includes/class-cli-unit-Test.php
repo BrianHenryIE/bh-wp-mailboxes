@@ -129,12 +129,13 @@ class CLI_Unit_Test extends Unit_Testcase {
 
 		$imap_settings = BH_WP_Mailboxes_Settings_Fixture::make( 'development-plugin', 'imap_email_env', 'imap_accounts_env', 'IMAP Email ENV' );
 		$imap_accounts = array( BH_Email_Account_Fixture::make() );
+		$imap_mailbox  = BH_WP_Mailboxes_API_Fixture::make( $imap_settings, $imap_accounts, );
 
 		$fixtures_settings = BH_WP_Mailboxes_Settings_Fixture::make( 'development-plugin', 'fixtures_email', 'fixtures_accounts', 'Fixtures Email' );
 		$fixtures_accounts = array( BH_Email_Account_Fixture::make(), BH_Email_Account_Fixture::make() );
 
 		$mailboxes = array(
-			BH_WP_Mailboxes_API_Fixture::make( $imap_settings, $imap_accounts, ),
+			$imap_mailbox,
 			BH_WP_Mailboxes_API_Fixture::make( $fixtures_settings, $fixtures_accounts, ),
 		);
 
@@ -146,18 +147,19 @@ class CLI_Unit_Test extends Unit_Testcase {
 
 		\WP_CLI\Utils::$format_items = array();
 
-		$this->make_sut( array() )->list_mailboxes( array(), array() );
+		$sut = new CLI( $mailboxes[0], $imap_settings, $this->logger );
+		$sut->list_mailboxes( array(), array() );
 
 		$call = \WP_CLI\Utils::$format_items[0];
 
 		$this->assertSame( 'table', $call['format'] );
-		$this->assertSame( array( 'slug', 'emails_cpt', 'accounts_cpt', 'name', 'accounts' ), $call['fields'] );
+		$this->assertSame( array( 'emails', 'emails_cpt', 'accounts', 'accounts_cpt', 'accounts_count' ), $call['fields'] );
 		$this->assertCount( 2, $call['items'] );
 
 		$this->assertSame( 'imap_email_env', $call['items'][0]['emails_cpt'] );
-		$this->assertSame( 1, $call['items'][0]['accounts'] );
-		$this->assertSame( 'Fixtures Email', $call['items'][1]['name'] );
-		$this->assertSame( 2, $call['items'][1]['accounts'] );
+		$this->assertSame( 1, $call['items'][0]['accounts_count'] );
+		$this->assertSame( 'Fixtures Email', $call['items'][1]['emails'] );
+		$this->assertSame( 2, $call['items'][1]['accounts_count'] );
 	}
 
 	/**
