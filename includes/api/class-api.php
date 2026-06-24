@@ -427,7 +427,7 @@ class API implements API_Interface {
 	 *
 	 * @throws Exception On failure to save.
 	 */
-	public function update_email_status( BH_Email $email, string $local_status ): BH_Email {
+	public function update_email_local_status( BH_Email $email, string $local_status ): BH_Email {
 		return $this->email_repository->update( $email, local_status: $local_status );
 	}
 

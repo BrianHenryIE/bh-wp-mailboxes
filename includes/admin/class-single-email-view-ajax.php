@@ -92,7 +92,7 @@ class Single_Email_View_Ajax {
 			wp_send_json_error( array( 'message' => 'Invalid post.' ), 400 );
 		}
 
-		$updated = $this->api->update_email_status( $email, $status );
+		$updated = $this->api->update_email_local_status( $email, $status );
 
 		wp_send_json_success( array( 'status' => $updated->local_status ) );
 	}

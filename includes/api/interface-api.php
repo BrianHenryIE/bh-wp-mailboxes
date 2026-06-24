@@ -67,7 +67,7 @@ interface API_Interface {
 	 * @param BH_Email $email        The email to update.
 	 * @param string   $local_status The new local (WordPress post) status.
 	 */
-	public function update_email_status( BH_Email $email, string $local_status ): BH_Email;
+	public function update_email_local_status( BH_Email $email, string $local_status ): BH_Email;
 
 	/**
 	 * Insert a WooCommerce-style log note (wp comment) on the email post.
