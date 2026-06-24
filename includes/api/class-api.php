@@ -58,7 +58,7 @@ class API implements API_Interface {
 		protected ?Private_Uploads $private_uploads,
 		?LoggerInterface $logger = null
 	) {
-		$this->logger = $logger ?? new NullLogger();
+		$this->setLogger( $logger ?? new NullLogger() );
 	}
 
 	/**
