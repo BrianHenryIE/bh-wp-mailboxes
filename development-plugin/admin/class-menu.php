@@ -30,6 +30,8 @@ class Menu {
 	 * expands a top-level menu's submenu inline while that menu is "current"; otherwise the submenu is a
 	 * hover-only flyout. Forcing `display: block; position: relative` reproduces the open/inline state at
 	 * all times, and `.wp-submenu-head` (the title row shown only in the flyout) is hidden to match.
+	 *
+	 * @hooked admin_head
 	 */
 	public function add_menu_style(): void {
 		/**
@@ -59,6 +61,8 @@ class Menu {
 	/**
 	 * Add a top-level "Mailboxes" menu with a submenu linking to the emails and accounts list for each
 	 * configured mailbox (the IMAP/ENV mailbox and the fixtures mailbox).
+	 *
+	 * @hooked admin_menu
 	 */
 	public function add_menus(): void {
 
