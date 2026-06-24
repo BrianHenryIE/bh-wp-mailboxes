@@ -265,6 +265,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			return $account;
 		}
 
+		// https://stackoverflow.com/a/68476973
 		$result = wp_update_post( $args, true );
 
 		if ( is_wp_error( $result ) ) {
