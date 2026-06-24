@@ -47,14 +47,6 @@ class Imap {
 				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- loaded from dotenv file, not user input.
 				return $_ENV['IMAP_USERNAME'] ?? '';
 			}
-
-
-			/**
-			 * When false, the account is not checked on cron.
-			 */
-			public function is_active(): bool {
-				return true;
-			}
 		};
 
 		return $imap_mailbox_settings;
