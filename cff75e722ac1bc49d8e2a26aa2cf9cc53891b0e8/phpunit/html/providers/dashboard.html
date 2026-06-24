@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <title>Dashboard for /home/runner/work/bh-wp-mailboxes/bh-wp-mailboxes/includes/providers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="../_css/bootstrap.min.css?v=9.2.32" rel="stylesheet" type="text/css">
+  <link href="../_css/nv.d3.min.css?v=9.2.32" rel="stylesheet" type="text/css">
+  <link href="../_css/style.css?v=9.2.32" rel="stylesheet" type="text/css">
+  <link href="../_css/custom.css" rel="stylesheet" type="text/css">
+ </head>
+ <body>
+  <header>
+   <div class="container-fluid">
+    <div class="row">
+     <div class="col-md-12">
+      <nav aria-label="breadcrumb">
+       <ol class="breadcrumb">
+         <li class="breadcrumb-item"><a href="../index.html">/home/runner/work/bh-wp-mailboxes/bh-wp-mailboxes/includes</a></li>
+         <li class="breadcrumb-item"><a href="index.html">providers</a></li>
+         <li class="breadcrumb-item active">(Dashboard)</li>
+
+       </ol>
+      </nav>
+     </div>
+    </div>
+   </div>
+  </header>
+  <div class="container-fluid">
+   <div class="row">
+    <div class="col-md-12">
+     <h2>Classes</h2>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Coverage Distribution</h3>
+     <div id="classCoverageDistribution" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Complexity</h3>
+     <div id="classComplexity" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Insufficient Coverage</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Class</th>
+         <th class="text-right">Coverage</th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="gmail-api/model/class-access-token.php.html#16">BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#34">BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider</a></td><td class="text-right">37%</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#33">BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider</a></td><td class="text-right">43%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-cli.php.html#23">BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_CLI</a></td><td class="text-right">54%</td></tr>
+       <tr><td><a href="gmail-api/model/class-oauth-client-credentials.php.html#19">BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\OAuth_Client_Credentials</a></td><td class="text-right">61%</td></tr>
+       <tr><td><a href="gmail-api/class-google-api-credentials.php.html#16">BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials</a></td><td class="text-right">66%</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Project Risks</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Class</th>
+         <th class="text-right"><abbr title="Change Risk Anti-Patterns (CRAP) Index">CRAP</abbr></th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#34">BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider</a></td><td class="text-right">674</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#33">BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider</a></td><td class="text-right">165</td></tr>
+       <tr><td><a href="gmail-api/model/class-access-token.php.html#16">BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token</a></td><td class="text-right">30</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-cli.php.html#23">BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_CLI</a></td><td class="text-right">25</td></tr>
+       <tr><td><a href="gmail-api/model/class-oauth-client-credentials.php.html#19">BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\OAuth_Client_Credentials</a></td><td class="text-right">7</td></tr>
+       <tr><td><a href="gmail-api/class-google-api-credentials.php.html#16">BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials</a></td><td class="text-right">4</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-12">
+     <h2>Methods</h2>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Coverage Distribution</h3>
+     <div id="methodCoverageDistribution" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Complexity</h3>
+     <div id="methodComplexity" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Insufficient Coverage</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Method</th>
+         <th class="text-right">Coverage</th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="gmail-api/class-gmail-cli.php.html#33"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_CLI::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-cli.php.html#48"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_CLI::register_commands">register_commands</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-cli.php.html#158"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_CLI::make_provider">make_provider</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#50"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#63"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::set_credentials">set_credentials</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#90"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::getClient">getClient</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#261"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::make_client">make_client</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#298"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::save_access_token">save_access_token</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#333"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::get_gmail_service">get_gmail_service</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#423"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::gmail_body_decode">gmail_body_decode</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#454"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::get_is_marked_read">get_is_marked_read</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#486"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::set_is_marked_read">set_is_marked_read</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#527"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::do_delete_on_server">do_delete_on_server</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#558"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::get_message_by_remote_uid">get_message_by_remote_uid</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#578"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::get_message_by_rfc822_id">get_message_by_rfc822_id</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#601"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::can_mark_read">can_mark_read</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#608"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::can_delete_on_server">can_delete_on_server</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#615"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::can_read_status">can_read_status</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-google-api-credentials.php.html#25"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-google-api-credentials.php.html#35"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials::get_project_credentials">get_project_credentials</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/model/class-access-token.php.html#28"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/model/class-access-token.php.html#47"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token::from_file">from_file</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/model/class-access-token.php.html#69"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token::from_json">from_json</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/model/class-oauth-client-credentials.php.html#33"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\OAuth_Client_Credentials::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/model/class-oauth-client-credentials.php.html#56"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\OAuth_Client_Credentials::from_file">from_file</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#60"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::can_read_status">can_read_status</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#68"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::can_mark_read">can_mark_read</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#75"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::can_delete_on_server">can_delete_on_server</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#89"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::set_credentials">set_credentials</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#242"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::get_is_marked_read">get_is_marked_read</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#272"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::set_is_marked_read">set_is_marked_read</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#308"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::do_delete_on_server">do_delete_on_server</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#337"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::find_message_by_uid">find_message_by_uid</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#373"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::find_message_by_message_id">find_message_by_message_id</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-cli.php.html#92"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_CLI::refresh_access_token">refresh_access_token</abbr></a></td><td class="text-right">76%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#220"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::fetch_access_token_with_auth_code">fetch_access_token_with_auth_code</abbr></a></td><td class="text-right">82%</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#272"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::make_oauth_client">make_oauth_client</abbr></a></td><td class="text-right">88%</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Project Risks</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Method</th>
+         <th class="text-right"><abbr title="Change Risk Anti-Patterns (CRAP) Index">CRAP</abbr></th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#337"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::find_message_by_uid">find_message_by_uid</abbr></a></td><td class="text-right">42</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#90"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::getClient">getClient</abbr></a></td><td class="text-right">30</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#298"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::save_access_token">save_access_token</abbr></a></td><td class="text-right">30</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#89"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::set_credentials">set_credentials</abbr></a></td><td class="text-right">30</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#558"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::get_message_by_remote_uid">get_message_by_remote_uid</abbr></a></td><td class="text-right">20</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-cli.php.html#48"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_CLI::register_commands">register_commands</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#486"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::set_is_marked_read">set_is_marked_read</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#578"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::get_message_by_rfc822_id">get_message_by_rfc822_id</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="gmail-api/model/class-access-token.php.html#47"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token::from_file">from_file</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="gmail-api/model/class-oauth-client-credentials.php.html#56"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\OAuth_Client_Credentials::from_file">from_file</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#272"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::set_is_marked_read">set_is_marked_read</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-cli.php.html#92"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_CLI::refresh_access_token">refresh_access_token</abbr></a></td><td class="text-right">7</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#63"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::set_credentials">set_credentials</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#423"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::gmail_body_decode">gmail_body_decode</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#454"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::get_is_marked_read">get_is_marked_read</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#527"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::do_delete_on_server">do_delete_on_server</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#242"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::get_is_marked_read">get_is_marked_read</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#308"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::do_delete_on_server">do_delete_on_server</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="imap/class-imapengine-imap-email-provider.php.html#373"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::find_message_by_message_id">find_message_by_message_id</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#220"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::fetch_access_token_with_auth_code">fetch_access_token_with_auth_code</abbr></a></td><td class="text-right">3</td></tr>
+       <tr><td><a href="gmail-api/class-gmail-email-provider.php.html#272"><abbr title="BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider::make_oauth_client">make_oauth_client</abbr></a></td><td class="text-right">2</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+   </div>
+   <footer>
+    <hr/>
+    <p>
+     <small>Generated by <a href="https://github.com/sebastianbergmann/php-code-coverage" target="_top">php-code-coverage 9.2.32</a> using <a href="https://secure.php.net/" target="_top">PHP 8.4.22</a> at Wed Jun 24 22:42:05 UTC 2026.</small>
+    </p>
+   </footer>
+  </div>
+  <script src="../_js/jquery.min.js?v=9.2.32" type="text/javascript"></script>
+  <script src="../_js/d3.min.js?v=9.2.32" type="text/javascript"></script>
+  <script src="../_js/nv.d3.min.js?v=9.2.32" type="text/javascript"></script>
+  <script type="text/javascript">
+$(document).ready(function() {
+  nv.addGraph(function() {
+    var chart = nv.models.multiBarChart();
+    chart.tooltips(false)
+      .showControls(false)
+      .showLegend(false)
+      .reduceXTicks(false)
+      .staggerLabels(true)
+      .yAxis.tickFormat(d3.format('d'));
+
+    d3.select('#classCoverageDistribution svg')
+      .datum(getCoverageDistributionData([1,0,0,0,1,1,1,2,0,0,0,1], "Class Coverage"))
+      .transition().duration(500).call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  nv.addGraph(function() {
+    var chart = nv.models.multiBarChart();
+    chart.tooltips(false)
+      .showControls(false)
+      .showLegend(false)
+      .reduceXTicks(false)
+      .staggerLabels(true)
+      .yAxis.tickFormat(d3.format('d'));
+
+    d3.select('#methodCoverageDistribution svg')
+      .datum(getCoverageDistributionData([34,0,0,0,0,0,0,0,1,2,2,14], "Method Coverage"))
+      .transition().duration(500).call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  function getCoverageDistributionData(data, label) {
+    var labels = [
+      '0%',
+      '0-10%',
+      '10-20%',
+      '20-30%',
+      '30-40%',
+      '40-50%',
+      '50-60%',
+      '60-70%',
+      '70-80%',
+      '80-90%',
+      '90-100%',
+      '100%'
+    ];
+    var values = [];
+    $.each(labels, function(key) {
+      values.push({x: labels[key], y: data[key]});
+    });
+
+    return [
+      {
+        key: label,
+        values: values,
+        color: "#4572A7"
+      }
+    ];
+  }
+  nv.addGraph(function() {
+    var chart = nv.models.scatterChart()
+      .showDistX(true)
+      .showDistY(true)
+      .showLegend(false)
+      .forceX([0, 100]);
+    chart.tooltipContent(function(graph) {
+      return '<p>' + graph.point.class + '</p>';
+    });
+
+    chart.xAxis.axisLabel('Code Coverage (in percent)');
+    chart.yAxis.axisLabel('Cyclomatic Complexity');
+
+    d3.select('#classComplexity svg')
+      .datum(getComplexityData([[54.054054054054056,12,"<a href=\"gmail-api\/class-gmail-cli.php.html#23\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_CLI<\/a>"],[37.01657458563536,50,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#34\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider<\/a>"],[66.66666666666666,4,"<a href=\"gmail-api\/class-google-api-credentials.php.html#16\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Google_API_Credentials<\/a>"],[0,5,"<a href=\"gmail-api\/model\/class-access-token.php.html#16\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Model\\Access_Token<\/a>"],[61.904761904761905,6,"<a href=\"gmail-api\/model\/class-oauth-client-credentials.php.html#19\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Model\\OAuth_Client_Credentials<\/a>"],[100,16,"<a href=\"imap\/class-imap-credentials-env.php.html#18\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\Imap_Credentials_Env<\/a>"],[43.96551724137931,28,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#33\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider<\/a>"]], 'Class Complexity'))
+      .transition()
+      .duration(500)
+      .call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  nv.addGraph(function() {
+    var chart = nv.models.scatterChart()
+      .showDistX(true)
+      .showDistY(true)
+      .showLegend(false)
+      .forceX([0, 100]);
+    chart.tooltipContent(function(graph) {
+      return '<p>' + graph.point.class + '</p>';
+    });
+
+    chart.xAxis.axisLabel('Code Coverage (in percent)');
+    chart.yAxis.axisLabel('Method Complexity');
+
+    d3.select('#methodComplexity svg')
+      .datum(getComplexityData([[0,1,"<a href=\"gmail-api\/class-gmail-cli.php.html#33\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_CLI::__construct<\/a>"],[0,3,"<a href=\"gmail-api\/class-gmail-cli.php.html#48\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_CLI::register_commands<\/a>"],[76.92307692307693,7,"<a href=\"gmail-api\/class-gmail-cli.php.html#92\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_CLI::refresh_access_token<\/a>"],[0,1,"<a href=\"gmail-api\/class-gmail-cli.php.html#158\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_CLI::make_provider<\/a>"],[0,1,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#50\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::__construct<\/a>"],[0,2,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#63\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::set_credentials<\/a>"],[100,1,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#76\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::test_connection<\/a>"],[0,5,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#90\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::getClient<\/a>"],[95,5,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#161\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::refresh_access_token<\/a>"],[100,1,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#208\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::get_authorization_url<\/a>"],[82.35294117647058,3,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#220\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::fetch_access_token_with_auth_code<\/a>"],[0,1,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#261\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::make_client<\/a>"],[88.88888888888889,2,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#272\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::make_oauth_client<\/a>"],[0,5,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#298\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::save_access_token<\/a>"],[0,1,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#333\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::get_gmail_service<\/a>"],[95.65217391304348,3,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#352\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::retrieve_emails<\/a>"],[100,1,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#412\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::is_read_from_labels<\/a>"],[0,2,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#423\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::gmail_body_decode<\/a>"],[0,2,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#454\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::get_is_marked_read<\/a>"],[0,3,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#486\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::set_is_marked_read<\/a>"],[0,2,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#527\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::do_delete_on_server<\/a>"],[0,4,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#558\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::get_message_by_remote_uid<\/a>"],[0,3,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#578\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::get_message_by_rfc822_id<\/a>"],[0,1,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#601\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::can_mark_read<\/a>"],[0,1,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#608\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::can_delete_on_server<\/a>"],[0,1,"<a href=\"gmail-api\/class-gmail-email-provider.php.html#615\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Gmail_Email_Provider::can_read_status<\/a>"],[0,1,"<a href=\"gmail-api\/class-google-api-credentials.php.html#25\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Google_API_Credentials::__construct<\/a>"],[0,1,"<a href=\"gmail-api\/class-google-api-credentials.php.html#35\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Google_API_Credentials::get_project_credentials<\/a>"],[100,2,"<a href=\"gmail-api\/class-google-api-credentials.php.html#45\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Google_API_Credentials::get_access_token<\/a>"],[0,1,"<a href=\"gmail-api\/model\/class-access-token.php.html#28\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Model\\Access_Token::__construct<\/a>"],[0,3,"<a href=\"gmail-api\/model\/class-access-token.php.html#47\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Model\\Access_Token::from_file<\/a>"],[0,1,"<a href=\"gmail-api\/model\/class-access-token.php.html#69\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Model\\Access_Token::from_json<\/a>"],[0,1,"<a href=\"gmail-api\/model\/class-oauth-client-credentials.php.html#33\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Model\\OAuth_Client_Credentials::__construct<\/a>"],[0,3,"<a href=\"gmail-api\/model\/class-oauth-client-credentials.php.html#56\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Model\\OAuth_Client_Credentials::from_file<\/a>"],[100,2,"<a href=\"gmail-api\/model\/class-oauth-client-credentials.php.html#79\">BrianHenryIE\\WP_Mailboxes\\Providers\\Gmail_API\\Model\\OAuth_Client_Credentials::from_json<\/a>"],[100,5,"<a href=\"imap\/class-imap-credentials-env.php.html#37\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\Imap_Credentials_Env::__construct<\/a>"],[100,7,"<a href=\"imap\/class-imap-credentials-env.php.html#69\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\Imap_Credentials_Env::validate<\/a>"],[100,1,"<a href=\"imap\/class-imap-credentials-env.php.html#99\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\Imap_Credentials_Env::get_email_imap_server<\/a>"],[100,1,"<a href=\"imap\/class-imap-credentials-env.php.html#106\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\Imap_Credentials_Env::get_email_account_username<\/a>"],[100,1,"<a href=\"imap\/class-imap-credentials-env.php.html#113\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\Imap_Credentials_Env::get_email_account_password<\/a>"],[100,1,"<a href=\"imap\/class-imap-credentials-env.php.html#120\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\Imap_Credentials_Env::get_encryption<\/a>"],[100,1,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#50\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider::__construct<\/a>"],[0,1,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#60\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider::can_read_status<\/a>"],[0,1,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#68\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider::can_mark_read<\/a>"],[0,1,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#75\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider::can_delete_on_server<\/a>"],[0,5,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#89\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider::set_credentials<\/a>"],[100,1,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#128\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider::test_connection<\/a>"],[100,3,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#144\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider::retrieve_emails<\/a>"],[0,2,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#242\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider::get_is_marked_read<\/a>"],[0,3,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#272\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider::set_is_marked_read<\/a>"],[0,2,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#308\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider::do_delete_on_server<\/a>"],[0,6,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#337\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider::find_message_by_uid<\/a>"],[0,2,"<a href=\"imap\/class-imapengine-imap-email-provider.php.html#373\">BrianHenryIE\\WP_Mailboxes\\Providers\\Imap\\ImapEngine_Imap_Email_Provider::find_message_by_message_id<\/a>"]], 'Method Complexity'))
+      .transition()
+      .duration(500)
+      .call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  function getComplexityData(data, label) {
+    var values = [];
+    $.each(data, function(key) {
+      var value = Math.round(data[key][0]*100) / 100;
+      values.push({
+        x: value,
+        y: data[key][1],
+        class: data[key][2],
+        size: 0.05,
+        shape: 'diamond'
+      });
+    });
+
+    return [
+      {
+        key: label,
+        values: values,
+        color: "#4572A7"
+      }
+    ];
+  }
+});
+  </script>
+ </body>
+</html>
