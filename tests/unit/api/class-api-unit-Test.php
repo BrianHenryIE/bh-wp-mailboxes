@@ -889,4 +889,43 @@ class API_Unit_Test extends Unit_Testcase {
 		$this->assertFalse( $result->success );
 		$this->assertSame( 'AUTHENTICATIONFAILED', $result->message );
 	}
+
+	/**
+	 * Regression test: when no credentials are passed explicitly and the provider implements
+	 * Requires_Credentials, test_connection() must resolve them via the `bh_wp_mailboxes_credentials`
+	 * filter using the documented argument order ( null, $plugin_slug, $account ).
+	 *
+	 * The credentials-filter mock only replies when invoked with exactly that ordering, so a regression
+	 * to the previous ( $plugin_slug, null, $account ) ordering leaves credentials unresolved and the
+	 * connection test fails.
+	 *
+	 * @covers ::test_connection
+	 */
+	public function test_test_connection_resolves_credentials_via_filter_with_correct_argument_order(): void {
+
+		$email_account        = BH_Email_Account_Fixture::make();
+		$resolved_credentials = Mockery::mock( Account_Credentials_Interface::class );
+
+		$provider = Mockery::mock(
+			Email_Connection_Interface::class,
+			Supports_Fetching::class,
+			Requires_Credentials::class
+		);
+		$provider->expects( 'set_credentials' )->with( $resolved_credentials );
+		$provider->expects( 'test_connection' )->andReturn( true );
+
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+				->with( null, 'test-plugin', $email_account )
+				->reply( $provider );
+
+		// Only replies when the arguments are in the documented order; the buggy order will not match.
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+				->with( null, 'test-plugin', $email_account )
+				->reply( $resolved_credentials );
+
+		// Note: credentials are intentionally NOT passed, forcing resolution through the filter.
+		$result = $this->get_api()->test_connection( $email_account );
+
+		$this->assertTrue( $result->success );
+	}
 }
