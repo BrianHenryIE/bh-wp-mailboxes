@@ -5,13 +5,13 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model;
+namespace BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model;
 
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use RuntimeException;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\OAuth_Client_Credentials
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\OAuth_Client_Credentials
  */
 class OAuth_Client_Credentials_Unit_Test extends Unit_Testcase {
 

@@ -8,7 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Email_Provider_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
@@ -65,7 +65,7 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 
 		if ( $has_account ) {
 			$account  = BH_Email_Account_Fixture::make( post_id: 7 );
-			$provider = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+			$provider = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 			$provider->allows( 'can_delete_on_server' )->andReturn( $can_delete );
 			$api->allows( 'get_email_account_for_email' )->andReturn( $account );
 			$api->allows( 'get_provider_for_email_account' )->andReturn( $provider );

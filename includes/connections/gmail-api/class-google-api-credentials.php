@@ -5,10 +5,10 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
+namespace BrianHenryIE\WP_Mailboxes\Connections\Gmail_API;
 
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\OAuth_Client_Credentials;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\OAuth_Client_Credentials;
 
 /**
  * Loads project credentials and access tokens from JSON files in a directory.

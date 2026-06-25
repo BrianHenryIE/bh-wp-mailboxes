@@ -362,7 +362,7 @@ class Single_Email_View {
 			echo '<li class="bh-email-status__option' . esc_attr( $unread_current ) . '"><label><input type="radio" name="bh_email_remote_read" value="unread"' . $unread_checked . '> ' . esc_html__( 'Unread on server', 'bh-wp-mailboxes' ) . '</label></li>';
 			echo '</ul>';
 		} elseif ( ! $email->is_remote_deleted && $provider?->can_read_status() ) {
-			// Provider can read but not change the status: show a read/unread badge.
+			// Connection can read but not change the status: show a read/unread badge.
 			$badges = $this->get_remote_status_html( $is_read, $deleted_on_server );
 			echo '<div class="bh-email-remote-status is-loading">';
 			echo '<span class="spinner is-active" aria-hidden="true"></span>';

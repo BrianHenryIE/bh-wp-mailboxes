@@ -125,15 +125,15 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 
 		$api = $this->get_api( settings: $settings, email_account_repository: $account_repository );
 
-		$first = $api->add_email_account( 'first@example.com', 'First', 'SomeProvider', null, null, null, null );
+		$first = $api->add_email_account( 'first@example.com', 'First', 'SomeConnection', null, null, null, null );
 		// A second, distinct account must be allowed even though one already exists.
-		$second = $api->add_email_account( 'second@example.com', 'Second', 'SomeProvider', null, null, null, null );
+		$second = $api->add_email_account( 'second@example.com', 'Second', 'SomeConnection', null, null, null, null );
 
 		$this->assertSame( 'first@example.com', $first->email_address );
 		$this->assertSame( 'second@example.com', $second->email_address );
 
 		// A genuine duplicate is still rejected.
 		$this->expectException( \Exception::class );
-		$api->add_email_account( 'first@example.com', 'Dup', 'SomeProvider', null, null, null, null );
+		$api->add_email_account( 'first@example.com', 'Dup', 'SomeConnection', null, null, null, null );
 	}
 }

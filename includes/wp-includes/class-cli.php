@@ -170,7 +170,7 @@ class CLI {
 	 *   +----+----------------------+--------------+----------------------+--------+----------------------+
 	 *   | id | email                | name         | provider             | active | last_checked         |
 	 *   +----+----------------------+--------------+----------------------+--------+----------------------+
-	 *   | 12 | you@example.com      | You          | Gmail_Email_Provider | yes    | 2026-06-21T10:00:00Z |
+	 *   | 12 | you@example.com      | You          | Gmail_Email_Connection | yes    | 2026-06-21T10:00:00Z |
 	 *   +----+----------------------+--------------+----------------------+--------+----------------------+
 	 *
 	 * @param string[]             $_args      The unlabelled command line arguments.

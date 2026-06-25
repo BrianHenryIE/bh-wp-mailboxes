@@ -5,16 +5,16 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
+namespace BrianHenryIE\WP_Mailboxes\Connections\Gmail_API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Email_Provider_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Requires_Credentials;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token;
 use DateTimeInterface;
 use Exception;
 use Google\Service\Gmail\ListMessagesResponse;
@@ -31,7 +31,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Fetches emails from Gmail using the Google PHP SDK.
  */
-class Gmail_Email_Provider implements Email_Provider_Interface, Requires_Credentials, Supports_Fetching {
+class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Credentials, Supports_Fetching {
 	use LoggerAwareTrait;
 
 	/**

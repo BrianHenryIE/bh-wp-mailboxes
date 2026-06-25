@@ -111,7 +111,7 @@ interface API_Interface {
 	 *
 	 * @param BH_Email_Account $email_account The account to find a fetcher for.
 	 */
-	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Provider_Interface;
+	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Connection_Interface;
 
 	/**
 	 * Returns all configured email accounts indexed by email address.

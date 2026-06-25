@@ -41,9 +41,9 @@ class Mailboxes {
 	 * The provider class the fixtures mailbox uses; accounts must reference it so the
 	 * `bh_wp_mailboxes_provider_for_account` filter resolves the fixtures provider for them.
 	 *
-	 * @see \BrianHenryIE\WP_Mailboxes_Development_Plugin\Providers\Mock_Mailbox_Fixtures_Provider
+	 * @see \BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_Fixtures_Connection
 	 */
-	const ACCOUNT_PROVIDER_CLASS = 'BrianHenryIE\\\\WP_Mailboxes_Development_Plugin\\\\Providers\\\\Mock_Mailbox_Fixtures_Provider';
+	const ACCOUNT_PROVIDER_CLASS = 'BrianHenryIE\\\\WP_Mailboxes_Development_Plugin\\\\Connections\\\\Mock_Mailbox_Fixtures_Connection';
 
 	/**
 	 * Register the REST routes.

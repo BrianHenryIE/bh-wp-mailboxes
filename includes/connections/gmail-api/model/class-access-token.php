@@ -5,7 +5,7 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model;
+namespace BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model;
 
 use RuntimeException;
 use stdClass;

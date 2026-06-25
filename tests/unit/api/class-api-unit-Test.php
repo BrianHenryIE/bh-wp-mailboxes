@@ -16,9 +16,9 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Email_Connection;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads;
 use DateTime;
@@ -215,7 +215,7 @@ class API_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_check_email_skips_account_when_no_fetcher_found(): void {
 
-		$email_account = BH_Email_Account_Fixture::make( provider_type_class: 'Unknown\\Provider\\Class' );
+		$email_account = BH_Email_Account_Fixture::make( provider_type_class: 'Unknown\\Connection\\Class' );
 
 		$credentials = Mockery::mock( Account_Credentials_Interface::class );
 
@@ -246,7 +246,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$five_hours_ago   = new DateTimeImmutable( '-5 hours' );
 		$email_account    = BH_Email_Account_Fixture::make( last_failed_login_time: $five_hours_ago );
 		$credentials      = Mockery::mock( Account_Credentials_Interface::class );
-		$provider         = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider         = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
 		$settings         = Mockery::mock(
 			BH_WP_Mailboxes_Settings_Interface::class,
@@ -287,7 +287,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account = BH_Email_Account_Fixture::make();
 		$credentials   = Mockery::mock( Account_Credentials_Interface::class );
-		$provider      = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider      = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$settings      = Mockery::mock(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
@@ -323,8 +323,8 @@ class API_Unit_Test extends Unit_Testcase {
 	public function test_check_email_skips_provider_without_fetching_support(): void {
 
 		$email_account = BH_Email_Account_Fixture::make();
-		// A receive-only provider implements Email_Provider_Interface but NOT Supports_Fetching.
-		$provider = Mockery::mock( Email_Provider_Interface::class );
+		// A receive-only provider implements Email_Connection_Interface but NOT Supports_Fetching.
+		$provider = Mockery::mock( Email_Connection_Interface::class );
 		$settings = Mockery::mock(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
@@ -360,7 +360,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account = BH_Email_Account_Fixture::make();
 		$credentials   = Mockery::mock( Account_Credentials_Interface::class );
-		$provider      = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider      = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$settings      = Mockery::mock(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
@@ -438,7 +438,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account    = BH_Email_Account_Fixture::make( last_successful_login_time: null );
 		$credentials      = Mockery::mock( Account_Credentials_Interface::class );
-		$provider         = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider         = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
 		$settings         = Mockery::mock(
 			BH_WP_Mailboxes_Settings_Interface::class,
@@ -490,7 +490,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account    = BH_Email_Account_Fixture::make( last_successful_login_time: $last_successful_login_time );
 		$credentials      = Mockery::mock( Account_Credentials_Interface::class );
-		$provider         = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider         = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
 		$settings         = Mockery::mock(
 			BH_WP_Mailboxes_Settings_Interface::class,
@@ -537,7 +537,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account = BH_Email_Account_Fixture::make( email_address: 'test@example.org' );
 		$credentials   = Mockery::mock( Account_Credentials_Interface::class );
-		$provider      = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider      = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$settings      = Mockery::mock(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
@@ -600,7 +600,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account = BH_Email_Account_Fixture::make();
 		$credentials   = Mockery::mock( Account_Credentials_Interface::class );
-		$provider      = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider      = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$settings      = Mockery::mock(
 			BH_WP_Mailboxes_Settings_Interface::class,
 			array(
@@ -652,7 +652,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account    = BH_Email_Account_Fixture::make();
 		$credentials      = Mockery::mock( Account_Credentials_Interface::class );
-		$provider         = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider         = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
 
 		$captured_since_datetime = null;
@@ -694,7 +694,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account    = BH_Email_Account_Fixture::make( last_successful_login_time: null );
 		$credentials      = Mockery::mock( Account_Credentials_Interface::class );
-		$provider         = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider         = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
 
 		$captured_since_datetime = null;
@@ -736,7 +736,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account    = BH_Email_Account_Fixture::make();
 		$credentials      = Mockery::mock( Account_Credentials_Interface::class );
-		$provider         = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider         = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
 		$settings         = Mockery::mock(
 			BH_WP_Mailboxes_Settings_Interface::class,
@@ -773,7 +773,7 @@ class API_Unit_Test extends Unit_Testcase {
 	public function test_get_provider_for_email_account_returns_custom_fetcher_via_filter(): void {
 
 		$email_account  = BH_Email_Account_Fixture::make();
-		$custom_fetcher = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$custom_fetcher = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 
 		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
@@ -792,7 +792,7 @@ class API_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_get_provider_for_email_account_returns_imap_fetcher(): void {
 
-		$email_account = BH_Email_Account_Fixture::make( provider_type_class: ImapEngine_Imap_Email_Provider::class );
+		$email_account = BH_Email_Account_Fixture::make( provider_type_class: ImapEngine_Imap_Email_Connection::class );
 
 		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
@@ -801,7 +801,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$sut    = $this->get_api();
 		$result = $sut->get_provider_for_email_account( $email_account );
 
-		$this->assertInstanceOf( ImapEngine_Imap_Email_Provider::class, $result );
+		$this->assertInstanceOf( ImapEngine_Imap_Email_Connection::class, $result );
 	}
 
 	/**
@@ -820,7 +820,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$sut    = $this->get_api();
 		$result = $sut->get_provider_for_email_account( $email_account );
 
-		$this->assertInstanceOf( Gmail_Email_Provider::class, $result );
+		$this->assertInstanceOf( Gmail_Email_Connection::class, $result );
 	}
 
 	/**
@@ -830,7 +830,7 @@ class API_Unit_Test extends Unit_Testcase {
 	 */
 	public function test_get_provider_for_email_account_logs_warning_for_unknown_class(): void {
 
-		$email_account = BH_Email_Account_Fixture::make( provider_type_class: 'Unknown\\Provider\\Class' );
+		$email_account = BH_Email_Account_Fixture::make( provider_type_class: 'Unknown\\Connection\\Class' );
 
 		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
@@ -853,7 +853,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account = BH_Email_Account_Fixture::make();
 		$credentials   = Mockery::mock( Account_Credentials_Interface::class );
 
-		$provider = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 
 		$provider->expects( 'test_connection' )->andReturn( true );
 
@@ -876,7 +876,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account = BH_Email_Account_Fixture::make();
 		$credentials   = Mockery::mock( Account_Credentials_Interface::class );
 
-		$provider = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$provider->allows( 'set_credentials' );
 		$provider->allows( 'test_connection' )->andThrow( new \Exception( 'AUTHENTICATIONFAILED' ) );
 

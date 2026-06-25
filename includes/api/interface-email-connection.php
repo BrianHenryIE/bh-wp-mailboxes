@@ -9,7 +9,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
-interface Email_Provider_Interface {
+interface Email_Connection_Interface {
 
 	/**
 	 * Connect to the server and verify the credentials authenticate, without returning emails.

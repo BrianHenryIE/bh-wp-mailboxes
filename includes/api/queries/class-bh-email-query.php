@@ -33,7 +33,7 @@ readonly class BH_Email_Query extends WP_Post_Query_Abstract {
 	 * @param ?bool       $is_remote_read        Whether the email is marked read on the remote server.
 	 * @param ?bool       $is_remote_deleted     Whether the email has been deleted on the remote server.
 	 * @param ?array<int> $attachment_ids        Array of attachment post IDs.
-	 * @param ?string     $remote_uid            Provider-native id (IMAP UID / Gmail message id) for direct lookups.
+	 * @param ?string     $remote_uid            Connection-native id (IMAP UID / Gmail message id) for direct lookups.
 	 * @param ?string     $remote_folder         IMAP folder/mailbox path the UID belongs to.
 	 * @param ?int        $remote_uid_validity   IMAP UIDVALIDITY of the folder when the UID was captured.
 	 */

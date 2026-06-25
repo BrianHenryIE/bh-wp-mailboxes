@@ -40,7 +40,7 @@ class BH_Email_Fixture {
 		$email_account ??= BH_Email_Account_Fixture::make(
 			post_id: 321,
 			post_type: $mailbox_settings->get_email_accounts_cpt_underscored_20(),
-			provider_type_class: 'SomeProvider',
+			provider_type_class: 'SomeConnection',
 			email_address: 'contact@bhwp.ie',
 			display_name: 'Test Account',
 		);

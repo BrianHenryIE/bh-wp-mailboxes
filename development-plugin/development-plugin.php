@@ -37,7 +37,7 @@ use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_API;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_CLI;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
-use BrianHenryIE\WP_Mailboxes_Development_Plugin\Providers\Mock_Mailbox_Fixtures_Provider;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_Fixtures_Connection;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest\Mailboxes;
 
 // If this file is called directly, abort.
@@ -176,7 +176,7 @@ $on_plugins_loaded = function () {
 			$imap_mailboxes_api->add_email_account(
 				email_address: $imap_env_settings->get_account_email_address(),
 				display_name: $imap_env_settings->get_account_display_friendly_name(),
-				provider_type_class: \BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider::class,
+				provider_type_class: \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection::class,
 				from_address_regex_filter: null,
 				body_identifier_regex_filter: null,
 				after_download_remote_email_action: null,
@@ -286,7 +286,7 @@ $on_plugins_loaded = function () {
 			$fixtures_mailboxes_api->add_email_account(
 				email_address: $fixtures_settings->get_account_email_address(),
 				display_name: $fixtures_settings->get_account_display_friendly_name(),
-				provider_type_class: Mock_Mailbox_Fixtures_Provider::class,
+				provider_type_class: Mock_Mailbox_Fixtures_Connection::class,
 				from_address_regex_filter: null,
 				body_identifier_regex_filter: null,
 				after_download_remote_email_action: null,
@@ -301,7 +301,7 @@ $on_plugins_loaded = function () {
 		new BH_Email_Factory( $logger ),
 		$logger,
 	);
-	$fixtures_provider = new Mock_Mailbox_Fixtures_Provider( $fixtures_mailboxes_settings, $fixtures_settings, $email_factory );
+	$fixtures_provider = new Mock_Mailbox_Fixtures_Connection( $fixtures_mailboxes_settings, $fixtures_settings, $email_factory );
 };
 add_action( 'plugins_loaded', $on_plugins_loaded );
 

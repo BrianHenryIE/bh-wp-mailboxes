@@ -5,13 +5,13 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
+namespace BrianHenryIE\WP_Mailboxes\Connections\Gmail_API;
 
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials
  */
 class Google_API_Credentials_Unit_Test extends Unit_Testcase {
 

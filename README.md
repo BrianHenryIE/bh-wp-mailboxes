@@ -74,7 +74,7 @@ wp <cli-base> mailboxes list [--format=<table|csv|json|yaml|count>]
 
 ### `wp <cli-base> accounts list`
 
-List the email accounts configured for this mailbox — id, email, display name, provider, active state, and last-checked time.
+List the email accounts configured for this mailbox — id, email, display name, connection, active state, and last-checked time.
 
 ```bash
 wp <cli-base> accounts list [--format=<table|csv|json|yaml|count>]
@@ -82,7 +82,7 @@ wp <cli-base> accounts list [--format=<table|csv|json|yaml|count>]
 
 ### `wp <cli-base> gmail refresh-access-token --account=<email>`
 
-Mint a fresh Gmail API access token from the account's stored refresh token. The new token is printed as JSON, and the `bh_wp_mailboxes_gmail_access_token_refreshed` action is fired with the `Access_Token` and the account email. The command does **not** persist the token — hook that action to save it. Requires the optional `google/apiclient` dependency and Gmail API credentials (see [includes/providers/gmail-api/README-GMAIL.md](includes/providers/gmail-api/README-GMAIL.md)).
+Mint a fresh Gmail API access token from the account's stored refresh token. The new token is printed as JSON, and the `bh_wp_mailboxes_gmail_access_token_refreshed` action is fired with the `Access_Token` and the account email. The command does **not** persist the token — hook that action to save it. Requires the optional `google/apiclient` dependency and Gmail API credentials (see [includes/connections/gmail-api/README-GMAIL.md](includes/connections/gmail-api/README-GMAIL.md)).
 
 ```bash
 wp <cli-base> gmail refresh-access-token --account=you@example.com
@@ -102,7 +102,7 @@ The default setting is to delete emails after 7 days. NB: if you're using a shar
 ### Gmail
 
 * Gmail can use regular IMAP via application passwords when the account has 2FA enabled.
-* To use the Gmail API, see includes/providers/gmail-api/README-GMAIL.md for configuring a Google Developer Console project. I think supporting this in distributed plugins is probably too much work!
+* To use the Gmail API, see includes/connections/gmail-api/README-GMAIL.md for configuring a Google Developer Console project. I think supporting this in distributed plugins is probably too much work!
 
 ## Contributing
 

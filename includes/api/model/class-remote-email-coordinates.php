@@ -27,7 +27,7 @@ readonly class Remote_Email_Coordinates {
 	 * Constructor.
 	 *
 	 * @param string  $message_id   The RFC822 Message-ID header value (used for the fallback search).
-	 * @param ?string $remote_uid   Provider-native id: IMAP UID (as a string) or Gmail message id; null when unknown.
+	 * @param ?string $remote_uid   Connection-native id: IMAP UID (as a string) or Gmail message id; null when unknown.
 	 * @param ?string $folder       IMAP folder/mailbox path the UID belongs to; null for Gmail.
 	 * @param ?int    $uid_validity IMAP UIDVALIDITY of the folder when the UID was captured; null for Gmail.
 	 */

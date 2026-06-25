@@ -8,8 +8,8 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\Imap_Credentials_Env;
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials_Env;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use Dotenv\Dotenv;

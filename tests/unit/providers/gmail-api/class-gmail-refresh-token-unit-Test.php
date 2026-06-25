@@ -8,17 +8,17 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
+namespace BrianHenryIE\WP_Mailboxes\Connections\Gmail_API;
 
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\OAuth_Client_Credentials;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\OAuth_Client_Credentials;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use Google_Client;
 use Mockery;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Email_Connection
  */
 class Gmail_Refresh_Token_Unit_Test extends Unit_Testcase {
 
@@ -74,11 +74,11 @@ class Gmail_Refresh_Token_Unit_Test extends Unit_Testcase {
 	 * @param Google_Client                    $client      The mock Google client.
 	 * @param Google_API_Credentials_Interface $credentials The mock credentials.
 	 */
-	private function make_sut( Google_Client $client, Google_API_Credentials_Interface $credentials ): Gmail_Email_Provider {
+	private function make_sut( Google_Client $client, Google_API_Credentials_Interface $credentials ): Gmail_Email_Connection {
 
 		$settings = Mockery::mock( Email_Account_Settings_Interface::class );
 
-		$sut = Mockery::mock( Gmail_Email_Provider::class, array( $settings, $this->logger ) )
+		$sut = Mockery::mock( Gmail_Email_Connection::class, array( $settings, $this->logger ) )
 			->makePartial()
 			->shouldAllowMockingProtectedMethods();
 		$sut->allows( 'make_client' )->andReturn( $client );

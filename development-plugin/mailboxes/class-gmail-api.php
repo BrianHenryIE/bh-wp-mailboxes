@@ -11,7 +11,7 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 

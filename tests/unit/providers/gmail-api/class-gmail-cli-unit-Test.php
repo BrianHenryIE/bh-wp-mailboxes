@@ -9,17 +9,17 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
+namespace BrianHenryIE\WP_Mailboxes\Connections\Gmail_API;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use Mockery;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_CLI
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_CLI
  */
 class Gmail_CLI_Unit_Test extends Unit_Testcase {
 
@@ -141,7 +141,7 @@ class Gmail_CLI_Unit_Test extends Unit_Testcase {
 		\WP_Mock::userFunction( 'wp_json_encode' )->andReturn( '{"access_token":"fresh-access-token"}' );
 		\WP_Mock::expectAction( 'bh_wp_mailboxes_gmail_access_token_refreshed', $token, 'you@example.com' );
 
-		$provider = Mockery::mock( Gmail_Email_Provider::class );
+		$provider = Mockery::mock( Gmail_Email_Connection::class );
 		$provider->expects( 'set_credentials' )->with( $credentials )->once();
 		$provider->expects( 'refresh_access_token' )->once()->andReturn( $token );
 

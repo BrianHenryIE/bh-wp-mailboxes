@@ -5,7 +5,7 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
+namespace BrianHenryIE\WP_Mailboxes\Connections\Gmail_API;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
@@ -140,7 +140,7 @@ class Gmail_CLI {
 		 *
 		 * The token is not persisted by the command; hook here to save it.
 		 *
-		 * @param \BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Model\Access_Token $access_token  The new access token.
+		 * @param \BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token $access_token  The new access token.
 		 * @param string                                                           $account_email The account's email address.
 		 */
 		do_action( 'bh_wp_mailboxes_gmail_access_token_refreshed', $access_token, $account_email );
@@ -155,7 +155,7 @@ class Gmail_CLI {
 	 *
 	 * @param BH_Email_Account $account The account to build the provider for.
 	 */
-	protected function make_provider( BH_Email_Account $account ): Gmail_Email_Provider {
-		return new Gmail_Email_Provider( $account, $this->logger );
+	protected function make_provider( BH_Email_Account $account ): Gmail_Email_Connection {
+		return new Gmail_Email_Connection( $account, $this->logger );
 	}
 }

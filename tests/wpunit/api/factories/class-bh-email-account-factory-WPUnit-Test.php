@@ -69,7 +69,7 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	private function required_meta(): array {
 		return array(
-			'provider_type_class' => 'Some_Provider_Class',
+			'provider_type_class' => 'Some_Connection_Class',
 			'email_address'       => 'inbox@example.com',
 			'display_name'        => 'Test Inbox',
 		);
@@ -99,7 +99,7 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( $this->post_type, $account->post_type );
 		$this->assertSame( 'bh_email_ac_active', $account->local_status );
 		$this->assertTrue( $account->is_active() );
-		$this->assertSame( 'Some_Provider_Class', $account->provider_type_class );
+		$this->assertSame( 'Some_Connection_Class', $account->provider_type_class );
 		$this->assertSame( 'inbox@example.com', $account->email_address );
 		$this->assertSame( 'Test Inbox', $account->display_name );
 		$this->assertSame( '/@example.com$/', $account->from_address_regex_filter );

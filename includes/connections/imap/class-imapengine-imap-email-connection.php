@@ -8,10 +8,10 @@
  * @package    brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
+namespace BrianHenryIE\WP_Mailboxes\Connections\Imap;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Email_Provider_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Requires_Credentials;
@@ -30,7 +30,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Uses ImapEngine library to fetch emails since last run.
  */
-class ImapEngine_Imap_Email_Provider implements Email_Provider_Interface, Requires_Credentials, Supports_Fetching {
+class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Requires_Credentials, Supports_Fetching {
 
 	use LoggerAwareTrait;
 

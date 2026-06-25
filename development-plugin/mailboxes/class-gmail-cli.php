@@ -9,8 +9,8 @@ namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\API\API;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Email_Connection;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Interface;
 use Exception;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -118,7 +118,7 @@ class Gmail_CLI {
 			return;
 		}
 
-		$provider = new Gmail_Email_Provider( $mailbox_settings, $this->logger );
+		$provider = new Gmail_Email_Connection( $mailbox_settings, $this->logger );
 		$provider->set_credentials( $credentials );
 
 		WP_CLI::log( 'Open this URL in your browser and grant access:' );

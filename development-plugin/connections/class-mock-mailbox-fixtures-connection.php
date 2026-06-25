@@ -10,10 +10,10 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Providers;
+namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Email_Provider_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
@@ -32,7 +32,7 @@ use ZBateson\MailMimeParser\MailMimeParser;
  *
  * Reads emails from a directory of JSON files and records read/deleted operations per-user in user meta.
  */
-class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface, Supports_Fetching {
+class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Supports_Fetching {
 
 	/**
 	 * Absolute path to the directory of `.json` email fixtures.
@@ -79,11 +79,11 @@ class Mock_Mailbox_Fixtures_Provider implements Email_Provider_Interface, Suppor
 	 *
 	 * @see API::get_provider_for_email_account()
 	 *
-	 * @param mixed|Email_Provider_Interface|null $value Existing filtered value – begins as null – should be `Email_Provider_Interface` but WordPress does not enforce types in filters.
-	 * @param string                              $plugin_slug Is the API instance from this plugin (otherwise it may be a different, incompatible version).
-	 * @param BH_Email_Account                    $email_account The account whose email is being checked.
+	 * @param mixed|Email_Connection_Interface|null $value Existing filtered value – begins as null – should be `Email_Connection_Interface` but WordPress does not enforce types in filters.
+	 * @param string                                $plugin_slug Is the API instance from this plugin (otherwise it may be a different, incompatible version).
+	 * @param BH_Email_Account                      $email_account The account whose email is being checked.
 	 *
-	 * @return mixed|Email_Provider_Interface|null
+	 * @return mixed|Email_Connection_Interface|null
 	 */
 	public function provider( mixed $value, string $plugin_slug, BH_Email_Account $email_account ): mixed {
 		if ( $this->mailbox_settings->get_plugin_slug() === $plugin_slug

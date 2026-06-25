@@ -8,7 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Email_Provider_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
@@ -47,14 +47,14 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Get an API instance to test.
 	 *
-	 * @param BH_Email_Account          $email_account_fixture Default: boring fixture with not filters configured.
-	 * @param bool                      $can_return_email_account If there is a correspoinding BH_Email_Account for the BH_Email.
-	 * @param ?Email_Provider_Interface $provider_mock Default: mock that supports all features.
+	 * @param BH_Email_Account            $email_account_fixture Default: boring fixture with not filters configured.
+	 * @param bool                        $can_return_email_account If there is a correspoinding BH_Email_Account for the BH_Email.
+	 * @param ?Email_Connection_Interface $provider_mock Default: mock that supports all features.
 	 */
 	protected function make_api(
 		?BH_Email_Account $email_account_fixture = null,
 		bool $can_return_email_account = true,
-		?Email_Provider_Interface $provider_mock = null,
+		?Email_Connection_Interface $provider_mock = null,
 	): API_Interface {
 		$api_mock = \Mockery::mock( API_Interface::class );
 
@@ -66,7 +66,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		}
 
 		if ( ! $provider_mock ) {
-			$provider_mock = \Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+			$provider_mock = \Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 			$provider_mock->expects( 'can_mark_read' )->andReturnTrue();
 			$provider_mock->expects( 'can_delete_on_server' )->andReturnTrue();
 			$provider_mock->expects( 'can_read_status' )->andReturnTrue();
@@ -489,7 +489,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$post_id  = $bh_email->post_id;
 		$post     = get_post( $post_id );
 
-		$provider_mock = \Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider_mock = \Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$provider_mock->expects( 'can_mark_read' )->andReturnFalse();
 		$provider_mock->expects( 'can_delete_on_server' )->andReturnFalse();
 		$provider_mock->expects( 'can_read_status' )->andReturnFalse();
@@ -574,7 +574,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		update_post_meta( $post_id, 'is_remote_deleted', 'yes' );
 		$post = get_post( $post_id );
 
-		$provider_mock = \Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
+		$provider_mock = \Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 		$provider_mock->allows( 'can_mark_read' )->andReturnTrue();
 		$provider_mock->allows( 'can_delete_on_server' )->andReturnTrue();
 		$provider_mock->allows( 'can_read_status' )->andReturnTrue();

@@ -11,9 +11,9 @@ use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Factories\New_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider;
-use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Email_Connection;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Account_Result;
@@ -82,7 +82,7 @@ class API implements API_Interface {
 	 *
 	 * @param string  $email_address               The mailbox address.
 	 * @param string  $display_name                Human-readable account name.
-	 * @param string  $provider_type_class         Provider class to use for fetching (class-string<Email_Fetcher_Interface>).
+	 * @param string  $provider_type_class         Connection class to use for fetching (class-string<Email_Fetcher_Interface>).
 	 * @param ?string $from_address_regex_filter   Optional regex to filter incoming senders.
 	 * @param ?string $body_identifier_regex_filter Optional regex to filter email bodies.
 	 * @param ?string $after_download_remote_email_action One of: nothing, mark_read, delete.
@@ -451,12 +451,12 @@ class API implements API_Interface {
 	 * Resolves the credentials via the `bh_wp_mailboxes_credentials` filter (args: value, plugin_slug, account)
 	 * and sets them on the provider. No-op for providers that do not implement {@see Requires_Credentials}.
 	 *
-	 * @param Email_Provider_Interface $provider      The provider to credential.
-	 * @param BH_Email_Account         $email_account The account whose credentials to resolve.
+	 * @param Email_Connection_Interface $provider      The provider to credential.
+	 * @param BH_Email_Account           $email_account The account whose credentials to resolve.
 	 *
 	 * @throws \InvalidArgumentException When the filter does not return an Account_Credentials_Interface.
 	 */
-	protected function set_provider_credentials( Email_Provider_Interface $provider, BH_Email_Account $email_account ): void {
+	protected function set_provider_credentials( Email_Connection_Interface $provider, BH_Email_Account $email_account ): void {
 
 		if ( ! ( $provider instanceof Requires_Credentials ) ) {
 			return;
@@ -508,7 +508,7 @@ class API implements API_Interface {
 		// Remote read/delete actions live on Supports_Fetching: a provider that cannot be queried cannot
 		// perform them.
 		if ( ! ( $provider instanceof Supports_Fetching ) ) {
-			throw new Exception( 'Provider does not support remote actions for ' . esc_html( $email_account->display_name ) );
+			throw new Exception( 'Connection does not support remote actions for ' . esc_html( $email_account->display_name ) );
 		}
 
 		$this->set_provider_credentials( $provider, $email_account );
@@ -645,27 +645,27 @@ class API implements API_Interface {
 	 *
 	 * @param BH_Email_Account $email_account The account to find a fetcher for.
 	 */
-	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Provider_Interface {
+	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Connection_Interface {
 
 		$plugin_slug = $this->settings->get_plugin_slug();
 
 		/**
-		 * Get an Email_Provider_Interface instance for a BH_Email_Account.
+		 * Get an Email_Connection_Interface instance for a BH_Email_Account.
 		 *
-		 * @param mixed|Email_Provider_Interface  $provider The email fetcher for the account, or null if none is found.
+		 * @param mixed|Email_Connection_Interface  $provider The email fetcher for the account, or null if none is found.
 		 * @param string $plugin_slug To allow multiple plugins (and potentially library verions) to use this same filter name.
 		 * @param BH_Email_Account $email_account The account config to get provider for {@see BH_Email_Account::$provider_type_class}.
 		 */
 		$provider = apply_filters( 'bh_wp_mailboxes_provider_for_account', null, $plugin_slug, $email_account );
 
-		if ( $provider instanceof Email_Provider_Interface ) {
+		if ( $provider instanceof Email_Connection_Interface ) {
 			return $provider;
 		}
 
-		if ( ImapEngine_Imap_Email_Provider::class === $email_account->provider_type_class ) {
-			return new ImapEngine_Imap_Email_Provider( $email_account, $this->logger );
+		if ( ImapEngine_Imap_Email_Connection::class === $email_account->provider_type_class ) {
+			return new ImapEngine_Imap_Email_Connection( $email_account, $this->logger );
 		} elseif ( Google_API_Credentials_Interface::class === $email_account->provider_type_class ) {
-			return new Gmail_Email_Provider( $email_account, $this->logger );
+			return new Gmail_Email_Connection( $email_account, $this->logger );
 		} else {
 			$this->logger->warning(
 				'No email fetcher found for provider type: {provider_type_class}',

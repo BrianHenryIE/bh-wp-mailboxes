@@ -4,7 +4,7 @@
  *
  * Pull providers (IMAP, Gmail API) connect out and retrieve messages. Receive-only providers are
  * passive – messages are pushed to them – e.g. AWS SES->SNS->WP REST, or Cloudflare email
- * routing->Worker->WP REST. Receive-only providers implement {@see Email_Provider_Interface} but
+ * routing->Worker->WP REST. Receive-only providers implement {@see Email_Connection_Interface} but
  * not this interface.
  *
  * Downstream UIs can check `instanceof Supports_Fetching` to decide whether to show a "Check now" /
@@ -22,7 +22,7 @@ use DateTimeInterface;
 use Illuminate\Support\Collection;
 
 /**
- * Always used with {@see Email_Provider_Interface}.
+ * Always used with {@see Email_Connection_Interface}.
  */
 interface Supports_Fetching {
 
