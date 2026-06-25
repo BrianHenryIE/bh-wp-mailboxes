@@ -193,6 +193,10 @@
 	content: "\f465";
 }
 
+.bh-email-field__icon--connection::before {
+	content: "\f325";
+}
+
 .bh-email-field__icon--read-status::before {
 	content: "\f173";
 }

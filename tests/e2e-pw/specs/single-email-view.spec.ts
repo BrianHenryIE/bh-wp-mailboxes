@@ -188,6 +188,17 @@ test.describe( 'Single email view', () => {
 		await expect( page.locator( '#bh-email-remote-status' ) ).toContainText( 'Sent:' );
 	} );
 
+	test( 'remote status metabox shows the "Connection:" type with an icon', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		const statusBox = page.locator( '#bh-email-remote-status' );
+		await expect( statusBox ).toContainText( 'Connection:' );
+		await expect(
+			statusBox.locator( '.bh-email-field__icon--connection' )
+		).toHaveCount( 1 );
+	} );
+
 	test( 'local status metabox always shows "Updated at:"', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );

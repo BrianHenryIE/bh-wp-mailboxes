@@ -556,6 +556,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertStringContainsString( 'value="Update"', $html, 'The remote status button should be labelled "Update".' );
 		$this->assertStringContainsString( 'bh-email-field__icon--read-status', $html, 'The Status label should have its icon.' );
 		$this->assertStringContainsString( 'Account:', $html, 'The account name should be shown.' );
+		$this->assertStringContainsString( 'Connection:', $html, 'The connection type should be shown.' );
+		$this->assertStringContainsString( 'bh-email-field__icon--connection', $html, 'The Connection label should have its icon.' );
 	}
 
 	/**

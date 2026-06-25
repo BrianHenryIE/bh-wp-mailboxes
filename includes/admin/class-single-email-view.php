@@ -335,12 +335,16 @@ class Single_Email_View {
 		echo '<p><span class="bh-email-field__icon bh-email-field__icon--datetime" aria-hidden="true"></span>'
 			. esc_html__( 'Sent:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( (string) $sent ) . '</strong></p>';
 
-		// Account: the mailbox account this email belongs to, with the connection type (e.g. "Gmail").
+		// Account: the mailbox account this email belongs to.
 		if ( $email_account instanceof \BrianHenryIE\WP_Mailboxes\BH_Email_Account ) {
-			$connection_suffix = null !== $connection ? ' (' . $connection->get_friendly_name() . ')' : '';
 			echo '<p><span class="bh-email-field__icon bh-email-field__icon--mailbox" aria-hidden="true"></span>'
-				. esc_html__( 'Account:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( $email_account->display_name ) . '</strong>'
-				. esc_html( $connection_suffix ) . '</p>';
+				. esc_html__( 'Account:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( $email_account->display_name ) . '</strong></p>';
+		}
+
+		// Connection: the email connection/provider type (e.g. "IMAP", "Gmail").
+		if ( null !== $connection ) {
+			echo '<p><span class="bh-email-field__icon bh-email-field__icon--connection" aria-hidden="true"></span>'
+				. esc_html__( 'Connection:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( $connection->get_friendly_name() ) . '</strong></p>';
 		}
 
 		if ( $can_mark_read ) {
