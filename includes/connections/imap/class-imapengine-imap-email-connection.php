@@ -55,6 +55,13 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 	}
 
 	/**
+	 * A short human-readable name for this connection type.
+	 */
+	public function get_friendly_name(): string {
+		return 'IMAP';
+	}
+
+	/**
 	 * IMAP does support querying the current read status of a message. (e.g. a webhook/AWS SNS delivery of email would not).
 	 */
 	public function can_read_status(): bool {

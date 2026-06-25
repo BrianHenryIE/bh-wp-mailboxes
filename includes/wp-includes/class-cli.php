@@ -167,26 +167,27 @@ class CLI {
 	 *
 	 *   # List configured accounts.
 	 *   $ wp plugin-slug accounts list
-	 *   +----+----------------------+--------------+----------------------+--------+----------------------+
-	 *   | id | email                | name         | provider             | active | last_checked         |
-	 *   +----+----------------------+--------------+----------------------+--------+----------------------+
-	 *   | 12 | you@example.com      | You          | Gmail_Email_Connection | yes    | 2026-06-21T10:00:00Z |
-	 *   +----+----------------------+--------------+----------------------+--------+----------------------+
+	 *   +----+----------------------+--------------+------------+--------+----------------------+
+	 *   | id | email                | name         | connection | active | last_checked         |
+	 *   +----+----------------------+--------------+------------+--------+----------------------+
+	 *   | 12 | you@example.com      | You          | Gmail      | yes    | 2026-06-21T10:00:00Z |
+	 *   +----+----------------------+--------------+------------+--------+----------------------+
 	 *
 	 * @param string[]             $_args      The unlabelled command line arguments.
 	 * @param array<string,string> $assoc_args The labelled command line arguments.
 	 */
 	public function list_accounts( array $_args, array $assoc_args ): void {
 
-		$fields = array( 'id', 'email', 'name', 'provider', 'active', 'last_checked' );
+		$fields = array( 'id', 'email', 'name', 'connection', 'active', 'last_checked' );
 
 		$items = array();
 		foreach ( $this->api->get_email_accounts() as $account ) {
-			$items[] = array(
+			$connection = $this->api->get_provider_for_email_account( $account );
+			$items[]    = array(
 				'id'           => $account->get_post_id(),
 				'email'        => $account->email_address,
 				'name'         => $account->display_name,
-				'provider'     => $this->short_provider_name( $account->provider_type_class ),
+				'connection'   => $connection?->get_friendly_name() ?? $this->short_provider_name( $account->provider_type_class ),
 				'active'       => $account->is_active() ? 'yes' : 'no',
 				'last_checked' => $account->last_checked_time?->format( 'c' ) ?? '',
 			);

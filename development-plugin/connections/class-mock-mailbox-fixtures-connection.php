@@ -73,6 +73,13 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	}
 
 	/**
+	 * A short human-readable name for this connection type.
+	 */
+	public function get_friendly_name(): string {
+		return 'Fixtures';
+	}
+
+	/**
 	 * Return our custom provider (this) for accounts configured to use it.
 	 *
 	 * @hooked bh_wp_mailboxes_provider_for_account

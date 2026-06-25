@@ -55,6 +55,13 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 	}
 
 	/**
+	 * A short human-readable name for this connection type.
+	 */
+	public function get_friendly_name(): string {
+		return 'Google API Gmail';
+	}
+
+	/**
 	 * Configure the instance with the credentials to connect with.
 	 *
 	 * @param Account_Credentials_Interface|Google_API_Credentials_Interface $credentials OAuth project credentials + access token.

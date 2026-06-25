@@ -193,4 +193,14 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 		$this->expectException( \RuntimeException::class );
 		$this->make_sut_with_mailbox( $mailbox )->test_connection();
 	}
+
+	/**
+	 * The connection reports a friendly "IMAP" name for the UI.
+	 *
+	 * @covers ::get_friendly_name
+	 */
+	public function test_get_friendly_name(): void {
+		$sut = new ImapEngine_Imap_Email_Connection( Mockery::mock( Email_Account_Settings_Interface::class ), $this->logger );
+		$this->assertSame( 'IMAP', $sut->get_friendly_name() );
+	}
 }

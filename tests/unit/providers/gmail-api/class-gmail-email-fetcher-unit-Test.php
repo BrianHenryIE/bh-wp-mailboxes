@@ -179,4 +179,14 @@ class Gmail_Email_Fetcher_Unit_Test extends Unit_Testcase {
 		$this->expectException( \RuntimeException::class );
 		$this->make_sut_with_users( $users )->test_connection();
 	}
+
+	/**
+	 * The connection reports a friendly "Gmail" name for the UI.
+	 *
+	 * @covers ::get_friendly_name
+	 */
+	public function test_get_friendly_name(): void {
+		$sut = new Gmail_Email_Connection( Mockery::mock( Email_Account_Settings_Interface::class ), $this->logger );
+		$this->assertSame( 'Google API Gmail', $sut->get_friendly_name() );
+	}
 }

@@ -316,13 +316,11 @@ class Single_Email_View {
 		$deleted_on_server = $email->is_remote_deleted;
 
 		$email_account = $this->api->get_email_account_for_email( $email );
-		$provider      = $email_account ? $this->api->get_provider_for_email_account( $email_account ) : null;
+		$connection    = $email_account ? $this->api->get_provider_for_email_account( $email_account ) : null;
 
 		// Remote read/delete status lives on Supports_Fetching: a provider that cannot be queried cannot
 		// report or change it, so treat a non-fetching provider as none for this metabox's status section.
-		if ( ! ( $provider instanceof Supports_Fetching ) ) {
-			$provider = null;
-		}
+		$provider = $connection instanceof Supports_Fetching ? $connection : null;
 
 		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 
@@ -337,10 +335,12 @@ class Single_Email_View {
 		echo '<p><span class="bh-email-field__icon bh-email-field__icon--datetime" aria-hidden="true"></span>'
 			. esc_html__( 'Sent:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( (string) $sent ) . '</strong></p>';
 
-		// Account: the mailbox account this email belongs to.
+		// Account: the mailbox account this email belongs to, with the connection type (e.g. "Gmail").
 		if ( $email_account instanceof \BrianHenryIE\WP_Mailboxes\BH_Email_Account ) {
+			$connection_suffix = null !== $connection ? ' (' . $connection->get_friendly_name() . ')' : '';
 			echo '<p><span class="bh-email-field__icon bh-email-field__icon--mailbox" aria-hidden="true"></span>'
-				. esc_html__( 'Account:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( $email_account->display_name ) . '</strong></p>';
+				. esc_html__( 'Account:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( $email_account->display_name ) . '</strong>'
+				. esc_html( $connection_suffix ) . '</p>';
 		}
 
 		if ( $can_mark_read ) {

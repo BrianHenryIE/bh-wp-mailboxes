@@ -71,6 +71,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			$provider_mock->expects( 'can_delete_on_server' )->andReturnTrue();
 			$provider_mock->expects( 'can_read_status' )->andReturnTrue();
 		}
+		$provider_mock->allows( 'get_friendly_name' )->andReturn( 'Test' );
 		$api_mock->allows( 'get_provider_for_email_account' )->andReturn( $provider_mock );
 
 		return $api_mock;

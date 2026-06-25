@@ -12,6 +12,11 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 interface Email_Connection_Interface {
 
 	/**
+	 * A short human-readable name for the connection type, for display in the UI (e.g. "IMAP", "Gmail").
+	 */
+	public function get_friendly_name(): string;
+
+	/**
 	 * Connect to the server and verify the credentials authenticate, without returning emails.
 	 *
 	 * @return bool True when the connection and authentication succeed.

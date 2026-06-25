@@ -11,6 +11,7 @@
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
@@ -56,12 +57,14 @@ class CLI_Unit_Test extends Unit_Testcase {
 	/**
 	 * Build the CLI with a stubbed API returning the given accounts.
 	 *
-	 * @param BH_Email_Account[] $accounts The accounts the API returns.
+	 * @param BH_Email_Account[]          $accounts   The accounts the API returns.
+	 * @param ?Email_Connection_Interface $connection The connection resolved for each account.
 	 */
-	private function make_sut( array $accounts ): CLI {
+	private function make_sut( array $accounts, ?Email_Connection_Interface $connection = null ): CLI {
 
 		$api = Mockery::mock( API_Interface::class );
 		$api->allows( 'get_email_accounts' )->andReturn( $accounts );
+		$api->allows( 'get_provider_for_email_account' )->andReturn( $connection );
 
 		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$settings->allows( 'get_plugin_slug' )->andReturn( 'test-plugin' );
@@ -70,10 +73,10 @@ class CLI_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * The configured accounts are mapped to display rows and handed to format_items().
+	 * The configured accounts are mapped to display rows — including the connection's friendly name —
+	 * and handed to format_items().
 	 *
 	 * @covers ::list_accounts
-	 * @covers ::short_provider_name
 	 */
 	public function test_list_accounts_outputs_rows(): void {
 
@@ -84,9 +87,12 @@ class CLI_Unit_Test extends Unit_Testcase {
 			new DateTimeImmutable( '2026-06-21T10:00:00+00:00' )
 		);
 
+		$connection = Mockery::mock( Email_Connection_Interface::class );
+		$connection->allows( 'get_friendly_name' )->andReturn( 'Gmail' );
+
 		\WP_CLI\Utils::$format_items = array();
 
-		$this->make_sut( array( $account ) )->list_accounts( array(), array() );
+		$this->make_sut( array( $account ), $connection )->list_accounts( array(), array() );
 
 		$captured = \WP_CLI\Utils::$format_items;
 
@@ -94,15 +100,32 @@ class CLI_Unit_Test extends Unit_Testcase {
 		$call = $captured[0];
 
 		$this->assertSame( 'table', $call['format'] );
-		$this->assertSame( array( 'id', 'email', 'name', 'provider', 'active', 'last_checked' ), $call['fields'] );
+		$this->assertSame( array( 'id', 'email', 'name', 'connection', 'active', 'last_checked' ), $call['fields'] );
 
 		$row = $call['items'][0];
 		$this->assertSame( 12, $row['id'] );
 		$this->assertSame( 'you@example.com', $row['email'] );
 		$this->assertSame( 'You', $row['name'] );
-		$this->assertSame( 'Google_API_Credentials_Interface', $row['provider'] );
+		$this->assertSame( 'Gmail', $row['connection'] );
 		$this->assertSame( 'yes', $row['active'] );
 		$this->assertSame( '2026-06-21T10:00:00+00:00', $row['last_checked'] );
+	}
+
+	/**
+	 * When no connection resolves, the column falls back to the short provider class name.
+	 *
+	 * @covers ::list_accounts
+	 * @covers ::short_provider_name
+	 */
+	public function test_list_accounts_connection_falls_back_to_class_name(): void {
+
+		$account = $this->make_account( 'you@example.com', 'You', true, null );
+
+		\WP_CLI\Utils::$format_items = array();
+
+		$this->make_sut( array( $account ) )->list_accounts( array(), array() );
+
+		$this->assertSame( 'Google_API_Credentials_Interface', \WP_CLI\Utils::$format_items[0]['items'][0]['connection'] );
 	}
 
 	/**
