@@ -27,6 +27,7 @@ use BrianHenryIE\WP_Logger\Logger;
 use BrianHenryIE\WP_Logger\Logger_Settings_Interface;
 use BrianHenryIE\WP_Logger\Logger_Settings_Trait;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Menu;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Settings;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
@@ -37,6 +38,7 @@ use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_API;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_CLI;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap_Credentials_Settings;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_Fixtures_Connection;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest\Mailboxes;
 
@@ -84,7 +86,9 @@ new Authentication()->register_hooks();
 // Custom REST endpoints for arranging/asserting e2e tests.
 new Mailboxes()->register_hooks();
 
-new Menu()->register_hooks();
+$development_settings_page = new Settings();
+$development_settings_page->register_hooks();
+new Menu( $development_settings_page )->register_hooks();
 
 
 /**
@@ -169,32 +173,39 @@ $on_plugins_loaded = function () {
 	$imap_mailboxes_api      = BH_WP_Mailboxes::make( $imap_mailboxes_settings, $logger );
 	$imap_accounts           = $imap_mailboxes_api->get_email_accounts();
 
-	$imap_env_settings = new Imap()->get_mailbox_settings();
+	// Load test-credentials/.env.secret into $_ENV when present (side effect), so environment variables
+	// take precedence over the settings-page transients in Imap_Credentials_Settings.
+	new Imap()->get_mailbox_settings();
 
-	if ( ! is_null( $imap_env_settings ) && ! isset( $imap_accounts[ $imap_env_settings->get_account_email_address() ] ) ) {
-		try {
-			$imap_mailboxes_api->add_email_account(
-				email_address: $imap_env_settings->get_account_email_address(),
-				display_name: $imap_env_settings->get_account_display_friendly_name(),
-				provider_type_class: \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection::class,
-				from_address_regex_filter: null,
-				body_identifier_regex_filter: null,
-				after_download_remote_email_action: null,
-				delete_local_emails_after_n_days: 1,
-			);
-		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
-			// Account already exists; ignore.
+	// Credentials come from ENV (preferred) or the dev settings page (transients) — the latter lets the
+	// test mailbox be configured in WordPress Playground, where there is no .env.secret file.
+	$imap_credentials = new Imap_Credentials_Settings();
+	if ( $imap_credentials->is_complete() ) {
+		$imap_email = $imap_credentials->get_email_account_username();
+
+		if ( ! isset( $imap_accounts[ $imap_email ] ) ) {
+			try {
+				$imap_mailboxes_api->add_email_account(
+					email_address: $imap_email,
+					display_name: $imap_email,
+					provider_type_class: \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection::class,
+					from_address_regex_filter: null,
+					body_identifier_regex_filter: null,
+					after_download_remote_email_action: null,
+					delete_local_emails_after_n_days: 1,
+				);
+			} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+				// Account already exists; ignore.
+			}
 		}
-	}
 
-	if ( $imap_env_settings ) {
-		$imap_credentials = function ( mixed $value, mixed $plugin_slug, mixed $account ) use ( $imap_env_settings ) {
-			if ( $account->email_address === $imap_env_settings->get_account_email_address() ) {
-				return new Imap()->get_credentials();
+		$imap_credentials_filter = function ( mixed $value, mixed $plugin_slug, mixed $account ) use ( $imap_email, $imap_credentials ) {
+			if ( $account->email_address === $imap_email ) {
+				return $imap_credentials;
 			}
 			return $value;
 		};
-		add_filter( 'bh_wp_mailboxes_credentials', $imap_credentials, 10, 3 );
+		add_filter( 'bh_wp_mailboxes_credentials', $imap_credentials_filter, 10, 3 );
 	}
 
 	// Gmail mailbox. Wired only when the OAuth client secret is present. The account itself is created,

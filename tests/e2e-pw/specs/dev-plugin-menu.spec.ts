@@ -6,8 +6,8 @@
  */
 import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 
-// The top-level menu points at the IMAP/ENV mailbox emails list.
-const MAILBOXES_HREF = 'edit.php?post_type=imap_email_env';
+// The top-level "Mailboxes" link points at the development plugin settings page.
+const MAILBOXES_HREF = 'admin.php?page=development-plugin-settings';
 
 test.describe( 'Development plugin Mailboxes menu', () => {
 	test( 'sits between Dashboard and Posts, with a separator above and below it', async ( {
