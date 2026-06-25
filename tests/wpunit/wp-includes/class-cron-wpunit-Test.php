@@ -8,7 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
 use BrianHenryIE\WP_Mailboxes\API\API;
-use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Mailbox_Result;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
@@ -91,7 +91,9 @@ class Cron_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_background_fetch_emails_calls_check_email(): void {
 		$api = Mockery::mock( API::class );
-		$api->expects( 'check_email' )->once()->andReturn( new Check_Email_Result( true, array() ) );
+		$api->expects( 'check_email' )->once()->andReturn(
+			new Check_Mailbox_Result( success: true, accounts: array(), account_results: array() )
+		);
 
 		$this->make_sut( api: $api )->background_fetch_emails();
 	}

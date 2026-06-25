@@ -11,12 +11,12 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\New_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads;
-use Psr\Log\LoggerInterface;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\API
@@ -45,6 +45,7 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 			$settings ?? \Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class ),
 			$email_repository ?? \Mockery::mock( Email_WP_Post_Repository::class ),
 			$email_account_repository ?? \Mockery::mock( Email_Account_WP_Post_Repository::class ),
+			new New_Email_Factory(),
 			$private_uploads ?? \Mockery::mock( Private_Uploads::class ),
 			$this->logger,
 		);

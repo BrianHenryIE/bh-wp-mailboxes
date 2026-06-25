@@ -38,11 +38,16 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 	 * @param bool $is_remote_deleted Whether the email is already deleted on the server.
 	 * @param bool $has_account       Whether an account resolves for the email.
 	 */
-	private function make_sut( bool $can_delete = true, bool $is_remote_deleted = false, bool $has_account = true ): Emails_List_Page {
+	private function make_sut(
+		bool $can_delete = true,
+		bool $is_remote_deleted = false,
+		bool $has_account = true
+	): Emails_List_Page {
 
 		$email = new BH_Email(
 			post_id: 4242,
 			post_type: $this->post_type,
+			email_account_local_id: 9876,
 			imessage: Mockery::mock( IMessage::class ),
 			message_id: 'row-action@example.org',
 			subject: 'Row action test',

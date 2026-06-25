@@ -9,13 +9,15 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\New_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
-use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Account_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Mailbox_Result;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Test_Connection_Result;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
@@ -47,6 +49,7 @@ class API implements API_Interface {
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings                 Plugin settings.
 	 * @param Email_Repository_Interface         $email_repository         Repository for saved emails.
 	 * @param Email_Account_WP_Post_Repository   $email_account_repository Repository for email accounts.
+	 * @param New_Email_Factory                  $new_email_factory        Wraps fetched emails for consumers.
 	 * @param ?Private_Uploads                   $private_uploads          Private uploads API, or null to skip attachment saving.
 	 * @param ?LoggerInterface                   $logger                   PSR-3 logger.
 	 */
@@ -54,6 +57,7 @@ class API implements API_Interface {
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		protected Email_Repository_Interface $email_repository,
 		protected Email_Account_WP_Post_Repository $email_account_repository,
+		protected New_Email_Factory $new_email_factory,
 		protected ?Private_Uploads $private_uploads,
 		?LoggerInterface $logger = null
 	) {
@@ -112,7 +116,7 @@ class API implements API_Interface {
 	 *
 	 * Must be run after CPT is registered.
 	 */
-	public function check_email(): Check_Email_Result {
+	public function check_email(): Check_Mailbox_Result {
 
 		/**
 		 * All configured mailbox account settings.
@@ -126,8 +130,9 @@ class API implements API_Interface {
 		/**
 		 * Accumulates all newly saved BH_Email objects across all accounts.
 		 *
-		 * @var BH_Email[] $all_new_emails
+		 * @var BH_Email[] $all_new_bh_emails
 		 */
+		$all_new_bh_emails  = array();
 		$all_new_emails     = array();
 		$last_fetched_times = $this->get_last_fetched_times( $email_accounts );
 
@@ -136,26 +141,45 @@ class API implements API_Interface {
 		$interval_one_week  = new DateInterval( 'P1W' );
 		$first_run_datetime = $now_time->sub( $interval_one_week );
 
+		$account_results = array();
+
 		foreach ( $email_accounts as $email_account ) {
-			$fetched        = $this->fetch_for_account( $email_account, $last_fetched_times[ $email_account->email_address ] ?? $first_run_datetime, $now_time );
-			$all_new_emails = array_merge( $all_new_emails, $fetched );
+
+			$since             = $last_fetched_times[ $email_account->email_address ] ?? $first_run_datetime;
+			$account_results[] = $this->check_email_for_account( $email_account, $since );
 		}
 
-		/**
-		 * Fires after all new emails have been fetched and saved across every account.
-		 *
-		 * @param BH_Email[] $all_new_emails Every newly saved BH_Email object.
-		 */
-		do_action( 'bh_wp_mailboxes_fetch_emails_saved_' . $this->settings->get_plugin_slug(), $all_new_emails );
+		return new Check_Mailbox_Result( success: true, accounts: $email_accounts, account_results: $account_results );
+	}
 
-		/**
-		 * Fires once check_email() has finished, regardless of how many emails were saved.
-		 *
-		 * @param BH_Email[] $all_new_emails Every newly saved BH_Email object.
-		 */
-		do_action( 'bh_wp_mailboxes_fetch_emails_complete', $all_new_emails );
+	/**
+	 * Fetches new emails for a single account and saves them.
+	 *
+	 * @param BH_Email_Account   $account The account to check.
+	 * @param ?DateTimeInterface $since Time to find new emails after.
+	 *
+	 * @throws DateException In the unlikely event PHP is unable to create now@UTC.
+	 */
+	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): Check_Email_Account_Result {
+		$now_time = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
+		$since    = $since ?? $account->last_successful_login_time ?? $now_time->sub( new DateInterval( 'P1W' ) );
 
-		return new Check_Email_Result( success: true, new_emails: $all_new_emails );
+		$fetched = $this->fetch_for_account( $account, $since, $now_time );
+
+		$plugin_slug    = $this->settings->get_plugin_slug();
+		$all_new_emails = array();
+		foreach ( $fetched as $new_bh_email ) {
+			// Create an object wrapping this API and the email with convenient methods for the consumer.
+			$new_email        = $this->new_email_factory->make( api: $this, account: $account, email: $new_bh_email );
+			$all_new_emails[] = $new_email;
+			/**
+			 * @param string $plugin_slug
+			 * @param New_Email_Interface|New_Email_Remote_Interface $new_email
+			 */
+			do_action( 'bh_wp_mailboxes_new_email', $plugin_slug, $new_email );
+		}
+
+		return new Check_Email_Account_Result( bh_account: $account, success: true, bh_emails: $fetched, new_emails: $all_new_emails );
 	}
 
 	/**
@@ -291,21 +315,6 @@ class API implements API_Interface {
 	}
 
 	/**
-	 * Fetches new emails for a single account and saves them.
-	 *
-	 * @param BH_Email_Account   $account The account to check.
-	 * @param ?DateTimeInterface $since Time to find new emails after.
-	 *
-	 * @throws DateException In the unlikely event PHP is unable to create now@UTC.
-	 */
-	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): Check_Email_Result {
-		$now_time = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
-		$since    = $since ?? $account->last_successful_login_time ?? $now_time->sub( new DateInterval( 'P1W' ) );
-		$saved    = $this->fetch_for_account( $account, $since, $now_time );
-		return new Check_Email_Result( success: true, new_emails: $saved );
-	}
-
-	/**
 	 * Validate an account's credentials by connecting to the server.
 	 *
 	 * If a provider doesn't need credentials, return the last email time and the user can use that to infer the health.
@@ -396,8 +405,9 @@ class API implements API_Interface {
 	 *
 	 * @param BH_Email $email The email to mark as read.
 	 */
-	public function mark_email_read( BH_Email $email ): void {
+	public function mark_email_read( BH_Email $email ): BH_Email {
 		$this->perform_remote_email_action( 'mark_read', $email );
+		return $this->email_repository->find_by_post_id( $email->post_id );
 	}
 
 	/**
@@ -405,8 +415,9 @@ class API implements API_Interface {
 	 *
 	 * @param BH_Email $email The email to mark as unread.
 	 */
-	public function mark_email_unread( BH_Email $email ): void {
+	public function mark_email_unread( BH_Email $email ): BH_Email {
 		$this->perform_remote_email_action( 'mark_unread', $email );
+		return $this->email_repository->find_by_post_id( $email->post_id );
 	}
 
 	/**
@@ -414,8 +425,9 @@ class API implements API_Interface {
 	 *
 	 * @param BH_Email $email The email to delete on the server.
 	 */
-	public function delete_email_on_server( BH_Email $email ): void {
+	public function delete_email_on_server( BH_Email $email ): BH_Email {
 		$this->perform_remote_email_action( 'delete_on_server', $email );
+		return $this->email_repository->find_by_post_id( $email->post_id );
 	}
 
 	/**
@@ -530,7 +542,7 @@ class API implements API_Interface {
 					// Intentional irreversible change → notice.
 					$this->insert_email_log_note( $post_id, 'Deleted on server', 'notice' );
 				} catch ( Throwable $exception ) {
-					$this->insert_email_log_note( $post_id, 'Failed delete email on server.', 'error' );
+					$this->insert_email_log_note( $post_id, 'Failed to delete email on server.', 'error' );
 				}
 				break;
 		}
@@ -614,13 +626,10 @@ class API implements API_Interface {
 	 * @param BH_Email $email The email whose account to resolve.
 	 */
 	public function get_email_account_for_email( BH_Email $email ): ?BH_Email_Account {
-		$post = get_post( $email->post_id );
-		if ( ! $post || ! $post->post_parent ) {
-			return null;
-		}
 		try {
-			return $this->email_account_repository->find_by_post_id( $post->post_parent );
-		} catch ( \InvalidArgumentException $e ) {
+			return $this->email_account_repository->find_by_post_id( $email->email_account_local_id );
+		} catch ( \Exception $e ) {
+			// TODO: log.
 			return null;
 		}
 	}

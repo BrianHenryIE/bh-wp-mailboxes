@@ -4,8 +4,9 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Mailbox_Result;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use Codeception\Stub\Expected;
 
@@ -33,7 +34,7 @@ class Emails_List_Table_Ajax_Unit_Test extends Unit_Testcase {
 			API_Interface::class,
 			array(
 				'check_email' => Expected::once(
-					fn() => new Check_Email_Result( true, array() )
+					fn() => new Check_Mailbox_Result( success: true, accounts: array(), account_results: array() )
 				),
 			)
 		);
@@ -78,11 +79,12 @@ class Emails_List_Table_Ajax_Unit_Test extends Unit_Testcase {
 				),
 			)
 		);
+		$account  = BH_Email_Account_Fixture::make();
 		$api      = $this->makeEmpty(
 			API_Interface::class,
 			array(
 				'check_email' => Expected::once(
-					fn() => new Check_Email_Result( false, array() )
+					fn() => new Check_Mailbox_Result( success: false, accounts: array(), account_results: array() )
 				),
 			)
 		);

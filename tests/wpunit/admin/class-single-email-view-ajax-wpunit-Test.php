@@ -9,19 +9,13 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
-use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
-use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface as Settings;
-use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
-use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Mockery;
-use ZBateson\MailMimeParser\IMessage;
-use ZBateson\MailMimeParser\MailMimeParser;
 
 /**
  * Tests Single_Email_View_Ajax AJAX handlers.
@@ -241,8 +235,8 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 			->once()
 			->with( Mockery::type( BH_Email::class ) )
 			->andReturnUsing(
-				static function () use ( $post_id ): void {
-					update_post_meta( $post_id, 'is_remote_read', 'yes' );
+				static function () use ( $bh_email ): BH_Email {
+					return BH_Email_Fixture::clone_and_change( $bh_email, is_remote_read: true );
 				}
 			);
 
@@ -276,8 +270,8 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 			->once()
 			->with( Mockery::type( BH_Email::class ) )
 			->andReturnUsing(
-				static function () use ( $post_id ): void {
-					update_post_meta( $post_id, 'is_remote_read', 'no' );
+				static function () use ( $bh_email ): BH_Email {
+					return BH_Email_Fixture::clone_and_change( $bh_email, is_remote_read: false );
 				}
 			);
 
@@ -309,8 +303,8 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 			->once()
 			->with( Mockery::type( BH_Email::class ) )
 			->andReturnUsing(
-				static function () use ( $post_id ): void {
-					update_post_meta( $post_id, 'is_remote_deleted', 'yes' );
+				static function () use ( $bh_email ): BH_Email {
+					return BH_Email_Fixture::clone_and_change( $bh_email, is_remote_deleted: true );
 				}
 			);
 
@@ -362,7 +356,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		$_POST['post_id']  = (string) $post_id;
 
 		$api = Mockery::mock( API_Interface::class );
-		$api->expects( 'mark_email_read' )->once()->andReturnNull();
+		$api->expects( 'mark_email_read' )->once()->andReturn( $bh_email );
 
 		$sut = $this->make_sut( $api );
 		$this->call_ajax( fn() => $sut->ajax_mark_read() );

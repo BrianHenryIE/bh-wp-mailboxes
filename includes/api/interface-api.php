@@ -9,7 +9,8 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
-use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Account_Result;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Mailbox_Result;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Test_Connection_Result;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
@@ -38,28 +39,36 @@ interface API_Interface {
 	/**
 	 * Fetches new emails from all configured mailboxes and saves them.
 	 */
-	public function check_email(): Check_Email_Result;
+	public function check_email(): Check_Mailbox_Result;
+
+	/**
+	 * Fetches new emails for a single account and saves them.
+	 *
+	 * @param BH_Email_Account   $account The account to check.
+	 * @param ?DateTimeInterface $since   The time to check emails since (default to: last_successful_login_time | 7 days).
+	 */
+	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): Check_Email_Account_Result;
 
 	/**
 	 * Mark the email as read on its remote server and update local post meta.
 	 *
 	 * @param BH_Email $email The email to mark as read.
 	 */
-	public function mark_email_read( BH_Email $email ): void;
+	public function mark_email_read( BH_Email $email ): BH_Email;
 
 	/**
 	 * Mark the email as unread on its remote server and update local post meta.
 	 *
 	 * @param BH_Email $email The email to mark as unread.
 	 */
-	public function mark_email_unread( BH_Email $email ): void;
+	public function mark_email_unread( BH_Email $email ): BH_Email;
 
 	/**
 	 * Delete the email on its remote server and update local post meta.
 	 *
 	 * @param BH_Email $email The email to delete on the server.
 	 */
-	public function delete_email_on_server( BH_Email $email ): void;
+	public function delete_email_on_server( BH_Email $email ): BH_Email;
 
 	/**
 	 * Change an email's local status, recording the change in its log.
@@ -71,6 +80,8 @@ interface API_Interface {
 
 	/**
 	 * Insert a WooCommerce-style log note (wp comment) on the email post.
+	 *
+	 * TODO: abstract post_id and return BH_Email with BH_Email::$notes array.
 	 *
 	 * @param int    $post_id The email CPT post ID.
 	 * @param string $message The note text.
@@ -113,14 +124,6 @@ interface API_Interface {
 	 * Return the settings used to configure the instance.
 	 */
 	public function get_settings(): BH_WP_Mailboxes_Settings_Interface;
-
-	/**
-	 * Fetches new emails for a single account and saves them.
-	 *
-	 * @param BH_Email_Account  $account The account to check.
-	 * @param DateTimeInterface $since The time to check emails since.
-	 */
-	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): Check_Email_Result;
 
 	/**
 	 * Validate an account's credentials by connecting to the server.

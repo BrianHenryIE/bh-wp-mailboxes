@@ -4,18 +4,16 @@ declare(strict_types=1);
 
 namespace BrianHenryIE\WP_Mailboxes\API;
 
-use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Mailbox_Result;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\New_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Models\BH_WP_Mailboxes_Settings_Fixture;
 use Illuminate\Support\Collection;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
-use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Result;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
-use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
-use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider;
@@ -23,12 +21,12 @@ use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Google_API_Credentials_Interfa
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads;
-use Codeception\Stub\Expected;
 use DateTime;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Mockery;
 use Psr\Log\LoggerInterface;
+use WP_Mock;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\API
@@ -46,6 +44,7 @@ class API_Unit_Test extends Unit_Testcase {
 			$settings ?? BH_WP_Mailboxes_Settings_Fixture::make(),
 			$email_repository ?? \Mockery::mock( Email_WP_Post_Repository::class ),
 			$email_account_repository ?? \Mockery::mock( Email_Account_WP_Post_Repository::class ),
+			new New_Email_Factory(),
 			$private_uploads ?? \Mockery::mock( Private_Uploads::class ),
 			$logger ?? $this->logger,
 		);
@@ -69,9 +68,9 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$result = $sut->check_email();
 
-		$this->assertInstanceOf( Check_Email_Result::class, $result );
+		$this->assertInstanceOf( Check_Mailbox_Result::class, $result );
 		$this->assertTrue( $result->success );
-		$this->assertSame( array(), $result->new_emails );
+		$this->assertSame( array(), $result->get_emails() );
 	}
 
 
@@ -94,7 +93,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$sut = $this->get_api( email_account_repository: $email_account_repository );
 
-		\WP_Mock::userFunction(
+		WP_Mock::userFunction(
 			'get_option',
 			array(
 				'args'   => array( 'plugin-slug_mailbox_last_fetched_Dummy Account', null ),
@@ -102,7 +101,7 @@ class API_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		\WP_Mock::userFunction(
+		WP_Mock::userFunction(
 			'get_option',
 			array(
 				'args'   => array( 'plugin-slug_mailbox_last_failure_Dummy Account', null ),
@@ -110,11 +109,11 @@ class API_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->withAnyArgs()
 				->reply( $credentials );
 
-		\WP_Mock::userFunction( 'wp_doing_cron' )->andReturnTrue();
+		WP_Mock::userFunction( 'wp_doing_cron' )->andReturnTrue();
 
 		$sut->check_email();
 
@@ -183,7 +182,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$result = $sut->check_email();
 
 		$this->assertTrue( $this->logger->hasDebugThatContains( 'Skipping inactive email account' ) );
-		$this->assertSame( array(), $result->new_emails );
+		$this->assertSame( array(), $result->get_emails() );
 	}
 
 	/**
@@ -198,7 +197,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( null );
 
@@ -223,11 +222,11 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $credentials );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( null );
 
@@ -264,16 +263,13 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
 		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->once();
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $credentials );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
-
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_saved_test-plugin', array() );
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_complete', array() );
 
 		$sut    = $this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository );
 		$result = $sut->check_email();
@@ -305,16 +301,13 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
 		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->once();
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $credentials );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
-
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_saved_test-plugin', array() );
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_complete', array() );
 
 		$sut = $this->get_api( settings: $settings, email_account_repository: $email_account_repository );
 		$sut->check_email();
@@ -345,18 +338,15 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
-
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_saved_test-plugin', array() );
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_complete', array() );
 
 		$sut    = $this->get_api( settings: $settings, email_account_repository: $email_account_repository );
 		$result = $sut->check_email();
 
 		$this->assertTrue( $result->success );
-		$this->assertSame( array(), $result->new_emails );
+		$this->assertSame( array(), $result->get_emails() );
 		$this->assertTrue( $this->logger->hasDebugThatContains( 'does not support fetching' ) );
 	}
 
@@ -395,16 +385,13 @@ class API_Unit_Test extends Unit_Testcase {
 			}
 		)->once();
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $credentials );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
-
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_saved_test-plugin', array() );
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_complete', array() );
 
 		$sut = $this->get_api( settings: $settings, email_account_repository: $email_account_repository );
 		$sut->check_email();
@@ -430,7 +417,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( new \stdClass() );
 
@@ -438,7 +425,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$result = $sut->check_email();
 
 		$this->assertTrue( $this->logger->hasWarningThatContains( 'No credentials found' ) );
-		$this->assertSame( array(), $result->new_emails );
+		$this->assertSame( array(), $result->get_emails() );
 	}
 
 	/**
@@ -474,16 +461,13 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
 		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->once();
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $credentials );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
-
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_saved_test-plugin', array() );
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_complete', array() );
 
 		$sut = $this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository );
 		$sut->check_email();
@@ -529,16 +513,13 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
 		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->once();
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $credentials );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
-
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_saved_test-plugin', array() );
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_complete', array() );
 
 		$sut = $this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository );
 		$sut->check_email();
@@ -597,16 +578,13 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
 		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->once();
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $credentials );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
-
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_saved_test-plugin', array() );
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_complete', array() );
 
 		$sut = $this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository );
 		$sut->check_email();
@@ -633,13 +611,14 @@ class API_Unit_Test extends Unit_Testcase {
 		$saved_bh_email = new BH_Email(
 			post_id: 99,
 			post_type: 'bh_email',
+			email_account_local_id: 77,
 			imessage: Mockery::mock( \ZBateson\MailMimeParser\IMessage::class ),
 			message_id: 'saved@example.org',
 			subject: 'Test subject',
 			from_email: 'sender@example.org',
 		);
 
-				$provider->expects( 'retrieve_emails' )->andReturn( new Collection() );
+		$provider->expects( 'retrieve_emails' )->andReturn( new Collection() );
 
 		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
 		$email_repository->expects( 'save_all' )->andReturn( array( $saved_bh_email ) );
@@ -648,21 +627,18 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
 		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->once();
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $credentials );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
-
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_saved_test-plugin', array( $saved_bh_email ) );
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_complete', array( $saved_bh_email ) );
 
 		$sut    = $this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository );
 		$result = $sut->check_email();
 
-		$this->assertSame( array( $saved_bh_email ), $result->new_emails );
+		$this->assertSame( $saved_bh_email, $result->get_emails()[0]->get_email() );
 	}
 
 	/**
@@ -692,11 +668,11 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->once();
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $credentials );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
 
@@ -705,7 +681,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$this->assertSame( $since_datetime, $captured_since_datetime );
 		$this->assertTrue( $result->success );
-		$this->assertSame( array(), $result->new_emails );
+		$this->assertSame( array(), $result->bh_emails );
 	}
 
 	/**
@@ -734,11 +710,11 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->once();
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $credentials );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
 
@@ -777,16 +753,13 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
 		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->once();
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $credentials );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
-
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_saved_test-plugin', array() );
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_fetch_emails_complete', array() );
 
 		$sut = $this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository );
 		$sut->check_email();
@@ -802,7 +775,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$email_account  = BH_Email_Account_Fixture::make();
 		$custom_fetcher = Mockery::mock( Email_Provider_Interface::class, Supports_Fetching::class );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $custom_fetcher );
 
@@ -821,7 +794,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account = BH_Email_Account_Fixture::make( provider_type_class: ImapEngine_Imap_Email_Provider::class );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( null );
 
@@ -840,7 +813,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account = BH_Email_Account_Fixture::make( provider_type_class: Google_API_Credentials_Interface::class );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( null );
 
@@ -859,7 +832,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account = BH_Email_Account_Fixture::make( provider_type_class: 'Unknown\\Provider\\Class' );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( null );
 
@@ -884,7 +857,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$provider->expects( 'test_connection' )->andReturn( true );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
 
@@ -907,7 +880,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$provider->allows( 'set_credentials' );
 		$provider->allows( 'test_connection' )->andThrow( new \Exception( 'AUTHENTICATIONFAILED' ) );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
+		WP_Mock::onFilter( 'bh_wp_mailboxes_provider_for_account' )
 				->with( null, 'test-plugin', $email_account )
 				->reply( $provider );
 

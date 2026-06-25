@@ -154,7 +154,7 @@ class Single_Email_View_Ajax {
 		// TODO: Check user permissions here.
 
 		try {
-			match ( $action ) {
+			$email = match ( $action ) {
 				'mark_read'        => $this->api->mark_email_read( $email ),
 				'mark_unread'      => $this->api->mark_email_unread( $email ),
 				'delete_on_server' => $this->api->delete_email_on_server( $email ),
@@ -163,9 +163,6 @@ class Single_Email_View_Ajax {
 			$this->logger->error( "Remote action '{$action}' failed: " . $e->getMessage(), array( 'post_id' => $post_id ) );
 			wp_send_json_error( array( 'message' => $e->getMessage() ), 500 );
 		}
-
-		// Refresh.
-		$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
 
 		wp_send_json_success(
 			array(

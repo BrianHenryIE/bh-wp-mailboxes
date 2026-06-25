@@ -17,6 +17,7 @@ use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
+use Exception;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WP_Post;
@@ -122,7 +123,11 @@ class Emails_List_Page {
 	 */
 	public function table_content( $column_name, $post_id ): void {
 
-		$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
+		try {
+			$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
+		} catch ( Exception $exception ) {
+			return;
+		}
 
 		switch ( $column_name ) {
 			case 'from':
@@ -172,7 +177,11 @@ class Emails_List_Page {
 			);
 		}
 
-		$email = $this->email_wp_post_repository->find_by_post_id( $post->ID );
+		try {
+			$email = $this->email_wp_post_repository->find_by_post_id( $post->ID );
+		} catch ( Exception $exception ) {
+			return $actions;
+		}
 
 		if ( ! $email->is_remote_deleted && $this->provider_can_delete_on_server( $email ) ) {
 			$actions['bh_delete_on_server'] = sprintf(

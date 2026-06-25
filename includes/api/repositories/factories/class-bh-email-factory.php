@@ -54,7 +54,8 @@ class BH_Email_Factory {
 			$from_name  = ( '' !== (string) $person ) ? $person : null;
 		}
 
-		$post_id = $post->ID;
+		$post_id     = $post->ID;
+		$post_parent = $post->post_parent;
 
 		$is_read_raw = get_post_meta( $post_id, 'is_remote_read', true );
 		switch ( $is_read_raw ) {
@@ -105,6 +106,7 @@ class BH_Email_Factory {
 		return new BH_Email(
 			post_id: $post_id,
 			post_type: $post->post_type,
+			email_account_local_id: (int) $post_parent,
 			imessage: $message,
 			message_id: $message->getMessageId() ?? '',
 			subject: $post->post_title,
