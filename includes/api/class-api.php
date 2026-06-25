@@ -173,10 +173,13 @@ class API implements API_Interface {
 			$new_email        = $this->new_email_factory->make( api: $this, account: $account, email: $new_bh_email );
 			$all_new_emails[] = $new_email;
 			/**
-			 * @param string $plugin_slug
-			 * @param New_Email_Interface|New_Email_Remote_Interface $new_email
+			 * Fire event for every new email.
+			 *
+			 * @param string $plugin_slug Plugin the library is firing from.
+			 * @param BH_Email_Account $account The account that has been checked (immutable data object).
+			 * @param New_Email_Interface|New_Email_Remote_Interface $new_email Object with methods to manipulate the email; ::get_email() to get immutable data object.
 			 */
-			do_action( 'bh_wp_mailboxes_new_email', $plugin_slug, $new_email );
+			do_action( 'bh_wp_mailboxes_new_email', $plugin_slug, $account, $new_email );
 		}
 
 		return new Check_Email_Account_Result( bh_account: $account, success: true, bh_emails: $fetched, new_emails: $all_new_emails );

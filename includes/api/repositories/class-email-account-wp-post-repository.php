@@ -263,7 +263,13 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			return $account;
 		}
 
-		// https://stackoverflow.com/a/68476973
+		/**
+		 * Occasionally tests fail with "Trying to get property 'feeds' of non-object".
+		 *
+		 * Suggested fix:
+		 *
+		 * @see https://stackoverflow.com/a/68476973
+		 */
 		$result = wp_update_post( $args, true );
 
 		if ( is_wp_error( $result ) ) {
