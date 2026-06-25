@@ -7,8 +7,8 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Account_Query;
+use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Queries\BH_Email_Account_Query;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use DateTimeInterface;
 use Exception;

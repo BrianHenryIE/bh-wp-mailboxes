@@ -6,7 +6,7 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Factories;
+namespace BrianHenryIE\WP_Mailboxes\API\Factories;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
@@ -16,7 +16,7 @@ use Mockery;
 use WP_Post;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory
  */
 class BH_Email_Factory_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WPUnit_Testcase {
 

@@ -7,12 +7,12 @@
 
 declare(strict_types=1);
 
-namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Queries;
+namespace BrianHenryIE\WP_Mailboxes\API\Queries;
 
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Query
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\Queries\BH_Email_Query
  */
 class BH_Email_Query_Unit_Test extends Unit_Testcase {
 
@@ -24,7 +24,7 @@ class BH_Email_Query_Unit_Test extends Unit_Testcase {
 	 *
 	 * @covers ::__construct
 	 * @covers ::get_wp_post_fields
-	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_wp_post_array
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract::to_wp_post_array
 	 */
 	public function test_to_wp_post_array_includes_post_id_as_wp_post_id_field(): void {
 
@@ -45,7 +45,7 @@ class BH_Email_Query_Unit_Test extends Unit_Testcase {
 	 * A null post_id (a new email being inserted) must not appear in the query array.
 	 *
 	 * @covers ::get_wp_post_fields
-	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_wp_post_array
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract::to_wp_post_array
 	 */
 	public function test_to_wp_post_array_omits_id_field_when_post_id_is_null(): void {
 

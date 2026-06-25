@@ -7,7 +7,7 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Queries;
+namespace BrianHenryIE\WP_Mailboxes\API\Queries;
 
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 

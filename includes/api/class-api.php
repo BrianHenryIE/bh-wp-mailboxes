@@ -9,7 +9,7 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\New_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Factories\New_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Provider;
 use BrianHenryIE\WP_Mailboxes\Providers\Gmail_API\Gmail_Email_Provider;

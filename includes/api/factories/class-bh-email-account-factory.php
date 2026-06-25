@@ -5,10 +5,10 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Factories;
+namespace BrianHenryIE\WP_Mailboxes\API\Factories;
 
 use BrianHenryIE\WP_Mailboxes\API\Email_Provider_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Account_Query;
+use BrianHenryIE\WP_Mailboxes\API\Queries\BH_Email_Account_Query;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use DateTime;
 use DateTimeInterface;

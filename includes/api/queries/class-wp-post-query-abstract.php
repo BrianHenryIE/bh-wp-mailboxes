@@ -11,7 +11,7 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\API\Repositories\Queries;
+namespace BrianHenryIE\WP_Mailboxes\API\Queries;
 
 use BackedEnum;
 use DateTimeInterface;

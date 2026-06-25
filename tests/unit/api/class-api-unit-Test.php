@@ -6,7 +6,7 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Mailbox_Result;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\New_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Factories\New_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Models\BH_WP_Mailboxes_Settings_Fixture;
 use Illuminate\Support\Collection;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;

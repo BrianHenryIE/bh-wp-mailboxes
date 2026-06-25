@@ -8,7 +8,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
@@ -174,7 +174,7 @@ class Email_Account_WP_Post_Repository_WPUnit_Test extends WPUnit_Testcase {
 	 * every account was returned once any existed (and add_email_account()'s dedup check false-positived).
 	 *
 	 * @covers ::query
-	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_wp_query_args
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract::to_wp_query_args
 	 */
 	public function test_query_by_email_address_returns_only_matching_account(): void {
 		$sut = $this->make_sut();
@@ -192,7 +192,7 @@ class Email_Account_WP_Post_Repository_WPUnit_Test extends WPUnit_Testcase {
 	 * A query for an address that does not exist returns nothing, even when other accounts exist.
 	 *
 	 * @covers ::query
-	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\WP_Post_Query_Abstract::to_wp_query_args
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract::to_wp_query_args
 	 */
 	public function test_query_by_unknown_email_address_returns_empty(): void {
 		$sut = $this->make_sut();
