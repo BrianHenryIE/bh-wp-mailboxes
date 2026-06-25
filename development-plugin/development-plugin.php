@@ -31,14 +31,12 @@ use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Settings;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
-use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Defaults_Trait;
-use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
-use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Fixtures_Account_Settings;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_API;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_CLI;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap_Credentials_Settings;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Mailbox_Settings;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_Fixtures_Connection;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest\Mailboxes;
 
@@ -146,30 +144,10 @@ $on_plugins_loaded = function () {
 	};
 	$logger          = Logger::instance( $logger_settings );
 
-	$imap_mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {
-		use BH_WP_Mailboxes_Settings_Defaults_Trait;
+	// Example parent-plugin integration: log each newly downloaded email (see Example_Integration).
+	new Example_Integration( $logger )->register_hooks();
 
-		/**
-		 * Returns the plugin slug.
-		 */
-		public function get_plugin_slug(): string {
-			return 'development-plugin';
-		}
-
-		/**
-		 * Returns the CPT friendly name.
-		 */
-		public function get_emails_cpt_friendly_name(): string {
-			return 'IMAP Email ENV';
-		}
-
-		/**
-		 * A friendly display name for UI.
-		 */
-		public function get_email_accounts_cpt_friendly_name(): string {
-			return 'IMAP Accounts ENV';
-		}
-	};
+	$imap_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'IMAP Email ENV', 'IMAP Accounts ENV' );
 	$imap_mailboxes_api      = BH_WP_Mailboxes::make( $imap_mailboxes_settings, $logger );
 	$imap_accounts           = $imap_mailboxes_api->get_email_accounts();
 
@@ -213,30 +191,7 @@ $on_plugins_loaded = function () {
 	$gmail_api_helper = new Gmail_API();
 	if ( $gmail_api_helper->is_client_secret_present() ) {
 
-		$gmail_mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {
-			use BH_WP_Mailboxes_Settings_Defaults_Trait;
-
-			/**
-			 * Returns the plugin slug.
-			 */
-			public function get_plugin_slug(): string {
-				return 'development-plugin';
-			}
-
-			/**
-			 * Returns the CPT friendly name.
-			 */
-			public function get_emails_cpt_friendly_name(): string {
-				return 'Gmail Email';
-			}
-
-			/**
-			 * A friendly display name for UI.
-			 */
-			public function get_email_accounts_cpt_friendly_name(): string {
-				return 'Gmail Accounts';
-			}
-		};
+		$gmail_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'Gmail Email', 'Gmail Accounts' );
 
 		$gmail_mailboxes_api = BH_WP_Mailboxes::make( $gmail_mailboxes_settings, $logger );
 
@@ -253,43 +208,11 @@ $on_plugins_loaded = function () {
 		add_action( 'cli_init', $gmail_cli->register_commands( ... ) );
 	}
 
-	$fixtures_mailboxes_settings = new class() implements BH_WP_Mailboxes_Settings_Interface {
-		use BH_WP_Mailboxes_Settings_Defaults_Trait;
-
-		/**
-		 * Returns the plugin slug.
-		 */
-		public function get_plugin_slug(): string {
-			return 'development-plugin';
-		}
-
-		/**
-		 * Returns the CPT friendly name.
-		 */
-		public function get_emails_cpt_friendly_name(): string {
-			return 'Fixtures Email';
-		}
-
-		/**
-		 * A friendly display name for UI.
-		 */
-		public function get_email_accounts_cpt_friendly_name(): string {
-			return 'Fixtures Accounts';
-		}
-	};
+	$fixtures_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'Fixtures Email', 'Fixtures Accounts' );
 	$fixtures_mailboxes_api      = BH_WP_Mailboxes::make( $fixtures_mailboxes_settings, $logger );
 	$fixtures_mailboxes_accounts = $fixtures_mailboxes_api->get_email_accounts();
 
-	$fixtures_settings = new class() implements Email_Account_Settings_Interface {
-		use Email_Account_Settings_Defaults_Trait;
-
-		/**
-		 * The fixtures account email address.
-		 */
-		public function get_account_email_address(): string {
-			return 'fixture@example.com';
-		}
-	};
+	$fixtures_settings = new Fixtures_Account_Settings();
 
 	// Ensure the fixtures account exists (its provider is wired up via the filter below).
 	if ( ! isset( $fixtures_mailboxes_accounts[ $fixtures_settings->get_account_email_address() ] ) ) {

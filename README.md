@@ -18,16 +18,6 @@ The core library this is built around is [zbateson/mail-mime-parser](https://git
 
 TODO: we should annotate PhpDoc with RFCs relevant to the functions. 
 
-// Document / remove actions
-do_action( 'bh_wp_mailboxes_fetch_emails_saved_' . $this->settings->get_plugin_slug(), $all_new_emails );
-
-/**
- * Fires once check_email() has finished, regardless of how many emails were saved.
- *
- * @param BH_Email[] $all_new_emails Every newly saved BH_Email object.
- */
-do_action( 'bh_wp_mailboxes_fetch_emails_complete', $all_new_emails );
-
 ## Goals
 
 * Handle bad credentials – servers block IPs that have too many bad login attempts, so delay a few hours after each failed attempt, admin_notice to alert admins of problem (warning -> error)

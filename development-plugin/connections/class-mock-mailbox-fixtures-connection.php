@@ -1,18 +1,17 @@
 <?php
 /**
- * An example implementation of `Email_Fetcher_Interface` that can be used to provide fixtures for testing.
+ * A fixtures-backed `Email_Connection_Interface` for demos and E2E tests.
  *
- * Reads from a directory of text files containing emails. Operations on emails are saved per-user in wp_options
- * and can be reset.
+ * Reads emails from a directory of `.eml` files. Per-user read/unread/deleted state is recorded in
+ * user meta and can be cleared via `reset()`.
  *
- * To be used in Playground demo plugin and E2E tests.
+ * To be used in the Playground demo plugin and E2E tests.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
 
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections;
 
-use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
@@ -28,25 +27,19 @@ use Illuminate\Support\Collection;
 use ZBateson\MailMimeParser\MailMimeParser;
 
 /**
- * A fixtures-backed email provider for demos and E2E tests.
+ * A fixtures-backed email connection for demos and E2E tests.
  *
- * Reads emails from a directory of JSON files and records read/deleted operations per-user in user meta.
+ * Reads emails from a directory of `.eml` files and records read/unread/deleted operations per-user
+ * in user meta.
  */
 class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Supports_Fetching {
 
 	/**
-	 * Absolute path to the directory of `.json` email fixtures.
+	 * Absolute path to the directory of `.eml` email fixtures.
 	 *
 	 * @var string
 	 */
 	protected string $fixtures_directory = __DIR__ . '/fixtures';
-
-	/**
-	 * The credentials passed to the provider (unused by the fixtures provider).
-	 *
-	 * @var Account_Credentials_Interface
-	 */
-	protected Account_Credentials_Interface $credentials;
 
 	/**
 	 * Constructor.
@@ -70,6 +63,32 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 		add_filter( 'bh_wp_mailboxes_provider_for_account', array( $this, 'provider' ), 10, 3 );
 		add_filter( 'get_post_metadata', array( $this, 'meta_filter' ), 10, 5 );
 		add_action( 'manage_posts_extra_tablenav', array( $this, 'print_extra_table_controls_at_top' ), 10, 1 );
+		add_action( 'load-edit.php', array( $this, 'handle_reset_submission' ) );
+	}
+
+	/**
+	 * Handle the "Reset" button submitted from the fixtures emails list table.
+	 *
+	 * Clears the current user's per-user fixture state, then redirects back to the list table
+	 * without the submission parameters so a refresh does not re-trigger the reset.
+	 *
+	 * @hooked load-edit.php
+	 */
+	public function handle_reset_submission(): void {
+
+		if ( ! isset( $_GET['reset-fixtures'] ) ) {
+			return;
+		}
+
+		if ( ! isset( $_GET['_wpnonce_checknow'] )
+			|| ! wp_verify_nonce( sanitize_key( wp_unslash( $_GET['_wpnonce_checknow'] ) ), 'bh-wp-mailboxes-reset-fixtures' ) ) {
+			return;
+		}
+
+		$this->reset();
+
+		wp_safe_redirect( admin_url( 'edit.php?post_type=' . $this->mailbox_settings->get_emails_cpt_underscored_20() ) );
+		exit;
 	}
 
 	/**
@@ -176,15 +195,6 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	}
 
 	/**
-	 * Store the credentials for later use by this fixtures provider.
-	 *
-	 * @param Account_Credentials_Interface $credentials The account credentials (unused by the fixtures provider).
-	 */
-	public function set_credentials( Account_Credentials_Interface $credentials ): void {
-		$this->credentials = $credentials;
-	}
-
-	/**
 	 * Read the email fixtures from disk as unsaved emails for the API to dedupe and save.
 	 *
 	 * @param DateTimeInterface $since_time The earliest time to retrieve emails from (ignored; all fixtures are returned).
@@ -224,7 +234,7 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	}
 
 	/**
-	 * Fixture emails are always reported as read.
+	 * Whether the fixture email is marked read for the current user (per-user state; default unread).
 	 *
 	 * @param Remote_Email_Coordinates $coordinates The data required to address a single email.
 	 */
