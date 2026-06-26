@@ -64,7 +64,7 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 		$api = Mockery::mock( API_Interface::class )->shouldIgnoreMissing();
 
 		if ( $has_account ) {
-			$account  = BH_Email_Account_Fixture::make( post_id: 7 );
+			$account    = BH_Email_Account_Fixture::make( post_id: 7 );
 			$connection = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 			$connection->allows( 'can_delete_on_server' )->andReturn( $can_delete );
 			$api->allows( 'get_email_account_for_email' )->andReturn( $account );

@@ -230,7 +230,7 @@ $on_plugins_loaded = function () {
 			// Account already exists; ignore.
 		}
 	}
-	$email_factory     = new Email_WP_Post_Repository(
+	$email_factory       = new Email_WP_Post_Repository(
 		$fixtures_mailboxes_settings->get_emails_cpt_underscored_20(),
 		new BH_Email_Factory( $logger ),
 		$logger,

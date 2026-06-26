@@ -70,8 +70,8 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 	private function required_meta(): array {
 		return array(
 			'connection_type_class' => 'Some_Connection_Class',
-			'email_address'       => 'inbox@example.com',
-			'display_name'        => 'Test Inbox',
+			'email_address'         => 'inbox@example.com',
+			'display_name'          => 'Test Inbox',
 		);
 	}
 

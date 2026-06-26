@@ -499,7 +499,7 @@ class API implements API_Interface {
 		}
 
 		$connection = $this->get_connection_for_email_account( $email_account );
-		$post_id  = $email->get_post_id();
+		$post_id    = $email->get_post_id();
 
 		if ( is_null( $connection ) ) {
 			throw new Exception( 'No connection found for ' . esc_html( $email_account->display_name ) );
@@ -579,7 +579,7 @@ class API implements API_Interface {
 			return null;
 		}
 
-		$connection    = $this->get_connection_for_email_account( $email_account );
+		$connection  = $this->get_connection_for_email_account( $email_account );
 		$coordinates = $email->get_remote_coordinates();
 
 		if ( is_null( $connection ) || is_null( $coordinates ) || ! ( $connection instanceof Supports_Fetching ) || ! $connection->can_read_status() ) {

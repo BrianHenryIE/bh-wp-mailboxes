@@ -81,7 +81,7 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 	 */
 	protected function get_meta_input(): array {
 		return array(
-			'connection_type_class'                => $this->connection_type_class ? str_replace( '\\', '\\\\', $this->connection_type_class ) : null,
+			'connection_type_class'              => $this->connection_type_class ? str_replace( '\\', '\\\\', $this->connection_type_class ) : null,
 			'email_address'                      => $this->email_address, // The post_name is sanitized.
 			'display_name'                       => $this->display_name,
 			'from_address_regex_filter'          => $this->from_address_regex_filter,
