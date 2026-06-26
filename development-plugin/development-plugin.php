@@ -81,6 +81,8 @@ Autoloader::generate(
 // Authentication shortcuts for e2e arrangement (login-as-user, treat REST callers as admin).
 new Authentication()->register_hooks();
 
+new Mappings()->register_hooks();
+
 // Custom REST endpoints for arranging/asserting e2e tests.
 new Mailboxes()->register_hooks();
 
@@ -88,24 +90,6 @@ $development_settings_page = new Settings();
 $development_settings_page->register_hooks();
 new Menu( $development_settings_page )->register_hooks();
 
-
-/**
- * Partial fix for symlinks.
- *
- * In wp-env: vendor is mapped to wp-content/plugins/vendor.
- * TODO: address the same issue in integration tests.
- *
- * /var/www/html/wp-content/uploads/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/class-admin-assets.php
- * http://localhost:8888/wp-content/plugins/development-plugin/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
- * http://localhost:8888/wp-content/uploads/bh-wp-mailboxes/vendor/brianhenryie/bh-wp-private-uploads/includes/admin/assets/bh-wp-private-uploads-admin.js
- */
-$plugins_url_fix = function ( $url, $_path, $_plugin ) {
-	$url = str_replace( 'wp-content/plugins/var/www/html/', '', $url );
-	$url = str_replace( 'plugins/development-plugin/vendor', 'uploads/bh-wp-mailboxes/vendor', $url );
-	$url = str_replace( 'plugins/development-plugin/includes', 'uploads/bh-wp-mailboxes/includes', $url );
-	return $url;
-};
-add_filter( 'plugins_url', $plugins_url_fix, 10, 3 );
 
 $on_plugins_loaded = function () {
 
@@ -238,12 +222,3 @@ $on_plugins_loaded = function () {
 	$fixtures_connection = new Mock_Mailbox_Fixtures_Connection( $fixtures_mailboxes_settings, $fixtures_settings, $email_factory );
 };
 add_action( 'plugins_loaded', $on_plugins_loaded );
-
-/**
- * Fix for mapped directories. I.e. vendor is not under `wp-content/plugins/development-plugins`.
- *
- * @see plugin_basename()
- */
-global $wp_plugin_paths;
-$plugin_path = '/var/www/html/wp-content/uploads/bh-wp-mailboxes/';
-$wp_plugin_paths[ WP_PLUGIN_DIR . '/development-plugin/' ] = $plugin_path;
