@@ -89,7 +89,7 @@ class Gmail_CLI {
 			$this->api->add_email_account(
 				email_address: $email,
 				display_name: $email,
-				provider_type_class: Google_API_Credentials_Interface::class,
+				connection_type_class: Google_API_Credentials_Interface::class,
 				from_address_regex_filter: null,
 				body_identifier_regex_filter: null,
 				after_download_remote_email_action: null,
@@ -118,11 +118,11 @@ class Gmail_CLI {
 			return;
 		}
 
-		$provider = new Gmail_Email_Connection( $mailbox_settings, $this->logger );
-		$provider->set_credentials( $credentials );
+		$connection = new Gmail_Email_Connection( $mailbox_settings, $this->logger );
+		$connection->set_credentials( $credentials );
 
 		WP_CLI::log( 'Open this URL in your browser and grant access:' );
-		WP_CLI::log( $provider->get_authorization_url() );
+		WP_CLI::log( $connection->get_authorization_url() );
 
 		print 'Enter the verification code (or paste the whole redirect URL): ';
 		$auth_code = $this->parse_auth_code_from_url( trim( (string) fgets( STDIN ) ) );
@@ -133,7 +133,7 @@ class Gmail_CLI {
 		}
 
 		try {
-			$access_token = $provider->fetch_access_token_with_auth_code( $auth_code );
+			$access_token = $connection->fetch_access_token_with_auth_code( $auth_code );
 		} catch ( Throwable $t ) {
 			WP_CLI::error( $t->getMessage() );
 			return;

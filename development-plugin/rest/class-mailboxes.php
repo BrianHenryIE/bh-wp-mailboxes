@@ -43,8 +43,8 @@ class Mailboxes {
 	const ACCOUNT_POST_TYPE = 'fixtures_accounts';
 
 	/**
-	 * The provider class the fixtures mailbox uses; accounts must reference it so the
-	 * `bh_wp_mailboxes_provider_for_account` filter resolves the fixtures provider for them.
+	 * The connection class the fixtures mailbox uses; accounts must reference it so the
+	 * `bh_wp_mailboxes_connection_for_account` filter resolves the fixtures connection for them.
 	 *
 	 * @see \BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_Fixtures_Connection
 	 */
@@ -210,7 +210,7 @@ class Mailboxes {
 
 		update_post_meta( $post_id, 'email_address', $email_address );
 		update_post_meta( $post_id, 'display_name', $display_name );
-		update_post_meta( $post_id, 'provider_type_class', self::ACCOUNT_PROVIDER_CLASS );
+		update_post_meta( $post_id, 'connection_type_class', self::ACCOUNT_PROVIDER_CLASS );
 
 		return new WP_REST_Response( array( 'post_id' => $post_id ), 201 );
 	}
@@ -325,9 +325,9 @@ class Mailboxes {
 		// Clear the per-user fixture state written by Mock_Mailbox_Fixtures_Connection, for every user.
 		foreach (
 			array(
-				'_mock_mailbox_fixtures_provider_is_remote_deleted',
-				'_mock_mailbox_fixtures_provider_is_remote_read',
-				'_mock_mailbox_fixtures_provider_is_remote_unread',
+				'_mock_mailbox_fixtures_connection_is_remote_deleted',
+				'_mock_mailbox_fixtures_connection_is_remote_read',
+				'_mock_mailbox_fixtures_connection_is_remote_unread',
 			) as $meta_key
 		) {
 			delete_metadata( 'user', 0, $meta_key, '', true );

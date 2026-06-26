@@ -168,7 +168,7 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 	public function refresh_access_token(): Access_Token {
 
 		if ( ! isset( $this->credentials ) ) {
-			throw new Exception( 'No credentials set on the Gmail provider.' );
+			throw new Exception( 'No credentials set on the Gmail connection.' );
 		}
 
 		$existing_token = $this->credentials->get_access_token();
@@ -279,7 +279,7 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 	protected function make_oauth_client(): Google_Client {
 
 		if ( ! isset( $this->credentials ) ) {
-			throw new Exception( 'No credentials set on the Gmail provider.' );
+			throw new Exception( 'No credentials set on the Gmail connection.' );
 		}
 
 		$client = $this->make_client();

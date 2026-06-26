@@ -155,7 +155,7 @@ class Gmail_CLI {
 	 *
 	 * @param BH_Email_Account $account The account to build the connection for.
 	 */
-	protected function make_provider( BH_Email_Account $account ): Gmail_Email_Connection {
+	protected function make_connection( BH_Email_Account $account ): Gmail_Email_Connection {
 		return new Gmail_Email_Connection( $account, $this->logger );
 	}
 }

@@ -119,7 +119,7 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 	 *
 	 * @covers ::row_actions
 	 */
-	public function test_delete_on_server_absent_when_provider_cannot_delete(): void {
+	public function test_delete_on_server_absent_when_connection_cannot_delete(): void {
 		$actions = $this->make_sut( can_delete: false )->row_actions( array(), $this->make_post() );
 
 		$this->assertArrayNotHasKey( 'bh_delete_on_server', $actions );

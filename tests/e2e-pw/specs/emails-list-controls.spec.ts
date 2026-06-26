@@ -72,7 +72,7 @@ test.describe( 'Emails list page — row actions', () => {
 		page,
 		request,
 	} ) => {
-		// The fixtures provider supports delete-on-server; fetch an email so a row links to its account.
+		// The fixtures connection supports delete-on-server; fetch an email so a row links to its account.
 		const accountId = await createAccount(
 			request,
 			`row-delete-${ Date.now() }@example.com`

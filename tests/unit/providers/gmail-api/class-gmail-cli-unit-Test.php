@@ -142,8 +142,8 @@ class Gmail_CLI_Unit_Test extends Unit_Testcase {
 		\WP_Mock::expectAction( 'bh_wp_mailboxes_gmail_access_token_refreshed', $token, 'you@example.com' );
 
 		$connection = Mockery::mock( Gmail_Email_Connection::class );
-		$provider->expects( 'set_credentials' )->with( $credentials )->once();
-		$provider->expects( 'refresh_access_token' )->once()->andReturn( $token );
+		$connection->expects( 'set_credentials' )->with( $credentials )->once();
+		$connection->expects( 'refresh_access_token' )->once()->andReturn( $token );
 
 		$sut = Mockery::mock(
 			Gmail_CLI::class,
@@ -151,7 +151,7 @@ class Gmail_CLI_Unit_Test extends Unit_Testcase {
 		)
 			->makePartial()
 			->shouldAllowMockingProtectedMethods();
-		$sut->allows( 'make_provider' )->andReturn( $provider );
+		$sut->allows( 'make_connection' )->andReturn( $connection );
 
 		$sut->refresh_access_token( array(), array( 'account' => 'you@example.com' ) );
 

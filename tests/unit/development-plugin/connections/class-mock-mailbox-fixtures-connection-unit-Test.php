@@ -88,9 +88,9 @@ class Mock_Mailbox_Fixtures_Connection_Unit_Test extends Unit_Testcase {
 
 		$this->assertSame(
 			array(
-				'_mock_mailbox_fixtures_provider_is_remote_deleted',
-				'_mock_mailbox_fixtures_provider_is_remote_read',
-				'_mock_mailbox_fixtures_provider_is_remote_unread',
+				'_mock_mailbox_fixtures_connection_is_remote_deleted',
+				'_mock_mailbox_fixtures_connection_is_remote_read',
+				'_mock_mailbox_fixtures_connection_is_remote_unread',
 			),
 			$deleted_keys
 		);

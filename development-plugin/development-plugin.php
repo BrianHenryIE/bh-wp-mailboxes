@@ -166,7 +166,7 @@ $on_plugins_loaded = function () {
 				$imap_mailboxes_api->add_email_account(
 					email_address: $imap_email,
 					display_name: $imap_email,
-					provider_type_class: \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection::class,
+					connection_type_class: \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection::class,
 					from_address_regex_filter: null,
 					body_identifier_regex_filter: null,
 					after_download_remote_email_action: null,
@@ -214,13 +214,13 @@ $on_plugins_loaded = function () {
 
 	$fixtures_settings = new Fixtures_Account_Settings();
 
-	// Ensure the fixtures account exists (its provider is wired up via the filter below).
+	// Ensure the fixtures account exists (its connection is wired up via the filter below).
 	if ( ! isset( $fixtures_mailboxes_accounts[ $fixtures_settings->get_account_email_address() ] ) ) {
 		try {
 			$fixtures_mailboxes_api->add_email_account(
 				email_address: $fixtures_settings->get_account_email_address(),
 				display_name: $fixtures_settings->get_account_display_friendly_name(),
-				provider_type_class: Mock_Mailbox_Fixtures_Connection::class,
+				connection_type_class: Mock_Mailbox_Fixtures_Connection::class,
 				from_address_regex_filter: null,
 				body_identifier_regex_filter: null,
 				after_download_remote_email_action: null,
@@ -235,7 +235,7 @@ $on_plugins_loaded = function () {
 		new BH_Email_Factory( $logger ),
 		$logger,
 	);
-	$fixtures_provider = new Mock_Mailbox_Fixtures_Connection( $fixtures_mailboxes_settings, $fixtures_settings, $email_factory );
+	$fixtures_connection = new Mock_Mailbox_Fixtures_Connection( $fixtures_mailboxes_settings, $fixtures_settings, $email_factory );
 };
 add_action( 'plugins_loaded', $on_plugins_loaded );
 

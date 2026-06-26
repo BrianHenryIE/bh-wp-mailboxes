@@ -57,10 +57,10 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	}
 
 	/**
-	 * Register the WordPress hooks this provider uses.
+	 * Register the WordPress hooks this connection uses.
 	 */
 	public function register_hooks(): void {
-		add_filter( 'bh_wp_mailboxes_provider_for_account', array( $this, 'provider' ), 10, 3 );
+		add_filter( 'bh_wp_mailboxes_connection_for_account', array( $this, 'connection' ), 10, 3 );
 		add_filter( 'get_post_metadata', array( $this, 'meta_filter' ), 10, 5 );
 		add_action( 'manage_posts_extra_tablenav', array( $this, 'print_extra_table_controls_at_top' ), 10, 1 );
 		add_action( 'load-edit.php', array( $this, 'handle_reset_submission' ) );
@@ -99,11 +99,11 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	}
 
 	/**
-	 * Return our custom provider (this) for accounts configured to use it.
+	 * Return our custom connection (this) for accounts configured to use it.
 	 *
-	 * @hooked bh_wp_mailboxes_provider_for_account
+	 * @hooked bh_wp_mailboxes_connection_for_account
 	 *
-	 * @see API::get_provider_for_email_account()
+	 * @see API::get_connection_for_email_account()
 	 *
 	 * @param mixed|Email_Connection_Interface|null $value Existing filtered value – begins as null – should be `Email_Connection_Interface` but WordPress does not enforce types in filters.
 	 * @param string                                $plugin_slug Is the API instance from this plugin (otherwise it may be a different, incompatible version).
@@ -111,9 +111,9 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	 *
 	 * @return mixed|Email_Connection_Interface|null
 	 */
-	public function provider( mixed $value, string $plugin_slug, BH_Email_Account $email_account ): mixed {
+	public function connection( mixed $value, string $plugin_slug, BH_Email_Account $email_account ): mixed {
 		if ( $this->mailbox_settings->get_plugin_slug() === $plugin_slug
-			&& get_class( $this ) === $email_account->provider_type_class ) {
+			&& get_class( $this ) === $email_account->connection_type_class ) {
 			return $this;
 		}
 
@@ -165,18 +165,18 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 		}
 
 		if ( 'is_remote_deleted' === $meta_key ) {
-			$user_remote_deleted_post_ids = get_user_meta( user_id: get_current_user_id(), key:'_mock_mailbox_fixtures_provider_is_remote_deleted', single: false );
+			$user_remote_deleted_post_ids = get_user_meta( user_id: get_current_user_id(), key:'_mock_mailbox_fixtures_connection_is_remote_deleted', single: false );
 			if ( in_array( (string) $object_id, $user_remote_deleted_post_ids, true ) ) {
 				return 'yes';
 			}
 		}
 
 		if ( 'is_remote_read' === $meta_key ) {
-			$user_remote_read_post_ids = get_user_meta( user_id: get_current_user_id(), key:'_mock_mailbox_fixtures_provider_is_remote_read', single: false );
+			$user_remote_read_post_ids = get_user_meta( user_id: get_current_user_id(), key:'_mock_mailbox_fixtures_connection_is_remote_read', single: false );
 			if ( in_array( (string) $object_id, $user_remote_read_post_ids, true ) ) {
 				return 'yes';
 			}
-			$user_remote_unread_post_ids = get_user_meta( user_id: get_current_user_id(), key:'_mock_mailbox_fixtures_provider_is_remote_unread', single: false );
+			$user_remote_unread_post_ids = get_user_meta( user_id: get_current_user_id(), key:'_mock_mailbox_fixtures_connection_is_remote_unread', single: false );
 			if ( in_array( (string) $object_id, $user_remote_unread_post_ids, true ) ) {
 				return 'no';
 			}
@@ -189,9 +189,9 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	 * Clear all per-user fixture state (read/unread/deleted) for the current user.
 	 */
 	public function reset(): void {
-		delete_user_meta( get_current_user_id(), '_mock_mailbox_fixtures_provider_is_remote_deleted' );
-		delete_user_meta( get_current_user_id(), '_mock_mailbox_fixtures_provider_is_remote_read' );
-		delete_user_meta( get_current_user_id(), '_mock_mailbox_fixtures_provider_is_remote_unread' );
+		delete_user_meta( get_current_user_id(), '_mock_mailbox_fixtures_connection_is_remote_deleted' );
+		delete_user_meta( get_current_user_id(), '_mock_mailbox_fixtures_connection_is_remote_read' );
+		delete_user_meta( get_current_user_id(), '_mock_mailbox_fixtures_connection_is_remote_unread' );
 	}
 
 	/**
@@ -227,7 +227,7 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	}
 
 	/**
-	 * The fixtures provider tracks read status per-user.
+	 * The fixtures connection tracks read status per-user.
 	 */
 	public function can_read_status(): bool {
 		return true;
@@ -246,7 +246,7 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	}
 
 	/**
-	 * The fixtures provider supports changing read status per-user.
+	 * The fixtures connection supports changing read status per-user.
 	 */
 	public function can_mark_read(): bool {
 		return true;
@@ -263,7 +263,7 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 		$post_id  = $this->get_post_id_for_coordinates( $coordinates );
 		$usermeta = get_user_meta( get_current_user_id() );
 
-		$add_meta_key = '_mock_mailbox_fixtures_provider_is_remote_' . ( $is_read ? 'read' : 'unread' );
+		$add_meta_key = '_mock_mailbox_fixtures_connection_is_remote_' . ( $is_read ? 'read' : 'unread' );
 		if ( ! isset( $usermeta[ $add_meta_key ] )
 		|| ( isset( $usermeta[ $add_meta_key ] ) && ! in_array( (string) $post_id, $usermeta[ $add_meta_key ], true ) )
 		) {
@@ -274,7 +274,7 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 			);
 		}
 
-		$delete_meta_key = '_mock_mailbox_fixtures_provider_is_remote_' . ( $is_read ? 'unread' : 'read' );
+		$delete_meta_key = '_mock_mailbox_fixtures_connection_is_remote_' . ( $is_read ? 'unread' : 'read' );
 		if ( isset( $usermeta[ $delete_meta_key ] ) ) {
 			delete_user_meta(
 				user_id: get_current_user_id(),
@@ -285,7 +285,7 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	}
 
 	/**
-	 * The fixtures provider supports "deleting" emails on the server (recorded per-user).
+	 * The fixtures connection supports "deleting" emails on the server (recorded per-user).
 	 */
 	public function can_delete_on_server(): bool {
 		return true;
@@ -305,7 +305,7 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 		// Add the post id to the meta list of deleted posts by this user.
 		return (bool) add_user_meta(
 			user_id: get_current_user_id(),
-			meta_key: '_mock_mailbox_fixtures_provider_is_remote_deleted',
+			meta_key: '_mock_mailbox_fixtures_connection_is_remote_deleted',
 			meta_value: $this->get_post_id_for_coordinates( $coordinates )
 		);
 	}

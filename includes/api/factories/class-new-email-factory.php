@@ -33,9 +33,9 @@ class New_Email_Factory {
 		BH_Email $email,
 	): New_Email_Interface {
 
-		$connection_class = $account->provider_type_class;
+		$connection_class = $account->connection_type_class;
 
-		$interfaces = class_implements( $provider_class );
+		$interfaces = class_implements( $connection_class );
 
 		if ( in_array( Supports_Fetching::class, $interfaces, true ) ) {
 			return new New_Email_Remote(

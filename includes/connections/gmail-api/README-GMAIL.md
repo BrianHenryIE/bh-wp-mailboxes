@@ -148,7 +148,7 @@ A Desktop-app client's JSON has a top-level **`installed`** key (a Web-applicati
 
 ## 6. Authorize once to obtain `access_token.json`
 
-The first authorization is interactive and, with a Desktop-app client, **has no callback URL** — so you copy the authorization code out of the browser by hand. The flow is implemented in [`Gmail_Email_Connection::get_authorization_url()`](class-gmail-email-provider.php) and [`fetch_access_token_with_auth_code()`](class-gmail-email-provider.php); the development plugin drives it from a WP-CLI command:
+The first authorization is interactive and, with a Desktop-app client, **has no callback URL** — so you copy the authorization code out of the browser by hand. The flow is implemented in [`Gmail_Email_Connection::get_authorization_url()`](class-gmail-email-connection.php) and [`fetch_access_token_with_auth_code()`](class-gmail-email-connection.php); the development plugin drives it from a WP-CLI command:
 
 ```bash
 wp development-plugin gmail connect

@@ -199,12 +199,12 @@ class CLI {
 	}
 
 	/**
-	 * The unqualified class name of a provider type, for display.
+	 * The unqualified class name of a connection type, for display.
 	 *
-	 * @param string $provider_type_class The fully-qualified provider/credentials class name.
+	 * @param string $connection_type_class The fully-qualified connection/credentials class name.
 	 */
-	protected function short_provider_name( string $provider_type_class ): string {
-		$position = strrpos( $provider_type_class, '\\' );
-		return false === $position ? $provider_type_class : substr( $provider_type_class, $position + 1 );
+	protected function short_connection_name( string $connection_type_class ): string {
+		$position = strrpos( $connection_type_class, '\\' );
+		return false === $position ? $connection_type_class : substr( $connection_type_class, $position + 1 );
 	}
 }

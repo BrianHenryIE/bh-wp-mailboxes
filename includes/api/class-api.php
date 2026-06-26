@@ -451,14 +451,14 @@ class API implements API_Interface {
 	 * Resolves the credentials via the `bh_wp_mailboxes_credentials` filter (args: value, plugin_slug, account)
 	 * and sets them on the connection. No-op for connections that do not implement {@see Requires_Credentials}.
 	 *
-	 * @param Email_Connection_Interface $connection      The provider to credential.
+	 * @param Email_Connection_Interface $connection      The connection to credential.
 	 * @param BH_Email_Account           $email_account The account whose credentials to resolve.
 	 *
 	 * @throws \InvalidArgumentException When the filter does not return an Account_Credentials_Interface.
 	 */
-	protected function set_provider_credentials( Email_Connection_Interface $provider, BH_Email_Account $email_account ): void {
+	protected function set_connection_credentials( Email_Connection_Interface $connection, BH_Email_Account $email_account ): void {
 
-		if ( ! ( $provider instanceof Requires_Credentials ) ) {
+		if ( ! ( $connection instanceof Requires_Credentials ) ) {
 			return;
 		}
 
@@ -475,7 +475,7 @@ class API implements API_Interface {
 			throw new \InvalidArgumentException( 'Credentials were not Account_Credentials_Interface' );
 		}
 
-		$provider->set_credentials( $credentials );
+		$connection->set_credentials( $credentials );
 	}
 
 	/**
@@ -488,7 +488,7 @@ class API implements API_Interface {
 	 * @param string   $action One of: mark_read, mark_unread, delete_on_server.
 	 * @param BH_Email $email  The email to act on.
 	 *
-	 * @throws Exception When expected email account / provider / remote coordinates are not found.
+	 * @throws Exception When expected email account / connection / remote coordinates are not found.
 	 */
 	protected function perform_remote_email_action( string $action, BH_Email $email ): void {
 
@@ -498,20 +498,20 @@ class API implements API_Interface {
 			throw new Exception( 'failed to get BH_Email_Account for email ' . esc_html( $email->post_type ) );
 		}
 
-		$provider = $this->get_provider_for_email_account( $email_account );
+		$connection = $this->get_connection_for_email_account( $email_account );
 		$post_id  = $email->get_post_id();
 
-		if ( is_null( $provider ) ) {
-			throw new Exception( 'No provider found for ' . esc_html( $email_account->display_name ) );
+		if ( is_null( $connection ) ) {
+			throw new Exception( 'No connection found for ' . esc_html( $email_account->display_name ) );
 		}
 
-		// Remote read/delete actions live on Supports_Fetching: a provider that cannot be queried cannot
+		// Remote read/delete actions live on Supports_Fetching: a connection that cannot be queried cannot
 		// perform them.
-		if ( ! ( $provider instanceof Supports_Fetching ) ) {
+		if ( ! ( $connection instanceof Supports_Fetching ) ) {
 			throw new Exception( 'Connection does not support remote actions for ' . esc_html( $email_account->display_name ) );
 		}
 
-		$this->set_provider_credentials( $provider, $email_account );
+		$this->set_connection_credentials( $connection, $email_account );
 
 		if ( is_null( $email->get_remote_coordinates() ) ) {
 			throw new Exception( 'No remote coordinates found for ' . esc_html( $email_account->display_name ) );
@@ -520,7 +520,7 @@ class API implements API_Interface {
 		switch ( $action ) {
 			case 'mark_read':
 				try {
-					$provider->set_is_marked_read( $email->get_remote_coordinates(), true );
+					$connection->set_is_marked_read( $email->get_remote_coordinates(), true );
 					$this->email_repository->update( $email, is_remote_read: true );
 					// Reversible change → info.
 					$this->insert_email_log_note( $post_id, 'Marked as read on server', 'info' );
@@ -530,7 +530,7 @@ class API implements API_Interface {
 				break;
 			case 'mark_unread':
 				try {
-					$provider->set_is_marked_read( $email->get_remote_coordinates(), false );
+					$connection->set_is_marked_read( $email->get_remote_coordinates(), false );
 					$this->email_repository->update( $email, is_remote_read: false );
 					// Reversible change → info.
 					$this->insert_email_log_note( $post_id, 'Marked as unread on server', 'info' );
@@ -540,7 +540,7 @@ class API implements API_Interface {
 				break;
 			case 'delete_on_server':
 				try {
-					$provider->do_delete_on_server( $email->get_remote_coordinates() );
+					$connection->do_delete_on_server( $email->get_remote_coordinates() );
 					$this->email_repository->update( $email, is_remote_deleted: true );
 					// Intentional irreversible change → notice.
 					$this->insert_email_log_note( $post_id, 'Deleted on server', 'notice' );
@@ -579,16 +579,16 @@ class API implements API_Interface {
 			return null;
 		}
 
-		$provider    = $this->get_provider_for_email_account( $email_account );
+		$connection    = $this->get_connection_for_email_account( $email_account );
 		$coordinates = $email->get_remote_coordinates();
 
-		if ( is_null( $provider ) || is_null( $coordinates ) || ! ( $provider instanceof Supports_Fetching ) || ! $provider->can_read_status() ) {
+		if ( is_null( $connection ) || is_null( $coordinates ) || ! ( $connection instanceof Supports_Fetching ) || ! $connection->can_read_status() ) {
 			return null;
 		}
 
 		try {
-			$this->set_provider_credentials( $provider, $email_account );
-			return $provider->get_is_marked_read( $coordinates );
+			$this->set_connection_credentials( $connection, $email_account );
+			return $connection->get_is_marked_read( $coordinates );
 		} catch ( Throwable $exception ) {
 			$this->logger->warning(
 				'Failed to fetch remote read status: ' . $exception->getMessage(),
@@ -640,36 +640,36 @@ class API implements API_Interface {
 	/**
 	 * Return the email fetcher for a given account.
 	 *
-	 * Applies filter `bh_wp_mailboxes_provider_for_account` so callers can inject a custom
+	 * Applies filter `bh_wp_mailboxes_connection_for_account` so callers can inject a custom
 	 * fetcher (e.g. a stub in tests or the development plugin).
 	 *
 	 * @param BH_Email_Account $email_account The account to find a fetcher for.
 	 */
-	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Connection_Interface {
+	public function get_connection_for_email_account( BH_Email_Account $email_account ): ?Email_Connection_Interface {
 
 		$plugin_slug = $this->settings->get_plugin_slug();
 
 		/**
 		 * Get an Email_Connection_Interface instance for a BH_Email_Account.
 		 *
-		 * @param mixed|Email_Connection_Interface  $provider The email fetcher for the account, or null if none is found.
+		 * @param mixed|Email_Connection_Interface  $connection The email fetcher for the account, or null if none is found.
 		 * @param string $plugin_slug To allow multiple plugins (and potentially library verions) to use this same filter name.
-		 * @param BH_Email_Account $email_account The account config to get provider for {@see BH_Email_Account::$provider_type_class}.
+		 * @param BH_Email_Account $email_account The account config to get connection for {@see BH_Email_Account::$connection_type_class}.
 		 */
-		$provider = apply_filters( 'bh_wp_mailboxes_provider_for_account', null, $plugin_slug, $email_account );
+		$connection = apply_filters( 'bh_wp_mailboxes_connection_for_account', null, $plugin_slug, $email_account );
 
-		if ( $provider instanceof Email_Connection_Interface ) {
-			return $provider;
+		if ( $connection instanceof Email_Connection_Interface ) {
+			return $connection;
 		}
 
-		if ( ImapEngine_Imap_Email_Connection::class === $email_account->provider_type_class ) {
+		if ( ImapEngine_Imap_Email_Connection::class === $email_account->connection_type_class ) {
 			return new ImapEngine_Imap_Email_Connection( $email_account, $this->logger );
-		} elseif ( Google_API_Credentials_Interface::class === $email_account->provider_type_class ) {
+		} elseif ( Google_API_Credentials_Interface::class === $email_account->connection_type_class ) {
 			return new Gmail_Email_Connection( $email_account, $this->logger );
 		} else {
 			$this->logger->warning(
-				'No email fetcher found for provider type: {provider_type_class}',
-				array( 'provider_type_class' => $email_account->provider_type_class )
+				'No email fetcher found for connection type: {connection_type_class}',
+				array( 'connection_type_class' => $email_account->connection_type_class )
 			);
 			return null;
 		}
