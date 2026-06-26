@@ -204,7 +204,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 		Fetched_Email $fetched_email,
 		BH_WP_Mailboxes_Settings_Interface $mailbox_settings,
 		BH_Email_Account $email_account,
-		?Private_Uploads_API_Interface $private_uploads = null
+		?Private_Uploads_API_Interface $private_uploads = null // TODO: Is the strict typing allowed when the library is optional?
 	): BH_Email {
 
 		$email       = $fetched_email->message;
