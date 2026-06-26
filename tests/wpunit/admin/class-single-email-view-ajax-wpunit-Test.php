@@ -236,7 +236,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 			->with( Mockery::type( BH_Email::class ) )
 			->andReturnUsing(
 				static function () use ( $bh_email ): BH_Email {
-					return BH_Email_Fixture::clone_and_change( $bh_email, is_remote_read: true );
+					return BH_Email_Fixture::make( is_remote_read: true, from_bh_email: $bh_email );
 				}
 			);
 
@@ -271,7 +271,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 			->with( Mockery::type( BH_Email::class ) )
 			->andReturnUsing(
 				static function () use ( $bh_email ): BH_Email {
-					return BH_Email_Fixture::clone_and_change( $bh_email, is_remote_read: false );
+					return BH_Email_Fixture::make( is_remote_read: false, from_bh_email: $bh_email );
 				}
 			);
 
@@ -304,7 +304,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 			->with( Mockery::type( BH_Email::class ) )
 			->andReturnUsing(
 				static function () use ( $bh_email ): BH_Email {
-					return BH_Email_Fixture::clone_and_change( $bh_email, is_remote_deleted: true );
+					return BH_Email_Fixture::make( is_remote_deleted: true, from_bh_email: $bh_email );
 				}
 			);
 
