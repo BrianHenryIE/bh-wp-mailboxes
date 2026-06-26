@@ -47,13 +47,20 @@
         ]
     },
     "repositories": {
-        "composer/composer": {
-            "type": "composer",
-            "url": "https://wpackagist.org"
-        },
         "wordpress/wordpress": {
+            "type": "git",
             "url": "https://github.com/WordPress/wordpress-develop.git",
-            "type": "git"
+            "only": [
+                "wordpress/wordpress"
+            ]
+        },
+        "outlandish/wpackagist": {
+            "type": "composer",
+            "url": "https://wpackagist.org",
+            "only": [
+                "wpackagist-plugin/*",
+                "wpackagist-theme/*"
+            ]
         }
     },
     "suggest": {
