@@ -30,8 +30,8 @@ class Emails_List_Page {
 	use LoggerAwareTrait;
 
 	/**
-	 * Memoised "provider can delete on server" result, keyed by account post ID, so a list of many emails
-	 * from one account resolves the provider only once per page render.
+	 * Memoised "connection can delete on server" result, keyed by account post ID, so a list of many emails
+	 * from one account resolves the connection only once per page render.
 	 *
 	 * @var array<int, bool>
 	 */
@@ -152,7 +152,7 @@ class Emails_List_Page {
 	 * Customise the row actions for email posts.
 	 *
 	 * Renames "Trash" to "Trash locally" (it only removes the locally-saved copy), and adds a "Delete on
-	 * server" action — gated on the email's provider supporting it ({@see Supports_Fetching::can_delete_on_server()})
+	 * server" action — gated on the email's connection supporting it ({@see Supports_Fetching::can_delete_on_server()})
 	 * and the email not already being deleted on the server. The action is handled by JS with a confirmation.
 	 *
 	 * @hooked post_row_actions
@@ -183,7 +183,7 @@ class Emails_List_Page {
 			return $actions;
 		}
 
-		if ( ! $email->is_remote_deleted && $this->provider_can_delete_on_server( $email ) ) {
+		if ( ! $email->is_remote_deleted && $this->connection_can_delete_on_server( $email ) ) {
 			$actions['bh_delete_on_server'] = sprintf(
 				'<a href="#" class="bh-email-delete-on-server submitdelete" data-post-id="%d">%s</a>',
 				(int) $post->ID,
@@ -195,11 +195,11 @@ class Emails_List_Page {
 	}
 
 	/**
-	 * Whether the email's account provider can delete emails on the remote server.
+	 * Whether the email's account connection can delete emails on the remote server.
 	 *
-	 * @param BH_Email $email The email whose provider capability to check.
+	 * @param BH_Email $email The email whose connection capability to check.
 	 */
-	private function provider_can_delete_on_server( BH_Email $email ): bool {
+	private function connection_can_delete_on_server( BH_Email $email ): bool {
 
 		$account = $this->api->get_email_account_for_email( $email );
 		if ( is_null( $account ) ) {
@@ -209,10 +209,10 @@ class Emails_List_Page {
 		$account_id = $account->get_post_id();
 
 		if ( ! isset( $this->account_can_delete_on_server[ $account_id ] ) ) {
-			$provider = $this->api->get_provider_for_email_account( $account );
+			$connection = $this->api->get_connection_for_email_account( $account );
 
 			$this->account_can_delete_on_server[ $account_id ] =
-				$provider instanceof Supports_Fetching && $provider->can_delete_on_server();
+				$connection instanceof Supports_Fetching && $connection->can_delete_on_server();
 		}
 
 		return $this->account_can_delete_on_server[ $account_id ];

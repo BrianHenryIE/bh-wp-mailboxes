@@ -36,7 +36,7 @@
 			$( '.bh-email-remote-status, #bh-email-read-status-options' ).removeClass( 'is-loading' );
 			$( '.bh-email-remote-status .spinner' ).remove();
 
-			// The badge area only exists when the provider can't change status (e.g. deleted); update if present.
+			// The badge area only exists when the connection can't change status (e.g. deleted); update if present.
 			$( '.bh-email-remote-badges' ).html( buildRemoteStatusHtml( isRead, isRemoteDeleted ) );
 
 			if ( isRemoteDeleted ) {

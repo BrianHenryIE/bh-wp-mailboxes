@@ -1,6 +1,6 @@
 <?php
 /**
- * Unit tests for the Gmail provider's no-save access-token refresh.
+ * Unit tests for the Gmail connection's no-save access-token refresh.
  *
  * The Google client is mocked (via the `make_client()` seam) so the refresh-token exchange can be
  * exercised without live Google credentials.
@@ -68,7 +68,7 @@ class Gmail_Refresh_Token_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * Build the provider with `make_client()` overridden to return the given mock client, and its
+	 * Build the connection with `make_client()` overridden to return the given mock client, and its
 	 * credentials set to the given (mocked) credentials.
 	 *
 	 * @param Google_Client                    $client      The mock Google client.

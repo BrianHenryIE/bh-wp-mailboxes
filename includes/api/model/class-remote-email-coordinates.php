@@ -1,6 +1,6 @@
 <?php
 /**
- * A provider-agnostic handle for locating an email on its remote server.
+ * A connection-agnostic handle for locating an email on its remote server.
  *
  * The RFC822 `Message-ID` is globally unique but is not an addressable IMAP identifier: a message
  * is addressed by its UID within a `(mailbox, UIDVALIDITY)` scope. This value object carries both,

@@ -99,19 +99,19 @@ interface API_Interface {
 	/**
 	 * Fetch the live read status from the remote server for an email.
 	 *
-	 * Makes a remote API call via the email's provider. Returns null when the status cannot be
-	 * determined (no account, provider, or remote coordinates, or the provider cannot read status).
+	 * Makes a remote API call via the email's connection. Returns null when the status cannot be
+	 * determined (no account, connection, or remote coordinates, or the connection cannot read status).
 	 *
 	 * @param BH_Email $email The email to query.
 	 */
 	public function get_remote_read_status( BH_Email $email ): ?bool;
 
 	/**
-	 * Return the email fetcher for a given account, or null when no provider is known.
+	 * Return the email fetcher for a given account, or null when no connection is known.
 	 *
 	 * @param BH_Email_Account $email_account The account to find a fetcher for.
 	 */
-	public function get_provider_for_email_account( BH_Email_Account $email_account ): ?Email_Connection_Interface;
+	public function get_connection_for_email_account( BH_Email_Account $email_account ): ?Email_Connection_Interface;
 
 	/**
 	 * Returns all configured email accounts indexed by email address.
@@ -132,7 +132,7 @@ interface API_Interface {
 	 * before the account is saved; otherwise they are resolved via the `bh_wp_mailboxes_credentials`
 	 * filter.
 	 *
-	 * @param BH_Email_Account               $account     The account whose provider to connect with.
+	 * @param BH_Email_Account               $account     The account whose connection to connect with.
 	 * @param ?Account_Credentials_Interface $credentials Candidate credentials, or null to resolve them.
 	 */
 	public function test_connection( BH_Email_Account $account, ?Account_Credentials_Interface $credentials = null ): Test_Connection_Result;

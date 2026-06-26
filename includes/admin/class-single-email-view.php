@@ -316,16 +316,16 @@ class Single_Email_View {
 		$deleted_on_server = $email->is_remote_deleted;
 
 		$email_account = $this->api->get_email_account_for_email( $email );
-		$connection    = $email_account ? $this->api->get_provider_for_email_account( $email_account ) : null;
+		$connection    = $email_account ? $this->api->get_connection_for_email_account( $email_account ) : null;
 
-		// Remote read/delete status lives on Supports_Fetching: a provider that cannot be queried cannot
-		// report or change it, so treat a non-fetching provider as none for this metabox's status section.
-		$provider = $connection instanceof Supports_Fetching ? $connection : null;
+		// Remote read/delete status lives on Supports_Fetching: a connection that cannot be queried cannot
+		// report or change it, so treat a non-fetching connection as none for this metabox's status section.
+		$connection = $connection instanceof Supports_Fetching ? $connection : null;
 
 		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 
-		$can_mark_read = (bool) $provider?->can_mark_read() && ! $email->is_remote_deleted;
-		$can_delete    = (bool) $provider?->can_delete_on_server() && ! $email->is_remote_deleted;
+		$can_mark_read = (bool) $connection?->can_mark_read() && ! $email->is_remote_deleted;
+		$can_delete    = (bool) $connection?->can_delete_on_server() && ! $email->is_remote_deleted;
 
 		echo '<div class="submitbox" id="bh-email-remote-status-box">';
 		echo '<div class="bh-email-status-box__fields">';
@@ -341,7 +341,7 @@ class Single_Email_View {
 				. esc_html__( 'Account:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( $email_account->display_name ) . '</strong></p>';
 		}
 
-		// Connection: the email connection/provider type (e.g. "IMAP", "Gmail").
+		// Connection: the email connection/connection type (e.g. "IMAP", "Gmail").
 		if ( null !== $connection ) {
 			echo '<p><span class="bh-email-field__icon bh-email-field__icon--connection" aria-hidden="true"></span>'
 				. esc_html__( 'Connection:', 'bh-wp-mailboxes' ) . ' <strong>' . esc_html( $connection->get_friendly_name() ) . '</strong></p>';
@@ -354,8 +354,8 @@ class Single_Email_View {
 			$unread_checked = false === $is_read ? ' checked="checked"' : '';
 			$read_current   = true === $is_read ? ' bh-email-status__option--current' : '';
 			$unread_current = false === $is_read ? ' bh-email-status__option--current' : '';
-			// Inside this branch $provider is guaranteed non-null (can_mark_read was true).
-			$options_loading = $provider->can_read_status() ? ' is-loading' : '';
+			// Inside this branch $connection is guaranteed non-null (can_mark_read was true).
+			$options_loading = $connection->can_read_status() ? ' is-loading' : '';
 
 			echo '<p class="bh-email-status__label"><span class="bh-email-field__icon bh-email-field__icon--read-status" aria-hidden="true"></span>'
 				. esc_html__( 'Status', 'bh-wp-mailboxes' ) . '</p>';
@@ -365,7 +365,7 @@ class Single_Email_View {
 			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $unread_current/$unread_checked are constant attributes.
 			echo '<li class="bh-email-status__option' . esc_attr( $unread_current ) . '"><label><input type="radio" name="bh_email_remote_read" value="unread"' . $unread_checked . '> ' . esc_html__( 'Unread on server', 'bh-wp-mailboxes' ) . '</label></li>';
 			echo '</ul>';
-		} elseif ( ! $email->is_remote_deleted && $provider?->can_read_status() ) {
+		} elseif ( ! $email->is_remote_deleted && $connection?->can_read_status() ) {
 			// Connection can read but not change the status: show a read/unread badge.
 			$badges = $this->get_remote_status_html( $is_read, $deleted_on_server );
 			echo '<div class="bh-email-remote-status is-loading">';
@@ -375,8 +375,8 @@ class Single_Email_View {
 		}
 
 		// "Status: Deleted" — shown when the email is deleted on the server. Rendered (hidden until then)
-		// whenever a provider is resolved, so the JS can reveal it after a delete action or live refresh.
-		if ( null !== $provider ) {
+		// whenever a connection is resolved, so the JS can reveal it after a delete action or live refresh.
+		if ( null !== $connection ) {
 			$deleted_class = $email->is_remote_deleted ? '' : ' bh-email-hidden';
 			echo '<p id="bh-email-remote-deleted" class="bh-email-status__deleted' . esc_attr( $deleted_class ) . '">'
 				. '<span class="bh-email-field__icon bh-email-field__icon--read-status" aria-hidden="true"></span>'

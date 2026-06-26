@@ -53,7 +53,7 @@ class BH_Email_Account_Factory {
 	 *
 	 * @param WP_Post $post The wp_post row.
 	 *
-	 * @return array{post_id:int<1, max>, post_type:string, local_status:string, after_download_remote_email_action:string|null, body_identifier_regex_filter:string|null, delete_local_emails_after_n_days:int|null, display_name:string, email_address:string, from_address_regex_filter:string|null, last_checked_time:DateTimeInterface|null, last_failed_login_time:DateTimeInterface|null, last_successful_login_time:DateTimeInterface|null, provider_type_class:class-string<Email_Connection_Interface>} $args
+	 * @return array{post_id:int<1, max>, post_type:string, local_status:string, after_download_remote_email_action:string|null, body_identifier_regex_filter:string|null, delete_local_emails_after_n_days:int|null, display_name:string, email_address:string, from_address_regex_filter:string|null, last_checked_time:DateTimeInterface|null, last_failed_login_time:DateTimeInterface|null, last_successful_login_time:DateTimeInterface|null, connection_type_class:class-string<Email_Connection_Interface>} $args
 	 * @throws Exception When an expected value is missing or the incorrect type.
 	 */
 	protected function get_array_from_post_meta( WP_Post $post ): array {
@@ -76,7 +76,7 @@ class BH_Email_Account_Factory {
 		 * @see BH_Email_Account_Query::get_meta_input()
 		 */
 		$meta_keys = array(
-			'provider_type_class',
+			'connection_type_class',
 			'email_address',
 			'display_name',
 			'from_address_regex_filter',
@@ -89,7 +89,7 @@ class BH_Email_Account_Factory {
 		);
 
 		$required_keys = array(
-			'provider_type_class',
+			'connection_type_class',
 			'email_address',
 			'display_name',
 		);
@@ -97,7 +97,7 @@ class BH_Email_Account_Factory {
 		$string_keys = array(
 			'post_type',
 			'local_status',
-			'provider_type_class',
+			'connection_type_class',
 			'email_address',
 			'display_name',
 			'from_address_regex_filter',

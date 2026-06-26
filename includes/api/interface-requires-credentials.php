@@ -1,6 +1,6 @@
 <?php
 /**
- * Interface for email providers that need credentials.
+ * Interface for email connections that need credentials.
  *
  * The thinking is AWS SES->SNS -> WP REST is a passive receiver where the object here doesn't connect to anything.
  * Similarly, Cloudflare email routing -> Cloudflare Worker -> WP REST would require an application password on the

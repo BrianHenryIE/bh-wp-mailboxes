@@ -22,7 +22,7 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 	 * Constructor.
 	 *
 	 * @param string             $post_type As defined in {@see BH_WP_Mailboxes_Settings_Interface::get_email_accounts_cpt_underscored_20()}.
-	 * @param ?string            $provider_type_class The {@see Email_Connection_Interface} implementation used for this account.
+	 * @param ?string            $connection_type_class The {@see Email_Connection_Interface} implementation used for this account.
 	 * @param ?int               $post_id WordPress post table ID.
 	 * @param ?string            $email_address Email address for display and search.
 	 * @param ?string            $status One of "bh_email_ac_active"|"bh_email_ac_inactive"...
@@ -37,7 +37,7 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 	 */
 	public function __construct(
 		string $post_type,
-		protected ?string $provider_type_class = null,
+		protected ?string $connection_type_class = null,
 		protected ?int $post_id = null,
 		protected ?string $email_address = null,
 		// Mutable.
@@ -81,7 +81,7 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 	 */
 	protected function get_meta_input(): array {
 		return array(
-			'provider_type_class'                => $this->provider_type_class ? str_replace( '\\', '\\\\', $this->provider_type_class ) : null,
+			'connection_type_class'                => $this->connection_type_class ? str_replace( '\\', '\\\\', $this->connection_type_class ) : null,
 			'email_address'                      => $this->email_address, // The post_name is sanitized.
 			'display_name'                       => $this->display_name,
 			'from_address_regex_filter'          => $this->from_address_regex_filter,

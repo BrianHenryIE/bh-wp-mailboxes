@@ -1,10 +1,10 @@
 <?php
 /**
- * Interface for email providers that can actively fetch (pull) emails from a server.
+ * Interface for email connections that can actively fetch (pull) emails from a server.
  *
- * Pull providers (IMAP, Gmail API) connect out and retrieve messages. Receive-only providers are
+ * Pull connections (IMAP, Gmail API) connect out and retrieve messages. Receive-only connections are
  * passive – messages are pushed to them – e.g. AWS SES->SNS->WP REST, or Cloudflare email
- * routing->Worker->WP REST. Receive-only providers implement {@see Email_Connection_Interface} but
+ * routing->Worker->WP REST. Receive-only connections implement {@see Email_Connection_Interface} but
  * not this interface.
  *
  * Downstream UIs can check `instanceof Supports_Fetching` to decide whether to show a "Check now" /

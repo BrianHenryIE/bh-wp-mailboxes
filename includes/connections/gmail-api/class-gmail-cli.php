@@ -115,7 +115,7 @@ class Gmail_CLI {
 		/**
 		 * Resolve the account's credentials.
 		 *
-		 * @see \BrianHenryIE\WP_Mailboxes\API\API::set_provider_credentials()
+		 * @see \BrianHenryIE\WP_Mailboxes\API\API::set_connection_credentials()
 		 */
 		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $account );
 
@@ -125,9 +125,9 @@ class Gmail_CLI {
 		}
 
 		try {
-			$provider = $this->make_provider( $account );
-			$provider->set_credentials( $credentials );
-			$access_token = $provider->refresh_access_token();
+			$connection = $this->make_connection( $account );
+			$connection->set_credentials( $credentials );
+			$access_token = $connection->refresh_access_token();
 		} catch ( Throwable $t ) {
 			WP_CLI::error( $t->getMessage() );
 			return;
@@ -149,11 +149,11 @@ class Gmail_CLI {
 	}
 
 	/**
-	 * Instantiate the Gmail provider for an account.
+	 * Instantiate the Gmail connection for an account.
 	 *
-	 * Extracted so tests can substitute a provider without performing the live OAuth refresh.
+	 * Extracted so tests can substitute a connection without performing the live OAuth refresh.
 	 *
-	 * @param BH_Email_Account $account The account to build the provider for.
+	 * @param BH_Email_Account $account The account to build the connection for.
 	 */
 	protected function make_provider( BH_Email_Account $account ): Gmail_Email_Connection {
 		return new Gmail_Email_Connection( $account, $this->logger );

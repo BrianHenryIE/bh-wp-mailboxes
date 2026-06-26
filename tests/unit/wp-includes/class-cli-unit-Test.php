@@ -41,7 +41,7 @@ class CLI_Unit_Test extends Unit_Testcase {
 			post_id: 12,
 			post_type: 'bh_email_account',
 			local_status: $active ? 'bh_email_ac_active' : 'bh_email_ac_inactive',
-			provider_type_class: Google_API_Credentials_Interface::class,
+			connection_type_class: Google_API_Credentials_Interface::class,
 			email_address: $email,
 			display_name: $display_name,
 			from_address_regex_filter: null,
@@ -64,7 +64,7 @@ class CLI_Unit_Test extends Unit_Testcase {
 
 		$api = Mockery::mock( API_Interface::class );
 		$api->allows( 'get_email_accounts' )->andReturn( $accounts );
-		$api->allows( 'get_provider_for_email_account' )->andReturn( $connection );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $connection );
 
 		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$settings->allows( 'get_plugin_slug' )->andReturn( 'test-plugin' );
@@ -112,10 +112,10 @@ class CLI_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * When no connection resolves, the column falls back to the short provider class name.
+	 * When no connection resolves, the column falls back to the short connection class name.
 	 *
 	 * @covers ::list_accounts
-	 * @covers ::short_provider_name
+	 * @covers ::short_connection_name
 	 */
 	public function test_list_accounts_connection_falls_back_to_class_name(): void {
 

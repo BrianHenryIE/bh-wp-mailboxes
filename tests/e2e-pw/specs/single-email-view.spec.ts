@@ -188,8 +188,8 @@ test.describe( 'Single email view', () => {
 		await expect( page.locator( '#bh-email-remote-status' ) ).toContainText( 'Sent:' );
 	} );
 
-	// The "Connection:" line is gated on a resolved account/provider; fixture emails created via the
-	// dev REST endpoint have no linked account/provider, so it never appears. Skip until provider setup
+	// The "Connection:" line is gated on a resolved account/connection; fixture emails created via the
+	// dev REST endpoint have no linked account/connection, so it never appears. Skip until connection setup
 	// is added (same as the remote-status badge tests below). Unit coverage: class-single-email-view-wpunit-Test.
 	test.skip( 'remote status metabox shows the "Connection:" type with an icon', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
@@ -224,8 +224,8 @@ test.describe( 'Single email view', () => {
 	// Requirement 10: Remote status badges
 	// -------------------------------------------------------------------------
 
-	// Badges are gated on provider.can_read_status() && can_delete_on_server(); fixture emails have
-	// no linked account/provider, so badges never appear. Skip until provider setup is added.
+	// Badges are gated on connection.can_read_status() && can_delete_on_server(); fixture emails have
+	// no linked account/connection, so badges never appear. Skip until connection setup is added.
 	test.skip( '"Read on server" badge shown when email is_read meta is true', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request, { is_read: true } );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
@@ -427,7 +427,7 @@ test.describe( 'Single email view', () => {
 	} );
 
 	test( 'remote read status: changing the radio and clicking Update persists across reload', async ( { admin, page, request } ) => {
-		// An account using the fixtures provider (which supports marking read) is needed so the
+		// An account using the fixtures connection (which supports marking read) is needed so the
 		// single-email view shows the read-status radios. Fetch emails for it so they are linked to it.
 		const accountRes = await request.post( `${ DEV_REST }/accounts`, {
 			data: { email_address: `remote-update-${ Date.now() }@example.com` },

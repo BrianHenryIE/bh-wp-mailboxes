@@ -58,7 +58,7 @@ class Email_Account_WP_Post_Repository_WPUnit_Test extends WPUnit_Testcase {
 		return $sut->save_new(
 			email_address: $email_address,
 			display_name: 'Test Inbox',
-			provider_type_class: 'SomeConnection',
+			connection_type_class: 'SomeConnection',
 			from_address_regex_filter: '/@example.com$/',
 			body_identifier_regex_filter: null,
 			after_download_remote_email_action: 'mark_read',
@@ -81,7 +81,7 @@ class Email_Account_WP_Post_Repository_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertSame( 'inbox@example.com', $reloaded->email_address );
 		$this->assertSame( 'Test Inbox', $reloaded->display_name );
-		$this->assertSame( 'SomeConnection', $reloaded->provider_type_class );
+		$this->assertSame( 'SomeConnection', $reloaded->connection_type_class );
 		$this->assertSame( '/@example.com$/', $reloaded->from_address_regex_filter );
 		$this->assertSame( 'mark_read', $reloaded->after_download_remote_email_action );
 		$this->assertSame( 30, $reloaded->delete_local_emails_after_n_days );

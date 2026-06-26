@@ -34,7 +34,7 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Build the SUT with a mocked API + repository.
 	 *
-	 * @param bool $can_delete        Whether the resolved provider supports delete-on-server.
+	 * @param bool $can_delete        Whether the resolved connection supports delete-on-server.
 	 * @param bool $is_remote_deleted Whether the email is already deleted on the server.
 	 * @param bool $has_account       Whether an account resolves for the email.
 	 */
@@ -65,10 +65,10 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 
 		if ( $has_account ) {
 			$account  = BH_Email_Account_Fixture::make( post_id: 7 );
-			$provider = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
-			$provider->allows( 'can_delete_on_server' )->andReturn( $can_delete );
+			$connection = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+			$connection->allows( 'can_delete_on_server' )->andReturn( $can_delete );
 			$api->allows( 'get_email_account_for_email' )->andReturn( $account );
-			$api->allows( 'get_provider_for_email_account' )->andReturn( $provider );
+			$api->allows( 'get_connection_for_email_account' )->andReturn( $connection );
 		} else {
 			$api->allows( 'get_email_account_for_email' )->andReturnNull();
 		}
@@ -101,7 +101,7 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * "Delete on server" is added when the provider supports it and the email is not already deleted.
+	 * "Delete on server" is added when the connection supports it and the email is not already deleted.
 	 *
 	 * @covers ::row_actions
 	 */
@@ -115,7 +115,7 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * "Delete on server" is absent when the provider cannot delete on the server.
+	 * "Delete on server" is absent when the connection cannot delete on the server.
 	 *
 	 * @covers ::row_actions
 	 */

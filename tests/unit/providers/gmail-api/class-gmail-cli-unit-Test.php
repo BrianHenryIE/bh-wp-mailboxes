@@ -2,8 +2,8 @@
 /**
  * Unit tests for the Gmail WP-CLI command.
  *
- * `WP_CLI` is stubbed (it is only present at WP-CLI runtime) and the provider is substituted via the
- * `make_provider()` seam so the resolution logic and the fired action can be exercised without a live
+ * `WP_CLI` is stubbed (it is only present at WP-CLI runtime) and the connection is substituted via the
+ * `make_connection()` seam so the resolution logic and the fired action can be exercised without a live
  * OAuth refresh.
  *
  * @package brianhenryie/bh-wp-mailboxes
@@ -24,17 +24,17 @@ use Mockery;
 class Gmail_CLI_Unit_Test extends Unit_Testcase {
 
 	/**
-	 * Build a BH_Email_Account with the given email and provider type.
+	 * Build a BH_Email_Account with the given email and connection type.
 	 *
 	 * @param string $email               The account email address.
-	 * @param string $provider_type_class The provider type class.
+	 * @param string $connection_type_class The connection type class.
 	 */
-	private function make_account( string $email, string $provider_type_class ): BH_Email_Account {
+	private function make_account( string $email, string $connection_type_class ): BH_Email_Account {
 		return new BH_Email_Account(
 			post_id: 1,
 			post_type: 'bh_email_account',
 			local_status: 'publish',
-			provider_type_class: $provider_type_class,
+			connection_type_class: $connection_type_class,
 			email_address: $email,
 			display_name: $email,
 			from_address_regex_filter: null,
@@ -141,7 +141,7 @@ class Gmail_CLI_Unit_Test extends Unit_Testcase {
 		\WP_Mock::userFunction( 'wp_json_encode' )->andReturn( '{"access_token":"fresh-access-token"}' );
 		\WP_Mock::expectAction( 'bh_wp_mailboxes_gmail_access_token_refreshed', $token, 'you@example.com' );
 
-		$provider = Mockery::mock( Gmail_Email_Connection::class );
+		$connection = Mockery::mock( Gmail_Email_Connection::class );
 		$provider->expects( 'set_credentials' )->with( $credentials )->once();
 		$provider->expects( 'refresh_access_token' )->once()->andReturn( $token );
 

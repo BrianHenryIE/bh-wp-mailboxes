@@ -45,7 +45,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 *
 	 * @param string  $email_address Email address for id and display (credentials are separate).
 	 * @param string  $display_name Friendly display name.
-	 * @param string  $provider_type_class The API the account uses.
+	 * @param string  $connection_type_class The API the account uses.
 	 * @param ?string $from_address_regex_filter Only save emails whose from address matches this regex.
 	 * @param ?string $body_identifier_regex_filter Only save emails whose body matches this regex.
 	 * @param ?string $after_download_remote_email_action Delete or mark read or do nothing after download (if at all possible).
@@ -56,7 +56,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	public function save_new(
 		string $email_address,
 		string $display_name,
-		string $provider_type_class,
+		string $connection_type_class,
 		?string $from_address_regex_filter,
 		?string $body_identifier_regex_filter,
 		?string $after_download_remote_email_action,
@@ -76,7 +76,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 
 		$query = new BH_Email_Account_Query(
 			post_type: $this->post_type,
-			provider_type_class: $provider_type_class,
+			connection_type_class: $connection_type_class,
 			post_id: null,
 			email_address: $email_address,
 			status: 'bh_email_ac_active',

@@ -182,12 +182,12 @@ class CLI {
 
 		$items = array();
 		foreach ( $this->api->get_email_accounts() as $account ) {
-			$connection = $this->api->get_provider_for_email_account( $account );
+			$connection = $this->api->get_connection_for_email_account( $account );
 			$items[]    = array(
 				'id'           => $account->get_post_id(),
 				'email'        => $account->email_address,
 				'name'         => $account->display_name,
-				'connection'   => $connection?->get_friendly_name() ?? $this->short_provider_name( $account->provider_type_class ),
+				'connection'   => $connection?->get_friendly_name() ?? $this->short_connection_name( $account->connection_type_class ),
 				'active'       => $account->is_active() ? 'yes' : 'no',
 				'last_checked' => $account->last_checked_time?->format( 'c' ) ?? '',
 			);

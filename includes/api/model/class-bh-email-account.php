@@ -24,7 +24,7 @@ readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_In
 	 * @param int                                      $post_id The WordPress post ID for this email account.
 	 * @param string                                   $post_type The post type configured by the plugin author that is used to save accounts.
 	 * @param string                                   $local_status The post status: bh_email_ac_active|bh_email_ac_inactive...
-	 * @param class-string<Email_Connection_Interface> $provider_type_class When this account is being processed, what class should be used to fetch emails.
+	 * @param class-string<Email_Connection_Interface> $connection_type_class When this account is being processed, what class should be used to fetch emails.
 	 * @param string                                   $email_address The email address for display.
 	 * @param string                                   $display_name The account name for display.
 	 * @param ?string                                  $from_address_regex_filter Regular expression to match sender address.
@@ -41,7 +41,7 @@ readonly class BH_Email_Account implements Saved_Post, Email_Account_Settings_In
 		public int $post_id,
 		public string $post_type,
 		public string $local_status,
-		public string $provider_type_class,
+		public string $connection_type_class,
 		public string $email_address,
 		public string $display_name,
 		public ?string $from_address_regex_filter,

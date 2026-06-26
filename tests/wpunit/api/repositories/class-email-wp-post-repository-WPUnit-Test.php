@@ -67,7 +67,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$email_account = BH_Email_Account_Fixture::make(
 			post_id: 456,
 			post_type: $post_type,
-			provider_type_class: 'SomeConnection',
+			connection_type_class: 'SomeConnection',
 			email_address: 'test@example.com',
 			display_name: 'Test Account',
 			delete_local_emails_after_n_days: null,
@@ -181,7 +181,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$email_account = BH_Email_Account_Fixture::make(
 			post_id: 456,
 			post_type: $post_type,
-			provider_type_class: 'SomeConnection',
+			connection_type_class: 'SomeConnection',
 			email_address: 'test@example.com',
 			display_name: 'Test Account',
 			delete_local_emails_after_n_days: null,
@@ -227,7 +227,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$email_account = BH_Email_Account_Fixture::make(
 			post_id: 456,
 			post_type: $post_type,
-			provider_type_class: 'SomeConnection',
+			connection_type_class: 'SomeConnection',
 			email_address: 'test@example.com',
 			display_name: 'Test Account',
 			delete_local_emails_after_n_days: null,

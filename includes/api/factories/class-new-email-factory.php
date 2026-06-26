@@ -16,15 +16,15 @@ use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 
 /**
- * Creates a New_Email_Local or New_Email_Remote wrapper based on the account's provider capabilities.
+ * Creates a New_Email_Local or New_Email_Remote wrapper based on the account's connection capabilities.
  */
 class New_Email_Factory {
 
 	/**
-	 * Wrap a downloaded email; remote-capable when the account's provider supports fetching.
+	 * Wrap a downloaded email; remote-capable when the account's connection supports fetching.
 	 *
 	 * @param API_Interface    $api     The main API instance.
-	 * @param BH_Email_Account $account The account the email belongs to; its provider determines local vs remote.
+	 * @param BH_Email_Account $account The account the email belongs to; its connection determines local vs remote.
 	 * @param BH_Email         $email   The downloaded email.
 	 */
 	public function make(
@@ -33,7 +33,7 @@ class New_Email_Factory {
 		BH_Email $email,
 	): New_Email_Interface {
 
-		$provider_class = $account->provider_type_class;
+		$connection_class = $account->provider_type_class;
 
 		$interfaces = class_implements( $provider_class );
 

@@ -82,7 +82,7 @@ class API implements API_Interface {
 	 *
 	 * @param string  $email_address               The mailbox address.
 	 * @param string  $display_name                Human-readable account name.
-	 * @param string  $provider_type_class         Connection class to use for fetching (class-string<Email_Fetcher_Interface>).
+	 * @param string  $connection_type_class         Connection class to use for fetching (class-string<Email_Fetcher_Interface>).
 	 * @param ?string $from_address_regex_filter   Optional regex to filter incoming senders.
 	 * @param ?string $body_identifier_regex_filter Optional regex to filter email bodies.
 	 * @param ?string $after_download_remote_email_action One of: nothing, mark_read, delete.
@@ -93,7 +93,7 @@ class API implements API_Interface {
 	public function add_email_account(
 		string $email_address,
 		string $display_name,
-		string $provider_type_class,
+		string $connection_type_class,
 		?string $from_address_regex_filter,
 		?string $body_identifier_regex_filter,
 		?string $after_download_remote_email_action,
@@ -103,7 +103,7 @@ class API implements API_Interface {
 		return $this->email_account_repository->save_new(
 			email_address: $email_address,
 			display_name: $display_name,
-			provider_type_class: $provider_type_class,
+			connection_type_class: $connection_type_class,
 			from_address_regex_filter: $from_address_regex_filter,
 			body_identifier_regex_filter: $body_identifier_regex_filter,
 			after_download_remote_email_action: $after_download_remote_email_action,
@@ -207,28 +207,28 @@ class API implements API_Interface {
 
 		$plugin_slug = $this->settings->get_plugin_slug();
 
-		$provider = $this->get_provider_for_email_account( $email_account );
+		$connection = $this->get_connection_for_email_account( $email_account );
 
-		if ( is_null( $provider ) ) {
+		if ( is_null( $connection ) ) {
 			$this->logger->warning( 'No fetcher found for ' . $email_account->display_name );
 			return array();
 		}
 
-		// Receive-only providers (e.g. webhook / AWS SNS) cannot be polled; there is nothing to fetch.
-		if ( ! ( $provider instanceof Supports_Fetching ) ) {
-			$this->logger->debug( $email_account->display_name . ' provider does not support fetching; skipping.' );
+		// Receive-only connections (e.g. webhook / AWS SNS) cannot be polled; there is nothing to fetch.
+		if ( ! ( $connection instanceof Supports_Fetching ) ) {
+			$this->logger->debug( $email_account->display_name . ' connection does not support fetching; skipping.' );
 			return array();
 		}
 
-		if ( $provider instanceof Requires_Credentials ) {
+		if ( $connection instanceof Requires_Credentials ) {
 
 			try {
 				/**
-				 * Given the email account, get the credentials required for its provider.
+				 * Given the email account, get the credentials required for its connection.
 				 *
 				 * @param ?Account_Credentials_Interface $credentials The null value being filtered which should return Account_Credentials_Interface instance.
 				 * @param string $plugin_slug To allow multiple plugins (and potentially library verions) to use this same filter name.
-				 * @param BH_Email_Account $email_account The account config to get credentials for {@see BH_Email_Account::$provider_type_class}.
+				 * @param BH_Email_Account $email_account The account config to get credentials for {@see BH_Email_Account::$connection_type_class}.
 				 */
 				$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $email_account );
 			} catch ( Throwable $throwable ) {
@@ -256,11 +256,11 @@ class API implements API_Interface {
 					return array();
 				}
 			}
-			$provider->set_credentials( $credentials );
+			$connection->set_credentials( $credentials );
 		}
 
 		try {
-			$all_new_account_emails = $provider->retrieve_emails( $since_datetime );
+			$all_new_account_emails = $connection->retrieve_emails( $since_datetime );
 		} catch ( Exception | ImapConnectionClosedException $exception ) {
 			$this->logger->error(
 				'Error fetching emails for ' . $email_account->display_name . '. ' . $exception->getMessage(),
@@ -320,20 +320,20 @@ class API implements API_Interface {
 	/**
 	 * Validate an account's credentials by connecting to the server.
 	 *
-	 * If a provider doesn't need credentials, return the last email time and the user can use that to infer the health.
+	 * If a connection doesn't need credentials, return the last email time and the user can use that to infer the health.
 	 *
-	 * @param BH_Email_Account               $account     The account whose provider to connect with.
+	 * @param BH_Email_Account               $account     The account whose connection to connect with.
 	 * @param ?Account_Credentials_Interface $credentials Candidate credentials, or null to resolve via filter.
 	 */
 	public function test_connection( BH_Email_Account $account, ?Account_Credentials_Interface $credentials = null ): Test_Connection_Result {
 
-		$provider = $this->get_provider_for_email_account( $account );
+		$connection = $this->get_connection_for_email_account( $account );
 
-		if ( is_null( $provider ) ) {
-			return new Test_Connection_Result( success: false, message: 'No email provider found for ' . $account->display_name . '.' );
+		if ( is_null( $connection ) ) {
+			return new Test_Connection_Result( success: false, message: 'No email connection found for ' . $account->display_name . '.' );
 		}
 
-		if ( $provider instanceof Requires_Credentials ) {
+		if ( $connection instanceof Requires_Credentials ) {
 			$plugin_slug = $this->settings->get_plugin_slug();
 			$credentials = $credentials ?? apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $account );
 
@@ -341,11 +341,11 @@ class API implements API_Interface {
 				return new Test_Connection_Result( success: false, message: 'No credentials found for ' . $account->display_name . '.' );
 			}
 
-			$provider->set_credentials( $credentials );
+			$connection->set_credentials( $credentials );
 		}
 
 		try {
-			$provider->test_connection();
+			$connection->test_connection();
 
 			return new Test_Connection_Result( success: true, message: 'Connected successfully.' );
 		} catch ( Throwable $exception ) {
@@ -403,7 +403,7 @@ class API implements API_Interface {
 	/**
 	 * Mark the email as read on its remote server and update local post meta.
 	 *
-	 * Dispatches via filter `bh_wp_mailboxes_mark_email_read` so providers can handle it.
+	 * Dispatches via filter `bh_wp_mailboxes_mark_email_read` so connections can handle it.
 	 * Returns true if a listener handled the action.
 	 *
 	 * @param BH_Email $email The email to mark as read.
@@ -446,12 +446,12 @@ class API implements API_Interface {
 	}
 
 	/**
-	 * Apply the account's credentials to a provider that requires them.
+	 * Apply the account's credentials to a connection that requires them.
 	 *
 	 * Resolves the credentials via the `bh_wp_mailboxes_credentials` filter (args: value, plugin_slug, account)
-	 * and sets them on the provider. No-op for providers that do not implement {@see Requires_Credentials}.
+	 * and sets them on the connection. No-op for connections that do not implement {@see Requires_Credentials}.
 	 *
-	 * @param Email_Connection_Interface $provider      The provider to credential.
+	 * @param Email_Connection_Interface $connection      The provider to credential.
 	 * @param BH_Email_Account           $email_account The account whose credentials to resolve.
 	 *
 	 * @throws \InvalidArgumentException When the filter does not return an Account_Credentials_Interface.

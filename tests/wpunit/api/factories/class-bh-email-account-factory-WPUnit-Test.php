@@ -62,14 +62,14 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * The three required metas. Backslash-free provider string avoids WP meta unslashing — the factory
+	 * The three required metas. Backslash-free connection string avoids WP meta unslashing — the factory
 	 * does not validate it is a real class.
 	 *
 	 * @return array<string,string>
 	 */
 	private function required_meta(): array {
 		return array(
-			'provider_type_class' => 'Some_Connection_Class',
+			'connection_type_class' => 'Some_Connection_Class',
 			'email_address'       => 'inbox@example.com',
 			'display_name'        => 'Test Inbox',
 		);
@@ -99,7 +99,7 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( $this->post_type, $account->post_type );
 		$this->assertSame( 'bh_email_ac_active', $account->local_status );
 		$this->assertTrue( $account->is_active() );
-		$this->assertSame( 'Some_Connection_Class', $account->provider_type_class );
+		$this->assertSame( 'Some_Connection_Class', $account->connection_type_class );
 		$this->assertSame( 'inbox@example.com', $account->email_address );
 		$this->assertSame( 'Test Inbox', $account->display_name );
 		$this->assertSame( '/@example.com$/', $account->from_address_regex_filter );
@@ -157,11 +157,11 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 	public function test_from_wp_post_throws_when_required_meta_missing(): void {
 
 		$meta = $this->required_meta();
-		unset( $meta['provider_type_class'] );
+		unset( $meta['connection_type_class'] );
 		$post = $this->make_account_post( $meta );
 
 		$this->expectException( Exception::class );
-		$this->expectExceptionMessageMatches( '/provider_type_class/' );
+		$this->expectExceptionMessageMatches( '/connection_type_class/' );
 
 		( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post( $post );
 	}
@@ -179,7 +179,7 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 			( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post( $post );
 			$this->fail( 'Expected an exception for missing required meta.' );
 		} catch ( Exception $exception ) {
-			$this->assertStringContainsString( 'provider_type_class', $exception->getMessage() );
+			$this->assertStringContainsString( 'connection_type_class', $exception->getMessage() );
 			$this->assertStringContainsString( 'email_address', $exception->getMessage() );
 			$this->assertStringContainsString( 'display_name', $exception->getMessage() );
 		}

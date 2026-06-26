@@ -49,12 +49,12 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 *
 	 * @param BH_Email_Account            $email_account_fixture Default: boring fixture with not filters configured.
 	 * @param bool                        $can_return_email_account If there is a correspoinding BH_Email_Account for the BH_Email.
-	 * @param ?Email_Connection_Interface $provider_mock Default: mock that supports all features.
+	 * @param ?Email_Connection_Interface $connection_mock Default: mock that supports all features.
 	 */
 	protected function make_api(
 		?BH_Email_Account $email_account_fixture = null,
 		bool $can_return_email_account = true,
-		?Email_Connection_Interface $provider_mock = null,
+		?Email_Connection_Interface $connection_mock = null,
 	): API_Interface {
 		$api_mock = \Mockery::mock( API_Interface::class );
 
@@ -65,14 +65,14 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			$api_mock->allows( 'get_email_account_for_email' )->andReturnNull();
 		}
 
-		if ( ! $provider_mock ) {
-			$provider_mock = \Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
-			$provider_mock->expects( 'can_mark_read' )->andReturnTrue();
-			$provider_mock->expects( 'can_delete_on_server' )->andReturnTrue();
-			$provider_mock->expects( 'can_read_status' )->andReturnTrue();
+		if ( ! $connection_mock ) {
+			$connection_mock = \Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+			$connection_mock->expects( 'can_mark_read' )->andReturnTrue();
+			$connection_mock->expects( 'can_delete_on_server' )->andReturnTrue();
+			$connection_mock->expects( 'can_read_status' )->andReturnTrue();
 		}
-		$provider_mock->allows( 'get_friendly_name' )->andReturn( 'Test' );
-		$api_mock->allows( 'get_provider_for_email_account' )->andReturn( $provider_mock );
+		$connection_mock->allows( 'get_friendly_name' )->andReturn( 'Test' );
+		$api_mock->allows( 'get_connection_for_email_account' )->andReturn( $connection_mock );
 
 		return $api_mock;
 	}
@@ -479,7 +479,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 *
 	 * @covers ::render_local_status_metabox
 	 */
-	public function test_render_local_status_metabox_shows_no_remote_badge_when_provider_cannot_mark_read(): void {
+	public function test_render_local_status_metabox_shows_no_remote_badge_when_connection_cannot_mark_read(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
@@ -490,12 +490,12 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$post_id  = $bh_email->post_id;
 		$post     = get_post( $post_id );
 
-		$provider_mock = \Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
-		$provider_mock->expects( 'can_mark_read' )->andReturnFalse();
-		$provider_mock->expects( 'can_delete_on_server' )->andReturnFalse();
-		$provider_mock->expects( 'can_read_status' )->andReturnFalse();
+		$connection_mock = \Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$connection_mock->expects( 'can_mark_read' )->andReturnFalse();
+		$connection_mock->expects( 'can_delete_on_server' )->andReturnFalse();
+		$connection_mock->expects( 'can_read_status' )->andReturnFalse();
 
-		$api_mock = $this->make_api( provider_mock: $provider_mock );
+		$api_mock = $this->make_api( connection_mock: $connection_mock );
 		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
 
 		ob_start();
@@ -577,12 +577,12 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		update_post_meta( $post_id, 'is_remote_deleted', 'yes' );
 		$post = get_post( $post_id );
 
-		$provider_mock = \Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
-		$provider_mock->allows( 'can_mark_read' )->andReturnTrue();
-		$provider_mock->allows( 'can_delete_on_server' )->andReturnTrue();
-		$provider_mock->allows( 'can_read_status' )->andReturnTrue();
+		$connection_mock = \Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$connection_mock->allows( 'can_mark_read' )->andReturnTrue();
+		$connection_mock->allows( 'can_delete_on_server' )->andReturnTrue();
+		$connection_mock->allows( 'can_read_status' )->andReturnTrue();
 
-		$api_mock = $this->make_api( provider_mock: $provider_mock );
+		$api_mock = $this->make_api( connection_mock: $connection_mock );
 		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
 
 		ob_start();
