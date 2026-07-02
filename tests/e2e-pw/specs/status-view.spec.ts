@@ -5,11 +5,12 @@
  * Arrange via REST, assert by navigating to the emails admin list page.
  */
 import { test, expect } from '@wordpress/e2e-test-utils-playwright';
+import type { APIRequestContext } from '@playwright/test';
 
 const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v1';
 
 async function createAccount(
-	request: Parameters< typeof test >[ 1 ][ 'request' ],
+	request: APIRequestContext,
 	emailAddress: string,
 	displayName?: string
 ): Promise< number > {
@@ -23,7 +24,7 @@ async function createAccount(
 
 /** Fetch a single account and return the number of newly-saved emails. */
 async function runFetch(
-	request: Parameters< typeof test >[ 1 ][ 'request' ],
+	request: APIRequestContext,
 	accountId: number
 ): Promise< number > {
 	const res = await request.post( `${ DEV_REST }/fetch`, { data: { account_id: accountId } } );
