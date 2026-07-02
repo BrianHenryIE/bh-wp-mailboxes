@@ -140,6 +140,7 @@ class BH_WP_Mailboxes_Hooks {
 		add_action( 'admin_enqueue_scripts', $mailbox_list_page->enqueue_styles( ... ) );
 		add_action( 'admin_enqueue_scripts', $mailbox_list_page->enqueue_scripts( ... ) );
 		add_action( 'pre_get_posts', $mailbox_list_page->show_all_post_statuses( ... ) );
+		add_action( 'pre_get_posts', $mailbox_list_page->filter_by_account( ... ) );
 	}
 
 	/**
