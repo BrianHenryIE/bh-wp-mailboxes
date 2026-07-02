@@ -39,6 +39,7 @@ use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap_Credentials_Settings;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Mailbox_Settings;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_Fixtures_Connection;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_E2E_Connection;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest\Mailboxes;
 
 // If this file is called directly, abort.
@@ -218,5 +219,18 @@ $on_plugins_loaded = function () {
 		$logger,
 	);
 	$fixtures_connection = new Mock_Mailbox_Fixtures_Connection( $fixtures_mailboxes_settings, $fixtures_settings, $email_factory );
+
+	// A separate, menu-hidden mailbox used only by the end-to-end tests, so Playwright arranges/asserts in
+	// its own `e2e_email` / `e2e_accounts` CPTs and never pollutes the human-facing "Fixtures" demo mailbox.
+	// It is registered (so the dev REST /fetch can reach it) but excluded from the admin menu (see Menu);
+	// accounts are created on demand by the dev REST endpoints, so no account is pre-seeded here.
+	$e2e_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'E2E Email', 'E2E Accounts' );
+	BH_WP_Mailboxes::make( $e2e_mailboxes_settings, $logger );
+	$e2e_email_repository = new Email_WP_Post_Repository(
+		$e2e_mailboxes_settings->get_emails_cpt_underscored_20(),
+		new BH_Email_Factory( $logger ),
+		$logger,
+	);
+	$e2e_connection       = new Mock_Mailbox_E2E_Connection( $e2e_mailboxes_settings, $fixtures_settings, $e2e_email_repository );
 };
 add_action( 'plugins_loaded', $on_plugins_loaded );

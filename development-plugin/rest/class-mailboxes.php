@@ -12,7 +12,7 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
-use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_Fixtures_Connection;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_E2E_Connection;
 use Throwable;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -29,27 +29,28 @@ class Mailboxes {
 	const NAMESPACE = 'bh-wp-mailboxes-dev/v1';
 
 	/**
-	 * The emails CPT registered by the fixtures mailbox instance (friendly name "Fixtures Email").
+	 * The emails CPT of the dedicated e2e mailbox (friendly name "E2E Email"). Arranging here keeps the
+	 * human-facing "Fixtures" demo mailbox untouched by test runs.
 	 *
-	 * @see development-plugin.php — $fixtures_mailboxes_settings
+	 * @see development-plugin.php — $e2e_mailboxes_settings
 	 * @see \BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT
 	 */
-	const EMAIL_POST_TYPE = 'fixtures_email';
+	const EMAIL_POST_TYPE = Mock_Mailbox_E2E_Connection::EMAILS_CPT;
 
 	/**
-	 * The accounts CPT registered by the fixtures mailbox instance (friendly name "Fixtures Accounts").
+	 * The accounts CPT of the e2e mailbox (friendly name "E2E Accounts").
 	 *
-	 * @see development-plugin.php — $fixtures_mailboxes_settings
+	 * @see development-plugin.php — $e2e_mailboxes_settings
 	 */
-	const ACCOUNT_POST_TYPE = 'fixtures_accounts';
+	const ACCOUNT_POST_TYPE = Mock_Mailbox_E2E_Connection::ACCOUNTS_CPT;
 
 	/**
-	 * The connection class the fixtures mailbox uses; accounts must reference it so the
-	 * `bh_wp_mailboxes_connection_for_account` filter resolves the fixtures connection for them.
+	 * The connection class the e2e mailbox uses; accounts must reference it so the
+	 * `bh_wp_mailboxes_connection_for_account` filter resolves the e2e connection for them.
 	 *
-	 * @see \BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_Fixtures_Connection
+	 * @see \BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_E2E_Connection
 	 */
-	const ACCOUNT_PROVIDER_CLASS = 'BrianHenryIE\\\\WP_Mailboxes_Development_Plugin\\\\Connections\\\\Mock_Mailbox_Fixtures_Connection';
+	const ACCOUNT_PROVIDER_CLASS = 'BrianHenryIE\\\\WP_Mailboxes_Development_Plugin\\\\Connections\\\\Mock_Mailbox_E2E_Connection';
 
 	/**
 	 * Register the REST routes.
@@ -417,12 +418,13 @@ class Mailboxes {
 			}
 		}
 
-		// Clear the per-user fixture state written by Mock_Mailbox_Fixtures_Connection, for every user.
+		// Clear the per-user fixture state written by the e2e connection, for every user.
+		$prefix = Mock_Mailbox_E2E_Connection::META_KEY_PREFIX;
 		foreach (
 			array(
-				'_mock_mailbox_fixtures_connection_is_remote_deleted',
-				'_mock_mailbox_fixtures_connection_is_remote_read',
-				'_mock_mailbox_fixtures_connection_is_remote_unread',
+				$prefix . 'is_remote_deleted',
+				$prefix . 'is_remote_read',
+				$prefix . 'is_remote_unread',
 			) as $meta_key
 		) {
 			delete_metadata( 'user', 0, $meta_key, '', true );
@@ -447,9 +449,9 @@ class Mailboxes {
 		$enabled       = false === $request->get_param( 'enabled' ) ? false : true;
 
 		if ( $enabled ) {
-			update_option( Mock_Mailbox_Fixtures_Connection::FAIL_ACCOUNT_OPTION, $email_address, false );
+			update_option( Mock_Mailbox_E2E_Connection::FAIL_ACCOUNT_OPTION, $email_address, false );
 		} else {
-			delete_option( Mock_Mailbox_Fixtures_Connection::FAIL_ACCOUNT_OPTION );
+			delete_option( Mock_Mailbox_E2E_Connection::FAIL_ACCOUNT_OPTION );
 		}
 
 		return new WP_REST_Response(

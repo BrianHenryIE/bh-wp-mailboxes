@@ -64,7 +64,7 @@ test.describe( 'Auth failure admin notice', () => {
 		await setFixturesFail( request, email, true );
 		expect( await runFetch( request, accountId ) ).toBe( 0 );
 
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		// The dismissible error notice appears, naming the account.
 		const notice = page.locator( noticeSelector( accountId ) );
@@ -81,7 +81,7 @@ test.describe( 'Auth failure admin notice', () => {
 		await setFixturesFail( request, email, false );
 		expect( await runFetch( request, accountId ) ).toBe( 5 );
 
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 		await expect( page.locator( noticeSelector( accountId ) ) ).toHaveCount( 0 );
 	} );
 
@@ -96,7 +96,7 @@ test.describe( 'Auth failure admin notice', () => {
 
 		// First failure → capture the notice's id (which embeds the failure timestamp).
 		expect( await runFetch( request, accountId ) ).toBe( 0 );
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 		const firstId = await page.locator( noticeSelector( accountId ) ).getAttribute( 'id' );
 		expect( firstId ).toBeTruthy();
 
@@ -105,7 +105,7 @@ test.describe( 'Auth failure admin notice', () => {
 		// which is exactly what makes the wptrt dismissal safe across separate failures.
 		await page.waitForTimeout( 1100 );
 		expect( await runFetch( request, accountId ) ).toBe( 0 );
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 		const secondId = await page.locator( noticeSelector( accountId ) ).getAttribute( 'id' );
 		expect( secondId ).toBeTruthy();
 		expect( secondId ).not.toBe( firstId );

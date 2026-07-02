@@ -27,7 +27,7 @@ test.describe( 'Emails list page — check button', () => {
 		admin,
 		page,
 	} ) => {
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		const button = page.locator( '#check-email' );
 		await expect( button ).toBeVisible();
@@ -47,13 +47,13 @@ test.describe( 'Emails list page — check button', () => {
 		await createAccount( request, `check-all-a-${ Date.now() }@example.com` );
 		await createAccount( request, `check-all-b-${ Date.now() }@example.com` );
 
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		await expect( page.locator( '#check-email' ) ).toHaveText( 'Check all' );
 	} );
 
 	test( 'the list table has a "Sent" column to the left of the "Date" column', async ( { admin, page } ) => {
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		await expect( page.locator( 'thead th#sent' ) ).toHaveText( 'Sent' );
 
@@ -78,7 +78,7 @@ test.describe( 'Emails list page — row actions', () => {
 			`row-delete-${ Date.now() }@example.com`
 		);
 
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		const checkResponse = page.waitForResponse(
 			( res ) =>
@@ -95,7 +95,7 @@ test.describe( 'Emails list page — row actions', () => {
 		expect( emailId ).toBeTruthy();
 
 		// Reload the list so the fetched email's row is present.
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		const row = page.locator( `#post-${ emailId }` );
 		await expect( row ).toBeAttached();

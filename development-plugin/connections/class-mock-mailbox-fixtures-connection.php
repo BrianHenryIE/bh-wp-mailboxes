@@ -50,6 +50,14 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	public const FAIL_ACCOUNT_OPTION = 'bh_wp_mailboxes_fixtures_fail_account';
 
 	/**
+	 * Prefix for this connection's per-user read/unread/deleted state meta keys. A subclass overrides it so
+	 * each mock mailbox keeps its own state — resolved via `static::` for late static binding.
+	 *
+	 * @var string
+	 */
+	public const META_KEY_PREFIX = '_mock_mailbox_fixtures_connection_';
+
+	/**
 	 * The account most recently resolved to this connection, captured so {@see self::retrieve_emails()} — which
 	 * receives no account argument — knows which account it is fetching for.
 	 *
@@ -93,6 +101,15 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	public function handle_reset_submission(): void {
 
 		if ( ! isset( $_GET['reset-fixtures'] ) ) {
+			return;
+		}
+
+		// Only the connection whose mailbox owns the current list screen should act — otherwise, with more
+		// than one mock mailbox registered, every connection's handler runs and the first would redirect to
+		// the wrong CPT.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$post_type = isset( $_GET['post_type'] ) && is_string( $_GET['post_type'] ) ? sanitize_key( wp_unslash( $_GET['post_type'] ) ) : '';
+		if ( $post_type !== $this->mailbox_settings->get_emails_cpt_underscored_20() ) {
 			return;
 		}
 
@@ -186,18 +203,18 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 		}
 
 		if ( 'is_remote_deleted' === $meta_key ) {
-			$user_remote_deleted_post_ids = get_user_meta( user_id: get_current_user_id(), key:'_mock_mailbox_fixtures_connection_is_remote_deleted', single: false );
+			$user_remote_deleted_post_ids = get_user_meta( user_id: get_current_user_id(), key: static::META_KEY_PREFIX . 'is_remote_deleted', single: false );
 			if ( in_array( (string) $object_id, $user_remote_deleted_post_ids, true ) ) {
 				return 'yes';
 			}
 		}
 
 		if ( 'is_remote_read' === $meta_key ) {
-			$user_remote_read_post_ids = get_user_meta( user_id: get_current_user_id(), key:'_mock_mailbox_fixtures_connection_is_remote_read', single: false );
+			$user_remote_read_post_ids = get_user_meta( user_id: get_current_user_id(), key: static::META_KEY_PREFIX . 'is_remote_read', single: false );
 			if ( in_array( (string) $object_id, $user_remote_read_post_ids, true ) ) {
 				return 'yes';
 			}
-			$user_remote_unread_post_ids = get_user_meta( user_id: get_current_user_id(), key:'_mock_mailbox_fixtures_connection_is_remote_unread', single: false );
+			$user_remote_unread_post_ids = get_user_meta( user_id: get_current_user_id(), key: static::META_KEY_PREFIX . 'is_remote_unread', single: false );
 			if ( in_array( (string) $object_id, $user_remote_unread_post_ids, true ) ) {
 				return 'no';
 			}
@@ -210,9 +227,9 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	 * Clear all per-user fixture state (read/unread/deleted) for the current user.
 	 */
 	public function reset(): void {
-		delete_user_meta( get_current_user_id(), '_mock_mailbox_fixtures_connection_is_remote_deleted' );
-		delete_user_meta( get_current_user_id(), '_mock_mailbox_fixtures_connection_is_remote_read' );
-		delete_user_meta( get_current_user_id(), '_mock_mailbox_fixtures_connection_is_remote_unread' );
+		delete_user_meta( get_current_user_id(), static::META_KEY_PREFIX . 'is_remote_deleted' );
+		delete_user_meta( get_current_user_id(), static::META_KEY_PREFIX . 'is_remote_read' );
+		delete_user_meta( get_current_user_id(), static::META_KEY_PREFIX . 'is_remote_unread' );
 	}
 
 	/**
@@ -298,7 +315,7 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 		$post_id  = $this->get_post_id_for_coordinates( $coordinates );
 		$usermeta = (array) get_user_meta( get_current_user_id() );
 
-		$add_meta_key = '_mock_mailbox_fixtures_connection_is_remote_' . ( $is_read ? 'read' : 'unread' );
+		$add_meta_key = static::META_KEY_PREFIX . 'is_remote_' . ( $is_read ? 'read' : 'unread' );
 		if ( ! isset( $usermeta[ $add_meta_key ] )
 		|| ( is_array( $usermeta[ $add_meta_key ] ) && ! in_array( (string) $post_id, $usermeta[ $add_meta_key ], true ) )
 		) {
@@ -309,7 +326,7 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 			);
 		}
 
-		$delete_meta_key = '_mock_mailbox_fixtures_connection_is_remote_' . ( $is_read ? 'unread' : 'read' );
+		$delete_meta_key = static::META_KEY_PREFIX . 'is_remote_' . ( $is_read ? 'unread' : 'read' );
 		if ( isset( $usermeta[ $delete_meta_key ] ) ) {
 			delete_user_meta(
 				user_id: get_current_user_id(),
@@ -340,7 +357,7 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 		// Add the post id to the meta list of deleted posts by this user.
 		return (bool) add_user_meta(
 			user_id: get_current_user_id(),
-			meta_key: '_mock_mailbox_fixtures_connection_is_remote_deleted',
+			meta_key: static::META_KEY_PREFIX . 'is_remote_deleted',
 			meta_value: $this->get_post_id_for_coordinates( $coordinates )
 		);
 	}
@@ -354,8 +371,14 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	 */
 	protected function get_post_id_for_coordinates( Remote_Email_Coordinates $coordinates ): int {
 
+		// Resolve against the account this connection was last resolved for (the email's own account), not the
+		// single account bound at construction — otherwise, with several accounts, the slug (which is keyed on
+		// the account address) points at the wrong post. Falls back to the bound account when none is set.
+		$account_email_address = $this->last_resolved_account?->get_account_email_address()
+			?? $this->email_account_settings->get_account_email_address();
+
 		$slug = Email_WP_Post_Repository::message_id_slug(
-			account_email_address: $this->email_account_settings->get_account_email_address(),
+			account_email_address: $account_email_address,
 			email_id: $coordinates->message_id
 		);
 

@@ -34,14 +34,14 @@ async function runFetch(
 
 test.describe( 'Status_View', () => {
 	test( 'status container is present on the emails list page', async ( { admin, page } ) => {
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		await expect( page.locator( '#bh-mailboxes-status' ) ).toBeAttached();
 	} );
 
 	test( '"No accounts configured" message shown when no accounts exist', async ( { admin, page, request } ) => {
 		// Only meaningful on a clean DB; skip gracefully if other tests have already added accounts.
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		const container = page.locator( '#bh-mailboxes-status' );
 		await expect( container ).toBeAttached();
@@ -56,7 +56,7 @@ test.describe( 'Status_View', () => {
 		const email = `status-view-e2e-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
 
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		const card = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
 		await expect( card ).toBeVisible();
@@ -67,7 +67,7 @@ test.describe( 'Status_View', () => {
 		const email = `active-account-e2e-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
 
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		const card = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
 		await expect( card ).toContainText( 'Active' );
@@ -77,7 +77,7 @@ test.describe( 'Status_View', () => {
 		const email = `never-fetched-e2e-${ Date.now() }@example.com`;
 		await createAccount( request, email );
 
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		await expect( page.locator( '#bh-mailboxes-status' ) ).toContainText( 'Never' );
 	} );
@@ -95,7 +95,7 @@ test.describe( 'Status_View', () => {
 
 		// Reload the list page — this asserts the server-rendered card values (not the "Just now" AJAX path,
 		// which status-view-interactions covers).
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		const card = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
 		await expect( card ).toBeVisible();
@@ -110,7 +110,7 @@ test.describe( 'Status_View', () => {
 	} );
 
 	test( 'status table is absent on the accounts list page', async ( { admin, page } ) => {
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_accounts' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_accounts' );
 
 		await expect( page.locator( '#bh-mailboxes-status' ) ).not.toBeAttached();
 	} );
