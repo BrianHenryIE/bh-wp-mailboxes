@@ -46,7 +46,10 @@ class Emails_List_Table_Ajax {
 	public function check_email(): void {
 
 		if ( ! isset( $_POST['_wpnonce'], $_POST['mailboxes_cpt'] )
-			|| ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-check-email' ) ) {
+			|| ! is_string( $_POST['_wpnonce'] )
+			|| ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-check-email' )
+			|| ! is_string( $_POST['mailboxes_cpt'] )
+		) {
 			return;
 		}
 
@@ -95,8 +98,14 @@ class Emails_List_Table_Ajax {
 
 		$since = null;
 		if ( isset( $_POST['since_date'] ) ) {
-			$since_raw = sanitize_text_field( wp_unslash( (string) $_POST['since_date'] ) );
-			$since     = DateTimeImmutable::createFromFormat( 'Y-m-d', $since_raw, new DateTimeZone( 'UTC' ) ) ?: null;
+			if ( ! is_string( $_POST['since_date'] ) ) {
+				wp_send_json_error( array( 'message' => 'Invalid value for since.' ), 400 );
+			}
+			$since_raw = sanitize_text_field( wp_unslash( $_POST['since_date'] ) );
+			$since     = DateTimeImmutable::createFromFormat( 'Y-m-d', $since_raw, new DateTimeZone( 'UTC' ) );
+			if ( false === $since ) {
+				wp_send_json_error( array( 'message' => 'Unable to parse value for since.' ), 400 );
+			}
 		}
 
 		$result = $this->api->check_email_for_account( $account, $since );

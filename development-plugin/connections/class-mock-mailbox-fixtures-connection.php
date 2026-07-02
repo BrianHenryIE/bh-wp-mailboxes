@@ -261,11 +261,11 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	public function set_is_marked_read( Remote_Email_Coordinates $coordinates, bool $is_read = true ): void {
 
 		$post_id  = $this->get_post_id_for_coordinates( $coordinates );
-		$usermeta = get_user_meta( get_current_user_id() );
+		$usermeta = (array) get_user_meta( get_current_user_id() );
 
 		$add_meta_key = '_mock_mailbox_fixtures_connection_is_remote_' . ( $is_read ? 'read' : 'unread' );
 		if ( ! isset( $usermeta[ $add_meta_key ] )
-		|| ( isset( $usermeta[ $add_meta_key ] ) && ! in_array( (string) $post_id, $usermeta[ $add_meta_key ], true ) )
+		|| ( is_array( $usermeta[ $add_meta_key ] ) && ! in_array( (string) $post_id, $usermeta[ $add_meta_key ], true ) )
 		) {
 			add_user_meta(
 				user_id: get_current_user_id(),
@@ -328,7 +328,8 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$post_id = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT ID FROM $wpdb->posts WHERE post_name = %s AND post_type = %s LIMIT 1",
+				'SELECT ID FROM %i WHERE post_name = %s AND post_type = %s LIMIT 1',
+				$wpdb->posts,
 				$slug,
 				$this->mailbox_settings->get_emails_cpt_underscored_20()
 			)

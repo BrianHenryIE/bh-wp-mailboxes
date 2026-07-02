@@ -9,7 +9,6 @@ namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials_Env;
-use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use Dotenv\Dotenv;
@@ -46,7 +45,8 @@ class Imap {
 			 */
 			public function get_account_email_address(): string {
 				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- loaded from dotenv file, not user input.
-				return $_ENV['IMAP_USERNAME'] ?? '';
+				$env_imap_username = $_ENV['IMAP_USERNAME'];
+				return ( ! empty( $env_imap_username ) && is_string( $env_imap_username ) ) ? $env_imap_username : '';
 			}
 		};
 

@@ -26,6 +26,7 @@ use Alley_Interactive\Autoloader\Autoloader;
 use BrianHenryIE\WP_Logger\Logger;
 use BrianHenryIE\WP_Logger\Logger_Settings_Interface;
 use BrianHenryIE\WP_Logger\Logger_Settings_Trait;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Menu;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Settings;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
@@ -55,7 +56,7 @@ if ( file_exists( '/var/www/html/wp-content/uploads/bh-wp-mailboxes/vendor/autol
 $autoloader_path = dirname( __DIR__ ) . '/vendor/autoload.php';
 if ( file_exists( $autoloader_path ) ) {
 	require_once $autoloader_path;
-	$includes_dir = dirname( __DIR__ ) . '/includes/';
+	$includes_dir = sprintf( '%s/includes/', dirname( __DIR__ ) );
 }
 
 if ( ! isset( $includes_dir ) ) {
@@ -180,7 +181,7 @@ $on_plugins_loaded = function () {
 		$gmail_mailboxes_api = BH_WP_Mailboxes::make( $gmail_mailboxes_settings, $logger );
 
 		// Resolve the Gmail account's credentials from /var/www/test-credentials.
-		$gmail_credentials = function ( mixed $value, mixed $plugin_slug, mixed $account ) use ( $gmail_api_helper ) {
+		$gmail_credentials = function ( mixed $value, string $plugin_slug, BH_Email_Account $account ) use ( $gmail_api_helper ) {
 			if ( $account->email_address === $gmail_api_helper->get_account_email_address() ) {
 				return $gmail_api_helper->get_credentials();
 			}

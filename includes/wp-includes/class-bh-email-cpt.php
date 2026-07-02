@@ -200,7 +200,7 @@ class BH_Email_CPT {
 			return $data;
 		}
 
-		$post_id = (int) ( $postarr['ID'] ?? 0 );
+		$post_id = isset( $postarr['ID'] ) && is_numeric( $postarr['ID'] ) ? (int) $postarr['ID'] : 0;
 		if ( 0 === $post_id ) {
 			return $data;
 		}

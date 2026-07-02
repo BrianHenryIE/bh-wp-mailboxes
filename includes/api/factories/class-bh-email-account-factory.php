@@ -124,7 +124,17 @@ class BH_Email_Account_Factory {
 
 		foreach ( $string_keys as $string_key ) {
 			// TODO: This is inadequate to sanitize.
-			$args[ $string_key ] = is_null( $args[ $string_key ] ) ? null : strval( $args[ $string_key ] );
+			if ( isset( $args[ $string_key ] ) && ! is_string( $args[ $string_key ] ) ) {
+				$this->logger->warning(
+					'Unexpected value for {string_key}: {type} {value}.',
+					array(
+						'string_key' => $string_key,
+						'type'       => get_debug_type( $args[ $string_key ] ),
+						'value'      => $args[ $string_key ],
+					)
+				);
+				unset( $args[ $string_key ] );
+			}
 		}
 
 		foreach ( $int_keys as $int_key ) {

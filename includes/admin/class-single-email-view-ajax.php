@@ -79,12 +79,21 @@ class Single_Email_View_Ajax {
 	public function ajax_update_status(): void {
 
 		if ( ! isset( $_POST['_wpnonce'], $_POST['post_id'], $_POST['status'] )
+			|| ! is_string( $_POST['_wpnonce'] )
 			|| ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-remote-action' ) ) {
 			wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
 		}
 
+		if ( ! is_numeric( $_POST['post_id'] ) ) {
+			wp_send_json_error( array( 'message' => 'Invalid parameter post_id.' ), 400 );
+		}
+
+		if ( ! is_string( $_POST['status'] ) ) {
+			wp_send_json_error( array( 'message' => 'Invalid parameter status.' ), 400 );
+		}
+
 		$post_id = (int) $_POST['post_id'];
-		$status  = sanitize_key( wp_unslash( $_POST['status'] ) );
+		$status  = sanitize_key( (string) wp_unslash( $_POST['status'] ) );
 
 		try {
 			$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
@@ -107,8 +116,13 @@ class Single_Email_View_Ajax {
 	public function ajax_get_remote_status(): void {
 
 		if ( ! isset( $_POST['_wpnonce'], $_POST['post_id'] )
+			|| ! is_string( $_POST['_wpnonce'] )
 			|| ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-remote-action' ) ) {
 			wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
+		}
+
+		if ( ! is_numeric( $_POST['post_id'] ) ) {
+			wp_send_json_error( array( 'message' => 'Invalid parameter post_id.' ), 400 );
 		}
 
 		$post_id = (int) $_POST['post_id'];
@@ -137,8 +151,13 @@ class Single_Email_View_Ajax {
 	protected function handle_remote_action( string $action ): void {
 
 		if ( ! isset( $_POST['_wpnonce'], $_POST['post_id'] )
+			|| ! is_string( $_POST['_wpnonce'] )
 			|| ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-remote-action' ) ) {
 			wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
+		}
+
+		if ( ! is_numeric( $_POST['post_id'] ) ) {
+			wp_send_json_error( array( 'message' => 'Invalid parameter post_id.' ), 400 );
 		}
 
 		$post_id = (int) $_POST['post_id'];

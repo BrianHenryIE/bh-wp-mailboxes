@@ -254,6 +254,11 @@ class Mailboxes {
 		// Store body content as MIME so BH_Email_Factory::from_wp_post() (which uses MailMimeParser
 		// on post_content) can read it correctly. Bypass content_save_pre to avoid filter mangling.
 		if ( '' !== $body_plain || '' !== $body_html ) {
+			/**
+			 * The WordPress global database object.
+			 *
+			 * @var \wpdb $wpdb
+			 */
 			global $wpdb;
 			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->update( $wpdb->posts, array( 'post_content' => $this->build_mime( $body_plain, $body_html ) ), array( 'ID' => $post_id ) );

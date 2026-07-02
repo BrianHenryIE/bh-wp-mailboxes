@@ -91,16 +91,21 @@ class BH_Email_Factory {
 		// Absent meta means attachment-saving was disabled (null); a present value (even `[]`) means
 		// it was enabled. This distinction drives the "Attachments disabled" vs "No attachments" UI.
 		$attachment_ids_raw = get_post_meta( $post_id, 'attachment_ids', true );
-		$attachment_ids     = ( '' === $attachment_ids_raw ) ? null : (array) json_decode( (string) $attachment_ids_raw );
+		$attachment_ids     = ! is_string( $attachment_ids_raw ) || empty( $attachment_ids_raw )
+			? null
+			: array_filter(
+				(array) json_decode( $attachment_ids_raw ),
+				fn( $value ) => is_int( $value )
+			);
 
 		$remote_uid          = get_post_meta( $post_id, 'remote_uid', true );
 		$remote_folder       = get_post_meta( $post_id, 'remote_folder', true );
 		$remote_uid_validity = get_post_meta( $post_id, 'remote_uid_validity', true );
 		$remote_coordinates  = new Remote_Email_Coordinates(
 			message_id: $message->getMessageId() ?? '',
-			remote_uid: '' !== $remote_uid ? (string) $remote_uid : null,
-			folder: '' !== $remote_folder ? (string) $remote_folder : null,
-			uid_validity: '' !== $remote_uid_validity ? (int) $remote_uid_validity : null,
+			remote_uid: is_string( $remote_uid ) && ! empty( $remote_uid ) ? $remote_uid : null,
+			folder: is_string( $remote_folder ) && ! empty( $remote_folder ) ? $remote_folder : null,
+			uid_validity: is_numeric( $remote_uid_validity ) ? (int) $remote_uid_validity : null,
 		);
 
 		return new BH_Email(

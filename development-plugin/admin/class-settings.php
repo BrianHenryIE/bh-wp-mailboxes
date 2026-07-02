@@ -12,6 +12,7 @@ namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap_Credentials_Settings;
+use stdClass;
 
 /**
  * Renders and handles the development plugin's settings page.
@@ -71,9 +72,9 @@ class Settings {
 		}
 		check_admin_referer( self::SAVE_ACTION );
 
-		$server     = isset( $_POST['imap_server'] ) ? sanitize_text_field( wp_unslash( $_POST['imap_server'] ) ) : '';
-		$username   = isset( $_POST['imap_username'] ) ? sanitize_text_field( wp_unslash( $_POST['imap_username'] ) ) : '';
-		$encryption = isset( $_POST['imap_encryption'] ) ? sanitize_text_field( wp_unslash( $_POST['imap_encryption'] ) ) : '';
+		$server     = isset( $_POST['imap_server'] ) ? sanitize_text_field( (string) wp_unslash( $_POST['imap_server'] ) ) : '';
+		$username   = isset( $_POST['imap_username'] ) ? sanitize_text_field( (string) wp_unslash( $_POST['imap_username'] ) ) : '';
+		$encryption = isset( $_POST['imap_encryption'] ) ? sanitize_text_field( (string) wp_unslash( $_POST['imap_encryption'] ) ) : '';
 		if ( ! in_array( $encryption, array( '', 'TLS', 'STARTTLS' ), true ) ) {
 			$encryption = '';
 		}
@@ -81,7 +82,7 @@ class Settings {
 		// Passwords are used verbatim — sanitizing would corrupt valid '<', '&', etc. The nonce above
 		// validates the request.
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-		$password = isset( $_POST['imap_password'] ) ? (string) wp_unslash( $_POST['imap_password'] ) : '';
+		$password = isset( $_POST['imap_password'] ) && is_string( $_POST['imap_password'] ) ? wp_unslash( $_POST['imap_password'] ) : '';
 		if ( '' === $password ) {
 			// Empty submission leaves the stored password unchanged.
 			$existing = get_transient( Imap_Credentials_Settings::TRANSIENT_PASSWORD );
@@ -143,8 +144,8 @@ class Settings {
 		if ( isset( $_GET['bh_notice'] ) && 'saved' === $_GET['bh_notice'] ) {
 			echo '<div class="notice notice-success is-dismissible"><p>IMAP credentials saved.</p></div>';
 		}
-		if ( isset( $_GET['bh_fetched'] ) ) {
-			$fetched = absint( wp_unslash( $_GET['bh_fetched'] ) );
+		if ( isset( $_GET['bh_fetched'] ) && is_int( $_GET['bh_fetched'] ) ) {
+			$fetched = absint( $_GET['bh_fetched'] );
 			echo '<div class="notice notice-success is-dismissible"><p>Fetched ' . esc_html( (string) $fetched ) . ' new email(s).</p></div>';
 		}
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
@@ -317,8 +318,8 @@ class Settings {
 
 		foreach ( $statuses as $slug => $fallback_label ) {
 			$status_object = get_post_status_object( $slug );
-			$label         = $status_object instanceof \stdClass && isset( $status_object->label ) ? (string) $status_object->label : $fallback_label;
-			$count         = isset( $counts[ $slug ] ) ? (int) $counts[ $slug ] : 0;
+			$label         = $status_object instanceof stdClass && isset( $status_object->label ) && is_string( $status_object->label ) ? $status_object->label : $fallback_label;
+			$count         = isset( $counts[ $slug ] ) && is_numeric( $counts[ $slug ] ) ? (int) $counts[ $slug ] : 0;
 
 			echo '<tr>';
 			echo '<td>' . esc_html( $label ) . '</td>';

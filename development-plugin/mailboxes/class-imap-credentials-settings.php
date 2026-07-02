@@ -85,7 +85,8 @@ class Imap_Credentials_Settings implements IMAP_Credentials_Interface {
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- loaded from dotenv, not request input.
 		if ( isset( $_ENV[ $env_key ] ) && '' !== $_ENV[ $env_key ] ) {
 			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- credentials are used verbatim.
-			return (string) $_ENV[ $env_key ];
+			$env_value = $_ENV[ $env_key ];
+			return ( ! empty( $env_value ) && is_string( $env_value ) ) ? $env_value : '';
 		}
 
 		$stored = get_transient( $transient_key );

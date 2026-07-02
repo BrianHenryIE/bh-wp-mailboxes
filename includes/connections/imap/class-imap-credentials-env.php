@@ -49,10 +49,10 @@ class Imap_Credentials_Env implements IMAP_Credentials_Interface {
 		// (sanitize_text_field, strip_tags) would silently corrupt passwords that contain
 		// '<', '>', '&', or other HTML-significant characters that are valid in credentials.
 		// phpcs:disable WordPress.Security.ValidatedSanitizedInput
-		$this->server     = isset( $_ENV[ $this->server ] ) ? (string) $_ENV[ $this->server ] : '';
-		$this->username   = isset( $_ENV[ $this->username ] ) ? (string) $_ENV[ $this->username ] : '';
-		$this->password   = isset( $_ENV[ $this->password ] ) ? (string) $_ENV[ $this->password ] : '';
-		$this->encryption = isset( $_ENV[ $this->encryption ] ) ? (string) $_ENV[ $this->encryption ] : '';
+		$this->server     = isset( $_ENV[ $this->server ] ) && is_string( $_ENV[ $this->server ] ) ? $_ENV[ $this->server ] : '';
+		$this->username   = isset( $_ENV[ $this->username ] ) && is_string( $_ENV[ $this->username ] ) ? $_ENV[ $this->username ] : '';
+		$this->password   = isset( $_ENV[ $this->password ] ) && is_string( $_ENV[ $this->password ] ) ? $_ENV[ $this->password ] : '';
+		$this->encryption = isset( $_ENV[ $this->encryption ] ) && is_string( $_ENV[ $this->encryption ] ) ? $_ENV[ $this->encryption ] : '';
 		// phpcs:enable WordPress.Security.ValidatedSanitizedInput
 
 		$this->validate();

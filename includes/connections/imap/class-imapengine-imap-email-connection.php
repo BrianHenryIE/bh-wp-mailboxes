@@ -158,7 +158,7 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 		$folder = $inbox->path();
 		$status = $inbox->status();
 		// UIDVALIDITY is requested by ImapEngine's STATUS command; absent only on non-conforming servers.
-		$uid_validity = isset( $status['UIDVALIDITY'] ) ? (int) $status['UIDVALIDITY'] : null;
+		$uid_validity = isset( $status['UIDVALIDITY'] ) && is_numeric( $status['UIDVALIDITY'] ) ? (int) $status['UIDVALIDITY'] : null;
 
 		// IMAP `SINCE` filters by date only — go back one extra day and filter by time in PHP.
 		$previous_day = ( new \DateTime() )->setTimestamp( $since_time->getTimestamp() )->sub( new \DateInterval( 'P1D' ) );
@@ -351,7 +351,7 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 
 		if ( ! is_null( $coordinates->uid_validity ) ) {
 			$status         = $inbox->status();
-			$current_uidval = isset( $status['UIDVALIDITY'] ) ? (int) $status['UIDVALIDITY'] : null;
+			$current_uidval = isset( $status['UIDVALIDITY'] ) && is_numeric( $status['UIDVALIDITY'] ) ? (int) $status['UIDVALIDITY'] : null;
 			if ( $current_uidval !== $coordinates->uid_validity ) {
 				$this->logger->info(
 					'Stored UIDVALIDITY no longer matches the inbox; falling back to Message-ID search.',

@@ -157,6 +157,11 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 	 * @return ?int The post ID, or null if not found.
 	 */
 	protected function find_post_id_for_message_id( string $account_email_address, string $message_id ): ?int {
+		/**
+		 * The WordPress database ORM.
+		 *
+		 * @var \wpdb $wpdb
+		 */
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->get_var(
@@ -181,12 +186,17 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$count = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM $wpdb->posts WHERE post_type = %s AND post_status != 'trash' AND post_parent = %s",
+				'SELECT COUNT(*) FROM %i WHERE post_type = %s AND post_status != \'trash\' AND post_parent = %s',
+				$wpdb->posts,
 				$this->post_type,
 				$email_account->get_post_id()
 			)
 		);
-		return (int) $count;
+		return is_numeric( $count )
+			? (int) $count
+			: ( function () {
+				throw new Exception( 'count was no numeric.' );
+			} )();
 	}
 
 	/**

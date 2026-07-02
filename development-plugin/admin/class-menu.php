@@ -97,6 +97,11 @@ class Menu {
 
 		// Add a spacer above "Mailboxes" (between it and Dashboard). WordPress renders any $menu entry
 		// whose class list contains `wp-menu-separator` as a spacer; key 2.5 slots it between 2 and 3.
+		/**
+		 * The WordPress admin menu.
+		 *
+		 * @var array<string, array<string>> $menu
+		 */
 		global $menu;
 		$menu['2.5'] = array( '', 'read', 'bh-mailboxes-separator-top', '', 'wp-menu-separator' );
 
