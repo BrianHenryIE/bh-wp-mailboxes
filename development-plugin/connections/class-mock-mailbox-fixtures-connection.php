@@ -156,7 +156,7 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	 *
 	 * @return mixed 'yes'/'no' to override the stored status, otherwise the unchanged `$value`.
 	 */
-	public function meta_filter( $value, $object_id, $meta_key, $single = true, $meta_type = 'user' ) {
+	public function meta_filter( $value, $object_id, $meta_key, $single = true, $meta_type = 'post' ) {
 
 		// Per-user fixture state only applies to a logged-in user; without one (cron, unit tests)
 		// get_user_meta() returns false rather than an array, so there is nothing to override.
