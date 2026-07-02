@@ -19,6 +19,8 @@ process.env.WP_BASE_URL = WP_BASE_URL;
 
 export default defineConfig( {
 	testDir: './tests/e2e-pw/specs',
+	globalSetup: require.resolve( './tests/e2e-pw/global-setup' ),
+	globalTeardown: require.resolve( './tests/e2e-pw/global-teardown' ),
 	fullyParallel: true,
 	forbidOnly: !! process.env.CI,
 	retries: process.env.CI ? 2 : 0,

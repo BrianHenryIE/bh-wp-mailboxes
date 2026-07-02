@@ -79,9 +79,6 @@ Autoloader::generate(
 	$includes_dir,
 )->register();
 
-// Authentication shortcuts for e2e arrangement (login-as-user, treat REST callers as admin).
-new Authentication()->register_hooks();
-
 new Mappings()->register_hooks();
 
 // Custom REST endpoints for arranging/asserting e2e tests.

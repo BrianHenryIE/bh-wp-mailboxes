@@ -294,6 +294,13 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 
 		$attachment_ids = array();
 
+		// wp_tempnam() and move_file_to_private_uploads_and_create_post() live in wp-admin/includes/file.php,
+		// which is not loaded during wp-cron or REST requests — the two contexts a fetch usually runs in.
+		// Without this, saving an email that has an attachment fatals with "undefined function wp_tempnam()".
+		if ( ! function_exists( 'wp_tempnam' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+
 		foreach ( $attachment_parts as $part ) {
 			$filename = $part->getFilename() ?? 'attachment';
 			$tmp_file = wp_tempnam( $filename );
