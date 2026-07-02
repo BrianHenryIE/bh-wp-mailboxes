@@ -128,7 +128,11 @@ class BH_WP_Mailboxes_Hooks {
 		add_action( 'admin_notices', $status_view->display( ... ) );
 
 		$admin_notices = new Admin_Notices( $this->api, $this->settings, $this->logger );
-		add_action( 'admin_notices', $admin_notices->display( ... ) );
+		// current_screen: render on the emails list screen (fires before admin_enqueue_scripts, so wptrt can
+		// enqueue its dismiss script). wp_loaded: re-register on the dismiss AJAX request (admin-ajax.php),
+		// which current_screen/admin_init do not reach, so the library's dismiss handler can match the id.
+		add_action( 'current_screen', $admin_notices->render_on_emails_screen( ... ) );
+		add_action( 'wp_loaded', $admin_notices->register_dismiss_handler( ... ) );
 
 		$mailbox_list_page = new Emails_List_Page( $this->email_wp_post_repository, $this->api, $this->settings, $this->logger );
 
