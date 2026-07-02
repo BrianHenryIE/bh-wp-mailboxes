@@ -7,6 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
+use BrianHenryIE\WP_Mailboxes\Admin\Admin_Notices;
 use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Table_Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
@@ -125,6 +126,9 @@ class BH_WP_Mailboxes_Hooks {
 
 		$status_view = new Status_View( $this->api, $this->settings, $this->email_wp_post_repository, $this->logger );
 		add_action( 'admin_notices', $status_view->display( ... ) );
+
+		$admin_notices = new Admin_Notices( $this->api, $this->settings, $this->logger );
+		add_action( 'admin_notices', $admin_notices->display( ... ) );
 
 		$mailbox_list_page = new Emails_List_Page( $this->email_wp_post_repository, $this->api, $this->settings, $this->logger );
 

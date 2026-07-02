@@ -99,7 +99,7 @@ class Status_View {
 			echo '<dt>' . esc_html__( 'Last fetched', 'bh-wp-mailboxes' ) . '</dt>';
 			echo '<dd data-field="last-fetched">' . esc_html( $this->format_time( $account->last_successful_login_time ) ) . '</dd>';
 			echo '<dt>' . esc_html__( 'Last failure', 'bh-wp-mailboxes' ) . '</dt>';
-			echo '<dd>' . esc_html( $this->format_time( $account->last_failed_login_time ) ) . '</dd>';
+			echo '<dd data-field="last-failure">' . esc_html( $this->format_time( $account->last_failed_login_time ) ) . '</dd>';
 			echo '</dl>';
 			echo '<div class="bh-mailboxes-account-card__actions">';
 			echo '<button type="button" class="button button-primary button-small bh-check-account" data-account-id="' . esc_attr( $account_id ) . '">' . esc_html__( 'Check now', 'bh-wp-mailboxes' ) . '</button>';
