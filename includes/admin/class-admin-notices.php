@@ -90,10 +90,10 @@ class Admin_Notices {
 			return;
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- only branching on the action; wptrt verifies its own nonce.
-		$action = isset( $_REQUEST['action'] ) && is_string( $_REQUEST['action'] )
-			? sanitize_key( wp_unslash( $_REQUEST['action'] ) )
-			: '';
+		// We only branch on the action name to decide whether to re-register notices; wptrt's own dismiss
+		// handler verifies its nonce. Kept on one line so the ignore covers every $_REQUEST read.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended,WordPress.Security.NonceVerification.Missing
+		$action = isset( $_REQUEST['action'] ) && is_string( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
 		if ( 'wptrt_dismiss_notice' !== $action ) {
 			return;
 		}
