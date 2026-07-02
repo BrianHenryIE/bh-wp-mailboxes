@@ -232,7 +232,9 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 		if ( is_string( $fail_for_account ) && '' !== $fail_for_account
 			&& null !== $this->last_resolved_account
 			&& $this->last_resolved_account->get_account_email_address() === $fail_for_account ) {
-			throw new \Exception( 'Simulated connection failure for ' . esc_html( $fail_for_account ) );
+			// A static, plain-text message: no interpolated output to escape (which the account address
+			// would otherwise require under WPCS), and the API already logs which account was being fetched.
+			throw new \Exception( 'Mock_Mailbox_Fixtures_Connection: simulated connection failure (fixtures fail flag is set for this account).' );
 		}
 
 		$files            = glob( $this->fixtures_directory . '/*.eml' ) ?: array();

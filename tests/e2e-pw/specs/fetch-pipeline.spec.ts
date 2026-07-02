@@ -13,6 +13,11 @@ import type { APIRequestContext, Page } from '@playwright/test';
 const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v1';
 const POST_TYPE = 'fixtures_email';
 
+/** A collision-free email address, even across parallel workers running in the same millisecond. */
+function uniqueEmail( prefix: string ): string {
+	return `${ prefix }-${ Date.now() }-${ Math.floor( Math.random() * 1_000_000 ) }@example.com`;
+}
+
 /** Create a fixtures email account and return its post ID. */
 async function createAccount( request: APIRequestContext, emailAddress: string ): Promise< number > {
 	const res = await request.post( `${ DEV_REST }/accounts`, {
@@ -43,7 +48,7 @@ test.describe( 'Fetch pipeline — deduplication', () => {
 		page,
 		request,
 	} ) => {
-		const accountId = await createAccount( request, `fetch-dedup-${ Date.now() }@example.com` );
+		const accountId = await createAccount( request, uniqueEmail( 'fetch-dedup' ) );
 
 		// First fetch: all five fixtures are new.
 		expect( await runFetch( request, accountId ) ).toBe( 5 );
@@ -69,12 +74,13 @@ test.describe( 'Fetch pipeline — Reset button', () => {
 		page,
 		request,
 	} ) => {
-		const accountId = await createAccount( request, `fetch-reset-${ Date.now() }@example.com` );
+		const accountId = await createAccount( request, uniqueEmail( 'fetch-reset' ) );
 		expect( await runFetch( request, accountId ) ).toBe( 5 );
 
 		await admin.visitAdminPage( 'edit.php', `post_type=${ POST_TYPE }&bh_email_account=${ accountId }` );
+		// Auto-retry until the five rows are rendered before reading their ids.
+		await expect( page.locator( '#the-list tr.type-fixtures_email' ) ).toHaveCount( 5 );
 		const firstIds = await rowIds( page );
-		expect( firstIds ).toHaveLength( 5 );
 
 		// Click "Reset" — its handler verifies its own nonce (distinct from the "Check now" nonce), clears
 		// the current user's per-user fixture state via reset(), then redirects to the unfiltered list.
@@ -95,6 +101,7 @@ test.describe( 'Fetch pipeline — Reset button', () => {
 		// Re-fetch dedupes against the saved posts → still exactly five rows, no duplicates.
 		expect( await runFetch( request, accountId ) ).toBe( 0 );
 		await admin.visitAdminPage( 'edit.php', `post_type=${ POST_TYPE }&bh_email_account=${ accountId }` );
+		await expect( page.locator( '#the-list tr.type-fixtures_email' ) ).toHaveCount( 5 );
 		expect( await rowIds( page ) ).toEqual( firstIds );
 	} );
 } );
