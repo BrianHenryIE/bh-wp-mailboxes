@@ -74,6 +74,47 @@ test.describe( 'Single email view', () => {
 		await expect( page.locator( '#bh-email-content-html iframe.bh-email-html-body' ) ).toBeAttached();
 	} );
 
+	test( 'HTML email scripts do not execute: the iframe is sandboxed without allow-scripts', async ( {
+		admin,
+		page,
+		request,
+	} ) => {
+		// An HTML body carrying two classic XSS vectors: an inline <script> and an <img> onerror handler.
+		// Each tries to set a flag on the parent (admin) window — reachable because the iframe is
+		// same-origin — and the script also opens an alert(). If any ran, we would see the flag or dialog.
+		const xssHtml =
+			'<p>XSS probe</p>' +
+			'<script>window.parent.__bhXssScriptRan = true; alert( "xss" );</script>' +
+			'<img src="x" onerror="window.parent.__bhXssImgRan = true;">';
+		const postId = await createEmail( request, { subject: 'XSS probe email', body_html: xssHtml } );
+
+		let dialogFired = false;
+		page.on( 'dialog', ( dialog ) => {
+			dialogFired = true;
+			void dialog.dismiss();
+		} );
+
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		const iframe = page.locator( '#bh-email-content-html iframe.bh-email-html-body' );
+		await expect( iframe ).toBeAttached();
+
+		// The sandbox must be exactly "allow-same-origin" — crucially NOT allow-scripts.
+		await expect( iframe ).toHaveAttribute( 'sandbox', 'allow-same-origin' );
+
+		// The dangerous markup is present in the iframe (so this proves the sandbox neutralised it, not that
+		// it was stripped out before rendering).
+		const srcdoc = ( await iframe.getAttribute( 'srcdoc' ) ) ?? '';
+		expect( srcdoc ).toContain( 'onerror' );
+		expect( srcdoc ).toContain( '<script>' );
+
+		// Give any (blocked) script/onerror a chance to run, then assert nothing executed.
+		await page.waitForTimeout( 500 );
+		expect( await page.evaluate( () => ( window as unknown as Record< string, boolean > ).__bhXssScriptRan ) ).toBeFalsy();
+		expect( await page.evaluate( () => ( window as unknown as Record< string, boolean > ).__bhXssImgRan ) ).toBeFalsy();
+		expect( dialogFired ).toBe( false );
+	} );
+
 	test( 'plain-text content metabox shows an iframe when email has plain text body', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request, { body_plain: 'Hello plain text.' } );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
