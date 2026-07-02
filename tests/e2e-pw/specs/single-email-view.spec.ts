@@ -108,8 +108,14 @@ test.describe( 'Single email view', () => {
 		expect( srcdoc ).toContain( 'onerror' );
 		expect( srcdoc ).toContain( '<script>' );
 
-		// Give any (blocked) script/onerror a chance to run, then assert nothing executed.
-		await page.waitForTimeout( 500 );
+		// Wait for the iframe to finish loading (the parent JS sets a non-empty height on its load event),
+		// which is the point at which any script/onerror would have run — then assert nothing executed.
+		await page.waitForFunction( () => {
+			const el = document.querySelector(
+				'#bh-email-content-html iframe.bh-email-html-body'
+			) as HTMLIFrameElement | null;
+			return el !== null && el.style.height !== '';
+		} );
 		expect( await page.evaluate( () => ( window as unknown as Record< string, boolean > ).__bhXssScriptRan ) ).toBeFalsy();
 		expect( await page.evaluate( () => ( window as unknown as Record< string, boolean > ).__bhXssImgRan ) ).toBeFalsy();
 		expect( dialogFired ).toBe( false );
