@@ -118,6 +118,17 @@ test.describe( 'Emails list table — rendering, search and account filter', () 
 		await runFetch( request, accountA );
 		await runFetch( request, accountB );
 
+		// Capture account B's row IDs from the list filtered to B, so we can later assert none of them
+		// leak into account A's view. (The emails CPT is not exposed on the wp/v2 REST API.)
+		await admin.visitAdminPage(
+			'edit.php',
+			`post_type=${ POST_TYPE }&bh_email_account=${ accountB }`
+		);
+		const bRowIds = await page
+			.locator( '#the-list tr.type-fixtures_email' )
+			.evaluateAll( ( rows ) => rows.map( ( r ) => r.id ) );
+		expect( bRowIds ).toHaveLength( 5 );
+
 		await admin.visitAdminPage( 'edit.php', `post_type=${ POST_TYPE }` );
 
 		// With more than one account, the restrict_manage_posts dropdown is rendered.
@@ -132,16 +143,9 @@ test.describe( 'Emails list table — rendering, search and account filter', () 
 		await expect( page ).toHaveURL( new RegExp( `bh_email_account=${ accountA }` ) );
 		await expect( page.locator( '#the-list tr.type-fixtures_email' ) ).toHaveCount( 5 );
 
-		// The five rows shown are account A's, so none of account B's post IDs appear.
-		const bRes = await request.get(
-			`/wp-json/wp/v2/${ POST_TYPE }?parent=${ accountB }&status=any&per_page=100`,
-			{ failOnStatusCode: false }
-		);
-		if ( bRes.ok() ) {
-			const bPosts = ( await bRes.json() ) as Array< { id: number } >;
-			for ( const bp of bPosts ) {
-				await expect( page.locator( `#post-${ bp.id }` ) ).toHaveCount( 0 );
-			}
+		// None of account B's rows appear under account A's filter.
+		for ( const id of bRowIds ) {
+			await expect( page.locator( `#${ id }` ) ).toHaveCount( 0 );
 		}
 	} );
 } );

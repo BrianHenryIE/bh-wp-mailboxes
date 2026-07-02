@@ -264,6 +264,30 @@ class Emails_List_Page {
 	}
 
 	/**
+	 * Whether the given query is the emails list-table's main query on its `edit.php` screen.
+	 *
+	 * `pre_get_posts` fires for every main query — including single-post edit screens and other admin
+	 * pages — so the list-table query tweaks below must confirm they are on the emails `edit.php` screen
+	 * before touching the query. `get_current_screen()` is guarded because `pre_get_posts` can also run
+	 * in contexts (e.g. AJAX) where the admin screen functions are not loaded.
+	 *
+	 * @param \WP_Query $query The current WP_Query instance.
+	 */
+	private function is_emails_list_query( \WP_Query $query ): bool {
+		if ( ! is_admin() || ! $query->is_main_query() ) {
+			return false;
+		}
+		if ( ! function_exists( 'get_current_screen' ) ) {
+			return false;
+		}
+		$screen = get_current_screen();
+		if ( null === $screen || 'edit' !== $screen->base ) {
+			return false;
+		}
+		return $query->get( 'post_type' ) === $this->settings->get_emails_cpt_underscored_20();
+	}
+
+	/**
 	 * Filter the list table to a single account when one is selected in the {@see self::table_filters()} dropdown.
 	 *
 	 * Emails are stored with the account post as their `post_parent`, so filtering is a `post_parent` query.
@@ -273,10 +297,7 @@ class Emails_List_Page {
 	 * @param \WP_Query $query The current WP_Query instance.
 	 */
 	public function filter_by_account( \WP_Query $query ): void {
-		if ( ! is_admin() || ! $query->is_main_query() ) {
-			return;
-		}
-		if ( $query->get( 'post_type' ) !== $this->settings->get_emails_cpt_underscored_20() ) {
+		if ( ! $this->is_emails_list_query( $query ) ) {
 			return;
 		}
 
@@ -299,10 +320,7 @@ class Emails_List_Page {
 	 * @param \WP_Query $query The current WP_Query instance.
 	 */
 	public function show_all_post_statuses( \WP_Query $query ): void {
-		if ( ! is_admin() || ! $query->is_main_query() ) {
-			return;
-		}
-		if ( $query->get( 'post_type' ) !== $this->settings->get_emails_cpt_underscored_20() ) {
+		if ( ! $this->is_emails_list_query( $query ) ) {
 			return;
 		}
 

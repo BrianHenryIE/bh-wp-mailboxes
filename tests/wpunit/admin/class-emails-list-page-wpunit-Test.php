@@ -243,6 +243,63 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
+	 * The account filter dropdown is rendered on the emails list screen when multiple accounts exist.
+	 *
+	 * @covers ::table_filters
+	 */
+	public function test_account_filter_dropdown_rendered_with_multiple_accounts(): void {
+		set_current_screen( 'edit.php' );
+		get_current_screen()->post_type = $this->post_type;
+
+		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class )->shouldIgnoreMissing();
+		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $this->post_type );
+
+		$api = Mockery::mock( API_Interface::class )->shouldIgnoreMissing();
+		$api->allows( 'get_email_accounts' )->andReturn(
+			array(
+				BH_Email_Account_Fixture::make( post_id: 11, display_name: 'Alpha Account' ),
+				BH_Email_Account_Fixture::make( post_id: 22, display_name: 'Beta Account' ),
+			)
+		);
+
+		$sut = new Emails_List_Page( Mockery::mock( Email_WP_Post_Repository::class ), $api, $settings, $this->logger );
+
+		ob_start();
+		$sut->table_filters();
+		$html = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'name="bh_email_account"', $html );
+		$this->assertStringContainsString( 'All accounts', $html );
+		$this->assertStringContainsString( 'value="11"', $html );
+		$this->assertStringContainsString( 'Alpha Account', $html );
+		$this->assertStringContainsString( 'Beta Account', $html );
+	}
+
+	/**
+	 * The dropdown is not rendered for a single-account mailbox — there is nothing to filter.
+	 *
+	 * @covers ::table_filters
+	 */
+	public function test_account_filter_dropdown_absent_with_single_account(): void {
+		set_current_screen( 'edit.php' );
+		get_current_screen()->post_type = $this->post_type;
+
+		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class )->shouldIgnoreMissing();
+		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $this->post_type );
+
+		$api = Mockery::mock( API_Interface::class )->shouldIgnoreMissing();
+		$api->allows( 'get_email_accounts' )->andReturn( array( BH_Email_Account_Fixture::make( post_id: 11 ) ) );
+
+		$sut = new Emails_List_Page( Mockery::mock( Email_WP_Post_Repository::class ), $api, $settings, $this->logger );
+
+		ob_start();
+		$sut->table_filters();
+		$html = (string) ob_get_clean();
+
+		$this->assertSame( '', $html );
+	}
+
+	/**
 	 * Rows of other post types are left untouched.
 	 *
 	 * @covers ::row_actions
