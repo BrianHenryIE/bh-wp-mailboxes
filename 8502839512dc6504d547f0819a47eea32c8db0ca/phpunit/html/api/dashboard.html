@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <title>Dashboard for /home/runner/work/bh-wp-mailboxes/bh-wp-mailboxes/includes/api</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="../_css/bootstrap.min.css?v=9.2.32" rel="stylesheet" type="text/css">
+  <link href="../_css/nv.d3.min.css?v=9.2.32" rel="stylesheet" type="text/css">
+  <link href="../_css/style.css?v=9.2.32" rel="stylesheet" type="text/css">
+  <link href="../_css/custom.css" rel="stylesheet" type="text/css">
+ </head>
+ <body>
+  <header>
+   <div class="container-fluid">
+    <div class="row">
+     <div class="col-md-12">
+      <nav aria-label="breadcrumb">
+       <ol class="breadcrumb">
+         <li class="breadcrumb-item"><a href="../index.html">/home/runner/work/bh-wp-mailboxes/bh-wp-mailboxes/includes</a></li>
+         <li class="breadcrumb-item"><a href="index.html">api</a></li>
+         <li class="breadcrumb-item active">(Dashboard)</li>
+
+       </ol>
+      </nav>
+     </div>
+    </div>
+   </div>
+  </header>
+  <div class="container-fluid">
+   <div class="row">
+    <div class="col-md-12">
+     <h2>Classes</h2>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Coverage Distribution</h3>
+     <div id="classCoverageDistribution" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Complexity</h3>
+     <div id="classComplexity" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Insufficient Coverage</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Class</th>
+         <th class="text-right">Coverage</th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="factories/class-new-email-factory.php.html#21">BrianHenryIE\WP_Mailboxes\API\Factories\New_Email_Factory</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-bh-email.php.html#22">BrianHenryIE\WP_Mailboxes\API\Model\BH_Email</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-fetched-email.php.html#19">BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-new-email-local.php.html#19">BrianHenryIE\WP_Mailboxes\API\Model\New_Email_Local</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-new-email-remote.php.html#15">BrianHenryIE\WP_Mailboxes\API\Model\New_Email_Remote</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-remote-email-coordinates.php.html#24">BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/result/class-check-email-account-result.php.html#18">BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Account_Result</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/result/class-check-mailbox-result.php.html#17">BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Mailbox_Result</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/result/class-delete-old-emails-result.php.html#15">BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/result/class-test-connection-result.php.html#15">BrianHenryIE\WP_Mailboxes\API\Model\Result\Test_Connection_Result</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="queries/class-wp-post-query-abstract.php.html#25">BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract</a></td><td class="text-right">20%</td></tr>
+       <tr><td><a href="class-api.php.html#42">BrianHenryIE\WP_Mailboxes\API\API</a></td><td class="text-right">30%</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#34">BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository</a></td><td class="text-right">40%</td></tr>
+       <tr><td><a href="queries/class-bh-email-query.php.html#17">BrianHenryIE\WP_Mailboxes\API\Queries\BH_Email_Query</a></td><td class="text-right">45%</td></tr>
+       <tr><td><a href="repositories/class-email-account-wp-post-repository.php.html#25">BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository</a></td><td class="text-right">75%</td></tr>
+       <tr><td><a href="model/class-bh-email-account.php.html#19">BrianHenryIE\WP_Mailboxes\BH_Email_Account</a></td><td class="text-right">80%</td></tr>
+       <tr><td><a href="factories/class-bh-email-account-factory.php.html#24">BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory</a></td><td class="text-right">83%</td></tr>
+       <tr><td><a href="factories/class-bh-email-factory.php.html#24">BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory</a></td><td class="text-right">85%</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Project Risks</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Class</th>
+         <th class="text-right"><abbr title="Change Risk Anti-Patterns (CRAP) Index">CRAP</abbr></th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="class-api.php.html#42">BrianHenryIE\WP_Mailboxes\API\API</a></td><td class="text-right">1651</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#34">BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository</a></td><td class="text-right">280</td></tr>
+       <tr><td><a href="queries/class-wp-post-query-abstract.php.html#25">BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract</a></td><td class="text-right">178</td></tr>
+       <tr><td><a href="repositories/class-email-account-wp-post-repository.php.html#25">BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository</a></td><td class="text-right">21</td></tr>
+       <tr><td><a href="factories/class-bh-email-factory.php.html#24">BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory</a></td><td class="text-right">18</td></tr>
+       <tr><td><a href="factories/class-bh-email-account-factory.php.html#24">BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory</a></td><td class="text-right">18</td></tr>
+       <tr><td><a href="queries/class-bh-email-query.php.html#17">BrianHenryIE\WP_Mailboxes\API\Queries\BH_Email_Query</a></td><td class="text-right">11</td></tr>
+       <tr><td><a href="factories/class-new-email-factory.php.html#21">BrianHenryIE\WP_Mailboxes\API\Factories\New_Email_Factory</a></td><td class="text-right">6</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-12">
+     <h2>Methods</h2>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Coverage Distribution</h3>
+     <div id="methodCoverageDistribution" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Complexity</h3>
+     <div id="methodComplexity" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Insufficient Coverage</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Method</th>
+         <th class="text-right">Coverage</th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="class-api.php.html#72"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::get_email_accounts">get_email_accounts</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="class-api.php.html#194"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::fetch_for_account">fetch_for_account</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="class-api.php.html#364"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::get_downloaded_emails">get_downloaded_emails</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="class-api.php.html#371"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::delete_old_emails">delete_old_emails</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="class-api.php.html#404"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::mark_email_read">mark_email_read</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="class-api.php.html#414"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::mark_email_unread">mark_email_unread</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="class-api.php.html#424"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::delete_email_on_server">delete_email_on_server</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="class-api.php.html#437"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::update_email_local_status">update_email_local_status</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="class-api.php.html#452"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::set_connection_credentials">set_connection_credentials</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="class-api.php.html#486"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::perform_remote_email_action">perform_remote_email_action</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="class-api.php.html#568"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::get_remote_read_status">get_remote_read_status</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="class-api.php.html#624"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::get_email_account_for_email">get_email_account_for_email</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="factories/class-new-email-factory.php.html#30"><abbr title="BrianHenryIE\WP_Mailboxes\API\Factories\New_Email_Factory::make">make</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-bh-email-account.php.html#40"><abbr title="BrianHenryIE\WP_Mailboxes\BH_Email_Account::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-bh-email-account.php.html#125"><abbr title="BrianHenryIE\WP_Mailboxes\BH_Email_Account::get_post_type">get_post_type</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-bh-email.php.html#47"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\BH_Email::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-bh-email.php.html#73"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\BH_Email::get_post_type">get_post_type</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-bh-email.php.html#80"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\BH_Email::get_from_email">get_from_email</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-bh-email.php.html#87"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\BH_Email::get_subject">get_subject</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-bh-email.php.html#94"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\BH_Email::get_sent_at">get_sent_at</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-bh-email.php.html#101"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\BH_Email::get_post_id">get_post_id</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-bh-email.php.html#110"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\BH_Email::get_post_status">get_post_status</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-bh-email.php.html#117"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\BH_Email::get_remote_coordinates">get_remote_coordinates</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-fetched-email.php.html#28"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-new-email-local.php.html#27"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\New_Email_Local::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-new-email-local.php.html#36"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\New_Email_Local::get_email">get_email</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-new-email-local.php.html#49"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\New_Email_Local::update_local_status">update_local_status</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-new-email-local.php.html#65"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\New_Email_Local::add_local_note">add_local_note</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-new-email-local.php.html#82"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\New_Email_Local::trash_locally">trash_locally</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-new-email-remote.php.html#20"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\New_Email_Remote::delete_on_server">delete_on_server</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-new-email-remote.php.html#30"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\New_Email_Remote::mark_read_on_server">mark_read_on_server</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-new-email-remote.php.html#40"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\New_Email_Remote::mark_unread_on_server">mark_unread_on_server</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/class-remote-email-coordinates.php.html#34"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/result/class-check-email-account-result.php.html#28"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Account_Result::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/result/class-check-mailbox-result.php.html#26"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Mailbox_Result::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/result/class-check-mailbox-result.php.html#37"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Mailbox_Result::get_emails">get_emails</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/result/class-delete-old-emails-result.php.html#23"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="model/result/class-test-connection-result.php.html#23"><abbr title="BrianHenryIE\WP_Mailboxes\API\Model\Result\Test_Connection_Result::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="queries/class-bh-email-query.php.html#84"><abbr title="BrianHenryIE\WP_Mailboxes\API\Queries\BH_Email_Query::get_meta_input">get_meta_input</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="queries/class-bh-email-query.php.html#101"><abbr title="BrianHenryIE\WP_Mailboxes\API\Queries\BH_Email_Query::get_slug">get_slug</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="queries/class-wp-post-query-abstract.php.html#40"><abbr title="BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract::get_post_type">get_post_type</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="queries/class-wp-post-query-abstract.php.html#51"><abbr title="BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract::get_wp_post_fields">get_wp_post_fields</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="queries/class-wp-post-query-abstract.php.html#71"><abbr title="BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract::get_valid_keys">get_valid_keys</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="queries/class-wp-post-query-abstract.php.html#103"><abbr title="BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract::normalise_fields">normalise_fields</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="queries/class-wp-post-query-abstract.php.html#177"><abbr title="BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract::to_wp_post_array">to_wp_post_array</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="repositories/class-email-account-wp-post-repository.php.html#35"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="repositories/class-email-account-wp-post-repository.php.html#185"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository::run_query">run_query</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#45"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::__construct">__construct</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#61"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::find_by_post_id">find_by_post_id</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#77"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::find_recent">find_recent</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#102"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::delete_older_than">delete_older_than</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#143"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::is_post_for_message_id">is_post_for_message_id</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#160"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::find_post_id_for_message_id">find_post_id_for_message_id</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#186"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::count_for_account_email">count_for_account_email</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#293"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::save_attachments">save_attachments</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="class-api.php.html#156"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::check_email_for_account">check_email_for_account</abbr></a></td><td class="text-right">70%</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#377"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::update">update</abbr></a></td><td class="text-right">72%</td></tr>
+       <tr><td><a href="repositories/class-email-account-wp-post-repository.php.html#102"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository::find_by_post_id">find_by_post_id</abbr></a></td><td class="text-right">75%</td></tr>
+       <tr><td><a href="repositories/class-email-account-wp-post-repository.php.html#229"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository::update">update</abbr></a></td><td class="text-right">79%</td></tr>
+       <tr><td><a href="factories/class-bh-email-account-factory.php.html#59"><abbr title="BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory::get_array_from_post_meta">get_array_from_post_meta</abbr></a></td><td class="text-right">83%</td></tr>
+       <tr><td><a href="factories/class-bh-email-factory.php.html#43"><abbr title="BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory::from_wp_post">from_wp_post</abbr></a></td><td class="text-right">85%</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Project Risks</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Method</th>
+         <th class="text-right"><abbr title="Change Risk Anti-Patterns (CRAP) Index">CRAP</abbr></th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="class-api.php.html#194"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::fetch_for_account">fetch_for_account</abbr></a></td><td class="text-right">240</td></tr>
+       <tr><td><a href="class-api.php.html#486"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::perform_remote_email_action">perform_remote_email_action</abbr></a></td><td class="text-right">132</td></tr>
+       <tr><td><a href="queries/class-wp-post-query-abstract.php.html#103"><abbr title="BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract::normalise_fields">normalise_fields</abbr></a></td><td class="text-right">90</td></tr>
+       <tr><td><a href="class-api.php.html#371"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::delete_old_emails">delete_old_emails</abbr></a></td><td class="text-right">42</td></tr>
+       <tr><td><a href="class-api.php.html#568"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::get_remote_read_status">get_remote_read_status</abbr></a></td><td class="text-right">42</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#102"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::delete_older_than">delete_older_than</abbr></a></td><td class="text-right">20</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#293"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::save_attachments">save_attachments</abbr></a></td><td class="text-right">20</td></tr>
+       <tr><td><a href="factories/class-bh-email-factory.php.html#43"><abbr title="BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory::from_wp_post">from_wp_post</abbr></a></td><td class="text-right">17</td></tr>
+       <tr><td><a href="factories/class-bh-email-account-factory.php.html#59"><abbr title="BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory::get_array_from_post_meta">get_array_from_post_meta</abbr></a></td><td class="text-right">16</td></tr>
+       <tr><td><a href="class-api.php.html#452"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::set_connection_credentials">set_connection_credentials</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="queries/class-bh-email-query.php.html#101"><abbr title="BrianHenryIE\WP_Mailboxes\API\Queries\BH_Email_Query::get_slug">get_slug</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="repositories/class-email-account-wp-post-repository.php.html#185"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository::run_query">run_query</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#77"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::find_recent">find_recent</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#377"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::update">update</abbr></a></td><td class="text-right">9</td></tr>
+       <tr><td><a href="class-api.php.html#72"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::get_email_accounts">get_email_accounts</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="class-api.php.html#624"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::get_email_account_for_email">get_email_account_for_email</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="factories/class-new-email-factory.php.html#30"><abbr title="BrianHenryIE\WP_Mailboxes\API\Factories\New_Email_Factory::make">make</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#61"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::find_by_post_id">find_by_post_id</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#160"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::find_post_id_for_message_id">find_post_id_for_message_id</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="repositories/class-email-wp-post-repository.php.html#186"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::count_for_account_email">count_for_account_email</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="repositories/class-email-account-wp-post-repository.php.html#229"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository::update">update</abbr></a></td><td class="text-right">4</td></tr>
+       <tr><td><a href="class-api.php.html#156"><abbr title="BrianHenryIE\WP_Mailboxes\API\API::check_email_for_account">check_email_for_account</abbr></a></td><td class="text-right">2</td></tr>
+       <tr><td><a href="repositories/class-email-account-wp-post-repository.php.html#102"><abbr title="BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository::find_by_post_id">find_by_post_id</abbr></a></td><td class="text-right">2</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+   </div>
+   <footer>
+    <hr/>
+    <p>
+     <small>Generated by <a href="https://github.com/sebastianbergmann/php-code-coverage" target="_top">php-code-coverage 9.2.32</a> using <a href="https://secure.php.net/" target="_top">PHP 8.4.22</a> at Thu Jul 2 7:39:52 UTC 2026.</small>
+    </p>
+   </footer>
+  </div>
+  <script src="../_js/jquery.min.js?v=9.2.32" type="text/javascript"></script>
+  <script src="../_js/d3.min.js?v=9.2.32" type="text/javascript"></script>
+  <script src="../_js/nv.d3.min.js?v=9.2.32" type="text/javascript"></script>
+  <script type="text/javascript">
+$(document).ready(function() {
+  nv.addGraph(function() {
+    var chart = nv.models.multiBarChart();
+    chart.tooltips(false)
+      .showControls(false)
+      .showLegend(false)
+      .reduceXTicks(false)
+      .staggerLabels(true)
+      .yAxis.tickFormat(d3.format('d'));
+
+    d3.select('#classCoverageDistribution svg')
+      .datum(getCoverageDistributionData([10,0,0,1,1,2,0,0,1,3,1,1], "Class Coverage"))
+      .transition().duration(500).call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  nv.addGraph(function() {
+    var chart = nv.models.multiBarChart();
+    chart.tooltips(false)
+      .showControls(false)
+      .showLegend(false)
+      .reduceXTicks(false)
+      .staggerLabels(true)
+      .yAxis.tickFormat(d3.format('d'));
+
+    d3.select('#methodCoverageDistribution svg')
+      .datum(getCoverageDistributionData([55,0,0,0,0,0,0,0,4,2,3,33], "Method Coverage"))
+      .transition().duration(500).call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  function getCoverageDistributionData(data, label) {
+    var labels = [
+      '0%',
+      '0-10%',
+      '10-20%',
+      '20-30%',
+      '30-40%',
+      '40-50%',
+      '50-60%',
+      '60-70%',
+      '70-80%',
+      '80-90%',
+      '90-100%',
+      '100%'
+    ];
+    var values = [];
+    $.each(labels, function(key) {
+      values.push({x: labels[key], y: data[key]});
+    });
+
+    return [
+      {
+        key: label,
+        values: values,
+        color: "#4572A7"
+      }
+    ];
+  }
+  nv.addGraph(function() {
+    var chart = nv.models.scatterChart()
+      .showDistX(true)
+      .showDistY(true)
+      .showLegend(false)
+      .forceX([0, 100]);
+    chart.tooltipContent(function(graph) {
+      return '<p>' + graph.point.class + '</p>';
+    });
+
+    chart.xAxis.axisLabel('Code Coverage (in percent)');
+    chart.yAxis.axisLabel('Cyclomatic Complexity');
+
+    d3.select('#classComplexity svg')
+      .datum(getComplexityData([[30.73394495412844,69,"<a href=\"class-api.php.html#42\">BrianHenryIE\\WP_Mailboxes\\API\\API<\/a>"],[83.72093023255815,17,"<a href=\"factories\/class-bh-email-account-factory.php.html#24\">BrianHenryIE\\WP_Mailboxes\\API\\Factories\\BH_Email_Account_Factory<\/a>"],[85.71428571428571,18,"<a href=\"factories\/class-bh-email-factory.php.html#24\">BrianHenryIE\\WP_Mailboxes\\API\\Factories\\BH_Email_Factory<\/a>"],[0,2,"<a href=\"factories\/class-new-email-factory.php.html#21\">BrianHenryIE\\WP_Mailboxes\\API\\Factories\\New_Email_Factory<\/a>"],[80,10,"<a href=\"model\/class-bh-email-account.php.html#19\">BrianHenryIE\\WP_Mailboxes\\BH_Email_Account<\/a>"],[0,8,"<a href=\"model\/class-bh-email.php.html#22\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\BH_Email<\/a>"],[0,1,"<a href=\"model\/class-fetched-email.php.html#19\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Fetched_Email<\/a>"],[0,5,"<a href=\"model\/class-new-email-local.php.html#19\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\New_Email_Local<\/a>"],[0,3,"<a href=\"model\/class-new-email-remote.php.html#15\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\New_Email_Remote<\/a>"],[0,1,"<a href=\"model\/class-remote-email-coordinates.php.html#24\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Remote_Email_Coordinates<\/a>"],[0,1,"<a href=\"model\/result\/class-check-email-account-result.php.html#18\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Result\\Check_Email_Account_Result<\/a>"],[0,2,"<a href=\"model\/result\/class-check-mailbox-result.php.html#17\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Result\\Check_Mailbox_Result<\/a>"],[0,1,"<a href=\"model\/result\/class-delete-old-emails-result.php.html#15\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Result\\Delete_Old_Emails_Result<\/a>"],[0,1,"<a href=\"model\/result\/class-test-connection-result.php.html#15\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Result\\Test_Connection_Result<\/a>"],[100,5,"<a href=\"queries\/class-bh-email-account-query.php.html#19\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\BH_Email_Account_Query<\/a>"],[45.45454545454545,6,"<a href=\"queries\/class-bh-email-query.php.html#17\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\BH_Email_Query<\/a>"],[20.8955223880597,18,"<a href=\"queries\/class-wp-post-query-abstract.php.html#25\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\WP_Post_Query_Abstract<\/a>"],[75.72815533980582,17,"<a href=\"repositories\/class-email-account-wp-post-repository.php.html#25\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_Account_WP_Post_Repository<\/a>"],[40.243902439024396,34,"<a href=\"repositories\/class-email-wp-post-repository.php.html#34\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository<\/a>"],[92.3076923076923,4,"<a href=\"repositories\/class-wp-post-repository-abstract.php.html#21\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\WP_Post_Repository_Abstract<\/a>"]], 'Class Complexity'))
+      .transition()
+      .duration(500)
+      .call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  nv.addGraph(function() {
+    var chart = nv.models.scatterChart()
+      .showDistX(true)
+      .showDistY(true)
+      .showLegend(false)
+      .forceX([0, 100]);
+    chart.tooltipContent(function(graph) {
+      return '<p>' + graph.point.class + '</p>';
+    });
+
+    chart.xAxis.axisLabel('Code Coverage (in percent)');
+    chart.yAxis.axisLabel('Method Complexity');
+
+    d3.select('#methodComplexity svg')
+      .datum(getComplexityData([[100,1,"<a href=\"class-api.php.html#56\">BrianHenryIE\\WP_Mailboxes\\API\\API::__construct<\/a>"],[0,2,"<a href=\"class-api.php.html#72\">BrianHenryIE\\WP_Mailboxes\\API\\API::get_email_accounts<\/a>"],[100,1,"<a href=\"class-api.php.html#93\">BrianHenryIE\\WP_Mailboxes\\API\\API::add_email_account<\/a>"],[100,2,"<a href=\"class-api.php.html#119\">BrianHenryIE\\WP_Mailboxes\\API\\API::check_email<\/a>"],[70,2,"<a href=\"class-api.php.html#156\">BrianHenryIE\\WP_Mailboxes\\API\\API::check_email_for_account<\/a>"],[0,15,"<a href=\"class-api.php.html#194\">BrianHenryIE\\WP_Mailboxes\\API\\API::fetch_for_account<\/a>"],[90,5,"<a href=\"class-api.php.html#321\">BrianHenryIE\\WP_Mailboxes\\API\\API::test_connection<\/a>"],[0,1,"<a href=\"class-api.php.html#364\">BrianHenryIE\\WP_Mailboxes\\API\\API::get_downloaded_emails<\/a>"],[0,6,"<a href=\"class-api.php.html#371\">BrianHenryIE\\WP_Mailboxes\\API\\API::delete_old_emails<\/a>"],[0,1,"<a href=\"class-api.php.html#404\">BrianHenryIE\\WP_Mailboxes\\API\\API::mark_email_read<\/a>"],[0,1,"<a href=\"class-api.php.html#414\">BrianHenryIE\\WP_Mailboxes\\API\\API::mark_email_unread<\/a>"],[0,1,"<a href=\"class-api.php.html#424\">BrianHenryIE\\WP_Mailboxes\\API\\API::delete_email_on_server<\/a>"],[0,1,"<a href=\"class-api.php.html#437\">BrianHenryIE\\WP_Mailboxes\\API\\API::update_email_local_status<\/a>"],[0,3,"<a href=\"class-api.php.html#452\">BrianHenryIE\\WP_Mailboxes\\API\\API::set_connection_credentials<\/a>"],[0,11,"<a href=\"class-api.php.html#486\">BrianHenryIE\\WP_Mailboxes\\API\\API::perform_remote_email_action<\/a>"],[100,1,"<a href=\"class-api.php.html#554\">BrianHenryIE\\WP_Mailboxes\\API\\API::insert_email_log_note<\/a>"],[0,6,"<a href=\"class-api.php.html#568\">BrianHenryIE\\WP_Mailboxes\\API\\API::get_remote_read_status<\/a>"],[100,1,"<a href=\"class-api.php.html#597\">BrianHenryIE\\WP_Mailboxes\\API\\API::get_settings<\/a>"],[100,2,"<a href=\"class-api.php.html#608\">BrianHenryIE\\WP_Mailboxes\\API\\API::get_last_fetched_times<\/a>"],[0,2,"<a href=\"class-api.php.html#624\">BrianHenryIE\\WP_Mailboxes\\API\\API::get_email_account_for_email<\/a>"],[100,4,"<a href=\"class-api.php.html#641\">BrianHenryIE\\WP_Mailboxes\\API\\API::get_connection_for_email_account<\/a>"],[100,1,"<a href=\"factories\/class-bh-email-account-factory.php.html#32\">BrianHenryIE\\WP_Mailboxes\\API\\Factories\\BH_Email_Account_Factory::__construct<\/a>"],[100,1,"<a href=\"factories\/class-bh-email-account-factory.php.html#44\">BrianHenryIE\\WP_Mailboxes\\API\\Factories\\BH_Email_Account_Factory::from_wp_post<\/a>"],[83.13253012048193,15,"<a href=\"factories\/class-bh-email-account-factory.php.html#59\">BrianHenryIE\\WP_Mailboxes\\API\\Factories\\BH_Email_Account_Factory::get_array_from_post_meta<\/a>"],[100,1,"<a href=\"factories\/class-bh-email-factory.php.html#32\">BrianHenryIE\\WP_Mailboxes\\API\\Factories\\BH_Email_Factory::__construct<\/a>"],[85.5072463768116,17,"<a href=\"factories\/class-bh-email-factory.php.html#43\">BrianHenryIE\\WP_Mailboxes\\API\\Factories\\BH_Email_Factory::from_wp_post<\/a>"],[0,2,"<a href=\"factories\/class-new-email-factory.php.html#30\">BrianHenryIE\\WP_Mailboxes\\API\\Factories\\New_Email_Factory::make<\/a>"],[0,1,"<a href=\"model\/class-bh-email-account.php.html#40\">BrianHenryIE\\WP_Mailboxes\\BH_Email_Account::__construct<\/a>"],[100,1,"<a href=\"model\/class-bh-email-account.php.html#60\">BrianHenryIE\\WP_Mailboxes\\BH_Email_Account::get_post_id<\/a>"],[100,1,"<a href=\"model\/class-bh-email-account.php.html#67\">BrianHenryIE\\WP_Mailboxes\\BH_Email_Account::is_active<\/a>"],[100,1,"<a href=\"model\/class-bh-email-account.php.html#74\">BrianHenryIE\\WP_Mailboxes\\BH_Email_Account::get_account_email_address<\/a>"],[100,1,"<a href=\"model\/class-bh-email-account.php.html#81\">BrianHenryIE\\WP_Mailboxes\\BH_Email_Account::get_account_display_friendly_name<\/a>"],[100,1,"<a href=\"model\/class-bh-email-account.php.html#90\">BrianHenryIE\\WP_Mailboxes\\BH_Email_Account::after_download_remote_email_action<\/a>"],[100,1,"<a href=\"model\/class-bh-email-account.php.html#97\">BrianHenryIE\\WP_Mailboxes\\BH_Email_Account::get_from_email_regex<\/a>"],[100,1,"<a href=\"model\/class-bh-email-account.php.html#104\">BrianHenryIE\\WP_Mailboxes\\BH_Email_Account::get_body_identifier_regex<\/a>"],[100,1,"<a href=\"model\/class-bh-email-account.php.html#115\">BrianHenryIE\\WP_Mailboxes\\BH_Email_Account::get_delete_emails_days<\/a>"],[0,1,"<a href=\"model\/class-bh-email-account.php.html#125\">BrianHenryIE\\WP_Mailboxes\\BH_Email_Account::get_post_type<\/a>"],[0,1,"<a href=\"model\/class-bh-email.php.html#47\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\BH_Email::__construct<\/a>"],[0,1,"<a href=\"model\/class-bh-email.php.html#73\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\BH_Email::get_post_type<\/a>"],[0,1,"<a href=\"model\/class-bh-email.php.html#80\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\BH_Email::get_from_email<\/a>"],[0,1,"<a href=\"model\/class-bh-email.php.html#87\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\BH_Email::get_subject<\/a>"],[0,1,"<a href=\"model\/class-bh-email.php.html#94\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\BH_Email::get_sent_at<\/a>"],[0,1,"<a href=\"model\/class-bh-email.php.html#101\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\BH_Email::get_post_id<\/a>"],[0,1,"<a href=\"model\/class-bh-email.php.html#110\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\BH_Email::get_post_status<\/a>"],[0,1,"<a href=\"model\/class-bh-email.php.html#117\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\BH_Email::get_remote_coordinates<\/a>"],[0,1,"<a href=\"model\/class-fetched-email.php.html#28\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Fetched_Email::__construct<\/a>"],[0,1,"<a href=\"model\/class-new-email-local.php.html#27\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\New_Email_Local::__construct<\/a>"],[0,1,"<a href=\"model\/class-new-email-local.php.html#36\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\New_Email_Local::get_email<\/a>"],[0,1,"<a href=\"model\/class-new-email-local.php.html#49\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\New_Email_Local::update_local_status<\/a>"],[0,1,"<a href=\"model\/class-new-email-local.php.html#65\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\New_Email_Local::add_local_note<\/a>"],[0,1,"<a href=\"model\/class-new-email-local.php.html#82\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\New_Email_Local::trash_locally<\/a>"],[0,1,"<a href=\"model\/class-new-email-remote.php.html#20\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\New_Email_Remote::delete_on_server<\/a>"],[0,1,"<a href=\"model\/class-new-email-remote.php.html#30\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\New_Email_Remote::mark_read_on_server<\/a>"],[0,1,"<a href=\"model\/class-new-email-remote.php.html#40\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\New_Email_Remote::mark_unread_on_server<\/a>"],[0,1,"<a href=\"model\/class-remote-email-coordinates.php.html#34\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Remote_Email_Coordinates::__construct<\/a>"],[0,1,"<a href=\"model\/result\/class-check-email-account-result.php.html#28\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Result\\Check_Email_Account_Result::__construct<\/a>"],[0,1,"<a href=\"model\/result\/class-check-mailbox-result.php.html#26\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Result\\Check_Mailbox_Result::__construct<\/a>"],[0,1,"<a href=\"model\/result\/class-check-mailbox-result.php.html#37\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Result\\Check_Mailbox_Result::get_emails<\/a>"],[0,1,"<a href=\"model\/result\/class-delete-old-emails-result.php.html#23\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Result\\Delete_Old_Emails_Result::__construct<\/a>"],[0,1,"<a href=\"model\/result\/class-test-connection-result.php.html#23\">BrianHenryIE\\WP_Mailboxes\\API\\Model\\Result\\Test_Connection_Result::__construct<\/a>"],[100,1,"<a href=\"queries\/class-bh-email-account-query.php.html#38\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\BH_Email_Account_Query::__construct<\/a>"],[100,2,"<a href=\"queries\/class-bh-email-account-query.php.html#64\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\BH_Email_Account_Query::get_wp_post_fields<\/a>"],[100,2,"<a href=\"queries\/class-bh-email-account-query.php.html#82\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\BH_Email_Account_Query::get_meta_input<\/a>"],[100,1,"<a href=\"queries\/class-bh-email-query.php.html#40\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\BH_Email_Query::__construct<\/a>"],[100,1,"<a href=\"queries\/class-bh-email-query.php.html#66\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\BH_Email_Query::get_wp_post_fields<\/a>"],[0,1,"<a href=\"queries\/class-bh-email-query.php.html#84\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\BH_Email_Query::get_meta_input<\/a>"],[0,3,"<a href=\"queries\/class-bh-email-query.php.html#101\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\BH_Email_Query::get_slug<\/a>"],[100,1,"<a href=\"queries\/class-wp-post-query-abstract.php.html#32\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\WP_Post_Query_Abstract::__construct<\/a>"],[0,1,"<a href=\"queries\/class-wp-post-query-abstract.php.html#40\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\WP_Post_Query_Abstract::get_post_type<\/a>"],[0,1,"<a href=\"queries\/class-wp-post-query-abstract.php.html#51\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\WP_Post_Query_Abstract::get_wp_post_fields<\/a>"],[100,0,"<a href=\"queries\/class-wp-post-query-abstract.php.html#62\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\WP_Post_Query_Abstract::get_meta_input<\/a>"],[0,1,"<a href=\"queries\/class-wp-post-query-abstract.php.html#71\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\WP_Post_Query_Abstract::get_valid_keys<\/a>"],[0,9,"<a href=\"queries\/class-wp-post-query-abstract.php.html#103\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\WP_Post_Query_Abstract::normalise_fields<\/a>"],[0,1,"<a href=\"queries\/class-wp-post-query-abstract.php.html#177\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\WP_Post_Query_Abstract::to_wp_post_array<\/a>"],[100,4,"<a href=\"queries\/class-wp-post-query-abstract.php.html#192\">BrianHenryIE\\WP_Mailboxes\\API\\Queries\\WP_Post_Query_Abstract::to_wp_query_args<\/a>"],[0,1,"<a href=\"repositories\/class-email-account-wp-post-repository.php.html#35\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_Account_WP_Post_Repository::__construct<\/a>"],[100,2,"<a href=\"repositories\/class-email-account-wp-post-repository.php.html#56\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_Account_WP_Post_Repository::save_new<\/a>"],[75,2,"<a href=\"repositories\/class-email-account-wp-post-repository.php.html#102\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_Account_WP_Post_Repository::find_by_post_id<\/a>"],[100,3,"<a href=\"repositories\/class-email-account-wp-post-repository.php.html#121\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_Account_WP_Post_Repository::find_by_email_address<\/a>"],[100,1,"<a href=\"repositories\/class-email-account-wp-post-repository.php.html#141\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_Account_WP_Post_Repository::get_all<\/a>"],[100,1,"<a href=\"repositories\/class-email-account-wp-post-repository.php.html#164\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_Account_WP_Post_Repository::query<\/a>"],[0,3,"<a href=\"repositories\/class-email-account-wp-post-repository.php.html#185\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_Account_WP_Post_Repository::run_query<\/a>"],[79.06976744186046,4,"<a href=\"repositories\/class-email-account-wp-post-repository.php.html#229\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_Account_WP_Post_Repository::update<\/a>"],[0,1,"<a href=\"repositories\/class-email-wp-post-repository.php.html#45\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository::__construct<\/a>"],[0,2,"<a href=\"repositories\/class-email-wp-post-repository.php.html#61\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository::find_by_post_id<\/a>"],[0,3,"<a href=\"repositories\/class-email-wp-post-repository.php.html#77\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository::find_recent<\/a>"],[0,4,"<a href=\"repositories\/class-email-wp-post-repository.php.html#102\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository::delete_older_than<\/a>"],[0,1,"<a href=\"repositories\/class-email-wp-post-repository.php.html#143\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository::is_post_for_message_id<\/a>"],[0,2,"<a href=\"repositories\/class-email-wp-post-repository.php.html#160\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository::find_post_id_for_message_id<\/a>"],[0,2,"<a href=\"repositories\/class-email-wp-post-repository.php.html#186\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository::count_for_account_email<\/a>"],[100,5,"<a href=\"repositories\/class-email-wp-post-repository.php.html#215\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository::save_new<\/a>"],[0,4,"<a href=\"repositories\/class-email-wp-post-repository.php.html#293\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository::save_attachments<\/a>"],[100,1,"<a href=\"repositories\/class-email-wp-post-repository.php.html#352\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository::save_all<\/a>"],[72.72727272727273,8,"<a href=\"repositories\/class-email-wp-post-repository.php.html#377\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository::update<\/a>"],[100,1,"<a href=\"repositories\/class-email-wp-post-repository.php.html#444\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\Email_WP_Post_Repository::message_id_slug<\/a>"],[90.9090909090909,2,"<a href=\"repositories\/class-wp-post-repository-abstract.php.html#34\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\WP_Post_Repository_Abstract::insert<\/a>"],[93.33333333333333,2,"<a href=\"repositories\/class-wp-post-repository-abstract.php.html#85\">BrianHenryIE\\WP_Mailboxes\\API\\Repositories\\WP_Post_Repository_Abstract::log<\/a>"]], 'Method Complexity'))
+      .transition()
+      .duration(500)
+      .call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  function getComplexityData(data, label) {
+    var values = [];
+    $.each(data, function(key) {
+      var value = Math.round(data[key][0]*100) / 100;
+      values.push({
+        x: value,
+        y: data[key][1],
+        class: data[key][2],
+        size: 0.05,
+        shape: 'diamond'
+      });
+    });
+
+    return [
+      {
+        key: label,
+        values: values,
+        color: "#4572A7"
+      }
+    ];
+  }
+});
+  </script>
+ </body>
+</html>
