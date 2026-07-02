@@ -12,6 +12,7 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_Fixtures_Connection;
 use Throwable;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -149,6 +150,26 @@ class Mailboxes {
 				'methods'             => 'DELETE',
 				'callback'            => $this->delete_emails( ... ),
 				'permission_callback' => '__return_true',
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/fixtures-fail',
+			array(
+				'methods'             => 'POST',
+				'callback'            => $this->set_fixtures_fail( ... ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'email_address' => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+					'enabled'       => array(
+						'type'     => 'boolean',
+						'required' => false,
+					),
+				),
 			)
 		);
 
@@ -354,6 +375,36 @@ class Mailboxes {
 		}
 
 		return new WP_REST_Response( array( 'deleted' => $deleted ), 200 );
+	}
+
+	/**
+	 * Toggle the simulated-connection-failure flag for a single fixtures account.
+	 *
+	 * With `enabled` true (default), the fixtures connection throws when fetching the named account, so the
+	 * API records a failed-login time and the auth-failure admin notice appears. With `enabled` false the
+	 * flag is cleared. Scoped to one account so it does not disturb other accounts' fetches. Returns
+	 * { email_address: string, enabled: bool } with HTTP 200.
+	 *
+	 * @param WP_REST_Request $request The REST request object.
+	 */
+	public function set_fixtures_fail( WP_REST_Request $request ): WP_REST_Response {
+
+		$email_address = sanitize_email( (string) $request->get_param( 'email_address' ) );
+		$enabled       = false === $request->get_param( 'enabled' ) ? false : true;
+
+		if ( $enabled ) {
+			update_option( Mock_Mailbox_Fixtures_Connection::FAIL_ACCOUNT_OPTION, $email_address, false );
+		} else {
+			delete_option( Mock_Mailbox_Fixtures_Connection::FAIL_ACCOUNT_OPTION );
+		}
+
+		return new WP_REST_Response(
+			array(
+				'email_address' => $email_address,
+				'enabled'       => $enabled,
+			),
+			200
+		);
 	}
 
 	/**

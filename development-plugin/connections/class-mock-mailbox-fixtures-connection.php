@@ -42,6 +42,22 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	protected string $fixtures_directory = __DIR__ . '/fixtures';
 
 	/**
+	 * The option that, when it holds an account's email address, makes {@see self::retrieve_emails()} throw for
+	 * that account. Lets an E2E test simulate a connection failure for one account without breaking others.
+	 *
+	 * @var string
+	 */
+	public const FAIL_ACCOUNT_OPTION = 'bh_wp_mailboxes_fixtures_fail_account';
+
+	/**
+	 * The account most recently resolved to this connection, captured so {@see self::retrieve_emails()} — which
+	 * receives no account argument — knows which account it is fetching for.
+	 *
+	 * @var ?BH_Email_Account
+	 */
+	protected ?BH_Email_Account $last_resolved_account = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param BH_WP_Mailboxes_Settings_Interface $mailbox_settings       The mailbox settings (provides the CPT name).
@@ -114,6 +130,9 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	public function connection( mixed $value, string $plugin_slug, BH_Email_Account $email_account ): mixed {
 		if ( $this->mailbox_settings->get_plugin_slug() === $plugin_slug
 			&& get_class( $this ) === $email_account->connection_type_class ) {
+			// Remember which account this connection was just resolved for, so retrieve_emails() (which gets
+			// no account argument) can honour a per-account simulated-failure flag.
+			$this->last_resolved_account = $email_account;
 			return $this;
 		}
 
@@ -202,8 +221,22 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	 * @param DateTimeInterface $since_time The earliest time to retrieve emails from (ignored; all fixtures are returned).
 	 *
 	 * @return Collection<int, Fetched_Email>
+	 * @throws \Exception When the E2E simulated-failure flag names the account being fetched.
 	 */
 	public function retrieve_emails( DateTimeInterface $since_time ): Collection {
+
+		// E2E hook: when the fail-account option names the account being fetched, throw so the API records a
+		// failed-login time (which surfaces the auth-failure admin notice). Scoped per-account so setting it
+		// does not break other accounts' fetches running in parallel.
+		$fail_for_account = get_option( self::FAIL_ACCOUNT_OPTION );
+		if ( is_string( $fail_for_account ) && '' !== $fail_for_account
+			&& null !== $this->last_resolved_account
+			&& $this->last_resolved_account->get_account_email_address() === $fail_for_account ) {
+			// A static, plain-text message: no interpolated output to escape (which the account address
+			// would otherwise require under WPCS), and the API already logs which account was being fetched.
+			throw new \Exception( 'Mock_Mailbox_Fixtures_Connection: simulated connection failure (fixtures fail flag is set for this account).' );
+		}
+
 		$files            = glob( $this->fixtures_directory . '/*.eml' ) ?: array();
 		$email_collection = new Collection();
 		$parser           = new MailMimeParser();
