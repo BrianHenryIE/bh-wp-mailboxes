@@ -10,10 +10,10 @@
     "test:e2e:ui": "tsx node_modules/.bin/playwright test --ui"
   },
   "devDependencies": {
-    "@playwright/test": "*",
-    "@wordpress/e2e-test-utils-playwright": "*",
-    "@wordpress/env": "*",
-    "dotenv": "*",
-    "tsx": "*"
+    "@playwright/test": "^1.60",
+    "@wordpress/e2e-test-utils-playwright": "^1.50",
+    "@wordpress/env": "^11.10",
+    "dotenv": "^17.4",
+    "tsx": "^4.22"
   }
 }
