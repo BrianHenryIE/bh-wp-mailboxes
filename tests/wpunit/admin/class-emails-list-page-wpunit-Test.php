@@ -86,6 +86,29 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
+	 * Reset the request superglobal so status/account query params don't leak between tests.
+	 */
+	public function tearDown(): void {
+		unset( $_GET['post_status'], $_GET['bh_email_account'] );
+		parent::tearDown();
+	}
+
+	/**
+	 * Build a main-query WP_Query for our emails CPT in the admin context, as `pre_get_posts` would see it.
+	 */
+	private function make_admin_main_query(): \WP_Query {
+		set_current_screen( 'edit.php' ); // Makes is_admin() true.
+
+		$query = new \WP_Query();
+		$query->set( 'post_type', $this->post_type );
+
+		// is_main_query() compares against the global "main" query.
+		$GLOBALS['wp_the_query'] = $query;
+
+		return $query;
+	}
+
+	/**
 	 * "Trash" is relabelled "Trash locally" for email rows.
 	 *
 	 * @covers ::row_actions
@@ -145,6 +168,135 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 		$actions = $this->make_sut( has_account: false )->row_actions( array(), $this->make_post() );
 
 		$this->assertArrayNotHasKey( 'bh_delete_on_server', $actions );
+	}
+
+	/**
+	 * "Quick Edit" is removed — emails are immutable, read-only records.
+	 *
+	 * @covers ::row_actions
+	 */
+	public function test_quick_edit_is_removed(): void {
+		$actions = $this->make_sut()->row_actions(
+			array( 'inline hide-if-no-js' => '<button type="button" class="button-link editinline">Quick&nbsp;Edit</button>' ),
+			$this->make_post()
+		);
+
+		$this->assertArrayNotHasKey( 'inline hide-if-no-js', $actions );
+	}
+
+	/**
+	 * The default "All" view forces `post_status => any` so the custom email statuses are shown.
+	 *
+	 * @covers ::show_all_post_statuses
+	 */
+	public function test_show_all_post_statuses_defaults_to_any(): void {
+		$query = $this->make_admin_main_query();
+
+		$this->make_sut()->show_all_post_statuses( $query );
+
+		$this->assertSame( 'any', $query->get( 'post_status' ) );
+	}
+
+	/**
+	 * A specific status selected from the status-list links is respected (the filter-by-status bug regression).
+	 *
+	 * @covers ::show_all_post_statuses
+	 */
+	public function test_show_all_post_statuses_respects_explicit_status(): void {
+		$_GET['post_status'] = 'bh_email_new';
+
+		$query = $this->make_admin_main_query();
+		$query->set( 'post_status', 'bh_email_new' );
+
+		$this->make_sut()->show_all_post_statuses( $query );
+
+		// Not clobbered to "any".
+		$this->assertSame( 'bh_email_new', $query->get( 'post_status' ) );
+	}
+
+	/**
+	 * Selecting an account in the filter dropdown constrains the query to that account's emails.
+	 *
+	 * @covers ::filter_by_account
+	 */
+	public function test_filter_by_account_sets_post_parent(): void {
+		$_GET['bh_email_account'] = '7';
+
+		$query = $this->make_admin_main_query();
+
+		$this->make_sut()->filter_by_account( $query );
+
+		$this->assertSame( 7, $query->get( 'post_parent' ) );
+	}
+
+	/**
+	 * With no account selected, the query is left unconstrained (all accounts).
+	 *
+	 * @covers ::filter_by_account
+	 */
+	public function test_filter_by_account_ignored_without_selection(): void {
+		$query = $this->make_admin_main_query();
+
+		$this->make_sut()->filter_by_account( $query );
+
+		$this->assertEmpty( $query->get( 'post_parent' ) );
+	}
+
+	/**
+	 * The account filter dropdown is rendered on the emails list screen when multiple accounts exist.
+	 *
+	 * @covers ::table_filters
+	 */
+	public function test_account_filter_dropdown_rendered_with_multiple_accounts(): void {
+		set_current_screen( 'edit.php' );
+		get_current_screen()->post_type = $this->post_type;
+
+		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class )->shouldIgnoreMissing();
+		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $this->post_type );
+
+		$api = Mockery::mock( API_Interface::class )->shouldIgnoreMissing();
+		$api->allows( 'get_email_accounts' )->andReturn(
+			array(
+				BH_Email_Account_Fixture::make( post_id: 11, display_name: 'Alpha Account' ),
+				BH_Email_Account_Fixture::make( post_id: 22, display_name: 'Beta Account' ),
+			)
+		);
+
+		$sut = new Emails_List_Page( Mockery::mock( Email_WP_Post_Repository::class ), $api, $settings, $this->logger );
+
+		ob_start();
+		$sut->table_filters();
+		$html = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'name="bh_email_account"', $html );
+		$this->assertStringContainsString( 'All accounts', $html );
+		$this->assertStringContainsString( 'value="11"', $html );
+		$this->assertStringContainsString( 'Alpha Account', $html );
+		$this->assertStringContainsString( 'Beta Account', $html );
+	}
+
+	/**
+	 * The dropdown is not rendered for a single-account mailbox — there is nothing to filter.
+	 *
+	 * @covers ::table_filters
+	 */
+	public function test_account_filter_dropdown_absent_with_single_account(): void {
+		set_current_screen( 'edit.php' );
+		get_current_screen()->post_type = $this->post_type;
+
+		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class )->shouldIgnoreMissing();
+		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $this->post_type );
+
+		$api = Mockery::mock( API_Interface::class )->shouldIgnoreMissing();
+		$api->allows( 'get_email_accounts' )->andReturn( array( BH_Email_Account_Fixture::make( post_id: 11 ) ) );
+
+		$sut = new Emails_List_Page( Mockery::mock( Email_WP_Post_Repository::class ), $api, $settings, $this->logger );
+
+		ob_start();
+		$sut->table_filters();
+		$html = (string) ob_get_clean();
+
+		$this->assertSame( '', $html );
 	}
 
 	/**

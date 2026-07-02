@@ -118,6 +118,10 @@ class Mailboxes {
 						'type'     => 'string',
 						'required' => false,
 					),
+					'account_id'        => array(
+						'type'     => 'integer',
+						'required' => false,
+					),
 					'is_read'           => array(
 						'type'     => 'boolean',
 						'required' => false,
@@ -155,6 +159,12 @@ class Mailboxes {
 				'methods'             => 'POST',
 				'callback'            => $this->run_fetch( ... ),
 				'permission_callback' => '__return_true',
+				'args'                => array(
+					'account_id' => array(
+						'type'     => 'integer',
+						'required' => false,
+					),
+				),
 			)
 		);
 	}
@@ -238,11 +248,16 @@ class Mailboxes {
 			? sanitize_key( $request->get_param( 'post_status' ) )
 			: 'bh_email_new';
 
+		// Optionally parent the email to an account post (emails store their account as post_parent), so a
+		// test can filter the list to just its own emails via the account dropdown / `bh_email_account` arg.
+		$account_id = is_numeric( $request->get_param( 'account_id' ) ) ? (int) $request->get_param( 'account_id' ) : 0;
+
 		$post_id = wp_insert_post(
 			array(
 				'post_type'   => self::EMAIL_POST_TYPE,
 				'post_status' => $post_status,
 				'post_title'  => $subject,
+				'post_parent' => $account_id,
 			),
 			true
 		);
@@ -342,13 +357,23 @@ class Mailboxes {
 	}
 
 	/**
-	 * Run the email fetch for every registered mailbox and report how many new emails were saved.
+	 * Run the email fetch and report how many new emails were saved.
 	 *
-	 * Mirrors the Settings "Run now" button so Playwright can drive the fetch pipeline via REST.
+	 * Mirrors the Settings "Run now" button so Playwright can drive the fetch pipeline via REST. Without
+	 * arguments it fetches every registered mailbox; passing `account_id` fetches just that one account,
+	 * which lets parallel tests arrange their own account without racing each other's dedup on shared ones.
 	 *
 	 * Returns { fetched: int } with HTTP 200.
+	 *
+	 * @param WP_REST_Request $request The REST request object.
 	 */
-	public function run_fetch(): WP_REST_Response {
+	public function run_fetch( WP_REST_Request $request ): WP_REST_Response {
+
+		// The fetch pipeline saves attachments via wp_tempnam(), which lives in wp-admin/includes/file.php.
+		// The admin "Run now" button and admin-ajax "Check now" have it loaded; a plain REST request does not.
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+
+		$account_id = is_numeric( $request->get_param( 'account_id' ) ) ? (int) $request->get_param( 'account_id' ) : 0;
 
 		$mailboxes = apply_filters( 'bh_wp_mailboxes_registered_mailboxes', array(), 'development-plugin' );
 
@@ -358,7 +383,21 @@ class Mailboxes {
 				continue;
 			}
 			try {
-				$fetched += count( $api->check_email()->get_emails() );
+				if ( $account_id > 0 ) {
+					$account = null;
+					foreach ( $api->get_email_accounts() as $candidate ) {
+						if ( $candidate->get_post_id() === $account_id ) {
+							$account = $candidate;
+							break;
+						}
+					}
+					if ( null === $account ) {
+						continue;
+					}
+					$fetched += count( $api->check_email_for_account( $account )->new_emails );
+				} else {
+					$fetched += count( $api->check_email()->get_emails() );
+				}
 			} catch ( Throwable $t ) {
 				// A test mailbox may be unreachable; don't fail the whole request.
 				continue;

@@ -168,6 +168,9 @@ class Emails_List_Page {
 			return $actions;
 		}
 
+		// Emails are immutable, read-only records — Quick Edit (inline edit of title/status/etc.) is meaningless.
+		unset( $actions['inline hide-if-no-js'] );
+
 		// "Trash" removes only the locally-saved copy, so relabel it.
 		if ( isset( $actions['trash'] ) ) {
 			$actions['trash'] = str_replace(
@@ -232,23 +235,101 @@ class Emails_List_Page {
 			return;
 		}
 
-		// TODO: Add account filter when multiple accounts exist.
+		// An account filter only helps when the mailbox has more than one account.
+		$accounts = $this->api->get_email_accounts();
+		if ( count( $accounts ) < 2 ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$selected = isset( $_GET['bh_email_account'] ) ? absint( wp_unslash( $_GET['bh_email_account'] ) ) : 0;
+
+		echo '<label for="bh_email_account" class="screen-reader-text">'
+			. esc_html__( 'Filter by account', 'bh-wp-mailboxes' ) . '</label>';
+		echo '<select name="bh_email_account" id="bh_email_account">';
+		printf(
+			'<option value="0"%s>%s</option>',
+			selected( $selected, 0, false ),
+			esc_html__( 'All accounts', 'bh-wp-mailboxes' )
+		);
+		foreach ( $accounts as $account ) {
+			printf(
+				'<option value="%d"%s>%s</option>',
+				(int) $account->get_post_id(),
+				selected( $selected, $account->get_post_id(), false ),
+				esc_html( $account->get_account_display_friendly_name() )
+			);
+		}
+		echo '</select>';
+	}
+
+	/**
+	 * Whether the given query is the emails list-table's main query on its `edit.php` screen.
+	 *
+	 * `pre_get_posts` fires for every main query — including single-post edit screens and other admin
+	 * pages — so the list-table query tweaks below must confirm they are on the emails `edit.php` screen
+	 * before touching the query. `get_current_screen()` is guarded because `pre_get_posts` can also run
+	 * in contexts (e.g. AJAX) where the admin screen functions are not loaded.
+	 *
+	 * @param \WP_Query $query The current WP_Query instance.
+	 */
+	private function is_emails_list_query( \WP_Query $query ): bool {
+		if ( ! is_admin() || ! $query->is_main_query() ) {
+			return false;
+		}
+		if ( ! function_exists( 'get_current_screen' ) ) {
+			return false;
+		}
+		$screen = get_current_screen();
+		if ( null === $screen || 'edit' !== $screen->base ) {
+			return false;
+		}
+		return $query->get( 'post_type' ) === $this->settings->get_emails_cpt_underscored_20();
+	}
+
+	/**
+	 * Filter the list table to a single account when one is selected in the {@see self::table_filters()} dropdown.
+	 *
+	 * Emails are stored with the account post as their `post_parent`, so filtering is a `post_parent` query.
+	 *
+	 * @hooked pre_get_posts
+	 *
+	 * @param \WP_Query $query The current WP_Query instance.
+	 */
+	public function filter_by_account( \WP_Query $query ): void {
+		if ( ! $this->is_emails_list_query( $query ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$account_id = isset( $_GET['bh_email_account'] ) ? absint( wp_unslash( $_GET['bh_email_account'] ) ) : 0;
+		if ( $account_id > 0 ) {
+			$query->set( 'post_parent', $account_id );
+		}
 	}
 
 	/**
 	 * Show all post statuses on the emails list table.
+	 *
+	 * The emails CPT uses custom statuses (new/processed/saved) which WordPress would otherwise hide from the
+	 * default "All" view, so default to `any`. A specific status selected from the status-list links above the
+	 * table (`?post_status=…`) must be respected, so only force `any` when no explicit status was requested.
 	 *
 	 * @hooked pre_get_posts
 	 *
 	 * @param \WP_Query $query The current WP_Query instance.
 	 */
 	public function show_all_post_statuses( \WP_Query $query ): void {
-		if ( ! is_admin() || ! $query->is_main_query() ) {
+		if ( ! $this->is_emails_list_query( $query ) ) {
 			return;
 		}
-		if ( $query->get( 'post_type' ) !== $this->settings->get_emails_cpt_underscored_20() ) {
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$requested_status = isset( $_GET['post_status'] ) ? sanitize_key( wp_unslash( $_GET['post_status'] ) ) : '';
+		if ( '' !== $requested_status && 'all' !== $requested_status ) {
 			return;
 		}
+
 		$query->set( 'post_status', 'any' );
 	}
 
