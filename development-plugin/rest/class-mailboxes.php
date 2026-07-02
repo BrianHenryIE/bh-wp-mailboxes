@@ -77,6 +77,23 @@ class Mailboxes {
 
 		register_rest_route(
 			self::NAMESPACE,
+			'/debug-log',
+			array(
+				array(
+					'methods'             => 'GET',
+					'callback'            => $this->get_debug_log( ... ),
+					'permission_callback' => '__return_true',
+				),
+				array(
+					'methods'             => 'DELETE',
+					'callback'            => $this->truncate_debug_log( ... ),
+					'permission_callback' => '__return_true',
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
 			'/accounts',
 			array(
 				'methods'             => 'POST',
@@ -188,6 +205,43 @@ class Mailboxes {
 				),
 			)
 		);
+	}
+
+	/**
+	 * The path to the WordPress debug log. The wp-env config points WP_DEBUG_LOG at this exact path.
+	 */
+	private function debug_log_path(): string {
+		return WP_CONTENT_DIR . '/debug.log';
+	}
+
+	/**
+	 * Return the contents of wp-content/debug.log (empty string when absent).
+	 *
+	 * Used by the Playwright global teardown to fail the run if the suite emitted PHP notices/errors.
+	 * Returns { contents: string } with HTTP 200.
+	 */
+	public function get_debug_log(): WP_REST_Response {
+
+		$path     = $this->debug_log_path();
+		$contents = is_readable( $path )
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- local file, dev only.
+			? (string) file_get_contents( $path )
+			: '';
+
+		return new WP_REST_Response( array( 'contents' => $contents ), 200 );
+	}
+
+	/**
+	 * Truncate wp-content/debug.log so a test run starts from a clean slate.
+	 *
+	 * Returns { truncated: bool } with HTTP 200.
+	 */
+	public function truncate_debug_log(): WP_REST_Response {
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents,WordPress.WP.AlternativeFunctions.file_put_contents -- local file, dev only.
+		$truncated = false !== file_put_contents( $this->debug_log_path(), '' );
+
+		return new WP_REST_Response( array( 'truncated' => $truncated ), 200 );
 	}
 
 	/**
@@ -420,10 +474,8 @@ class Mailboxes {
 	 */
 	public function run_fetch( WP_REST_Request $request ): WP_REST_Response {
 
-		// The fetch pipeline saves attachments via wp_tempnam(), which lives in wp-admin/includes/file.php.
-		// The admin "Run now" button and admin-ajax "Check now" have it loaded; a plain REST request does not.
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-
+		// (The wp_tempnam() workaround previously here is no longer needed: the repository now loads
+		// wp-admin/includes/file.php itself when saving attachments outside admin — see Email_WP_Post_Repository.)
 		$account_id = is_numeric( $request->get_param( 'account_id' ) ) ? (int) $request->get_param( 'account_id' ) : 0;
 
 		$mailboxes = apply_filters( 'bh_wp_mailboxes_registered_mailboxes', array(), 'development-plugin' );
