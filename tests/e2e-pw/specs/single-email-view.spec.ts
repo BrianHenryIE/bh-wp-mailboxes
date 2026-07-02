@@ -440,7 +440,7 @@ test.describe( 'Single email view', () => {
 		await expect( metabox ).toContainText( 'In mailbox:' );
 
 		// The mailbox name links back to this CPT's list.
-		const link = metabox.locator( 'a[href*="edit.php?post_type=fixtures_email"]' );
+		const link = metabox.locator( 'a[href*="edit.php?post_type=e2e_email"]' );
 		await expect( link ).toBeAttached();
 	} );
 
@@ -498,7 +498,7 @@ test.describe( 'Single email view', () => {
 		expect( accountRes.status() ).toBe( 201 );
 		const accountId = ( await accountRes.json() ).post_id as number;
 
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 		const checkResponse = page.waitForResponse(
 			( res ) =>
 				res.url().includes( 'admin-ajax.php' ) &&
@@ -546,7 +546,7 @@ test.describe( 'Single email view', () => {
 		expect( accountRes.status() ).toBe( 201 );
 		const accountId = ( await accountRes.json() ).post_id as number;
 
-		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 		const checkResponse = page.waitForResponse(
 			( res ) =>
 				res.url().includes( 'admin-ajax.php' ) &&

@@ -8,6 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_E2E_Connection;
 
 /**
  * Adds and styles the development "Mailboxes" admin menu.
@@ -114,6 +115,13 @@ class Menu {
 
 		foreach ( $mailboxes as $mailbox ) {
 			$mailbox_settings = $mailbox->get_settings();
+
+			// The e2e-only arrange mailbox is deliberately hidden from the menu (it is registered so the dev
+			// REST /fetch can reach it, but it is not a human-facing demo mailbox).
+			if ( Mock_Mailbox_E2E_Connection::EMAILS_CPT === $mailbox_settings->get_emails_cpt_underscored_20() ) {
+				continue;
+			}
+
 			add_submenu_page(
 				$parent_slug,
 				$mailbox_settings->get_emails_cpt_friendly_name(),

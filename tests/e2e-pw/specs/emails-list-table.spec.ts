@@ -11,7 +11,7 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import type { APIRequestContext } from '@playwright/test';
 
 const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v1';
-const POST_TYPE = 'fixtures_email';
+const POST_TYPE = 'e2e_email';
 
 /** A subject present in exactly one of the five bundled fixture `.eml` files. */
 const UNIQUE_FIXTURE_SUBJECT = 'DMARC weekly digest for bhwp.ie';
@@ -80,7 +80,7 @@ test.describe( 'Emails list table — rendering, search and account filter', () 
 		);
 
 		// The fixtures connection yields exactly five emails per account.
-		await expect( page.locator( '#the-list tr.type-fixtures_email' ) ).toHaveCount( 5 );
+		await expect( page.locator( '#the-list tr.type-e2e_email' ) ).toHaveCount( 5 );
 
 		// A recognisable fixture subject is shown as a row title.
 		await expect(
@@ -102,7 +102,7 @@ test.describe( 'Emails list table — rendering, search and account filter', () 
 			`post_type=${ POST_TYPE }&bh_email_account=${ accountId }&s=weekly`
 		);
 
-		const rows = page.locator( '#the-list tr.type-fixtures_email' );
+		const rows = page.locator( '#the-list tr.type-e2e_email' );
 		await expect( rows ).toHaveCount( 1 );
 		await expect( rows ).toContainText( UNIQUE_FIXTURE_SUBJECT );
 	} );
@@ -125,7 +125,7 @@ test.describe( 'Emails list table — rendering, search and account filter', () 
 			`post_type=${ POST_TYPE }&bh_email_account=${ accountB }`
 		);
 		const bRowIds = await page
-			.locator( '#the-list tr.type-fixtures_email' )
+			.locator( '#the-list tr.type-e2e_email' )
 			.evaluateAll( ( rows ) => rows.map( ( r ) => r.id ) );
 		expect( bRowIds ).toHaveLength( 5 );
 
@@ -141,7 +141,7 @@ test.describe( 'Emails list table — rendering, search and account filter', () 
 		await page.locator( '#post-query-submit' ).click();
 
 		await expect( page ).toHaveURL( new RegExp( `bh_email_account=${ accountA }` ) );
-		await expect( page.locator( '#the-list tr.type-fixtures_email' ) ).toHaveCount( 5 );
+		await expect( page.locator( '#the-list tr.type-e2e_email' ) ).toHaveCount( 5 );
 
 		// None of account B's rows appear under account A's filter.
 		for ( const id of bRowIds ) {
