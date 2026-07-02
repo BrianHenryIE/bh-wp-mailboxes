@@ -182,6 +182,11 @@
             var accountName = $card.data( 'account-name' );
             var sinceDate   = $input.val();
 
+            if ( ! sinceDate ) {
+                // Ignore an empty value, e.g. the spurious re-fire of `change` after we clear the input below.
+                return;
+            }
+
             $input.hide();
             // Clear the value so re-opening and picking the same date fires `change` again — a date
             // input does not emit `change` when re-committed with an unchanged value, which otherwise

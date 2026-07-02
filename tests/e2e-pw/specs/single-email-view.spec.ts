@@ -294,6 +294,14 @@ test.describe( 'Single email view', () => {
 			return el !== null && el.style.height !== '';
 		} );
 
+		// A parallel test sharing the admin user may have persisted this postbox collapsed
+		// (WP stores collapse state in per-user `closedpostboxes_{screen}` meta); normalise to expanded first.
+		const htmlBox = page.locator( '#bh-email-content-html' );
+		if ( await htmlBox.evaluate( ( el ) => el.classList.contains( 'closed' ) ) ) {
+			await page.locator( '#bh-email-content-html .toggle-indicator' ).click();
+			await expect( htmlBox ).not.toHaveClass( /closed/, { timeout: 15_000 } );
+		}
+
 		// Collapse: click and wait for the 'closed' class to be applied.
 		await page.locator( '#bh-email-content-html .toggle-indicator' ).click();
 		await expect( page.locator( '#bh-email-content-html' ) ).toHaveClass( /closed/, { timeout: 15_000 } );
@@ -323,6 +331,14 @@ test.describe( 'Single email view', () => {
 			const el = document.querySelector( '#bh-email-content-plain iframe.bh-email-plain-body' ) as HTMLIFrameElement | null;
 			return el !== null && el.style.height !== '';
 		} );
+
+		// A parallel test sharing the admin user may have persisted this postbox collapsed
+		// (WP stores collapse state in per-user `closedpostboxes_{screen}` meta); normalise to expanded first.
+		const plainBox = page.locator( '#bh-email-content-plain' );
+		if ( await plainBox.evaluate( ( el ) => el.classList.contains( 'closed' ) ) ) {
+			await page.locator( '#bh-email-content-plain .toggle-indicator' ).click();
+			await expect( plainBox ).not.toHaveClass( /closed/, { timeout: 15_000 } );
+		}
 
 		// Collapse: click and wait for the 'closed' class to be applied.
 		await page.locator( '#bh-email-content-plain .toggle-indicator' ).click();
