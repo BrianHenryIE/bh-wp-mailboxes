@@ -10,7 +10,6 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use Psr\Log\LoggerAwareTrait;
@@ -324,8 +323,8 @@ class Single_Email_View {
 
 		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 
-		$can_mark_read = (bool) $connection?->can_mark_read() && ! $email->is_remote_deleted;
-		$can_delete    = (bool) $connection?->can_delete_on_server() && ! $email->is_remote_deleted;
+		$can_mark_read = $connection?->can_mark_read() && ! $email->is_remote_deleted;
+		$can_delete    = $connection?->can_delete_on_server() && ! $email->is_remote_deleted;
 
 		echo '<div class="submitbox" id="bh-email-remote-status-box">';
 		echo '<div class="bh-email-status-box__fields">';
@@ -517,7 +516,7 @@ class Single_Email_View {
 			$url           = wp_get_attachment_url( $attachment_id );
 			$attached_file = get_attached_file( $attachment_id );
 			$attachment    = get_post( $attachment_id );
-			$filename      = basename( $attached_file ? $attached_file : ( $attachment ? $attachment->post_title : '' ) );
+			$filename      = basename( $attached_file ?: ( $attachment ? $attachment->post_title : '' ) );
 			echo '<li>';
 			if ( $url ) {
 				echo '<a href="' . esc_url( $url ) . '" download>' . esc_html( $filename ) . '</a>';

@@ -8,7 +8,6 @@
 namespace BrianHenryIE\WP_Mailboxes\API\Model\Result;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\New_Email_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 

@@ -17,6 +17,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Requires_Credentials;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
+use DateTime;
 use DateTimeInterface;
 use DirectoryTree\ImapEngine\Enums\ImapFetchIdentifier;
 use DirectoryTree\ImapEngine\Exceptions\ImapConnectionFailedException;
@@ -161,7 +162,7 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 		$uid_validity = isset( $status['UIDVALIDITY'] ) && is_numeric( $status['UIDVALIDITY'] ) ? (int) $status['UIDVALIDITY'] : null;
 
 		// IMAP `SINCE` filters by date only — go back one extra day and filter by time in PHP.
-		$previous_day = ( new \DateTime() )->setTimestamp( $since_time->getTimestamp() )->sub( new \DateInterval( 'P1D' ) );
+		$previous_day = new DateTime()->setTimestamp( $since_time->getTimestamp() )->sub( new \DateInterval( 'P1D' ) );
 
 		$this->logger->debug(
 			'Fetching IMAP emails',
@@ -343,7 +344,7 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 	 */
 	private function find_message_by_uid( Remote_Email_Coordinates $coordinates ): ?MessageInterface {
 
-		if ( is_null( $coordinates->remote_uid ) || ! is_numeric( $coordinates->remote_uid ) ) {
+		if ( ! is_numeric( $coordinates->remote_uid ) ) {
 			return null;
 		}
 

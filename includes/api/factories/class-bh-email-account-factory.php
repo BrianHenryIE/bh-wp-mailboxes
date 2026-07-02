@@ -144,7 +144,7 @@ class BH_Email_Account_Factory {
 		foreach ( $datetime_keys as $datetime_key ) {
 			if ( ! is_null( $args[ $datetime_key ] ) ) {
 				try {
-					$args[ $datetime_key ] = DateTime::createFromFormat( DateTime::ATOM, $args[ $datetime_key ] );
+					$args[ $datetime_key ] = DateTime::createFromFormat( DateTimeInterface::ATOM, $args[ $datetime_key ] );
 				} catch ( Throwable $throwable ) {
 					$errors[ $datetime_key ] = $throwable;
 				}

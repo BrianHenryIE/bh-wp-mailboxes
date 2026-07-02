@@ -10,6 +10,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
@@ -97,7 +98,7 @@ class Single_Email_View_Ajax {
 
 		try {
 			$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
-		} catch ( \InvalidArgumentException $exception ) {
+		} catch ( InvalidArgumentException ) {
 			wp_send_json_error( array( 'message' => 'Invalid post.' ), 400 );
 		}
 
@@ -129,7 +130,7 @@ class Single_Email_View_Ajax {
 
 		try {
 			$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
-		} catch ( \InvalidArgumentException $exception ) {
+		} catch ( InvalidArgumentException ) {
 			wp_send_json_error( array( 'message' => 'Invalid post.' ), 400 );
 		}
 
@@ -164,7 +165,7 @@ class Single_Email_View_Ajax {
 
 		try {
 			$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
-		} catch ( \InvalidArgumentException $exception ) {
+		} catch ( InvalidArgumentException ) {
 			wp_send_json_error( array( 'message' => 'Invalid post.' ), 400 );
 		}
 

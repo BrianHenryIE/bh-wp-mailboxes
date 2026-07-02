@@ -10,6 +10,7 @@ namespace BrianHenryIE\WP_Mailboxes\API\Factories;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use DateTime;
+use DateTimeInterface;
 use DateTimeZone;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -85,7 +86,7 @@ class BH_Email_Factory {
 		// "Date: Wed, 30 Jul 2025 03:38:07 +0000";
 		$date_header = str_replace( 'Date: ', '', (string) $message->getHeader( 'Date' ) );
 		// 29 May 2026 06:36:13 -0700
-		$sent_at_result = DateTime::createFromFormat( DateTime::RFC2822, $date_header );
+		$sent_at_result = DateTime::createFromFormat( DateTimeInterface::RFC2822, $date_header );
 		$sent_at        = ( false !== $sent_at_result ) ? $sent_at_result : null;
 
 		// Absent meta means attachment-saving was disabled (null); a present value (even `[]`) means

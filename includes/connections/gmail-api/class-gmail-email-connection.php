@@ -24,6 +24,7 @@ use Google_Client;
 use Google_Service_Gmail;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
+use Throwable;
 use ZBateson\MailMimeParser\MailMimeParser;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -78,7 +79,7 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 	 * Verify the credentials authenticate by making a cheap authorized API call (the user profile).
 	 *
 	 * @return bool True when the call succeeds.
-	 * @throws \Throwable When authorization or the API call fails.
+	 * @throws Throwable When authorization or the API call fails.
 	 */
 	public function test_connection(): bool {
 		$this->get_gmail_service()->users->getProfile( 'me' );
@@ -488,7 +489,7 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 	 * @param Remote_Email_Coordinates $coordinates How to locate the email on the remote server.
 	 * @param bool                     $is_read     True to remove `UNREAD`; false to add it.
 	 *
-	 * @throws \Exception When the email cannot be found on the server.
+	 * @throws Exception When the email cannot be found on the server.
 	 */
 	public function set_is_marked_read( Remote_Email_Coordinates $coordinates, bool $is_read = true ): void {
 
@@ -505,7 +506,7 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 					'remote_uid' => $coordinates->remote_uid,
 				)
 			);
-			throw new \Exception( 'Could not find email on the server to change its remote read/unread status.' );
+			throw new Exception( 'Could not find email on the server to change its remote read/unread status.' );
 		}
 
 		$request = new ModifyMessageRequest();
@@ -529,7 +530,7 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 	 * @param Remote_Email_Coordinates $coordinates How to locate the email on the remote server.
 	 *
 	 * @return bool True when the message was found and trashed.
-	 * @throws \Exception When the email cannot be found on the server.
+	 * @throws Exception When the email cannot be found on the server.
 	 */
 	public function do_delete_on_server( Remote_Email_Coordinates $coordinates ): bool {
 
@@ -546,7 +547,7 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 					'remote_uid' => $coordinates->remote_uid,
 				)
 			);
-			throw new \Exception( 'Could not find email on the server to delete.' );
+			throw new Exception( 'Could not find email on the server to delete.' );
 		}
 
 		$service->users_messages->trash( 'me', $message->getId() );
@@ -568,7 +569,7 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 		}
 		try {
 			return $service->users_messages->get( 'me', $remote_uid, array( 'format' => 'metadata' ) );
-		} catch ( \Throwable $t ) {
+		} catch ( Throwable ) {
 			// e.g. 404 when the message was deleted; fall back to a Message-ID search.
 			return null;
 		}

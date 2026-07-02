@@ -127,13 +127,6 @@ class API implements API_Interface {
 
 		$this->logger->debug( 'Starting check_email() for ' . count( $email_accounts ) . ' email address(es).' );
 
-		/**
-		 * Accumulates all newly saved BH_Email objects across all accounts.
-		 *
-		 * @var BH_Email[] $all_new_bh_emails
-		 */
-		$all_new_bh_emails  = array();
-		$all_new_emails     = array();
 		$last_fetched_times = $this->get_last_fetched_times( $email_accounts );
 
 		// The first time we run, we'll look back over one week of emails.
@@ -247,7 +240,7 @@ class API implements API_Interface {
 
 			// Only rate limit cron jobs. Manual fetching should alway attempt.
 			if ( ! is_null( $email_account->last_failed_login_time ) && wp_doing_cron() ) {
-				if ( $email_account->last_failed_login_time > ( new DateTime() )->sub( new DateInterval( 'PT4H' ) ) ) {
+				if ( $email_account->last_failed_login_time > new DateTime()->sub( new DateInterval( 'PT4H' ) ) ) {
 					$this->logger->info(
 						'Too soon after failed login, please check your password and save settings to try again.',
 						array( 'account_name' => $email_account->display_name )
@@ -524,7 +517,7 @@ class API implements API_Interface {
 					$this->email_repository->update( $email, is_remote_read: true );
 					// Reversible change → info.
 					$this->insert_email_log_note( $post_id, 'Marked as read on server', 'info' );
-				} catch ( Throwable $exception ) {
+				} catch ( Throwable ) {
 					$this->insert_email_log_note( $post_id, 'Failed to mark as read on server.', 'error' );
 				}
 				break;
@@ -534,7 +527,7 @@ class API implements API_Interface {
 					$this->email_repository->update( $email, is_remote_read: false );
 					// Reversible change → info.
 					$this->insert_email_log_note( $post_id, 'Marked as unread on server', 'info' );
-				} catch ( Throwable $exception ) {
+				} catch ( Throwable ) {
 					$this->insert_email_log_note( $post_id, 'Failed to mark as unread on server.', 'error' );
 				}
 				break;
@@ -544,7 +537,7 @@ class API implements API_Interface {
 					$this->email_repository->update( $email, is_remote_deleted: true );
 					// Intentional irreversible change → notice.
 					$this->insert_email_log_note( $post_id, 'Deleted on server', 'notice' );
-				} catch ( Throwable $exception ) {
+				} catch ( Throwable ) {
 					$this->insert_email_log_note( $post_id, 'Failed to delete email on server.', 'error' );
 				}
 				break;
@@ -582,7 +575,7 @@ class API implements API_Interface {
 		$connection  = $this->get_connection_for_email_account( $email_account );
 		$coordinates = $email->get_remote_coordinates();
 
-		if ( is_null( $connection ) || is_null( $coordinates ) || ! ( $connection instanceof Supports_Fetching ) || ! $connection->can_read_status() ) {
+		if ( is_null( $coordinates ) || ! ( $connection instanceof Supports_Fetching ) || ! $connection->can_read_status() ) {
 			return null;
 		}
 
@@ -631,7 +624,7 @@ class API implements API_Interface {
 	public function get_email_account_for_email( BH_Email $email ): ?BH_Email_Account {
 		try {
 			return $this->email_account_repository->find_by_post_id( $email->email_account_local_id );
-		} catch ( \Exception $e ) {
+		} catch ( Exception ) {
 			// TODO: log.
 			return null;
 		}

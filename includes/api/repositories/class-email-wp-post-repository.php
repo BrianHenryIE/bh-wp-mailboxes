@@ -21,6 +21,7 @@ use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Throwable;
 use WP_Post;
 use ZBateson\MailMimeParser\Header\AddressHeader;
 use ZBateson\MailMimeParser\Message\IMessagePart;
@@ -307,7 +308,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 				);
 
 				$attachment_ids[] = $result->post_id;
-			} catch ( \Throwable $e ) {
+			} catch ( Throwable $e ) {
 				$this->logger->error(
 					'Failed to save email attachment.',
 					array(
@@ -334,7 +335,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes              The mailboxes settings.
 	 * @param BH_Email_Account                   $email_account          The email account settings.
 	 *
-	 * @return array<int, \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email>
+	 * @return array<int, BH_Email>
 	 * @throws Exception When saving an individual email fails.
 	 */
 	/**
@@ -345,7 +346,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 	 * @param BH_Email_Account                   $email_account          The email account settings.
 	 * @param ?Private_Uploads_API_Interface     $private_uploads        When present, email attachments are saved to private uploads.
 	 *
-	 * @return array<int, \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email>
+	 * @return array<int, BH_Email>
 	 * @throws Exception When saving an individual email fails.
 	 */
 	public function save_all(

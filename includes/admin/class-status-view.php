@@ -86,7 +86,7 @@ class Status_View {
 		foreach ( $accounts as $account ) {
 			$email_count  = $this->email_wp_post_repository->count_for_account_email( $account );
 			$status_label = $account->is_active() ? __( 'Active', 'bh-wp-mailboxes' ) : __( 'Inactive', 'bh-wp-mailboxes' );
-			$since_value  = ( $account->last_successful_login_time ?? ( new DateTimeImmutable() )->sub( new DateInterval( 'P1W' ) ) )->format( 'Y-m-d' );
+			$since_value  = ( $account->last_successful_login_time ?? new DateTimeImmutable()->sub( new DateInterval( 'P1W' ) ) )->format( 'Y-m-d' );
 			$account_id   = (string) $account->get_post_id();
 
 			echo '<div class="bh-mailboxes-account-card" data-account-id="' . esc_attr( $account_id ) . '" data-account-name="' . esc_attr( $account->display_name ) . '">';

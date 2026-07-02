@@ -125,7 +125,7 @@ class Emails_List_Page {
 
 		try {
 			$email = $this->email_wp_post_repository->find_by_post_id( $post_id );
-		} catch ( Exception $exception ) {
+		} catch ( Exception ) {
 			return;
 		}
 
@@ -179,7 +179,7 @@ class Emails_List_Page {
 
 		try {
 			$email = $this->email_wp_post_repository->find_by_post_id( $post->ID );
-		} catch ( Exception $exception ) {
+		} catch ( Exception ) {
 			return $actions;
 		}
 
@@ -226,7 +226,6 @@ class Emails_List_Page {
 	 * @see \WP_Posts_List_Table::categories_dropdown()
 	 */
 	public function table_filters(): void {
-		global $wpdb;
 		$screen    = get_current_screen();
 		$post_type = $this->settings->get_emails_cpt_underscored_20();
 		if ( null === $screen || $screen->post_type !== $post_type ) {

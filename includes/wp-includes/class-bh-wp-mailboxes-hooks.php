@@ -69,7 +69,7 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function define_cli_hooks(): void {
 
-		if ( ! ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+		if ( ! defined( 'WP_CLI' ) || ! constant( 'WP_CLI' ) ) {
 			return;
 		}
 
