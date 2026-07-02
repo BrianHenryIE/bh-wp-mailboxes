@@ -9,17 +9,13 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
-use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
-use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface as Settings;
-use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
-use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
-use ZBateson\MailMimeParser\IMessage;
-use ZBateson\MailMimeParser\MailMimeParser;
+use Mockery;
 
 /**
  * Tests Single_Email_View_Ajax AJAX handlers.
@@ -110,48 +106,20 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		);
 	}
 
-	private function make_sut( ?API_Interface $api = null ): Single_Email_View_Ajax {
+	private function make_sut(
+		?API_Interface $api = null,
+		?Email_WP_Post_Repository $email_wp_post_respository = null,
+	): Single_Email_View_Ajax {
 		/** @var Settings $settings */
-		$settings = \Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class )->makePartial();
+		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class )->makePartial();
 		/** @var API_Interface $api */
-		$api ??= \Mockery::mock( API_Interface::class )->makePartial();
-		return new Single_Email_View_Ajax( $settings, $api, $this->make_repository(), $this->logger );
-	}
-
-	/**
-	 * Save an email fixture to the database and return its post ID.
-	 *
-	 * @param string|null $filepath Path to an .eml fixture file; defaults to html-and-plaintext.eml.
-	 */
-	private function fixture_post( ?string $filepath = null ): int {
-		$filepath     ??= codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
-		$email_contents = (string) file_get_contents( $filepath );
-
-		$repo = $this->make_repository();
-
-		$parser = new MailMimeParser();
-		/** @var IMessage $email */
-		$email = $parser->parse( $email_contents, true );
-
-		$mailboxes = \Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
-		$mailboxes->expects( 'get_emails_cpt_underscored_20' )->andReturn( $this->post_type );
-
-		$email_account = BH_Email_Account_Fixture::make(
-			post_id: 321,
-			post_type: $this->post_type,
-			provider_type_class: 'SomeProvider',
-			email_address: 'contact@bhwp.ie',
-			display_name: 'Test Account',
+		$api ??= Mockery::mock( API_Interface::class )->makePartial();
+		return new Single_Email_View_Ajax(
+			$settings,
+			$api,
+			$email_wp_post_respository ?? $this->make_repository(),
+			$this->logger
 		);
-
-		$fetched_email = new Fetched_Email(
-			$email,
-			new Remote_Email_Coordinates( message_id: $email->getMessageId() ?? '' ),
-			false,
-		);
-
-		$bh_email = $repo->save_new( $fetched_email, $mailboxes, $email_account );
-		return $bh_email->get_post_id();
 	}
 
 	/**
@@ -256,17 +224,19 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_ajax_mark_read_returns_is_read_true_in_response(): void {
 
-		$post_id           = $this->fixture_post();
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
 		$_POST['post_id']  = (string) $post_id;
 
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'mark_email_read' )
 			->once()
-			->with( \Mockery::type( BH_Email::class ) )
+			->with( Mockery::type( BH_Email::class ) )
 			->andReturnUsing(
-				static function () use ( $post_id ): void {
-					update_post_meta( $post_id, 'bh_email_is_read', '1' );
+				static function () use ( $bh_email ): BH_Email {
+					return BH_Email_Fixture::make( is_remote_read: true, from_bh_email: $bh_email );
 				}
 			);
 
@@ -276,7 +246,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		$response = $this->last_response();
 		$this->assertTrue( $response['success'] );
 		$this->assertTrue( $response['data']['is_read'] );
-		$this->assertNull( $response['data']['is_remote_deleted'] );
+		$this->assertFalse( $response['data']['is_remote_deleted'] );
 	}
 
 	/**
@@ -287,19 +257,21 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_ajax_mark_unread_returns_is_read_false_in_response(): void {
 
-		$post_id           = $this->fixture_post();
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
 		$_POST['post_id']  = (string) $post_id;
 
 		update_post_meta( $post_id, 'bh_email_is_read', '1' );
 
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'mark_email_unread' )
 			->once()
-			->with( \Mockery::type( BH_Email::class ) )
+			->with( Mockery::type( BH_Email::class ) )
 			->andReturnUsing(
-				static function () use ( $post_id ): void {
-					update_post_meta( $post_id, 'bh_email_is_read', '0' );
+				static function () use ( $bh_email ): BH_Email {
+					return BH_Email_Fixture::make( is_remote_read: false, from_bh_email: $bh_email );
 				}
 			);
 
@@ -309,7 +281,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		$response = $this->last_response();
 		$this->assertTrue( $response['success'] );
 		$this->assertFalse( $response['data']['is_read'] );
-		$this->assertNull( $response['data']['is_remote_deleted'] );
+		$this->assertFalse( $response['data']['is_remote_deleted'] );
 	}
 
 	/**
@@ -320,17 +292,19 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_ajax_delete_on_server_returns_is_remote_deleted_true(): void {
 
-		$post_id           = $this->fixture_post();
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
 		$_POST['post_id']  = (string) $post_id;
 
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'delete_email_on_server' )
 			->once()
-			->with( \Mockery::type( BH_Email::class ) )
+			->with( Mockery::type( BH_Email::class ) )
 			->andReturnUsing(
-				static function () use ( $post_id ): void {
-					update_post_meta( $post_id, 'bh_email_deleted_on_server', '1' );
+				static function () use ( $bh_email ): BH_Email {
+					return BH_Email_Fixture::make( is_remote_deleted: true, from_bh_email: $bh_email );
 				}
 			);
 
@@ -349,11 +323,13 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_handle_remote_action_returns_error_when_api_throws(): void {
 
-		$post_id           = $this->fixture_post();
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
 		$_POST['post_id']  = (string) $post_id;
 
-		$api = \Mockery::mock( API_Interface::class );
+		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'mark_email_read' )
 			->once()
 			->andThrow( new \RuntimeException( 'IMAP connection refused.' ) );
@@ -373,19 +349,21 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_handle_remote_action_returns_null_values_when_meta_is_absent(): void {
 
-		$post_id           = $this->fixture_post();
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
 		$_POST['post_id']  = (string) $post_id;
 
-		$api = \Mockery::mock( API_Interface::class );
-		$api->expects( 'mark_email_read' )->once()->andReturnNull();
+		$api = Mockery::mock( API_Interface::class );
+		$api->expects( 'mark_email_read' )->once()->andReturn( $bh_email );
 
 		$sut = $this->make_sut( $api );
 		$this->call_ajax( fn() => $sut->ajax_mark_read() );
 
 		$response = $this->last_response();
 		$this->assertTrue( $response['success'] );
-		$this->assertNull( $response['data']['is_read'] );
-		$this->assertNull( $response['data']['is_remote_deleted'] );
+		$this->assertFalse( $response['data']['is_read'] );
+		$this->assertFalse( $response['data']['is_remote_deleted'] );
 	}
 }

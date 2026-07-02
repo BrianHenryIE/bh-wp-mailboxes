@@ -50,17 +50,33 @@ Saved mailboxes are checked on a cron job for new emails. When a new email is do
 // ENV variable names need to be customisable.  
 
 
-## CLI
+## WP-CLI
 
-What might be useful CLI commands?
-`wp my-plugin mailboxes-group list` – shows configured email accounts, last checked time, number of current messages.
-`wp my-plugin mailboxes-group fetch` – fetch emails for all configured accounts
-`wp my-plugin mailboxes-group fetch --since 2026-06-01` – fetch emails and override saved last checked time.
-`wp my-plugin mailboxes-group fetch brianhenryie@gmail.com` fetch for specific account
+The library registers WP-CLI commands for each mailbox it's used to create. They are namespaced under that mailbox's *CLI base* — `BH_WP_Mailboxes_Settings_Interface::get_cli_base()`, which defaults to the plugin slug. Return `null` from `get_cli_base()` to disable registering CLI commands. Replace `<cli-base>` below with that value.
 
-Should we keep a historic count of emails fetched?
-The Email_Account cpt will store when it first was added.
-Once a email_account is created, its address can never be changed.
+### `wp <cli-base> mailboxes list`
+
+List every configured mailbox. A "mailbox" is one instance of the library — an emails post type plus its accounts post type — and may contain many email accounts. The row shows the slug, post-type names, friendly name, and account count. Unlike `accounts list` (which is scoped to one mailbox), this spans every registered mailbox.
+
+```bash
+wp <cli-base> mailboxes list [--format=<table|csv|json|yaml|count>]
+```
+
+### `wp <cli-base> accounts list`
+
+List the email accounts configured for this mailbox — id, email, display name, connection, active state, and last-checked time.
+
+```bash
+wp <cli-base> accounts list [--format=<table|csv|json|yaml|count>]
+```
+
+### `wp <cli-base> gmail refresh-access-token --account=<email>`
+
+Mint a fresh Gmail API access token from the account's stored refresh token. The new token is printed as JSON, and the `bh_wp_mailboxes_gmail_access_token_refreshed` action is fired with the `Access_Token` and the account email. The command does **not** persist the token — hook that action to save it. Requires the optional `google/apiclient` dependency and Gmail API credentials (see [includes/connections/gmail-api/README-GMAIL.md](includes/connections/gmail-api/README-GMAIL.md)).
+
+```bash
+wp <cli-base> gmail refresh-access-token --account=you@example.com
+```
 
 ## Privacy / GDPR
 
@@ -73,31 +89,10 @@ The default setting is to delete emails after 7 days. NB: if you're using a shar
 // TODO: find a tool that documents filters and actions in the codebase. Then create a github action that updates the README with that output.
 <!-- /filters -->
 
-### Google API client
+### Gmail
 
-There is code in the plugin to support Google Developer Console projects but the Composer dependency is not included by default. If you want to use that:
-
-```
-{
-    "require": {
-        "google/apiclient": "^2.12.1"
-    },
-    "scripts": {
-        "pre-autoload-dump": ["Google\\Task\\Composer::cleanup"]
-    },
-    "extra": {
-        "google/apiclient-services": [
-            "Gmail"        
-        ]
-    }
-}
-```
-
-```bash
-jq '.scripts["pre-autoload-dump"] |= ((. // []) + ["Google\\Task\\Composer::cleanup"]) | unique' composer.json | sponge composer.json
-jq '.extra["google/apiclient-services"] |= ((. // []) + ["Gmail"]) | unique' composer.json | sponge composer.json
-composer require google/apiclient
-```
+* Gmail can use regular IMAP via application passwords when the account has 2FA enabled.
+* To use the Gmail API, see includes/connections/gmail-api/README-GMAIL.md for configuring a Google Developer Console project. I think supporting this in distributed plugins is probably too much work!
 
 ## Contributing
 

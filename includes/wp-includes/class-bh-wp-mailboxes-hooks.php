@@ -13,9 +13,12 @@ use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View_Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Status_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_CLI;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -26,9 +29,9 @@ class BH_WP_Mailboxes_Hooks {
 	/**
 	 * Email repository shared across hooks that need post persistence.
 	 *
-	 * @var Email_WP_Post_Repository
+	 * @var Email_Repository_Interface
 	 */
-	protected Email_WP_Post_Repository $email_wp_post_repository;
+	protected Email_Repository_Interface $email_wp_post_repository;
 
 	/**
 	 * Factory for creating BH_Email instances from posts.
@@ -58,6 +61,25 @@ class BH_WP_Mailboxes_Hooks {
 		$this->define_admin_ui_hooks();
 		$this->define_single_email_view_hooks();
 		$this->define_ajax_hooks();
+		$this->define_cli_hooks();
+	}
+
+	/**
+	 * Register WP-CLI commands when running under WP-CLI.
+	 */
+	protected function define_cli_hooks(): void {
+
+		if ( ! defined( 'WP_CLI' ) || ! constant( 'WP_CLI' ) ) {
+			return;
+		}
+
+		$cli = new CLI( $this->api, $this->settings, $this->logger );
+
+		add_action( 'cli_init', $cli->register_commands( ... ) );
+
+		$gmail_cli = new Gmail_CLI( $this->api, $this->settings, $this->logger );
+
+		add_action( 'cli_init', $gmail_cli->register_commands( ... ) );
 	}
 
 	/**
@@ -65,7 +87,7 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function define_cpt_hooks(): void {
 
-		$account_cpt = new BH_Email_CPT( $this->settings, $this->logger );
+		$account_cpt = new BH_Email_Account_CPT( $this->settings, $this->logger );
 
 		add_action( 'init', $account_cpt->register_cpt( ... ) );
 		add_action( 'init', $account_cpt->register_post_statuses( ... ) );
@@ -76,6 +98,8 @@ class BH_WP_Mailboxes_Hooks {
 		add_action( 'init', $email_cpt->register_post_statuses( ... ) );
 
 		add_filter( 'wp_insert_post_data', $email_cpt->prevent_content_edits( ... ), 10, 2 );
+
+		add_action( 'admin_enqueue_scripts', $email_cpt->disable_autosave( ... ) );
 	}
 
 	/**
@@ -111,6 +135,7 @@ class BH_WP_Mailboxes_Hooks {
 		add_filter( "manage_{$post_type}_posts_columns", $mailbox_list_page->table_head( ... ) );
 		add_action( "manage_{$post_type}_posts_custom_column", $mailbox_list_page->table_content( ... ), 10, 2 );
 		add_action( 'restrict_manage_posts', $mailbox_list_page->table_filters( ... ) );
+		add_filter( 'post_row_actions', $mailbox_list_page->row_actions( ... ), 10, 2 );
 
 		add_action( 'admin_enqueue_scripts', $mailbox_list_page->enqueue_styles( ... ) );
 		add_action( 'admin_enqueue_scripts', $mailbox_list_page->enqueue_scripts( ... ) );
@@ -130,9 +155,14 @@ class BH_WP_Mailboxes_Hooks {
 
 		$ajax = new Single_Email_View_Ajax( $this->settings, $this->api, $this->email_wp_post_repository, $this->logger );
 
-		add_action( 'wp_ajax_bh_wp_mailboxes_mark_read', $ajax->ajax_mark_read( ... ) );
-		add_action( 'wp_ajax_bh_wp_mailboxes_mark_unread', $ajax->ajax_mark_unread( ... ) );
-		add_action( 'wp_ajax_bh_wp_mailboxes_delete_on_server', $ajax->ajax_delete_on_server( ... ) );
+		// Scope the AJAX actions to this instance's emails CPT. Otherwise, with more than one library
+		// instance registered, every instance's handler runs for the shared action name and the first
+		// non-matching one calls wp_send_json_*() and terminates the request before the right one runs.
+		add_action( "wp_ajax_bh_wp_mailboxes_mark_read_{$post_type}", $ajax->ajax_mark_read( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_mark_unread_{$post_type}", $ajax->ajax_mark_unread( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_delete_on_server_{$post_type}", $ajax->ajax_delete_on_server( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_get_remote_status_{$post_type}", $ajax->ajax_get_remote_status( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_update_status_{$post_type}", $ajax->ajax_update_status( ... ) );
 	}
 
 	/**
@@ -144,8 +174,14 @@ class BH_WP_Mailboxes_Hooks {
 
 		$ajax = new Emails_List_Table_Ajax( $this->api, $this->settings, $this->logger );
 
-		add_action( 'wp_ajax_bh_wp_mailboxes_check_email', $ajax->check_email( ... ) );
-		add_action( 'wp_ajax_bh_wp_mailboxes_check_account', $ajax->check_account( ... ) );
-		add_action( 'wp_ajax_bh_wp_mailboxes_set_fetch_since', $ajax->check_account( ... ) );
+		// Scope the AJAX actions to this instance's post types. Otherwise, with more than one library
+		// instance registered, every instance's handler runs for the shared action name and the first
+		// non-matching one calls wp_send_json_*() and terminates the request before the right one runs.
+		$emails_cpt   = $this->settings->get_emails_cpt_underscored_20();
+		$accounts_cpt = $this->settings->get_email_accounts_cpt_underscored_20();
+
+		add_action( "wp_ajax_bh_wp_mailboxes_check_email_{$emails_cpt}", $ajax->check_email( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_check_account_{$accounts_cpt}", $ajax->check_account( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_set_fetch_since_{$accounts_cpt}", $ajax->check_account( ... ) );
 	}
 }

@@ -3,11 +3,7 @@
 namespace BrianHenryIE\WP_Mailboxes;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
-use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
-use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
-use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use Mockery;
 use Psr\Log\LoggerInterface;
 use lucatume\WPBrowser\TestCase\WPTestCase;
@@ -45,52 +41,5 @@ class WPUnit_Testcase extends WPTestCase {
 			return false;
 		}
 		return $this->get_installed_major_version( $plugin_basename ) === $major_version;
-	}
-
-	protected function create_post_from_fixture(
-		string $post_type,
-		?string $filepath = null,
-	): int {
-		$filepath     ??= codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
-		$email_contents = file_get_contents( $filepath );
-
-		$repo = new Email_WP_Post_Repository(
-			$post_type,
-			new BH_Email_Factory( $this->logger ),
-			$this->logger
-		);
-
-		$parser = new MailMimeParser();
-		/** @var IMessage $email */
-		$email = $parser->parse( $email_contents, true );
-
-		$mailboxes = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
-		$mailboxes->expects( 'get_emails_cpt_underscored_20' )->andReturn( $post_type );
-
-		$email_account = new BH_Email_Account(
-			post_id: 321,
-			post_type: $post_type,
-			local_status: 'bh_email_ac_active',
-			provider_type_class: 'SomeProvider',
-			email_address: 'contact@bhwp.ie',
-			display_name: 'Test Account',
-			from_address_regex_filter: null,
-			body_identifier_regex_filter: null,
-			after_download_remote_email_action: null,
-			delete_local_emails_after_n_days: null,
-			last_checked_time: null,
-			last_successful_login_time: null,
-			last_failed_login_time: null,
-		);
-
-		$fetched_email = new Fetched_Email(
-			$email,
-			new Remote_Email_Coordinates( message_id: $email->getMessageId() ?? '' ),
-			false,
-		);
-
-		$bh_email = $repo->save_new( $fetched_email, $mailboxes, $email_account );
-
-		return $bh_email->get_post_id();
 	}
 }

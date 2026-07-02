@@ -90,4 +90,49 @@ class BH_Email_CPT_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertSame( 'A regular post', $result['post_title'] );
 	}
+
+	/**
+	 * The autosave script should be dequeued on the email edit screen.
+	 *
+	 * @covers ::disable_autosave
+	 */
+	public function test_disable_autosave_on_email_screen(): void {
+
+		$sut = new BH_Email_CPT( $this->make_settings(), $this->logger );
+
+		if ( ! wp_script_is( 'autosave', 'registered' ) ) {
+			wp_register_script( 'autosave', false, array(), '1.0.0', true );
+		}
+		wp_enqueue_script( 'autosave' );
+		$this->assertTrue( wp_script_is( 'autosave', 'enqueued' ) );
+
+		set_current_screen( 'my_emails_cpt' );
+		get_current_screen()->post_type = 'my_emails_cpt';
+
+		$sut->disable_autosave();
+
+		$this->assertFalse( wp_script_is( 'autosave', 'enqueued' ) );
+	}
+
+	/**
+	 * The autosave script should be left alone on other post types' screens.
+	 *
+	 * @covers ::disable_autosave
+	 */
+	public function test_disable_autosave_ignores_other_screens(): void {
+
+		$sut = new BH_Email_CPT( $this->make_settings(), $this->logger );
+
+		if ( ! wp_script_is( 'autosave', 'registered' ) ) {
+			wp_register_script( 'autosave', false, array(), '1.0.0', true );
+		}
+		wp_enqueue_script( 'autosave' );
+
+		set_current_screen( 'post' );
+		get_current_screen()->post_type = 'post';
+
+		$sut->disable_autosave();
+
+		$this->assertTrue( wp_script_is( 'autosave', 'enqueued' ) );
+	}
 }

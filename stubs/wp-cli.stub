@@ -1,0 +1,21 @@
+<?php
+/**
+ * Minimal stubs for WP-CLI helper functions used by the plugin.
+ *
+ * WP-CLI is provided by the runtime environment, not Composer, so these signatures let PHPStan
+ * analyse the CLI commands without pulling in the full wp-cli/wp-cli package.
+ */
+
+namespace WP_CLI\Utils;
+
+/**
+ * Display items in a table, JSON, CSV, YAML, IDs, or count format.
+ *
+ * @param string                                                $format Format to use: 'table', 'json', 'csv', 'yaml', 'ids', 'count'.
+ * @param array<int,array<string,mixed>>|array<int,object>      $items  An array of items to output.
+ * @param string|string[]                                       $fields Named fields for each item of data.
+ * @return void
+ */
+function format_items($format, $items, $fields)
+{
+}

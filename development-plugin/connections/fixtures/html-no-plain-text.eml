@@ -1,0 +1,1167 @@
+Return-Path: <pm_bounces@pmbounces.postmarkapp.com>
+Delivered-To: contact@bhwp.ie
+Received: from mail.brianhenry.ie ([172.22.1.253])
+	by bcc0a4cf3c72 with LMTP
+	id OIcONxxAGmpUBQAAkxg0Tw
+	(envelope-from <pm_bounces@pmbounces.postmarkapp.com>)
+	for <contact@bhwp.ie>; Fri, 29 May 2026 18:40:44 -0700
+Received: from mx2.dynu.com (mx2.dynu.com [107.161.27.201])
+	by mail.brianhenry.ie (Postcow) with SMTP id 9E10D5FBBE
+	for <contact@bhwp.ie>; Fri, 29 May 2026 18:40:32 -0700 (PDT)
+Authentication-Results: mail.brianhenry.ie;
+	dkim=pass header.d=pm.mtasv.net header.s=pm20250806 header.b=bHeGIz7d
+ARC-Seal: i=1; s=dkim; d=bhwp.ie; t=1780105239; a=rsa-sha256; cv=none;
+	b=vQJOOTyawZsEMNPJuXo/U9ORDr2eN++zdhUxXc9Ml2wLpmUkmd/c79iW9CrWYhrcK+O/Bi
+	/1xIDI4WEhqgi9Wtvtg9hvRWRdQCkq+xgUDISPd+GxyPrzBjAJgrDVC3Vo8IucDiI5/CbZ
+	9iCbKlqDWHdAZYlKHIX+PRk6rOVr2Kjvr8/uXHijNoNomCwJYZquO29kbQ+c2dZJqlVDWr
+	uJdyMA8o1wi9xeEdABREazReA/GZj45cQurZTcOdXiQIlN3oc0afaeN3a6bs7oDgqnd2c3
+	Uh0xF6LKsJWKdiLpQuHghC8vvYvR8CWZHhMkalhG2V346iMeFJGHxYrXymo3mA==
+ARC-Authentication-Results: i=1;
+	mail.brianhenry.ie;
+	dkim=pass header.d=pm.mtasv.net header.s=pm20250806 header.b=bHeGIz7d;
+	dmarc=fail reason="No valid SPF, DKIM not aligned (relaxed)" header.from=postmarkapp.com (policy=reject);
+	spf=fail (mail.brianhenry.ie: domain of pm_bounces@pmbounces.postmarkapp.com does not designate 107.161.27.201 as permitted sender) smtp.mailfrom=pm_bounces@pmbounces.postmarkapp.com
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=bhwp.ie;
+	s=dkim; t=1780105239;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:dkim-signature;
+	bh=Xgu2Q43kHeX5aSRqRIOilLJ9A6vAGtxWfZeOmB0G+zc=;
+	b=nvvaTMHqzSQcUp/PAG+j0OuWbbnIv9RS05Zv0VLzPPe7qN3tv/ABOqR8/d47mMJ2Thsfij
+	LJMJFAJr1Ufq0g2sAYQia58H8GAZxExxSZhA3NhizgspmV4GU0Y6Pe0aEp0d+G/MzfnOAh
+	sKGZj7mUWYZSgB2p5+ROsctRksjMpVLqWunYE7oQdh38hd1RSZMG23q2walQ+Y8Ly72eYy
+	bySGmXxPqgNqSrdBlr6AqqMuUFNY0hqFBxClmYLqLPf9pqD/3fR43AyANRUiPCOb8ivdNA
+	8/61kkPprzSLRB2/zFODaWYn/fe2hYNAAQWTsmZmgJaEdNMSw38fDW1OtwvVpw==
+X-Spam-Checker-Version: SpamAssassin 4.0.0 (2022-12-13) on MX1
+X-Spam-Level: **************************************************
+X-Spam-Status: No, score=-500 required=5.0 tests=WHITELIST_RECEPIENT autolearn=no
+ autolearn_force=no version=4.0.0
+Received: from mta198a-ord.mtasv.net (mta198a-ord.mtasv.net [104.245.209.198]) by mx1.wiredblade.com
+ with ESMTPS (version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256) ; Mon,
+ 25 May 2026 12:44:27 +0000
+X-KumoRef: eyJfQF8iOiJcXF8vIiwicmVjaXBpZW50IjoiY29udGFjdEBiaHdwLmllIn0=
+DKIM-Signature: v=1; a=rsa-sha256; d=pm.mtasv.net; s=pm20250806; c=relaxed/relaxed; bh=Xgu2Q43kHeX5aSRqRIOilLJ9A6vAGtxWfZeOmB0G+zc=;
+ h=from:to:subject:date:mime-version:content-type:sender:cc:date:message-id;
+ t=1779713068; x=1780317868; b=bHeGIz7d4FnZnVHImZ5oUbxTJ5nbRFdJTueQsjeDn9h+rD+jO6Ff71/INxMD9GMfXsBjpZ847
+ s7VfgWquOLRFWh0XNgB882v09ZEBfRDqXTi/5Za4Pt5SK5SmnfrMlWX18lfWM0vxM9DJYRveLHY
+ dZNhVoGKRQPov4hlsMTEg/nlBSgtvQOQY3hDCnmHKmMit9snMOnH4fSyjVT7RQ+FTcvhv64eSz8
+ t3wRj1zPOBV2ZsjaTBHK2djo4rER6JVzSTYQZC39Lo4ZG/1c9D0rikHWcX4wKeunadgWOfBwFrH
+ jB4MCvKs/fOFIO3G7EPmrnIOPHpPcgv/73vy41EQfwvw==;
+Received: from ip-172-26-31-249.us-east-2.compute.internal (172.26.31.249) by
+ production-pmta-useast2.internal.postmarkapp.com (KumoMTA 10.97.241.254) 
+ with ESMTP id 77c10264583711f1977d02095ec198c3 for <contact@bhwp.ie>; Mon,
+ 25 May 2026 12:44:28 +0000
+DKIM-Signature: v=1; a=rsa-sha256; d=postmarkapp.com; s=20131124034823.pm; c=relaxed/relaxed;
+ i=dmarc@postmarkapp.com; t=1779713068; x=1779885868; h=date:date:from:from:message-id:reply-to:sender:subject:subject:to:to:cc:
+ feedback-id:mime-version:content-type:content-transfer-encoding; bh=Xgu2Q43kHeX5aSRqRIOilLJ9A6vAGtxWfZeOmB0G+zc=;
+ b=YHiY+28ETFT8OxRfcP736B9bv1Ue0R+gWMY+HOWlCW+3PxU1ERWCC/L2aneSRaXqTmoEfFR1/Zn
+ qDRt/sm/XBSgMYa2kiopKS3Zt0mrUbUchhUMaZHQKD4cprXaB6+f3tPi5iEF4PWEtNHc1FnWEOEir
+ cPli8kNqnNIvDnxGHtU=
+From: Postmark DMARC <dmarc@postmarkapp.com>
+Date: Mon, 25 May 2026 12:44:27 +0000
+Subject: DMARC weekly digest for bhwp.ie
+Message-Id: <70959a2c-9f3e-4f38-bed8-2495cef95845@mtasv.net>
+To: contact@bhwp.ie
+Feedback-ID: s64053-ZGlnZXN0:s64053:a4:postmark
+X-Complaints-To: abuse@postmarkapp.com
+X-Job: 4_64053
+X-PM-Message-Id: 70959a2c-9f3e-4f38-bed8-2495cef95845
+X-PM-Tag: digest
+X-PM-RCPT: |bTB8NHw2NDA1M3xjb250YWN0QGJod3AuaWU=|
+X-PM-Message-Options: v1;1.nqjEXn7FwhooMSf5dgQOdQ.wWJLoPJHVhgNifduo_OVlUgLt64z7KPO3zn90R0lc6zTU5gopCq_RFc-c_tpsHACDGGdMK8MjFXTrnoLniHKA6YBkbsNqFvR5HLq3Rx3c9BfiiBz3Ns_P2_JMW1btZG8QNP3sUE1S7s9ekmixPNOy_2BcDjWvMANkOSHTb7tJf_y9yB6BCkChMnyvErfeD2H
+MIME-Version: 1.0
+X-virtual-MTA: ord-50-31-156-121
+X-PM-MTA-Pool: transactional-1
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+X-Last-TLS-Session-Version: None
+X-Spamd-Result: default: False [5.40 / 15.00];
+	VIOLATED_DIRECT_SPF(3.50)[];
+	DATE_IN_PAST(1.00)[108];
+	MX_INVALID(0.50)[];
+	FORGED_SENDER(0.30)[dmarc@postmarkapp.com,pm_bounces@pmbounces.postmarkapp.com];
+	R_DKIM_ALLOW(-0.20)[pm.mtasv.net:s=pm20250806];
+	MIME_HTML_ONLY(0.20)[];
+	RCVD_NO_TLS_LAST(0.10)[];
+	ARC_NA(0.00)[];
+	WL_FWD_HOST(0.00)[];
+	BCC(0.00)[];
+	RCPT_COUNT_ONE(0.00)[1];
+	MIME_TRACE(0.00)[0:~];
+	FROM_HAS_DN(0.00)[];
+	RCPT_MAILCOW_DOMAIN(0.00)[bhwp.ie];
+	DWL_DNSWL_NONE(0.00)[mtasv.net:dkim];
+	TO_DN_NONE(0.00)[];
+	FROM_NEQ_ENVFROM(0.00)[dmarc@postmarkapp.com,pm_bounces@pmbounces.postmarkapp.com];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	ASN(0.00)[asn:3842, ipnet:107.161.24.0/22, country:US];
+	PREVIOUSLY_DELIVERED(0.00)[contact@bhwp.ie];
+	RCVD_COUNT_TWO(0.00)[2];
+	WHITELISTED_FWD_HOST(0.00)[107.161.27.201];
+	DKIM_TRACE(0.00)[pm.mtasv.net:+];
+	RBL_NIXSPAM_FAIL(0.00)[107.161.27.201:server fail];
+	ARC_SIGNED(0.00)[bhwp.ie:s=dkim:i=1];
+	RCVD_IN_DNSWL_NONE(0.00)[104.245.209.198:received]
+X-Rspamd-Queue-Id: 9E10D5FBBE
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.=
+w3.org/TR/html4/loose.dtd"><html lang=3D"en"><head>
+  <meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8">
+  <meta name=3D"viewport" content=3D"width=3Ddevice-width, initial-scale=3D=
+1.0">
+  <title>Postmark weekly DMARC digests</title>
+<style>.btn,
+.btn:visited {
+  border-top: 10px solid #007dcc;
+  border-bottom: 10px solid #007dcc;
+  border-right: 18px solid #007dcc;
+  border-left: 18px solid #007dcc;
+  background-color: #007dcc;
+  font-size: 16px;
+  font-weight: bold;
+  display: inline-block;
+  height: auto;
+  border-radius: 3px;
+  color: #FFF;
+  text-shadow: 0 1px 1px #005e99;
+  text-align: center;
+  text-decoration: none;
+  -webkit-text-size-adjust: none; }
+  .btn:hover,
+  .btn:visited:hover {
+    color: #FFF !important;
+    border-color: #006db3 !important;
+    background: #006db3 !important; }
+
+.btn--dmarc-digests,
+.btn--dmarc-digests:visited {
+  border-top: 10px solid #4DB27F;
+  border-bottom: 10px solid #4DB27F;
+  border-right: 18px solid #4DB27F;
+  border-left: 18px solid #4DB27F;
+  background-color: #4DB27F;
+  font-size: 14px;
+  font-weight: 500;
+  display: inline-block;
+  height: auto;
+  border-radius: 0;
+  color: #FFF;
+  text-align: center;
+  text-decoration: none;
+  text-shadow: none;
+  -webkit-text-size-adjust: none; }
+  @media only screen and (max-width: 599px) {
+    .btn--dmarc-digests,
+    .btn--dmarc-digests:visited {
+      border-radius: 3px !important; } }
+  .btn--dmarc-digests:hover,
+  .btn--dmarc-digests:visited:hover {
+    color: #FFF !important;
+    border-color: #45a072 !important;
+    background: #45a072 !important; }
+
+body {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #F5F3EB;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  color: #6C7A86;
+  font-size: 14px;
+  line-height: 1.42857; }
+
+ul,
+li {
+  color: #6C7A86; }
+
+a {
+  color: #6C7A86; }
+  a:hover {
+    color: #129ef5 !important; }
+
+table {
+  cellpadding: 0;
+  cellspacing: 0; }
+  table td {
+    border-collapse: collapse; }
+
+.u-textalign-center {
+  text-align: center; }
+
+h1 {
+  margin: 0 0 .25em;
+  padding: 0;
+  color: #333;
+  font-weight: bold;
+  font-size: 28px;
+  line-height: 1;
+  word-break: break-all;
+  text-decoration: none; }
+  h1 a,
+  h1 a:hover {
+    color: #333 !important;
+    text-decoration: none;
+    cursor: text; }
+
+h3 {
+  font-size: 18px;
+  margin: 2em 0 .5em;
+  padding: 0;
+  color: #333; }
+
+.feedback {
+  text-align: center;
+  margin: 0 46px 50px;
+  line-height: 1.5; }
+
+.email {
+  background-color: #F5F3EB; }
+
+.date-range {
+  margin: 0;
+  padding: 0;
+  font-size: 18px;
+  color: #6C7A86; }
+  .date-range a,
+  .date-range a:hover {
+    color: #6C7A86 !important;
+    text-decoration: none;
+    cursor: text; }
+
+.masthead {
+  padding: 0 0 40px;
+  width: 100%;
+  text-align: center; }
+
+.divider {
+  position: relative;
+  margin: 0 0 .5em;
+  padding: 0;
+  text-align: center; }
+  .divider_title {
+    margin: 0;
+    padding: 0 10px;
+    position: relative;
+    z-index: 2;
+    color: #333;
+    font-size: 22px;
+    background-color: #FFF;
+    display: inline-block; }
+  .divider::before {
+    content: '';
+    height: 1px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 16px;
+    z-index: 1;
+    background-color: #E4E4E4; }
+
+.content-section {
+  margin: 25px 0 50px; }
+
+.content {
+  width: 100%;
+  background-color: #FFF; }
+  @media only screen and (max-width: 599px) {
+    .content {
+      border-radius: 0 !important; } }
+
+.content-cell {
+  padding: 30px 30px 0;
+  background-color: #FFF; }
+  @media only screen and (max-width: 599px) {
+    .content-cell {
+      padding: 15px 15px 0 !important; } }
+
+@media only screen and (max-width: 599px) {
+  .container {
+    width: 100%;
+    margin: 0;
+    padding: 0; } }
+
+.header {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  margin: 0;
+  padding: 30px 0;
+  color: #FFF; }
+  .header_cell {
+    width: 50%; }
+  @media only screen and (max-width: 599px) {
+    .header_cell--logo {
+      text-align: center; } }
+  @media only screen and (max-width: 599px) {
+    .header_cell--title {
+      display: none; } }
+  .header_logo {
+    margin-left: 9px; }
+    @media only screen and (max-width: 599px) {
+      .header_logo {
+        margin-left: -18px !important; } }
+  .header_title {
+    margin: 8px 30px 0 0; }
+
+.policy-label {
+  margin: 1em 0 0;
+  padding: 0;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #6C7A86; }
+  .policy-label a,
+  .policy-label a:hover {
+    color: #6C7A86 !important;
+    text-decoration: none;
+    cursor: text; }
+
+.policy {
+  color: #E6735C;
+  font-weight: bold;
+  text-decoration: none; }
+  .policy:hover {
+    text-decoration: underline !important; }
+
+.domain-cell {
+  text-align: left;
+  padding: 1.5em 0 .25em; }
+
+.domain-label {
+  font-weight: normal;
+  font-size: 16px;
+  margin: 0;
+  word-break: break-all;
+  text-align: left;
+  text-decoration: none;
+  color: #6C7A86; }
+  .domain-label_icon {
+    padding-right: 2px;
+    vertical-align: -3px; }
+
+.domain-heading {
+  text-align: center;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2.3em 0 0;
+  color: #b5bdc5;
+  font-weight: normal;
+  text-transform: uppercase; }
+
+.page {
+  border-radius: 5px 5px 0 0; }
+
+.section-desc {
+  font-size: 16px;
+  text-align: left;
+  margin-bottom: .5em;
+  line-height: 1.5;
+  padding: 0 22px;
+  color: #6C7A86; }
+
+ul {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-bottom: 1.5em; }
+  ul a {
+    color: #6C7A86; }
+
+.action-icon {
+  padding-right: 4px; }
+
+.action {
+  margin: .2em 0 1em;
+  padding: 10px 20px;
+  background-color: #FFF9DD;
+  border-left: 3px solid #F7CF2D;
+  color: #8B8777;
+  font-size: 14px;
+  line-height: 1.5; }
+  .action--info {
+    background-color: #eff9fa;
+    color: #5FADE0;
+    border-left-color: #129ef5; }
+  .action a {
+    color: #129ef5; }
+  .action--dmarc {
+    padding: 15px 20px;
+    background-color: #F6F4FA;
+    color: #422E6B;
+    border-left-color: #6F4DB3; }
+    .action--dmarc a {
+      color: #6F4DB2; }
+      .action--dmarc a:hover, .action--dmarc a:focus {
+        color: #422E6B !important; }
+    .action--dmarc .action-title {
+      color: #422E6B; }
+
+.action-title {
+  margin: 0;
+  font-size: 16px; }
+
+.action-body {
+  margin: 8px 0; }
+
+.action-link {
+  font-weight: bold; }
+
+.summary {
+  border-radius: 10px;
+  text-align: center;
+  margin: 15px 0 0;
+  border: 3px solid #E4E4E4; }
+  .summary_col {
+    padding: 20px 0; }
+    @media only screen and (max-width: 599px) {
+      .summary_col {
+        display: block;
+        width: 100%; } }
+    .summary_col--center {
+      border-left: 1px solid #e4e4e4;
+      border-right: 1px solid #e4e4e4; }
+      @media only screen and (max-width: 599px) {
+        .summary_col--center {
+          border-left: none !important;
+          border-right: none !important;
+          border-top: 1px solid #e4e4e4;
+          border-bottom: 1px solid #e4e4e4; } }
+  .summary_total {
+    font-weight: 500;
+    font-size: 35px;
+    line-height: 1;
+    margin: 0;
+    padding: 0; }
+    .summary_total--processed {
+      color: #88D4E3; }
+    .summary_total--aligned {
+      color: #7dc78c; }
+    .summary_total--failed {
+      color: #E6735C; }
+  .summary_label {
+    font-size: 12px;
+    line-height: 1;
+    margin: 6px 0 0;
+    padding: 0;
+    color: #95a0aa; }
+    @media only screen and (max-width: 599px) {
+      .summary_label {
+        font-size: 13px; } }
+
+.dmarc-data {
+  width: 100%;
+  margin: 0;
+  padding: 0; }
+
+@media only screen and (max-width: 599px) {
+  .domain-dmarc-stats td {
+    text-align: center !important;
+    display: block !important;
+    width: 100% !important; } }
+
+.source-overflow {
+  color: #a7b1ba;
+  margin: 1.5em 0 0;
+  padding: 0 23px;
+  font-size: 12px;
+  text-align: center; }
+  .source-overflow a {
+    color: #a7b1ba; }
+
+.cell-item,
+.cell-item:link,
+.cell-item:visited {
+  font-size: 12px;
+  margin: 0;
+  color: #a7b1ba;
+  word-break: break-all;
+  text-decoration: none;
+  line-height: 1; }
+
+.cell-ip {
+  padding: .6em 0 .6em 23px; }
+
+.cell-total,
+.cell-record {
+  text-align: center;
+  padding: .6em 0;
+  font-size: 11px; }
+
+.cell-record_low {
+  color: #E6735C; }
+
+.cell-record_medium {
+  color: #f6a823; }
+
+.cell-record_high {
+  color: #7dc78c; }
+
+.footer {
+  background-color: #353942;
+  border: 0 0 4px 4px;
+  text-align: center; }
+  .footer_intro {
+    padding: 25px 0 15px;
+    color: #FFF;
+    font-size: 16px; }
+    .footer_intro img {
+      position: relative;
+      top: -2px;
+      margin-bottom: -9px;
+      margin-left: 2px; }
+  .footer_heart {
+    color: #D25050; }
+  .footer_base {
+    color: #FFF;
+    text-align: center;
+    margin-top: 0; }
+  .footer_address {
+    text-align: center;
+    margin: 0 0 1.5em;
+    color: #888; }
+
+.postmark {
+  background-color: #FFDE00;
+  text-align: center;
+  padding: 25px 52px;
+  background-image: url("https://newsletter.postmarkapp.com/assets/images/f=
+ree-dmarc/cta-banner-bg.png"); }
+  @media only screen and (max-width: 599px) {
+    .postmark {
+      padding: 25px 37px !important; } }
+  .postmark_intro {
+    padding: 0;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #333; }
+    @media only screen and (max-width: 599px) {
+      .postmark_intro {
+        display: block !important;
+        width: 100% !important;
+        text-align: center !important; } }
+  .postmark_cta {
+    text-align: right; }
+    @media only screen and (max-width: 599px) {
+      .postmark_cta {
+        padding-top: 15px !important;
+        display: block !important;
+        width: 100% !important;
+        text-align: center !important; } }
+
+.dmarc-digests {
+  background-color: #583D8F;
+  background-repeat: no-repeat;
+  color: #FFF; }
+  .dmarc-digests_content {
+    padding-top: 25px;
+    padding-right: 25px;
+    padding-bottom: 25px;
+    padding-left: 52px; }
+  .dmarc-digests_headline {
+    margin: 0;
+    padding-top: 0;
+    font-size: 21px;
+    line-height: 28px;
+    font-weight: bold; }
+    @media only screen and (max-width: 599px) {
+      .dmarc-digests_headline {
+        padding-left: 25px !important;
+        padding-right: 25px !important; } }
+    .dmarc-digests_headline span {
+      display: block; }
+  .dmarc-digests_screenshot {
+    vertical-align: center;
+    overflow: hidden; }
+    .dmarc-digests_screenshot img {
+      width: 100%;
+      margin-right: -5px;
+      float: right; }
+      @media only screen and (max-width: 599px) {
+        .dmarc-digests_screenshot img {
+          float: none !important;
+          width: 95% !important;
+          margin-right: 0 !important; } }
+  @media only screen and (max-width: 599px) {
+    .dmarc-digests_content {
+      padding-left: 20px !important;
+      padding-right: 20px !important;
+      display: block !important;
+      width: auto !important;
+      text-align: center !important; } }
+  @media only screen and (max-width: 599px) {
+    .dmarc-digests_screenshot {
+      display: none !important; } }
+
+.email-prefs {
+  font-size: 12px;
+  padding: 12px 50px;
+  background-color: #2A2E35;
+  color: #888;
+  text-align: center; }
+  .email-prefs a {
+    color: #888; }
+
+.message {
+  text-align: center;
+  padding: 10px 30px;
+  font-size: 12px; }
+  .message--announcement {
+    background-color: #827dc7;
+    color: #FFF; }
+    .message--announcement a,
+    .message--announcement a:hover {
+      color: #FFF !important; }
+  .message--warning {
+    background-color: #FFF9DD;
+    color: #8B8777; }
+
+.pm-email a {
+  color: #007dcc; }
+
+.pm-email table td {
+  border-collapse: collapse; }
+
+.pm-page {
+  border-radius: 5px; }
+
+.pm-page-wrap {
+  padding: 30px 38px 0; }
+
+.pm-domain {
+  color: #6C7A86;
+  text-decoration: none; }
+
+.pm-content-section {
+  margin: 0 0 40px; }
+
+.pm-record-data {
+  display: block;
+  padding: 15px;
+  color: #6C7A86;
+  font: 1em/1.75 Monaco, Consolas, Courier, monospace;
+  word-break: break-word; }
+
+.pm-record-text {
+  background: #F5F3EB;
+  border-radius: 4px;
+  font: .75em/1.75 Monaco, Consolas, Courier, monospace;
+  word-break: break-word;
+  color: #6C7A86;
+  text-decoration: none;
+  padding: 2px 5px 4px; }
+
+.pm-record-data a {
+  color: #6C7A86;
+  text-decoration: none; }
+
+.pm-header {
+  padding: 40px 20px 40px 0; }
+
+.pm-snippet {
+  margin: 25px 0;
+  background: #F5F3EB;
+  border-radius: 4px; }
+
+.pm-section-title {
+  margin: 0 0 25px;
+  padding: 0;
+  color: #222;
+  font: bold 25px/1.4 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+
+.pm-section-subtitle {
+  margin: 35px 0 12px;
+  padding: 0;
+  color: #222;
+  font: bold 20px 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+
+.pm-section-body {
+  margin: 0 0 15px;
+  padding: 0;
+  color: #6C7A86;
+  font: normal 16px/1.6 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+
+.pm-section-meta {
+  margin: 0 0 15px;
+  padding: 0;
+  color: #6C7A86;
+  font: normal 12px/1.6 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+
+.pm-section-list {
+  margin: 1em 0;
+  padding-left: 40px; }
+
+.announcement {
+  background-color: #007dcc;
+  text-align: center;
+  color: #FFF;
+  padding: 10px 15px;
+  font-size: 16px; }
+  .announcement a,
+  .announcement a:hover {
+    color: #FFF !important; }
+</style></head>
+
+<body style=3D"-ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; =
+background-color: #F5F3EB; color: #6C7A86; font-family: 'Helvetica Neue', H=
+elvetica, Arial, sans-serif; font-size: 14px; line-height: 1.42857; margin:=
+ 0; padding: 0;">
+
+<div class=3D"email" style=3D"background-color: #F5F3EB;">
+  <table width=3D"100%" style=3D"cellpadding: 0; cellspacing: 0;" border=3D=
+"0" cellpadding=3D"0" cellspacing=3D"0">
+    <tbody><tr>
+      <td align=3D"center" style=3D"border-collapse: collapse;">
+        <table class=3D"container" width=3D"600" cellpadding=3D"0" cellspac=
+ing=3D"0" style=3D"cellpadding: 0; cellspacing: 0;" border=3D"0">
+
+          <!-- Header -->
+            <tbody><tr>
+  <td style=3D"border-collapse: collapse;">
+    <table class=3D"header" width=3D"100%" cellpadding=3D"0" cellspacing=3D=
+"0" style=3D"cellpadding: 0; cellspacing: 0; color: #FFF; margin: 0; paddin=
+g: 30px 0;" border=3D"0">
+      <tbody><tr>
+        <td class=3D"header_cell header_cell--logo" width=3D"50%" style=3D"=
+border-collapse: collapse;"><a href=3D"https://postmarkapp.com?utm_source=3D=
+dmarc&amp;utm_medium=3Demail&amp;utm_campaign=3Dheader" target=3D"_blank" s=
+tyle=3D"color: #6C7A86;"><img src=3D"https://newsletter.postmarkapp.com/ass=
+ets/images/pm_logo@2x.png" alt=3D"ActiveCampaign Postmark" width=3D"200" cl=
+ass=3D"header_logo" style=3D"margin-left: 9px;"></a></td>
+        <td class=3D"header_cell header_cell--title" width=3D"50%" align=3D=
+"right" style=3D"border-collapse: collapse;"><img src=3D"https://newsletter=
+.postmarkapp.com/assets/images/free-dmarc/digest-title.png" alt=3D"Weekly D=
+MARC Digest" width=3D"212" height=3D"20" class=3D"header_title" style=3D"ma=
+rgin: 8px 30px 0 0;"></td>
+      </tr>
+    </tbody></table>
+  </td>
+</tr>
+
+          <!-- Page -->
+          <tr>
+            <td style=3D"border-collapse: collapse;">
+                <table class=3D"content" style=3D"cellpadding: 0; cellspaci=
+ng: 0;" border=3D"0" cellpadding=3D"0" cellspacing=3D"0" bgcolor=3D"#FFF" w=
+idth=3D"100%">
+    <tbody><tr>
+      <td class=3D"content-cell" align=3D"left" style=3D"border-collapse: c=
+ollapse; padding: 30px 30px 0;" bgcolor=3D"#FFF">
+
+        <table class=3D"masthead" style=3D"cellpadding: 0; cellspacing: 0; =
+padding: 0 0 40px; text-align: center;" border=3D"0" cellpadding=3D"0" cell=
+spacing=3D"0" width=3D"100%">
+          <tbody><tr>
+            <td style=3D"border-collapse: collapse;">
+              <table width=3D"100%" border=3D"0" style=3D"cellpadding: 0; c=
+ellspacing: 0;" cellpadding=3D"0" cellspacing=3D"0">
+  <tbody><tr>
+    <td align=3D"center" style=3D"border-collapse: collapse;">
+      <h1 style=3D"color: #333; font-size: 28px; font-weight: bold; line-he=
+ight: 1; margin: 0 0 .25em; padding: 0; text-decoration: none; word-break: =
+break-all;"><a href=3D"#" style=3D"color: #333 !important; cursor: text; te=
+xt-decoration: none;">bhwp.ie</a></h1>
+    </td>
+  </tr>
+</tbody></table>
+
+<p class=3D"date-range" style=3D"color: #6C7A86; font-size: 18px; margin: 0=
+; padding: 0;"><a href=3D"#" style=3D"color: #6C7A86 !important; cursor: te=
+xt; text-decoration: none;">May 17 &#x2013; May 24</a></p>
+              <!-- DMARC Counts -->
+<table class=3D"summary" width=3D"100%" style=3D"border: 3px solid #E4E4E4;=
+ border-radius: 10px; cellpadding: 0; cellspacing: 0; margin: 15px 0 0; tex=
+t-align: center;" border=3D"0" cellpadding=3D"0" cellspacing=3D"0">
+  <tbody><tr>
+    <td class=3D"summary_col" width=3D"33%" style=3D"border-collapse: colla=
+pse; padding: 20px 0;">
+      <h3 class=3D"summary_total summary_total--processed" style=3D"color: =
+#88D4E3; font-size: 35px; font-weight: 500; line-height: 1; margin: 0; padd=
+ing: 0;">7</h3>
+      <p class=3D"summary_label" style=3D"color: #95a0aa; font-size: 12px; =
+line-height: 1; margin: 6px 0 0; padding: 0;">Emails processed</p>
+    </td>
+    <td class=3D"summary_col summary_col--center" width=3D"33%" style=3D"bo=
+rder-collapse: collapse; border-left: 1px solid #e4e4e4; border-right: 1px =
+solid #e4e4e4; padding: 20px 0;">
+            <h3 class=3D"summary_total summary_total--aligned" style=3D"col=
+or: #7dc78c; font-size: 35px; font-weight: 500; line-height: 1; margin: 0; =
+padding: 0;">100%</h3>
+      <p class=3D"summary_label" style=3D"color: #95a0aa; font-size: 12px; =
+line-height: 1; margin: 6px 0 0; padding: 0;">SPF or DKIM aligned</p>
+    </td>
+    <td class=3D"summary_col" width=3D"33%" style=3D"border-collapse: colla=
+pse; padding: 20px 0;">
+            <h3 class=3D"summary_total summary_total--failed" style=3D"colo=
+r: #E6735C; font-size: 35px; font-weight: 500; line-height: 1; margin: 0; p=
+adding: 0;">0%</h3>
+      <p class=3D"summary_label" style=3D"color: #95a0aa; font-size: 12px; =
+line-height: 1; margin: 6px 0 0; padding: 0;">SPF and DKIM not aligned</p>
+    </td>
+  </tr>
+</tbody></table>
+                          </td><td style=3D"border-collapse: collapse;">
+          </td></tr>
+        </tbody></table>
+      </td>
+    </tr>
+  </tbody></table>
+
+  <table class=3D"dmarc-digests" width=3D"100%" style=3D"background-repeat:=
+ no-repeat; cellpadding: 0; cellspacing: 0; color: #FFF;" border=3D"0" cell=
+padding=3D"0" cellspacing=3D"0" bgcolor=3D"#583D8F">
+  <tbody><tr>
+    <td class=3D"dmarc-digests_content" align=3D"left" width=3D"60%" style=3D=
+"border-collapse: collapse; padding-bottom: 25px; padding-left: 52px; paddi=
+ng-right: 25px; padding-top: 25px;">
+      <p class=3D"dmarc-digests_headline" style=3D"font-size: 21px; font-we=
+ight: bold; line-height: 28px; margin: 0; padding-top: 0;">Protect your <sp=
+an style=3D"display: block;">email deliverability.</span></p>
+      <p>Get more comprehensive reports to help fix authentication issues p=
+reventing your email from reaching the inbox.</p>
+      <a href=3D"https://dmarcdigests.com/inbound_domain_transfers/new?camp=
+aign=3Dfree_digest_promo&amp;utm_source=3Dfree_digest&amp;utm_medium=3Demai=
+l&amp;utm_campaign=3Dfree_digest_promo&amp;token=3D6d5ac8aa-9fb1-48f9-9f9c-=
+b14b916da021" target=3D"_blank" class=3D"btn--dmarc-digests" style=3D"-webk=
+it-text-size-adjust: none; background-color: #4DB27F; border-bottom: 10px s=
+olid #4DB27F; border-left: 18px solid #4DB27F; border-radius: 0; border-rig=
+ht: 18px solid #4DB27F; border-top: 10px solid #4DB27F; color: #FFF; displa=
+y: inline-block; font-size: 14px; font-weight: 500; height: auto; text-alig=
+n: center; text-decoration: none; text-shadow: none;">Try it free for 14 da=
+ys</a>
+    </td><td width=3D"40%" class=3D"dmarc-digests_screenshot" style=3D"bord=
+er-collapse: collapse; overflow: hidden;" valign=3D"center">
+      <img src=3D"https://public-assets.postmarkapp.com/images/dmarc-tiles.=
+png" alt=3D"A collection of emails with one unauthenticated email" width=3D=
+"240" style=3D"float: right; margin-right: -5px; width: 100%;">
+    </td>
+  </tr>
+</tbody></table>
+  <table class=3D"content" style=3D"cellpadding: 0; cellspacing: 0;" border=
+=3D"0" cellpadding=3D"0" cellspacing=3D"0" bgcolor=3D"#FFF" width=3D"100%">
+    <tbody><tr>
+      <td class=3D"content-cell" align=3D"left" style=3D"border-collapse: c=
+ollapse; padding: 30px 30px 0;" bgcolor=3D"#FFF">
+          <div class=3D"content-section" style=3D"margin: 25px 0 50px;">
+    <div class=3D"divider" style=3D"margin: 0 0 .5em; padding: 0; position:=
+ relative; text-align: center;">
+      <h2 class=3D"divider_title" style=3D"background-color: #FFF; color: #=
+333; display: inline-block; font-size: 22px; margin: 0; padding: 0 10px; po=
+sition: relative; z-index: 2;">Your sources</h2>
+    </div>
+
+    <p class=3D"section-desc" style=3D"color: #6C7A86; font-size: 16px; lin=
+e-height: 1.5; margin-bottom: .5em; padding: 0 22px; text-align: left;">The=
+se are sources that we know belong to you based on the DNS checks we do.</p=
+>
+
+    <table class=3D"dmarc-data" width=3D"100%" cellpadding=3D"0" cellspacin=
+g=3D"0" style=3D"cellpadding: 0; cellspacing: 0; margin: 0; padding: 0;" bo=
+rder=3D"0">
+      <tbody>
+                  <tr>
+  <th width=3D"52%" class=3D"domain-cell" style=3D"padding: 1.5em 0 .25em;"=
+ align=3D"left"><a href=3D"http://amazonses.com" target=3D"_blank" class=3D=
+"domain-label" style=3D"color: #6C7A86; font-size: 16px; font-weight: norma=
+l; margin: 0; text-align: left; text-decoration: none; word-break: break-al=
+l;">
+    <img border=3D"0" width=3D"16" height=3D"16" class=3D"domain-label_icon=
+" src=3D"https://www.google.com/s2/favicons?domain=3Damazonses.com" style=3D=
+"padding-right: 2px; vertical-align: -3px;">
+    <span>amazonses.com</span>
+  </a></th>
+  <th width=3D"16%" class=3D"domain-heading" style=3D"color: #b5bdc5; font-=
+size: 10px; font-weight: normal; line-height: 1; padding: 2.3em 0 0; text-t=
+ransform: uppercase;" align=3D"center">Total</th>
+  <th width=3D"16%" class=3D"domain-heading" style=3D"color: #b5bdc5; font-=
+size: 10px; font-weight: normal; line-height: 1; padding: 2.3em 0 0; text-t=
+ransform: uppercase;" align=3D"center">SPF Aligned</th>
+  <th width=3D"16%" class=3D"domain-heading" style=3D"color: #b5bdc5; font-=
+size: 10px; font-weight: normal; line-height: 1; padding: 2.3em 0 0; text-t=
+ransform: uppercase;" align=3D"center">DKIM Aligned</th>
+</tr>
+         =20
+
+  <tr>
+    <td class=3D"cell-ip" align=3D"left" style=3D"border-collapse: collapse=
+; padding: .6em 0 .6em 23px;">
+              <a href=3D"https://whois.domaintools.com/54.240.27.115" targe=
+t=3D"_blank" class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; =
+line-height: 1; margin: 0; text-decoration: none; word-break: break-all;">5=
+4.240.27.115</a>
+          </td>
+    <td class=3D"cell-total" style=3D"border-collapse: collapse; font-size:=
+ 11px; padding: .6em 0;" align=3D"center">
+      <p class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; line=
+-height: 1; margin: 0; text-decoration: none; word-break: break-all;">2</p>
+    </td>
+
+
+   =20
+   =20
+   =20
+    <td class=3D"cell-record" style=3D"border-collapse: collapse; font-size=
+: 11px; padding: .6em 0;" align=3D"center">
+     =20
+<p class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; line-heigh=
+t: 1; margin: 0; text-decoration: none; word-break: break-all;">
+ =20
+     =20
+    <span class=3D"cell-record_high" style=3D"color: #7dc78c;">100%</span>
+  </p>
+    </td>
+
+
+   =20
+   =20
+   =20
+    <td class=3D"cell-record" style=3D"border-collapse: collapse; font-size=
+: 11px; padding: .6em 0;" align=3D"center">
+     =20
+<p class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; line-heigh=
+t: 1; margin: 0; text-decoration: none; word-break: break-all;">
+ =20
+     =20
+    <span class=3D"cell-record_high" style=3D"color: #7dc78c;">100%</span>
+  </p>
+    </td>
+
+  </tr>
+
+  <tr>
+    <td class=3D"cell-ip" align=3D"left" style=3D"border-collapse: collapse=
+; padding: .6em 0 .6em 23px;">
+              <a href=3D"https://whois.domaintools.com/54.240.27.123" targe=
+t=3D"_blank" class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; =
+line-height: 1; margin: 0; text-decoration: none; word-break: break-all;">5=
+4.240.27.123</a>
+          </td>
+    <td class=3D"cell-total" style=3D"border-collapse: collapse; font-size:=
+ 11px; padding: .6em 0;" align=3D"center">
+      <p class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; line=
+-height: 1; margin: 0; text-decoration: none; word-break: break-all;">2</p>
+    </td>
+
+
+   =20
+   =20
+   =20
+    <td class=3D"cell-record" style=3D"border-collapse: collapse; font-size=
+: 11px; padding: .6em 0;" align=3D"center">
+     =20
+<p class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; line-heigh=
+t: 1; margin: 0; text-decoration: none; word-break: break-all;">
+ =20
+     =20
+    <span class=3D"cell-record_high" style=3D"color: #7dc78c;">100%</span>
+  </p>
+    </td>
+
+
+   =20
+   =20
+   =20
+    <td class=3D"cell-record" style=3D"border-collapse: collapse; font-size=
+: 11px; padding: .6em 0;" align=3D"center">
+     =20
+<p class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; line-heigh=
+t: 1; margin: 0; text-decoration: none; word-break: break-all;">
+ =20
+     =20
+    <span class=3D"cell-record_high" style=3D"color: #7dc78c;">100%</span>
+  </p>
+    </td>
+
+  </tr>
+
+  <tr>
+    <td class=3D"cell-ip" align=3D"left" style=3D"border-collapse: collapse=
+; padding: .6em 0 .6em 23px;">
+              <a href=3D"https://whois.domaintools.com/54.240.27.35" target=
+=3D"_blank" class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; l=
+ine-height: 1; margin: 0; text-decoration: none; word-break: break-all;">54=
+.240.27.35</a>
+          </td>
+    <td class=3D"cell-total" style=3D"border-collapse: collapse; font-size:=
+ 11px; padding: .6em 0;" align=3D"center">
+      <p class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; line=
+-height: 1; margin: 0; text-decoration: none; word-break: break-all;">2</p>
+    </td>
+
+
+   =20
+   =20
+   =20
+    <td class=3D"cell-record" style=3D"border-collapse: collapse; font-size=
+: 11px; padding: .6em 0;" align=3D"center">
+     =20
+<p class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; line-heigh=
+t: 1; margin: 0; text-decoration: none; word-break: break-all;">
+ =20
+     =20
+    <span class=3D"cell-record_high" style=3D"color: #7dc78c;">100%</span>
+  </p>
+    </td>
+
+
+   =20
+   =20
+   =20
+    <td class=3D"cell-record" style=3D"border-collapse: collapse; font-size=
+: 11px; padding: .6em 0;" align=3D"center">
+     =20
+<p class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; line-heigh=
+t: 1; margin: 0; text-decoration: none; word-break: break-all;">
+ =20
+     =20
+    <span class=3D"cell-record_high" style=3D"color: #7dc78c;">100%</span>
+  </p>
+    </td>
+
+  </tr>
+
+  <tr>
+    <td class=3D"cell-ip" align=3D"left" style=3D"border-collapse: collapse=
+; padding: .6em 0 .6em 23px;">
+              <a href=3D"https://whois.domaintools.com/54.240.27.116" targe=
+t=3D"_blank" class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; =
+line-height: 1; margin: 0; text-decoration: none; word-break: break-all;">5=
+4.240.27.116</a>
+          </td>
+    <td class=3D"cell-total" style=3D"border-collapse: collapse; font-size:=
+ 11px; padding: .6em 0;" align=3D"center">
+      <p class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; line=
+-height: 1; margin: 0; text-decoration: none; word-break: break-all;">1</p>
+    </td>
+
+
+   =20
+   =20
+   =20
+    <td class=3D"cell-record" style=3D"border-collapse: collapse; font-size=
+: 11px; padding: .6em 0;" align=3D"center">
+     =20
+<p class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; line-heigh=
+t: 1; margin: 0; text-decoration: none; word-break: break-all;">
+ =20
+     =20
+    <span class=3D"cell-record_high" style=3D"color: #7dc78c;">100%</span>
+  </p>
+    </td>
+
+
+   =20
+   =20
+   =20
+    <td class=3D"cell-record" style=3D"border-collapse: collapse; font-size=
+: 11px; padding: .6em 0;" align=3D"center">
+     =20
+<p class=3D"cell-item" style=3D"color: #a7b1ba; font-size: 12px; line-heigh=
+t: 1; margin: 0; text-decoration: none; word-break: break-all;">
+ =20
+     =20
+    <span class=3D"cell-record_high" style=3D"color: #7dc78c;">100%</span>
+  </p>
+    </td>
+
+  </tr>
+         =20
+ =20
+
+ =20
+ =20
+       =20
+       =20
+      </tbody>
+    </table>
+  </div>
+       =20
+
+       =20
+
+
+        <p class=3D"feedback" style=3D"line-height: 1.5; margin: 0 46px 50p=
+x; text-align: center;">Have a suggestion on how we can improve this digest=
+?<br>Reply to this email and let us know.</p>
+
+        <p class=3D"feedback" style=3D"line-height: 1.5; margin: 0 46px 50p=
+x; text-align: center;"><strong>Need help?</strong> Check out the <a href=3D=
+"https://postmarkapp.com/support/dmarc-reports" style=3D"color: #6C7A86;">F=
+AQ page</a> for solutions to common problems. Bespoke support is available =
+to Postmark customers.</p>
+      </td>
+    </tr>
+  </tbody></table>
+
+  <!-- Postmark -->
+  <table class=3D"postmark" width=3D"100%" style=3D"background-image: url('=
+https://newsletter.postmarkapp.com/assets/images/free-dmarc/cta-banner-bg.p=
+ng'); cellpadding: 0; cellspacing: 0; padding: 25px 52px; text-align: cente=
+r;" border=3D"0" cellpadding=3D"0" cellspacing=3D"0" bgcolor=3D"#FFDE00">
+    <tbody><tr>
+      <td class=3D"postmark_intro" align=3D"left" width=3D"40%" style=3D"bo=
+rder-collapse: collapse; color: #333; font-size: 16px; line-height: 1.5; pa=
+dding: 0;">Reliable delivery for all your application emails. <strong>Try P=
+ostmark!</strong></td>
+      <td class=3D"postmark_cta" width=3D"30%" style=3D"border-collapse: co=
+llapse;" align=3D"right">
+        <a href=3D"https://account.postmarkapp.com/sign_up?utm_source=3Ddma=
+rc&amp;utm_medium=3Demail&amp;utm_campaign=3Dcta" target=3D"_blank" class=3D=
+"btn" style=3D"-webkit-text-size-adjust: none; background-color: #007dcc; b=
+order-bottom: 10px solid #007dcc; border-left: 18px solid #007dcc; border-r=
+adius: 3px; border-right: 18px solid #007dcc; border-top: 10px solid #007dc=
+c; color: #FFF; display: inline-block; font-size: 16px; font-weight: bold; =
+height: auto; text-align: center; text-decoration: none; text-shadow: 0 1px=
+ 1px #005e99;">Start Free Trial</a>
+      </td>
+    </tr>
+  </tbody></table>
+  <!-- Footer -->
+<table class=3D"footer" width=3D"100%" style=3D"border: 0 0 4px 4px; cellpa=
+dding: 0; cellspacing: 0; text-align: center;" border=3D"0" cellpadding=3D"=
+0" cellspacing=3D"0" bgcolor=3D"#353942">
+  <tbody><tr>
+    <td class=3D"footer_intro" align=3D"center" style=3D"border-collapse: c=
+ollapse; color: #FFF; font-size: 16px; padding: 25px 0 15px;">
+      Postmark is made with <span class=3D"footer_heart" style=3D"color: #D=
+25050;">&#x2764;</span> by the folks at
+      <a href=3D"https://activecampaign.com" style=3D"color: #FFF;">ActiveC=
+ampaign</a>
+    </td>
+  </tr>
+  <tr>
+    <td align=3D"center" style=3D"border-collapse: collapse;">
+      <p class=3D"footer_address" style=3D"color: #888; margin: 0 0 1.5em; =
+text-align: center;">ActiveCampaign LLC<br>1 North Dearborn St, 5th Floor<b=
+r>Chicago, IL 60602</p>
+    </td>
+  </tr>
+  <tr>
+    <td class=3D"email-prefs" style=3D"border-collapse: collapse; color: #8=
+88; font-size: 12px; padding: 12px 50px;" bgcolor=3D"#2A2E35" align=3D"cent=
+er">
+      Want to stop receiving these weekly DMARC digests? <a href=3D"https:/=
+/dmarc.postmarkapp.com/unsubscribe/?private_token=3De7f56725-a2e1-4107-b96d=
+-bb33e4e3aafd" style=3D"color: #888;">Unsubscribe</a> at any time.
+    </td>
+  </tr>
+</tbody></table>
+            </td>
+          </tr>
+        </tbody></table>
+      </td>
+    </tr>
+  </tbody></table>
+</div>
+
+
+
+<img src=3D"https://ea.pstmrk.it/open?m=3Dv3_1.eZDaomRuBRr7Atl5L8JM5w.fzWYX=
+vbbE2XnUhXS_RJIhE6uWO8JEIz-P5PyRRAxHGpkII4WN8YvxXatBPlnk53lKO2bUXkzlLqx3SC-=
+-fQREorux_F2G2Y-Fmqp2CMXmarYTEncsma7M-F64-Fj6LOYNQ6J9dVA9YG-jlP0rLp8IY54PpR=
+MF7-ak4raCZMRDHIFX-Sa1QaJeQOV3vW1BcJoOpyqZy5rJLtnitO5FmgQLODiVeI9m54q3ljzAr=
+qvLhsPO4WfZc-3IPHixWtkn0yPZ3yRgjAooaVUNz3F_inUxXE1bl1QMEgBeZFwHerIN5qWq8qcH=
+xSUQP5Ven1YcIMKbEmXRuRTPoppdsFr3vlNPbwkAI5NWGU3Ri9lPCVlst9zq0trF3PawPbKur22=
+nBqEv7MJf2ryygL8dvlfVoGq6KaL1gQyd7ROAhnmJpD1wo-0pAkoxaaUlnXg85v-uIXTmlb8GN7=
+Vl4YGAEwa8QZ3-2bnGK22h4E0QKkYE7HipmmBcmtwKm-_OPWKDdp3tr6K" width=3D"1" heig=
+ht=3D"1" border=3D"0" alt=3D"" /></body></html>
+

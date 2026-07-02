@@ -1,0 +1,947 @@
+Return-Path: <Sagar@shinetechserve.com>
+Delivered-To: contact@bhwp.ie
+Received: from mail.brianhenry.ie ([172.22.1.253])
+	by bcc0a4cf3c72 with LMTP
+	id IHZSDQ1J1mh3WwwAkxg0Tw
+	(envelope-from <Sagar@shinetechserve.com>)
+	for <contact@bhwp.ie>; Fri, 26 Sep 2025 01:04:29 -0700
+Received: from mx1.wiredblade.com (mx1.wiredblade.com [162.216.242.38])
+	by mail.brianhenry.ie (Postcow) with SMTP id 83B025FA7E
+	for <contact@bhwp.ie>; Fri, 26 Sep 2025 01:04:14 -0700 (PDT)
+Authentication-Results: mail.brianhenry.ie;
+	dkim=fail ("body hash did not verify") header.d=shinetechserve.com header.s=default header.b=LPVS11FY
+ARC-Seal: i=1; s=dkim; d=bhwp.ie; t=1758873861; a=rsa-sha256; cv=none;
+	b=yoTCmExs+t0GbtKKopLzeaVeBz+FU5al5cZaw9YLQeTbdVhErj5smuf+S7sNmpLS23DTes
+	Sf3ot2/tt3AjRIbMGkFVI2oYclBAs5In7m6ceIsywD8zZKmmwVkPjg5AFqhNj/RvSmfXSF
+	OJOvLK9bRDCUVTEBGZguyO3MKwtCfC0p/7PVPjacG1IIjdS81IF4ueAb4036IDk+LDajZh
+	hIXT/hx1OMP6oVsf7DIILuGxqQJe6MKdc5FFKImCISJM4vCI3gmYK85S8ImrE7x7/F6deo
+	P2Vq+F6Nxs9RjlBsN5WSMaiuv2vH6BnjvLYLlfDQtidsTR+HTX28ovlGOXt14A==
+ARC-Authentication-Results: i=1;
+	mail.brianhenry.ie;
+	dkim=fail ("body hash did not verify") header.d=shinetechserve.com header.s=default header.b=LPVS11FY;
+	dmarc=fail reason="No valid SPF" header.from=shinetechserve.com (policy=quarantine);
+	spf=fail (mail.brianhenry.ie: domain of Sagar@shinetechserve.com does not designate 162.216.242.38 as permitted sender) smtp.mailfrom=Sagar@shinetechserve.com
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=bhwp.ie;
+	s=dkim; t=1758873861;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:mime-version:mime-version:content-type:content-type:
+	 dkim-signature; bh=CeUuz42LwBT71QuW6i9u8/3aH4m4Qzz5fH7f0HjudVY=;
+	b=Lg9hk3CJEPb/f4GmsxHXGN+j+q2IgbtTI5GK6TKadsv/kh04QEaJolfsbFXLm1IHJu8Dua
+	IdgfS5McMvo5ANx0pb19L3atw8z/w4aEnTNwZDZEn4LL4Qi083MrPhdsGgLxZMfDyGcvh7
+	VNrB7hMfJDgW/jKPMh4E0jycD7FgR+ok6GOLhptKFo81rui9jYTTXz0+qt4MiZuSBtz2Cw
+	06de1qJk9/iOnhBU4XZyteUhQQJBHNHUNWvQ9FmHHxVZZly67xDQEnUeop3KQTRQ+mlJVf
+	YrkM18IrlLbcW1JffY6Fmaio9t9B8+Ab0XGCWyyC+BKwCOw8tmZ/wVO2KL9GnQ==
+X-Spam-Checker-Version: SpamAssassin 4.0.0 (2022-12-13) on MX1
+X-Spam-Level: **************************************************
+X-Spam-Status: No, score=-500 required=5.0 tests=WHITELIST_RECEPIENT autolearn=no
+ autolearn_force=no version=4.0.0
+Received: from mail.shinetechserve.com (mail.shinetechserve.com [15.235.211.174]) by
+ mx1.wiredblade.com with ESMTPS (version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384
+ bits=256) ; Fri, 26 Sep 2025 08:04:09 +0000
+Received: from DESKTOPL48VOJS (unknown [122.161.51.141]) by mail.shinetechserve.com (Postfix)
+ with ESMTPSA id 36FE29478A for <contact@bhwp.ie>; Fri, 26 Sep 2025 08:04:07
+ +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=shinetechserve.com; s=default; t=1758873847;
+ bh=QJFeApOaTDqa8N/GBC+JHPNnAAbntwsUmduvF8+C2OA=; h=From:To:Subject; b=LPVS11FYBiKArwtJkU4mi0HCCR2oHJMh+sG3DcjEGhNYpHd/MEbjm84CVc2rk4to4
+ wq2ZGD3IzRzWE7aw38yI9k+6nvw7qAj3I2I0rvfTxuascs22Qr6ll5eDKGjBJ7RxJt
+ nH/PI0A9EA9h0uOg/9Qg/7y3pvac5PcQWIOYqoLQ0lu/H2qFpsFL8AZwe5UEZRVsHy
+ 9gXtTyFCBdj/eGvdLPVPvR5fLhjuAleHMH+jdqZZ2pWgcUPfIPTNvaass32AVD8VlC
+ j2EGbECE8ikl5GzJcaBXdSzA2a1qpry76yrI9O3XDyRGKj23GVYA/WMf39p9IqTflS
+ ba1tAVgAT4VBA==
+Received-SPF: pass (mail.shinetechserve.com: connection is authenticated)
+From: "Sagar Sharma" <Sagar@shinetechserve.com>
+To: <contact@bhwp.ie>
+Subject: Re: www.bhwp.ie - Your Website Ready for an Upgrade?
+Date: Fri, 26 Sep 2025 13:32:58 +0530
+Message-ID: <!&!AAAAAAAAAAAYAAAAAAAAACjdOqLwtMxMrMiq7RSNqEfCgAAAEAAAAOjTp0m6T5NDlI+C0Is4tuABAAAAAA==@shinetechserve.com>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="----=_NextPart_000_0BB4_01DC2EEA.3B536BA0"
+X-Mailer: Microsoft Outlook 14.0
+Thread-Index: AdwutD1pLMvHqqQiTty+3D5BJNDDVQ==
+Content-Language: en-in
+Disposition-Notification-To: "Sagar Sharma" <Sagar@shinetechserve.com>
+X-Last-TLS-Session-Version: None
+X-Spamd-Result: default: False [7.00 / 15.00];
+	VIOLATED_DIRECT_SPF(3.50)[];
+	SUBJECT_ENDS_QUESTION(1.00)[];
+	URI_COUNT_ODD(1.00)[3];
+	FAKE_REPLY(1.00)[];
+	MX_INVALID(0.50)[];
+	MIME_GOOD(-0.10)[multipart/alternative,text/plain];
+	RCVD_NO_TLS_LAST(0.10)[];
+	RCPT_MAILCOW_DOMAIN(0.00)[bhwp.ie];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RBL_SENDERSCORE_FAIL(0.00)[162.216.242.38:server fail];
+	FROM_HAS_DN(0.00)[];
+	BCC(0.00)[];
+	MIME_TRACE(0.00)[0:+,1:+,2:~];
+	SPAMHAUS_FAIL(0.00)[15.235.211.174:server fail];
+	ARC_NA(0.00)[];
+	RCPT_COUNT_ONE(0.00)[1];
+	DKIM_TRACE(0.00)[shinetechserve.com:-];
+	WHITELISTED_FWD_HOST(0.00)[162.216.242.38];
+	ARC_SIGNED(0.00)[bhwp.ie:s=dkim:i=1];
+	TO_DN_NONE(0.00)[];
+	RBL_VIRUSFREE_UNKNOWN_FAIL(0.00)[162.216.242.38:server fail];
+	RCVD_COUNT_TWO(0.00)[2];
+	FROM_EQ_ENVFROM(0.00)[];
+	MAILSPIKE_FAIL(0.00)[162.216.242.38:server fail];
+	RBL_NIXSPAM_FAIL(0.00)[162.216.242.38:server fail];
+	PREVIOUSLY_DELIVERED(0.00)[contact@bhwp.ie];
+	MID_RHS_MATCH_FROM(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	RECEIVED_SPAMHAUS_PBL(0.00)[122.161.51.141:received];
+	BLOCKLISTDE_FAIL(0.00)[15.235.211.174:server fail,122.161.51.141:server fail,162.216.242.38:server fail];
+	MSBL_EBL_FAIL(0.00)[sagar@shinetechserve.com:server fail];
+	WL_FWD_HOST(0.00)[]
+X-Rspamd-Queue-Id: 83B025FA7E
+
+This is a multipart message in MIME format.
+
+------=_NextPart_000_0BB4_01DC2EEA.3B536BA0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hi,
+
+Would you like to upgrade or redesign your website with modern UI/UX at =
+a minimal cost, or build a brand new one? =F0=9F=9A=80
+
+I=E2=80=99d be happy to share a few design samples & pricing details. =
+Or, if easier, we can jump on a quick 5-minute call =E2=80=94 just share =
+your number, and I=E2=80=99ll reach out.
+
+Best Regards,
+
+Sagar Sharma
+
+=20
+
+From: Sagar Sharma [ <mailto:> mailto:Sagar@shinetechserve.com]
+Sent: 25 August 2025 18:13
+To: 'contact@bhwp.ie'
+Subject: www.bhwp.ie - Your Website Ready for an Upgrade?
+
+=20
+
+Hi,
+
+=20
+
+Good morning!
+
+=20
+
+Would you like to upgrade, repair, or refurbish your website with the =
+latest UI/ UX features at minimal cost, or you'd like to build a new =
+website completely?
+
+=20
+
+I have brilliant web experts, who help you in developing your website =
+and we can do anything you can imagine on your website.
+
+=20
+
+If you are interested, I can send you some of our created website design =
+examples & price info.
+
+Thanks,
+
+Sagar Sharma
+
+Manager Client Success
+
+A-82, Noida, India =E2=80=93 201301
+
+If you don't want to hear from me anymore,  =
+<https://shinetechserve.com/unsubscribe/> click here
+
+=20
+
+=20
+
+=20
+
+=20
+
+
+------=_NextPart_000_0BB4_01DC2EEA.3B536BA0
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Dutf-8">
+<html xmlns:v=3D"urn:schemas-microsoft-com:vml" =
+xmlns:o=3D"urn:schemas-microsoft-com:office:office" =
+xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
+xmlns:m=3D"http://schemas.microsoft.com/office/2004/12/omml" =
+xmlns=3D"http://www.w3.org/TR/REC-html40"><head><meta name=3DGenerator =
+content=3D"Microsoft Word 14 (filtered medium)"><style><!--
+/* Font Definitions */
+@font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:Calibri;
+	panose-1:2 15 5 2 2 2 4 3 2 4;}
+/* Style Definitions */
+p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:10.0pt;
+	margin-left:0cm;
+	line-height:115%;
+	font-size:11.0pt;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-language:EN-US;}
+a:link, span.MsoHyperlink
+	{mso-style-priority:99;
+	color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{mso-style-priority:99;
+	color:purple;
+	text-decoration:underline;}
+p
+	{mso-style-priority:99;
+	mso-margin-top-alt:auto;
+	margin-right:0cm;
+	mso-margin-bottom-alt:auto;
+	margin-left:0cm;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";
+	mso-fareast-language:EN-US;}
+p.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph
+	{mso-style-priority:34;
+	margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:8.0pt;
+	margin-left:36.0pt;
+	mso-add-space:auto;
+	line-height:105%;
+	font-size:11.0pt;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-language:EN-US;}
+p.MsoListParagraphCxSpFirst, li.MsoListParagraphCxSpFirst, =
+div.MsoListParagraphCxSpFirst
+	{mso-style-priority:34;
+	mso-style-type:export-only;
+	margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	mso-add-space:auto;
+	line-height:105%;
+	font-size:11.0pt;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-language:EN-US;}
+p.MsoListParagraphCxSpMiddle, li.MsoListParagraphCxSpMiddle, =
+div.MsoListParagraphCxSpMiddle
+	{mso-style-priority:34;
+	mso-style-type:export-only;
+	margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	mso-add-space:auto;
+	line-height:105%;
+	font-size:11.0pt;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-language:EN-US;}
+p.MsoListParagraphCxSpLast, li.MsoListParagraphCxSpLast, =
+div.MsoListParagraphCxSpLast
+	{mso-style-priority:34;
+	mso-style-type:export-only;
+	margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:8.0pt;
+	margin-left:36.0pt;
+	mso-add-space:auto;
+	line-height:105%;
+	font-size:11.0pt;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-language:EN-US;}
+.MsoChpDefault
+	{mso-style-type:export-only;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-language:EN-US;}
+.MsoPapDefault
+	{mso-style-type:export-only;
+	margin-bottom:10.0pt;
+	line-height:115%;}
+@page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 72.0pt 72.0pt 72.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+/* List Definitions */
+@list l0
+	{mso-list-id:1111314252;
+	mso-list-type:hybrid;
+	mso-list-template-ids:-663842874 1074331649 1074331651 1074331653 =
+1074331649 1074331651 1074331653 1074331649 1074331651 1074331653;}
+@list l0:level1
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0B7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Symbol;}
+@list l0:level2
+	{mso-level-number-format:bullet;
+	mso-level-text:o;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Courier New";}
+@list l0:level3
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l0:level4
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0B7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Symbol;}
+@list l0:level5
+	{mso-level-number-format:bullet;
+	mso-level-text:o;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Courier New";}
+@list l0:level6
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l0:level7
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0B7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Symbol;}
+@list l0:level8
+	{mso-level-number-format:bullet;
+	mso-level-text:o;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Courier New";}
+@list l0:level9
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l1
+	{mso-list-id:2079284895;
+	mso-list-type:hybrid;
+	mso-list-template-ids:-132086486 166521540 1074331651 1074331653 =
+1074331649 1074331651 1074331653 1074331649 1074331651 1074331653;}
+@list l1:level1
+	{mso-level-start-at:0;
+	mso-level-number-format:bullet;
+	mso-level-text:\2022;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-font-family:Calibri;
+	mso-fareast-theme-font:minor-latin;}
+@list l1:level2
+	{mso-level-number-format:bullet;
+	mso-level-text:o;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Courier New";}
+@list l1:level3
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l1:level4
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0B7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Symbol;}
+@list l1:level5
+	{mso-level-number-format:bullet;
+	mso-level-text:o;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Courier New";}
+@list l1:level6
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l1:level7
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0B7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Symbol;}
+@list l1:level8
+	{mso-level-number-format:bullet;
+	mso-level-text:o;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Courier New";}
+@list l1:level9
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+ol
+	{margin-bottom:0cm;}
+ul
+	{margin-bottom:0cm;}
+--></style><!--[if gte mso 9]><xml>
+<o:shapedefaults v:ext=3D"edit" spidmax=3D"1026" />
+</xml><![endif]--><!--[if gte mso 9]><xml>
+<o:shapelayout v:ext=3D"edit">
+<o:idmap v:ext=3D"edit" data=3D"1" />
+</o:shapelayout></xml><![endif]--></head><body lang=3DEN-IN link=3Dblue =
+vlink=3Dpurple><div class=3DWordSection1><p class=3DMsoNormal =
+style=3D'mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;line-height:n=
+ormal'><span =
+style=3D'font-size:12.0pt;color:#1F497D'>Hi,<o:p></o:p></span></p><p =
+class=3DMsoNormal =
+style=3D'mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;line-height:n=
+ormal'><span style=3D'font-size:12.0pt;color:#1F497D'>Would you like to =
+upgrade or redesign your website with modern UI/UX at a minimal cost, or =
+build a brand new one? =F0=9F=9A=80<o:p></o:p></span></p><p =
+class=3DMsoNormal =
+style=3D'mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;line-height:n=
+ormal'><span style=3D'font-size:12.0pt;color:#1F497D'>I=E2=80=99d be =
+happy to share a few design samples &amp; pricing details. Or, if =
+easier, <b>we can jump on a quick 5-minute call</b> =E2=80=94 just share =
+your number, and I=E2=80=99ll reach out.<o:p></o:p></span></p><p =
+class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><b><=
+span style=3D'color:#002060'>Best Regards,</span></b><span =
+style=3D'color:#002060'><o:p></o:p></span></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><spa=
+n style=3D'font-size:12.0pt;color:#1F497D'>Sagar =
+Sharma<o:p></o:p></span></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><b><=
+span style=3D'font-size:12.0pt;color:#202020'>&nbsp;</span></b><span =
+style=3D'font-size:12.0pt'><o:p></o:p></span></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><b><=
+span style=3D'font-size:12.0pt;color:#202020'>From:</span></b><span =
+style=3D'font-size:12.0pt'> </span><span style=3D'color:#222222'>Sagar =
+Sharma</span><span style=3D'font-size:12.0pt;color:#202020'> [</span><a =
+href=3D"mailto:"><span =
+style=3D'font-size:12.0pt'>mailto:</span></a><span =
+class=3DMsoHyperlink><span =
+style=3D'font-size:12.0pt'>Sagar@shinetechserve.com</span></span><span =
+style=3D'font-size:12.0pt;color:#202020'>]<br><b>Sent:</b> 25 August =
+2025 18:13<br><b>To:</b> =
+'contact@bhwp.ie'<br><b>Subject</b></span><b><span =
+style=3D'font-size:12.0pt'>: </span></b><span =
+style=3D'font-size:12.0pt'>www.bhwp.ie</span><span =
+style=3D'font-size:12.0pt'> -<b> </b></span>Your Website Ready for an =
+Upgrade?<span style=3D'font-size:12.0pt'><o:p></o:p></span></p><p =
+class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><o:p=
+>&nbsp;</o:p></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'>Hi,<=
+/p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><o:p=
+>&nbsp;</o:p></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'>Good=
+ morning!</p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><o:p=
+>&nbsp;</o:p></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><b>W=
+ould you like to upgrade, repair, or refurbish your website with the =
+latest UI/ UX features at minimal cost, or you'd like to build a new =
+website completely?<o:p></o:p></b></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><b><=
+o:p>&nbsp;</o:p></b></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'>I =
+have brilliant web experts, who help you in developing your website and =
+we can do anything you can imagine on your website.</p><p =
+class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><o:p=
+>&nbsp;</o:p></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><b>I=
+f you are interested</b>, I can send you some of our created website =
+design examples &amp; price info.</p><p =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;background:white'><span =
+lang=3DEN-US =
+style=3D'font-family:"Calibri","sans-serif";color:#222222'>Thanks,<o:p></=
+o:p></span></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><spa=
+n style=3D'color:#222222'>Sagar Sharma<o:p></o:p></span></p><p =
+class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><spa=
+n style=3D'color:#222222'>Manager Client Success</span><span =
+style=3D'font-size:12.0pt;color:#1F497D'><o:p></o:p></span></p><p =
+style=3D'margin:0cm;margin-bottom:.0001pt;background:white'><span =
+lang=3DEN-US =
+style=3D'font-family:"Calibri","sans-serif";color:#222222'>A-82, Noida, =
+India =E2=80=93 201301<o:p></o:p></span></p><p =
+style=3D'margin:0cm;margin-bottom:.0001pt;background:white'><span =
+lang=3DEN-US =
+style=3D'font-family:"Calibri","sans-serif";color:#222222'>If you don't =
+want to hear from me anymore,&nbsp;<a =
+href=3D"https://shinetechserve.com/unsubscribe/" target=3D"_blank"><span =
+style=3D'color:#1155CC'>click here</span></a><o:p></o:p></span></p><p =
+class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><spa=
+n style=3D'font-size:12.0pt'><o:p>&nbsp;</o:p></span></p><p =
+class=3DMsoNormal style=3D'line-height:normal'><o:p>&nbsp;</o:p></p><p =
+class=3DMsoNormal><o:p>&nbsp;</o:p></p><p =
+class=3DMsoNormal><o:p>&nbsp;</o:p></p></div></body></html>
+------=_NextPart_000_0BB4_01DC2EEA.3B536BA0--
+
+ Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hi,
+
+Would you like to upgrade or redesign your website with modern UI/UX at =
+a minimal cost, or build a brand new one? =F0=9F=9A=80
+
+I=E2=80=99d be happy to share a few design samples & pricing details. =
+Or, if easier, we can jump on a quick 5-minute call =E2=80=94 just share =
+your number, and I=E2=80=99ll reach out.
+
+Best Regards,
+
+Sagar Sharma
+
+=20
+
+From: Sagar Sharma [ <mailto:> mailto:Sagar@shinetechserve.com]
+Sent: 25 August 2025 18:13
+To: 'contact@bhwp.ie'
+Subject: www.bhwp.ie - Your Website Ready for an Upgrade?
+
+=20
+
+Hi,
+
+=20
+
+Good morning!
+
+=20
+
+Would you like to upgrade, repair, or refurbish your website with the =
+latest UI/ UX features at minimal cost, or you'd like to build a new =
+website completely?
+
+=20
+
+I have brilliant web experts, who help you in developing your website =
+and we can do anything you can imagine on your website.
+
+=20
+
+If you are interested, I can send you some of our created website design =
+examples & price info.
+
+Thanks,
+
+Sagar Sharma
+
+Manager Client Success
+
+A-82, Noida, India =E2=80=93 201301
+
+If you don't want to hear from me anymore,  =
+<https://shinetechserve.com/unsubscribe/> click here
+
+=20
+
+=20
+
+=20
+
+=20
+
+ Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Dutf-8">
+<html xmlns:v=3D"urn:schemas-microsoft-com:vml" =
+xmlns:o=3D"urn:schemas-microsoft-com:office:office" =
+xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
+xmlns:m=3D"http://schemas.microsoft.com/office/2004/12/omml" =
+xmlns=3D"http://www.w3.org/TR/REC-html40"><head><meta name=3DGenerator =
+content=3D"Microsoft Word 14 (filtered medium)"><style><!--
+/* Font Definitions */
+@font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:Calibri;
+	panose-1:2 15 5 2 2 2 4 3 2 4;}
+/* Style Definitions */
+p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:10.0pt;
+	margin-left:0cm;
+	line-height:115%;
+	font-size:11.0pt;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-language:EN-US;}
+a:link, span.MsoHyperlink
+	{mso-style-priority:99;
+	color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{mso-style-priority:99;
+	color:purple;
+	text-decoration:underline;}
+p
+	{mso-style-priority:99;
+	mso-margin-top-alt:auto;
+	margin-right:0cm;
+	mso-margin-bottom-alt:auto;
+	margin-left:0cm;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";
+	mso-fareast-language:EN-US;}
+p.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph
+	{mso-style-priority:34;
+	margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:8.0pt;
+	margin-left:36.0pt;
+	mso-add-space:auto;
+	line-height:105%;
+	font-size:11.0pt;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-language:EN-US;}
+p.MsoListParagraphCxSpFirst, li.MsoListParagraphCxSpFirst, =
+div.MsoListParagraphCxSpFirst
+	{mso-style-priority:34;
+	mso-style-type:export-only;
+	margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	mso-add-space:auto;
+	line-height:105%;
+	font-size:11.0pt;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-language:EN-US;}
+p.MsoListParagraphCxSpMiddle, li.MsoListParagraphCxSpMiddle, =
+div.MsoListParagraphCxSpMiddle
+	{mso-style-priority:34;
+	mso-style-type:export-only;
+	margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:0cm;
+	margin-left:36.0pt;
+	margin-bottom:.0001pt;
+	mso-add-space:auto;
+	line-height:105%;
+	font-size:11.0pt;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-language:EN-US;}
+p.MsoListParagraphCxSpLast, li.MsoListParagraphCxSpLast, =
+div.MsoListParagraphCxSpLast
+	{mso-style-priority:34;
+	mso-style-type:export-only;
+	margin-top:0cm;
+	margin-right:0cm;
+	margin-bottom:8.0pt;
+	margin-left:36.0pt;
+	mso-add-space:auto;
+	line-height:105%;
+	font-size:11.0pt;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-language:EN-US;}
+.MsoChpDefault
+	{mso-style-type:export-only;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-language:EN-US;}
+.MsoPapDefault
+	{mso-style-type:export-only;
+	margin-bottom:10.0pt;
+	line-height:115%;}
+@page WordSection1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 72.0pt 72.0pt 72.0pt;}
+div.WordSection1
+	{page:WordSection1;}
+/* List Definitions */
+@list l0
+	{mso-list-id:1111314252;
+	mso-list-type:hybrid;
+	mso-list-template-ids:-663842874 1074331649 1074331651 1074331653 =
+1074331649 1074331651 1074331653 1074331649 1074331651 1074331653;}
+@list l0:level1
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0B7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Symbol;}
+@list l0:level2
+	{mso-level-number-format:bullet;
+	mso-level-text:o;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Courier New";}
+@list l0:level3
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l0:level4
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0B7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Symbol;}
+@list l0:level5
+	{mso-level-number-format:bullet;
+	mso-level-text:o;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Courier New";}
+@list l0:level6
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l0:level7
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0B7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Symbol;}
+@list l0:level8
+	{mso-level-number-format:bullet;
+	mso-level-text:o;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Courier New";}
+@list l0:level9
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l1
+	{mso-list-id:2079284895;
+	mso-list-type:hybrid;
+	mso-list-template-ids:-132086486 166521540 1074331651 1074331653 =
+1074331649 1074331651 1074331653 1074331649 1074331651 1074331653;}
+@list l1:level1
+	{mso-level-start-at:0;
+	mso-level-number-format:bullet;
+	mso-level-text:\2022;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Calibri","sans-serif";
+	mso-fareast-font-family:Calibri;
+	mso-fareast-theme-font:minor-latin;}
+@list l1:level2
+	{mso-level-number-format:bullet;
+	mso-level-text:o;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Courier New";}
+@list l1:level3
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l1:level4
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0B7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Symbol;}
+@list l1:level5
+	{mso-level-number-format:bullet;
+	mso-level-text:o;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Courier New";}
+@list l1:level6
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+@list l1:level7
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0B7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Symbol;}
+@list l1:level8
+	{mso-level-number-format:bullet;
+	mso-level-text:o;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:"Courier New";}
+@list l1:level9
+	{mso-level-number-format:bullet;
+	mso-level-text:\F0A7;
+	mso-level-tab-stop:none;
+	mso-level-number-position:left;
+	text-indent:-18.0pt;
+	font-family:Wingdings;}
+ol
+	{margin-bottom:0cm;}
+ul
+	{margin-bottom:0cm;}
+--></style><!--[if gte mso 9]><xml>
+<o:shapedefaults v:ext=3D"edit" spidmax=3D"1026" />
+</xml><![endif]--><!--[if gte mso 9]><xml>
+<o:shapelayout v:ext=3D"edit">
+<o:idmap v:ext=3D"edit" data=3D"1" />
+</o:shapelayout></xml><![endif]--></head><body lang=3DEN-IN link=3Dblue =
+vlink=3Dpurple><div class=3DWordSection1><p class=3DMsoNormal =
+style=3D'mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;line-height:n=
+ormal'><span =
+style=3D'font-size:12.0pt;color:#1F497D'>Hi,<o:p></o:p></span></p><p =
+class=3DMsoNormal =
+style=3D'mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;line-height:n=
+ormal'><span style=3D'font-size:12.0pt;color:#1F497D'>Would you like to =
+upgrade or redesign your website with modern UI/UX at a minimal cost, or =
+build a brand new one? =F0=9F=9A=80<o:p></o:p></span></p><p =
+class=3DMsoNormal =
+style=3D'mso-margin-top-alt:auto;mso-margin-bottom-alt:auto;line-height:n=
+ormal'><span style=3D'font-size:12.0pt;color:#1F497D'>I=E2=80=99d be =
+happy to share a few design samples &amp; pricing details. Or, if =
+easier, <b>we can jump on a quick 5-minute call</b> =E2=80=94 just share =
+your number, and I=E2=80=99ll reach out.<o:p></o:p></span></p><p =
+class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><b><=
+span style=3D'color:#002060'>Best Regards,</span></b><span =
+style=3D'color:#002060'><o:p></o:p></span></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><spa=
+n style=3D'font-size:12.0pt;color:#1F497D'>Sagar =
+Sharma<o:p></o:p></span></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><b><=
+span style=3D'font-size:12.0pt;color:#202020'>&nbsp;</span></b><span =
+style=3D'font-size:12.0pt'><o:p></o:p></span></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><b><=
+span style=3D'font-size:12.0pt;color:#202020'>From:</span></b><span =
+style=3D'font-size:12.0pt'> </span><span style=3D'color:#222222'>Sagar =
+Sharma</span><span style=3D'font-size:12.0pt;color:#202020'> [</span><a =
+href=3D"mailto:"><span =
+style=3D'font-size:12.0pt'>mailto:</span></a><span =
+class=3DMsoHyperlink><span =
+style=3D'font-size:12.0pt'>Sagar@shinetechserve.com</span></span><span =
+style=3D'font-size:12.0pt;color:#202020'>]<br><b>Sent:</b> 25 August =
+2025 18:13<br><b>To:</b> =
+'contact@bhwp.ie'<br><b>Subject</b></span><b><span =
+style=3D'font-size:12.0pt'>: </span></b><span =
+style=3D'font-size:12.0pt'>www.bhwp.ie</span><span =
+style=3D'font-size:12.0pt'> -<b> </b></span>Your Website Ready for an =
+Upgrade?<span style=3D'font-size:12.0pt'><o:p></o:p></span></p><p =
+class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><o:p=
+>&nbsp;</o:p></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'>Hi,<=
+/p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><o:p=
+>&nbsp;</o:p></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'>Good=
+ morning!</p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><o:p=
+>&nbsp;</o:p></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><b>W=
+ould you like to upgrade, repair, or refurbish your website with the =
+latest UI/ UX features at minimal cost, or you'd like to build a new =
+website completely?<o:p></o:p></b></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><b><=
+o:p>&nbsp;</o:p></b></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'>I =
+have brilliant web experts, who help you in developing your website and =
+we can do anything you can imagine on your website.</p><p =
+class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><o:p=
+>&nbsp;</o:p></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><b>I=
+f you are interested</b>, I can send you some of our created website =
+design examples &amp; price info.</p><p =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;background:white'><span =
+lang=3DEN-US =
+style=3D'font-family:"Calibri","sans-serif";color:#222222'>Thanks,<o:p></=
+o:p></span></p><p class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><spa=
+n style=3D'color:#222222'>Sagar Sharma<o:p></o:p></span></p><p =
+class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><spa=
+n style=3D'color:#222222'>Manager Client Success</span><span =
+style=3D'font-size:12.0pt;color:#1F497D'><o:p></o:p></span></p><p =
+style=3D'margin:0cm;margin-bottom:.0001pt;background:white'><span =
+lang=3DEN-US =
+style=3D'font-family:"Calibri","sans-serif";color:#222222'>A-82, Noida, =
+India =E2=80=93 201301<o:p></o:p></span></p><p =
+style=3D'margin:0cm;margin-bottom:.0001pt;background:white'><span =
+lang=3DEN-US =
+style=3D'font-family:"Calibri","sans-serif";color:#222222'>If you don't =
+want to hear from me anymore,&nbsp;<a =
+href=3D"https://shinetechserve.com/unsubscribe/" target=3D"_blank"><span =
+style=3D'color:#1155CC'>click here</span></a><o:p></o:p></span></p><p =
+class=3DMsoNormal =
+style=3D'margin-bottom:0cm;margin-bottom:.0001pt;line-height:normal'><spa=
+n style=3D'font-size:12.0pt'><o:p>&nbsp;</o:p></span></p><p =
+class=3DMsoNormal style=3D'line-height:normal'><o:p>&nbsp;</o:p></p><p =
+class=3DMsoNormal><o:p>&nbsp;</o:p></p><p =
+class=3DMsoNormal><o:p>&nbsp;</o:p></p></div></body></html>

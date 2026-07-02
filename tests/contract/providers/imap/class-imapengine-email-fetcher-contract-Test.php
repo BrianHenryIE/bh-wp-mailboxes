@@ -10,9 +10,9 @@ namespace BrianHenryIE\WP_Emails\API\ImapEngine_Imap;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\Imap_Credentials_Env;
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials_Env;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
@@ -93,7 +93,7 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
 		$credentials = new Imap_Credentials_Env();
 
-		$sut = new ImapEngine_Imap_Email_Fetcher( $this->settings, $this->logger );
+		$sut = new ImapEngine_Imap_Email_Connection( $this->settings, $this->logger );
 		$sut->set_credentials( $credentials );
 
 		$since_time = ( new DateTime() )->sub( new DateInterval( 'P30D' ) );
@@ -130,7 +130,7 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 	public function test_download_emails_for_tests() {
 
 		try {
-			$sut = new ImapEngine_Imap_Email_Fetcher( $this->settings, $this->logger );
+			$sut = new ImapEngine_Imap_Email_Connection( $this->settings, $this->logger );
 		} catch ( ImapEngineException $e ) {
 			// * When the server or user/password are bad.
 			// * DirectoryTree\ImapEngine\Exceptions\ImapStreamException : Unexpected end of stream while trying to fill the buffer
@@ -196,7 +196,7 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 		$this->assertNotEmpty( $message_id, 'Newest inbox message has no Message-ID header.' );
 
 		// System under test.
-		$sut = new ImapEngine_Imap_Email_Fetcher( $this->settings, $this->logger );
+		$sut = new ImapEngine_Imap_Email_Connection( $this->settings, $this->logger );
 		$sut->set_credentials( $credentials );
 
 		// UID path: correct UID + UIDVALIDITY → direct FETCH.
@@ -275,7 +275,7 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
 		$exception = null;
 		try {
-			$imap = new ImapEngine_Imap_Email_Fetcher( $settings, $logger );
+			$imap = new ImapEngine_Imap_Email_Connection( $settings, $logger );
 			$imap->set_credentials( $credentials );
 			$imap->test_connection();
 		} catch ( ImapConnectionFailedException $e ) {
@@ -311,7 +311,7 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
 		$exception = null;
 		try {
-			$fetcher = new ImapEngine_Imap_Email_Fetcher( $settings, $logger );
+			$fetcher = new ImapEngine_Imap_Email_Connection( $settings, $logger );
 			$fetcher->set_credentials( $credentials );
 			$fetcher->test_connection();
 		} catch ( ImapCommandException $exception ) {

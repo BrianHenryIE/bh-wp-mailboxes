@@ -1,0 +1,145 @@
+Return-Path: <010101985968a6d4-52be72cc-afb5-4990-bba7-108cedc00885-000000@m.bhwp.ie>
+Delivered-To: contact@bhwp.ie
+Received: from mail.brianhenry.ie ([172.22.1.253])
+	by bcc0a4cf3c72 with LMTP
+	id uF8yH66TiWjU7R8Akxg0Tw
+	(envelope-from <010101985968a6d4-52be72cc-afb5-4990-bba7-108cedc00885-000000@m.bhwp.ie>)
+	for <contact@bhwp.ie>; Tue, 29 Jul 2025 20:38:22 -0700
+Received: from mx1.wiredblade.com (mx1.wiredblade.com [162.216.242.36])
+	by mail.brianhenry.ie (Postcow) with SMTP id A93E85FB4F
+	for <contact@bhwp.ie>; Tue, 29 Jul 2025 20:38:11 -0700 (PDT)
+Authentication-Results: mail.brianhenry.ie;
+	dkim=pass header.d=bhwp.ie header.s=xyirwykff5wymmzfyyz4baq32p5hktpx header.b=UmhVDRnW;
+	dkim=pass header.d=amazonses.com header.s=gdwg2y3kokkkj5a55z2ilkup5wp5hhxx header.b=e8FlCKy8;
+	dmarc=pass (policy=none) header.from=bhwp.ie
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=bhwp.ie;
+	s=dkim; t=1753846695; h=from:from:reply-to:reply-to:subject:subject:date:date:
+	 message-id:message-id:to:to:cc:mime-version:mime-version:
+	 content-type:content-type:dkim-signature;
+	bh=Ffs0XiyTqsDkQoN2RpvoCmmeQEulQsPCZL1Bz56bZ7E=;
+	b=3I4x0CbzR8jDJE0I3ex9ms4352a8wd5x2kYy3S8JE3CFdH3ArKze6QJP2ZBQFcarkEXYis
+	GHOyzcZ/nr6mievuaoRXRUujAYB56hxn5LwsdKJi01CtKDKPDiZ6ImKBHJuEnhIfSrKXUL
+	z0449ZEUe7TP39/kWXGt1VOZWvZhISPcGueRedCn7Eh4vhO2cMmTiKBilFVa7mlEUqgVuN
+	JSXufhS362mM7UuCqPkqMwT+bwjKAMmCABPygvhXWlKvsOPvRpPmg4OsylMBWEeKdnndIL
+	57Zub+pXum9U1UhQa8bEU3D/LImJ/LizyR91J4TKnu9moDMtPZPmFXUpUBg1Wg==
+ARC-Authentication-Results: i=1;
+	mail.brianhenry.ie;
+	dkim=pass header.d=bhwp.ie header.s=xyirwykff5wymmzfyyz4baq32p5hktpx header.b=UmhVDRnW;
+	dkim=pass header.d=amazonses.com header.s=gdwg2y3kokkkj5a55z2ilkup5wp5hhxx header.b=e8FlCKy8;
+	spf=softfail (mail.brianhenry.ie: 162.216.242.36 is neither permitted nor denied by domain of 010101985968a6d4-52be72cc-afb5-4990-bba7-108cedc00885-000000@m.bhwp.ie) smtp.mailfrom=010101985968a6d4-52be72cc-afb5-4990-bba7-108cedc00885-000000@m.bhwp.ie;
+	dmarc=pass (policy=none) header.from=bhwp.ie
+ARC-Seal: i=1; s=dkim; d=bhwp.ie; t=1753846695; a=rsa-sha256; cv=none;
+	b=Ep3y5mxb4N6d6P/pgaXUsRklq3oz55Xr6Vef8g79TFIoVWSTrNs2Ymn2iBOSFNhwaCxvWA
+	u/Tp4l69+BzoDoc8RdUloCu74+bnXLmOdMulqVRqyRA1x2ZdzxHSGTiNBznCW0CPRe4aMm
+	E/6jY12dwH8EBFXcffTXtWTO5/okiPpR9Dla6FOkvnP1EnLYNmUOHHerNILOlr5VZmGtu9
+	YNQEpbMKfjelF+eu0WBmCxqZeb+5jLke0DZZfIzphyu9bswxm+elbsmyjf6z6g2crNNJgf
+	fBF44rdUJRC46HrUn/ZMrBnLSx4BZYXMEW99CjZrFKam/uttQQ60ahFM1QTf7g==
+X-Spam-Checker-Version: SpamAssassin 4.0.0 (2022-12-13) on MX1
+X-Spam-Level: **************************************************
+X-Spam-Status: No, score=-500 required=5.0 tests=WHITELIST_RECEPIENT autolearn=no
+ autolearn_force=no version=4.0.0
+Received: from a27-115.smtp-out.us-west-2.amazonses.com (a27-115.smtp-out.us-west-2.amazonses.com
+ [54.240.27.115]) by mx1.wiredblade.com with ESMTPS (version=TLSv1.3 cipher=TLS_AES_128_GCM_SHA256
+ bits=128) ; Wed, 30 Jul 2025 03:38:08 +0000
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple; s=xyirwykff5wymmzfyyz4baq32p5hktpx;
+ d=bhwp.ie; t=1753846687; h=Date:From:Reply-To:Message-ID:MIME-Version:Content-Type:To:Subject;
+ bh=1ON6IzDFSTS8EbzixSFESkwU/ViT2ZPAvFQsTQKes4Y=; b=UmhVDRnW9zPVEHOLWk7+BkY2reAX0lrDa3ty3eUCTX90xFSeA/0ZPRBAp1vz+qe1
+ S8bK7Y+D200eAQncDzyYR/QHKhC0sfPjhxYtc1/jR9WIsY0cAEl6nolZUBQCItwriA3
+ dJgt08GcqxBbx1tdRavWvW9wUpjUhJmk1D0t6neivfMZHDdz/GxJYxN3CaeweDrWEo0
+ RGrUOesa7mgPcGlUDFeNJE2os+rGG2jYCsm47uNOSbqbDWhn80101yNUtatnt1SQulL
+ ia3/gAJBXEawrn4KRAKJkBsEaqUpkqtL7dtoCLmuDoU3DrcGuFc0tVPzzbcS7AHxyyH
+ cS+6SoG/bw==
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple; s=gdwg2y3kokkkj5a55z2ilkup5wp5hhxx;
+ d=amazonses.com; t=1753846687; h=Date:From:Reply-To:Message-ID:MIME-Version:Content-Type:To:Subject:Feedback-ID;
+ bh=1ON6IzDFSTS8EbzixSFESkwU/ViT2ZPAvFQsTQKes4Y=; b=e8FlCKy8DLNqkGq82aSxguRPXEB7W8Ac46LUdtVw5gv1gFxw94XicapHFy9k8bL8
+ 3AEOOoq2sJailb2E/qBUSmeqRQQzfvENl+76JZ82A3lxUOm4mN8vGPSe4pkMqPGavgc
+ HUi5U4lRgz5LGSuHNEYY3bwSvDZUG9M2F3YJ7qBE=
+ HUi5U4lRgz5LGSuHNEYY3bwSvDZUG9M2F3YJ7qBE=
+Date: Wed, 30 Jul 2025 03:38:07 +0000
+From: "BHWP.ie" <contact@bhwp.ie>
+Reply-To: contact@bhwp.ie
+Message-ID: <010101985968a6d4-52be72cc-afb5-4990-bba7-108cedc00885-000000@us-west-2.amazonses.com>
+X-Mailer: PHPMailer 6.9.3 (https://github.com/PHPMailer/PHPMailer)
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+To: contact@bhwp.ie
+Subject: [Wordfence Alert] Problems found on bhwp.ie
+Feedback-ID: ::1.us-west-2.cN6VuVrqukTQgQdXpWkfJgAwM88hVNib7riuXcRz0xc=:AmazonSES
+X-SES-Outgoing: 2025.07.30-54.240.27.115
+X-Last-TLS-Session-Version: None
+X-Spamd-Result: default: False [3.99 / 15.00];
+	VIOLATED_DIRECT_SPF(3.50)[];
+	MX_INVALID(0.50)[];
+	DMARC_POLICY_ALLOW_WITH_FAILURES(-0.50)[];
+	FORGED_SENDER(0.30)[contact@bhwp.ie,010101985968a6d4-52be72cc-afb5-4990-bba7-108cedc00885-000000@m.bhwp.ie];
+	MIME_HTML_ONLY(0.20)[];
+	R_DKIM_ALLOW(-0.20)[bhwp.ie:s=xyirwykff5wymmzfyyz4baq32p5hktpx,amazonses.com:s=gdwg2y3kokkkj5a55z2ilkup5wp5hhxx];
+	RCVD_NO_TLS_LAST(0.10)[];
+	ONCE_RECEIVED(0.10)[];
+	IP_REPUTATION_HAM(-0.01)[asn: 398019(-0.01), country: US(0.00), ip: 162.216.242.36(0.00)];
+	MAILCOW_DOMAIN_HEADER_FROM(0.00)[bhwp.ie];
+	RCPT_MAILCOW_DOMAIN(0.00)[bhwp.ie];
+	RCVD_IN_DNSWL_NONE(0.00)[54.240.27.115:received];
+	WL_FWD_HOST(0.00)[];
+	TO_EQ_FROM(0.00)[];
+	BCC(0.00)[];
+	ARC_NA(0.00)[];
+	RCPT_COUNT_ONE(0.00)[1];
+	MIME_TRACE(0.00)[0:~];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DMARC_POLICY_ALLOW(0.00)[bhwp.ie,none];
+	HAS_REPLYTO(0.00)[contact@bhwp.ie];
+	TO_DN_NONE(0.00)[];
+	DWL_DNSWL_NONE(0.00)[amazonses.com:dkim];
+	REPLYTO_ADDR_EQ_FROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FROM_NEQ_ENVFROM(0.00)[contact@bhwp.ie,010101985968a6d4-52be72cc-afb5-4990-bba7-108cedc00885-000000@m.bhwp.ie];
+	HAS_PHPMAILER_SIG(0.00)[];
+	RBL_VIRUSFREE_UNKNOWN_FAIL(0.00)[162.216.242.36:server fail];
+	ASN(0.00)[asn:398019, ipnet:162.216.242.0/24, country:US];
+	DKIM_TRACE(0.00)[bhwp.ie:+,amazonses.com:+];
+	HAS_WP_URI(0.00)[];
+	RBL_NIXSPAM_FAIL(0.00)[162.216.242.36:server fail];
+	RCVD_COUNT_ONE(0.00)[1];
+	WHITELISTED_FWD_HOST(0.00)[162.216.242.36];
+	ARC_SIGNED(0.00)[bhwp.ie:s=dkim:i=1]
+X-Rspamd-Queue-Id: A93E85FB4F
+
+<p>This email was sent from your website &quot;BHWP Plugins&quot; by the Wordfence plugin.</p>
+
+<p>Wordfence found the following new issues on "BHWP Plugins" (9 existing issues were also found again).</p>
+
+<p>Alert generated at Wednesday 30th of July 2025 at 03:38:06 AM</p>
+
+<br>
+
+<p>See the details of these scan results on your site at: <a href="https://bhwp.ie/wp-admin/admin.php?page=WordfenceScan&#038;autologin=8~3H1Ty5b94mcf">https://bhwp.ie/wp-admin/admin.php?page=WordfenceScan&#038;autologin=8~3H1Ty5b94mcf</a></p>
+
+
+
+
+<p>Medium Severity Problems:</p>
+<p>* The Plugin &quot;Limit Login Attempts Reloaded&quot; needs an upgrade (2.26.19 -&gt; 2.26.20).</p>
+<p><a href="https://wordpress.org/plugins/limit-login-attempts-reloaded/#developers" rel="nofollow">https://wordpress.org/plugins/limit-login-attempts-reloaded/#developers</a></p>
+
+<p>* The Plugin &quot;Site Kit by Google&quot; needs an upgrade (1.156.0 -&gt; 1.158.0).</p>
+<p><a href="https://wordpress.org/plugins/google-site-kit/#developers" rel="nofollow">https://wordpress.org/plugins/google-site-kit/#developers</a></p>
+
+
+<p>9 existing issues were found again and are not shown.</p>
+	<p>NOTE: You are using the free version of Wordfence. Upgrade today:</p>
+	
+	<ul>
+		<li>Receive real-time Firewall and Scan engine rule updates for protection as threats emerge</li>
+		<li>Real-time IP Blocklist blocks the most malicious IPs from accessing your site</li>
+		<li>Country blocking</li>
+		<li>IP reputation monitoring</li>
+		<li>Schedule scans to run more frequently and at optimal times</li>
+		<li>Access to Premium Support</li>
+		<li>Discounts for multi-year and multi-license purchases</li>
+	</ul>
+
+	<p>Click here to upgrade to Wordfence Premium:<br><a href="https://www.wordfence.com/zz2/wordfence-signup/">https://www.wordfence.com/zz2/wordfence-signup/</a></p>
+
+<p>No longer an administrator for this site? <a href="https://bhwp.ie/?_wfsf=removeAlertEmail&amp;jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImNvbnRhY3RAYmh3cC5pZSIsIl9leHAiOjE3NTQ0NTE0ODZ9.b9t53R5EsTezVrWL8kQyDzB7hVlr4LWXfbzhohXbFuc&autologin=8~3H1Ty5b94mcf" target="_blank">Click here</a> to stop receiving security alerts.</p>
+

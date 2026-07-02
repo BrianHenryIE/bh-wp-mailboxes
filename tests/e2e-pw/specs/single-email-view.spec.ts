@@ -46,7 +46,7 @@ test.describe( 'Single email view', () => {
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
 		await expect( page.locator( '#submitdiv' ) ).not.toBeAttached();
-		await expect( page.locator( '#bh-email-status' ) ).toBeVisible();
+		await expect( page.locator( '#bh-email-local-status' ) ).toBeVisible();
 	} );
 
 	test( 'Email Headers postbox is present', async ( { admin, page, request } ) => {
@@ -54,6 +54,16 @@ test.describe( 'Single email view', () => {
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
 		await expect( page.locator( '#bh-email-headers' ) ).toBeVisible();
+	} );
+
+	test( 'Email Headers are rendered as a responsive grid (not a table)', async ( { admin, page, request } ) => {
+		// A body gives the stored MIME Content-Type / MIME-Version headers to display.
+		const postId = await createEmail( request, { body_plain: 'Header grid test body.' } );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		// toBeAttached (not toBeVisible): the postbox may be collapsed by a parallel test (shared user meta).
+		await expect( page.locator( '#bh-email-headers .bh-email-headers-grid' ) ).toBeAttached();
+		await expect( page.locator( '#bh-email-headers table' ) ).toHaveCount( 0 );
 	} );
 
 	test( 'HTML content metabox shows an iframe when email has HTML body', async ( { admin, page, request } ) => {
@@ -104,28 +114,37 @@ test.describe( 'Single email view', () => {
 		await expect( page.locator( '#title' ) ).toHaveValue( originalSubject );
 	} );
 
-	test( 'status select includes custom email statuses', async ( { admin, page, request } ) => {
+	test( 'status is a radio select including the custom email statuses', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		const statusSelect = page.locator( '#bh-post-status' );
-		await expect( statusSelect ).toBeVisible();
-		await expect( statusSelect.locator( 'option[value="bh_email_new"]' ) ).toBeAttached();
-		await expect( statusSelect.locator( 'option[value="bh_email_processed"]' ) ).toBeAttached();
-		await expect( statusSelect.locator( 'option[value="bh_email_saved"]' ) ).toBeAttached();
+		const options = page.locator( '.bh-email-status__options' );
+		await expect( options ).toBeVisible();
+		await expect( options.locator( 'input[type="radio"][name="post_status"][value="bh_email_new"]' ) ).toBeAttached();
+		await expect( options.locator( 'input[type="radio"][name="post_status"][value="bh_email_processed"]' ) ).toBeAttached();
+		await expect( options.locator( 'input[type="radio"][name="post_status"][value="bh_email_saved"]' ) ).toBeAttached();
 	} );
 
 	// -------------------------------------------------------------------------
 	// Requirement 3: Email Status metabox title
 	// -------------------------------------------------------------------------
 
-	test( 'Email Status metabox title says "Email Status"', async ( { admin, page, request } ) => {
+	test( 'Local status metabox title says "Local status"', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		const metaboxTitle = page.locator( '#bh-email-status .postbox-header h2' );
+		const metaboxTitle = page.locator( '#bh-email-local-status .postbox-header h2' );
 		await expect( metaboxTitle ).toBeVisible();
-		await expect( metaboxTitle ).toContainText( 'Email Status' );
+		await expect( metaboxTitle ).toContainText( 'Local status' );
+	} );
+
+	test( 'Remote status metabox title says "Remote status"', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		const metaboxTitle = page.locator( '#bh-email-remote-status .postbox-header h2' );
+		await expect( metaboxTitle ).toBeVisible();
+		await expect( metaboxTitle ).toContainText( 'Remote status' );
 	} );
 
 	// -------------------------------------------------------------------------
@@ -148,32 +167,46 @@ test.describe( 'Single email view', () => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		const statusBox = page.locator( '#bh-email-status' );
+		const statusBox = page.locator( '#bh-email-local-status' );
 		await expect( statusBox ).toContainText( 'Downloaded at:' );
 		await expect( statusBox ).not.toContainText( 'Published on' );
 	} );
 
-	test( 'status metabox shows "Sent:" from the email Date header when present', async ( { admin, page, request } ) => {
+	test( 'remote status metabox shows "Sent:" from the email Date header when present', async ( { admin, page, request } ) => {
 		const dateHeader = 'Mon, 01 Jan 2024 10:30:00 +0000';
 		const postId = await createEmail( request, { date_header: dateHeader } );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		const statusBox = page.locator( '#bh-email-status' );
+		const statusBox = page.locator( '#bh-email-remote-status' );
 		await expect( statusBox ).toContainText( 'Sent:' );
 	} );
 
-	test( 'status metabox always "Sent:" even when email has no Date header', async ( { admin, page, request } ) => {
+	test( 'remote status metabox always shows "Sent:" even when email has no Date header', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		await expect( page.locator( '#bh-email-status' ) ).toContainText( 'Sent:' );
+		await expect( page.locator( '#bh-email-remote-status' ) ).toContainText( 'Sent:' );
 	} );
 
-	test( 'status metabox always shows "Updated at:"', async ( { admin, page, request } ) => {
+	// The "Connection:" line is gated on a resolved account/connection; fixture emails created via the
+	// dev REST endpoint have no linked account/connection, so it never appears. Skip until connection setup
+	// is added (same as the remote-status badge tests below). Unit coverage: class-single-email-view-wpunit-Test.
+	test.skip( 'remote status metabox shows the "Connection:" type with an icon', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		await expect( page.locator( '#bh-email-status' ) ).toContainText( 'Updated at:' );
+		const statusBox = page.locator( '#bh-email-remote-status' );
+		await expect( statusBox ).toContainText( 'Connection:' );
+		await expect(
+			statusBox.locator( '.bh-email-field__icon--connection' )
+		).toHaveCount( 1 );
+	} );
+
+	test( 'local status metabox always shows "Updated at:"', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		await expect( page.locator( '#bh-email-local-status' ) ).toContainText( 'Updated at:' );
 	} );
 
 	// -------------------------------------------------------------------------
@@ -191,8 +224,8 @@ test.describe( 'Single email view', () => {
 	// Requirement 10: Remote status badges
 	// -------------------------------------------------------------------------
 
-	// Badges are gated on provider.can_read_status() && can_delete_on_server(); fixture emails have
-	// no linked account/provider, so badges never appear. Skip until provider setup is added.
+	// Badges are gated on connection.can_read_status() && can_delete_on_server(); fixture emails have
+	// no linked account/connection, so badges never appear. Skip until connection setup is added.
 	test.skip( '"Read on server" badge shown when email is_read meta is true', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request, { is_read: true } );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
@@ -261,6 +294,14 @@ test.describe( 'Single email view', () => {
 			return el !== null && el.style.height !== '';
 		} );
 
+		// A parallel test sharing the admin user may have persisted this postbox collapsed
+		// (WP stores collapse state in per-user `closedpostboxes_{screen}` meta); normalise to expanded first.
+		const htmlBox = page.locator( '#bh-email-content-html' );
+		if ( await htmlBox.evaluate( ( el ) => el.classList.contains( 'closed' ) ) ) {
+			await page.locator( '#bh-email-content-html .toggle-indicator' ).click();
+			await expect( htmlBox ).not.toHaveClass( /closed/, { timeout: 15_000 } );
+		}
+
 		// Collapse: click and wait for the 'closed' class to be applied.
 		await page.locator( '#bh-email-content-html .toggle-indicator' ).click();
 		await expect( page.locator( '#bh-email-content-html' ) ).toHaveClass( /closed/, { timeout: 15_000 } );
@@ -291,6 +332,14 @@ test.describe( 'Single email view', () => {
 			return el !== null && el.style.height !== '';
 		} );
 
+		// A parallel test sharing the admin user may have persisted this postbox collapsed
+		// (WP stores collapse state in per-user `closedpostboxes_{screen}` meta); normalise to expanded first.
+		const plainBox = page.locator( '#bh-email-content-plain' );
+		if ( await plainBox.evaluate( ( el ) => el.classList.contains( 'closed' ) ) ) {
+			await page.locator( '#bh-email-content-plain .toggle-indicator' ).click();
+			await expect( plainBox ).not.toHaveClass( /closed/, { timeout: 15_000 } );
+		}
+
 		// Collapse: click and wait for the 'closed' class to be applied.
 		await page.locator( '#bh-email-content-plain .toggle-indicator' ).click();
 		await expect( page.locator( '#bh-email-content-plain' ) ).toHaveClass( /closed/, { timeout: 15_000 } );
@@ -320,5 +369,158 @@ test.describe( 'Single email view', () => {
 		await expect(
 			page.locator( '#side-sortables #bh-email-attachments' )
 		).toBeVisible();
+	} );
+
+	// -------------------------------------------------------------------------
+	// Local status metabox: trash link, in-mailbox link, icons, selectable title
+	// -------------------------------------------------------------------------
+
+	test( 'local status metabox has a red "Move to Trash" link', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		// toBeAttached (not toBeVisible): postbox collapse state is shared per-user across parallel tests.
+		const trash = page.locator( '#bh-email-local-status .submitdelete' );
+		await expect( trash ).toBeAttached();
+		await expect( trash ).toContainText( 'Move to Trash' );
+	} );
+
+	test( 'local status metabox has an "In mailbox:" link back to the list', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		const metabox = page.locator( '#bh-email-local-status' );
+		await expect( metabox ).toContainText( 'In mailbox:' );
+
+		// The mailbox name links back to this CPT's list.
+		const link = metabox.locator( 'a[href*="edit.php?post_type=fixtures_email"]' );
+		await expect( link ).toBeAttached();
+	} );
+
+	test( 'status and datetime fields render dashicon markers', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		await expect(
+			page.locator( '#bh-email-local-status .bh-email-field__icon--status' )
+		).toHaveCount( 1 );
+		await expect(
+			page.locator( '#bh-email-local-status .bh-email-field__icon--datetime' ).first()
+		).toBeAttached();
+	} );
+
+	test( 'the immutable title is read-only but still selectable', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		const title = page.locator( '#title' );
+		await expect( title ).toHaveAttribute( 'readonly', '' );
+
+		// pointer-events:none would prevent text selection; it must not be set.
+		const pointerEvents = await title.evaluate( ( el ) => window.getComputedStyle( el ).pointerEvents );
+		expect( pointerEvents ).not.toBe( 'none' );
+	} );
+
+	test( 'changing the status records a log entry with the old and new status', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request, { post_status: 'bh_email_new' } );
+		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
+
+		await page.locator( 'input[name="post_status"][value="bh_email_processed"]' ).check();
+
+		// Save goes through the API (AJAX) rather than the native post save.
+		const updateResponse = page.waitForResponse(
+			( res ) =>
+				res.url().includes( 'admin-ajax.php' ) &&
+				( res.request().postData() ?? '' ).includes( 'bh_wp_mailboxes_update_status' )
+		);
+		await page.locator( '#bh-email-status-box #save' ).click();
+		await updateResponse;
+
+		// The JS reloads on success; the log metabox then shows the status change.
+		const log = page.locator( '#bh-email-log-notes' );
+		await expect( log ).toContainText( 'Status changed', { timeout: 10_000 } );
+		await expect( log ).toContainText( 'bh_email_processed' );
+	} );
+
+	test( 'remote read status: changing the radio and clicking Update persists across reload', async ( { admin, page, request } ) => {
+		// An account using the fixtures connection (which supports marking read) is needed so the
+		// single-email view shows the read-status radios. Fetch emails for it so they are linked to it.
+		const accountRes = await request.post( `${ DEV_REST }/accounts`, {
+			data: { email_address: `remote-update-${ Date.now() }@example.com` },
+		} );
+		expect( accountRes.status() ).toBe( 201 );
+		const accountId = ( await accountRes.json() ).post_id as number;
+
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		const checkResponse = page.waitForResponse(
+			( res ) =>
+				res.url().includes( 'admin-ajax.php' ) &&
+				( res.request().postData() ?? '' ).includes( `account_post_id=${ accountId }` )
+		);
+		await page.locator( `.bh-check-account[data-account-id="${ accountId }"]` ).click( { force: true } );
+		const checkBody = await ( await checkResponse ).json();
+		const emailId = checkBody.data.new_email_ids[ 0 ] as number;
+		expect( emailId ).toBeTruthy();
+
+		// Open the fetched email and wait for the on-load remote-status refresh to settle.
+		const openEmail = async () => {
+			await admin.visitAdminPage( 'post.php', `post=${ emailId }&action=edit` );
+			const options = page.locator( '#bh-email-read-status-options' );
+			await expect( options ).toBeAttached();
+			await expect( options ).not.toHaveClass( /is-loading/ );
+		};
+
+		// Update the read status through both states and confirm each sticks after a reload. This is
+		// independent of the (shared) initial state, proving the Update button persists the change.
+		const updateAndReload = async ( value: 'read' | 'unread', actionFragment: string ) => {
+			await openEmail();
+			await page.locator( `input[name="bh_email_remote_read"][value="${ value }"]` ).check( { force: true } );
+			const markResponse = page.waitForResponse(
+				( res ) =>
+					res.url().includes( 'admin-ajax.php' ) &&
+					( res.request().postData() ?? '' ).includes( actionFragment )
+			);
+			await page.locator( '#bh-email-remote-save' ).click( { force: true } );
+			await markResponse;
+
+			await openEmail();
+			await expect( page.locator( `input[name="bh_email_remote_read"][value="${ value }"]` ) ).toBeChecked();
+		};
+
+		// "mark_unread" contains "mark_", but only the read action contains "mark_read".
+		await updateAndReload( 'read', 'mark_read' );
+		await updateAndReload( 'unread', 'mark_unread' );
+	} );
+
+	test( 'a remote action updates the Email Log immediately, without a page reload', async ( { admin, page, request } ) => {
+		const accountRes = await request.post( `${ DEV_REST }/accounts`, {
+			data: { email_address: `log-update-${ Date.now() }@example.com` },
+		} );
+		expect( accountRes.status() ).toBe( 201 );
+		const accountId = ( await accountRes.json() ).post_id as number;
+
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
+		const checkResponse = page.waitForResponse(
+			( res ) =>
+				res.url().includes( 'admin-ajax.php' ) &&
+				( res.request().postData() ?? '' ).includes( `account_post_id=${ accountId }` )
+		);
+		await page.locator( `.bh-check-account[data-account-id="${ accountId }"]` ).click( { force: true } );
+		const emailId = ( await ( await checkResponse ).json() ).data.new_email_ids[ 0 ] as number;
+		expect( emailId ).toBeTruthy();
+
+		await admin.visitAdminPage( 'post.php', `post=${ emailId }&action=edit` );
+		await expect( page.locator( '#bh-email-read-status-options' ) ).not.toHaveClass( /is-loading/ );
+
+		const log = page.locator( '#bh-email-log-notes' );
+		await expect( log ).not.toContainText( 'Marked as read on server' );
+
+		// Mark read + Update. The log must reflect the new entry without navigating/reloading.
+		const urlBefore = page.url();
+		await page.locator( 'input[name="bh_email_remote_read"][value="read"]' ).check( { force: true } );
+		await page.locator( '#bh-email-remote-save' ).click( { force: true } );
+
+		await expect( log ).toContainText( 'Marked as read on server', { timeout: 10_000 } );
+		expect( page.url() ).toBe( urlBefore );
 	} );
 } );

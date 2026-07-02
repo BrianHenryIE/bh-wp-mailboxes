@@ -4,7 +4,8 @@
 # Particularly these
 .env.secret
 access_token.json
-credentials.json
+client_secret.json
+*.json
 
 # But not these files...
 !.env.secret.example

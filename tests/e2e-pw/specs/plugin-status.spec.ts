@@ -31,7 +31,7 @@ test.describe( 'bh-wp-mailboxes', () => {
 		expect( create.status() ).toBe( 201 );
 
 		// Act (minimal UI): open the emails admin list.
-		await admin.visitAdminPage( 'edit.php', 'post_type=bh_wp_mailboxes_cpt' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=fixtures_email' );
 
 		// Assert the fixture is visible in the list. Use row-title link to avoid strict-mode
 		// violations (the subject text appears in multiple spans in the WP list table row).

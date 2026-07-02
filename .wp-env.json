@@ -11,14 +11,11 @@
     "wp-content/plugins/wp-crontrol": "./wp-content/plugins/wp-crontrol",
     "wp-content/uploads/bh-wp-mailboxes": "."
   },
-  "env": {
-    "tests": {
-      "mysqlPort": 33066
-    }
-  },
+  "mysqlPort": 33066,
   "lifecycleScripts": {
     "afterStart": "wp-env run cli sudo chmod -R a+w /var/www/html/wp-content/uploads/; wp-env run cli mkdir /var/www/html/wp-content/uploads/logs/; wp-env run cli wp plugin activate development-plugin"
   },
   "phpVersion": "8.4",
-  "core": "WordPress/WordPress#7.0"
+  "core": "WordPress/WordPress#7.0",
+  "testsEnvironment": false
 }

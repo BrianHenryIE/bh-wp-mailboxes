@@ -8,7 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\IMAP_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials_Env;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use Dotenv\Dotenv;
@@ -44,57 +44,19 @@ class Imap {
 			 * Returns the IMAP account email address.
 			 */
 			public function get_account_email_address(): string {
-				return 'support@brianhenryie.com';
-			}
-
-
-			/**
-			 * When false, the account is not checked on cron.
-			 */
-			public function is_active(): bool {
-				return true;
+				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- loaded from dotenv file, not user input.
+				$env_imap_username = $_ENV['IMAP_USERNAME'];
+				return ( ! empty( $env_imap_username ) && is_string( $env_imap_username ) ) ? $env_imap_username : '';
 			}
 		};
 
 		return $imap_mailbox_settings;
 	}
 
-
 	/**
 	 * Returns IMAP credentials loaded from environment variables.
 	 */
 	public function get_credentials(): Account_Credentials_Interface {
-		return new class() implements IMAP_Credentials_Interface {
-			/**
-			 * Returns the IMAP server address.
-			 */
-			public function get_email_imap_server(): string {
-				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- loaded from dotenv file, not user input.
-				return $_ENV['IMAP_SERVER'] ?? '';
-			}
-
-			/**
-			 * Returns the IMAP account username.
-			 */
-			public function get_email_account_username(): string {
-				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- loaded from dotenv file, not user input.
-				return $_ENV['IMAP_USERNAME'] ?? '';
-			}
-
-			/**
-			 * Returns the IMAP account password.
-			 */
-			public function get_email_account_password(): string {
-				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- loaded from dotenv file, not user input.
-				return $_ENV['IMAP_PASSWORD'] ?? '';
-			}
-
-			/**
-			 * Returns the encryption method.
-			 */
-			public function get_encryption(): string {
-				return '';
-			}
-		};
+		return new Imap_Credentials_Env();
 	}
 }

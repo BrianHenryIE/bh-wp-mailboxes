@@ -10,12 +10,12 @@
 	display: none !important;
 }
 
-/* Make the subject (title) input read-only in appearance. */
+/* Make the subject (title) input read-only in appearance, but still selectable.
+   (readonly is set in JS; we avoid pointer-events:none so the text can be selected/copied.) */
 #title {
 	background: transparent;
 	box-shadow: none;
-	cursor: default;
-	pointer-events: none;
+	cursor: text;
 	color: #1d2327;
 	font-size: 1.5em;
 	font-weight: 600;
@@ -26,32 +26,55 @@
 	display: none !important;
 }
 
-/* Headers table */
-#bh-email-headers .inside {
-	padding-left: 0;
+/* Email content metabox: flush iframe. */
+#bh-email-local-status .inside, #bh-email-remote-status .inside, #bh-email-content-html .inside, #bh-email-content-plain .inside {
+	padding: 0;
+	margin: 0;
 }
 
-.bh-email-headers-table {
-	overflow-x: auto;
-	display: block;
-	border: 0;
+/* Headers grid: name/value pairs horizontal on desktop, stacked on narrow screens. */
+.bh-email-headers-grid {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: 4px 12px;
+	margin: 0;
 }
 
-.bh-email-headers-table th {
+.bh-email-headers-grid dt {
 	font-weight: 600;
 	white-space: nowrap;
-	width: 1%;
-	padding-right: 12px;
-	vertical-align: top;
+	color: #646970;
 }
 
-.bh-email-headers-table td {
+.bh-email-headers-grid dd {
+	margin: 0;
 	word-break: break-word;
+}
+
+@media screen and (max-width: 782px) {
+	.bh-email-headers-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.bh-email-headers-grid dt {
+		padding-top: 8px;
+	}
 }
 
 /* Remote status badges */
 .bh-email-remote-status {
 	margin: 8px 0;
+}
+
+/* While the live status is being fetched on load, dim the cached badges and show a spinner. */
+.bh-email-remote-status.is-loading .bh-email-remote-badges {
+	opacity: 0.4;
+}
+
+.bh-email-remote-status .spinner {
+	float: none;
+	margin: 0 6px 0 0;
+	vertical-align: middle;
 }
 
 .bh-email-badge {
@@ -119,14 +142,180 @@
 	color: #757575;
 }
 
+.bh-email-log-note__user {
+	font-weight: 600;
+}
+
+/* Log level — border colour by severity. */
+.bh-email-log-note--info {
+	border-left-color: #72aee6;
+}
+
+.bh-email-log-note--notice {
+	border-left-color: #dba617;
+}
+
+.bh-email-log-note--warning {
+	border-left-color: #d68a00;
+}
+
+.bh-email-log-note--error {
+	border-left-color: #d63638;
+}
+
 .bh-email-log-note--empty, .bh-email-attachments--empty {
 	color: #757575;
 	font-style: italic;
 	padding: 4px 0;
 }
 
-/* Status metabox save button row */
-#publishing-action {
-	margin-top: 12px;
+/* Local/Remote status field icons (dashicons glyphs to the left of each label). */
+.bh-email-field__icon::before {
+	font-family: dashicons;
+	-webkit-font-smoothing: antialiased;
+	font-size: 16px;
+	line-height: 1;
+	vertical-align: text-bottom;
+	margin-right: 4px;
+	color: #646970;
+	display: inline-block;
+}
+
+.bh-email-field__icon--datetime::before {
+	content: "\f145";
+}
+
+.bh-email-field__icon--status::before {
+	content: "\f173";
+}
+
+.bh-email-field__icon--mailbox::before {
+	content: "\f465";
+}
+
+.bh-email-field__icon--connection::before {
+	content: "\f325";
+}
+
+.bh-email-field__icon--read-status::before {
+	content: "\f173";
+}
+
+/* Status radio options. */
+.bh-email-status__label {
+	margin-bottom: 4px;
+}
+
+.bh-email-status__options {
+	margin: 0 0 8px 20px;
+	padding: 0;
+	list-style: none;
+}
+
+.bh-email-status__options li {
+	margin: 0 0 2px;
+	padding: 1px 6px;
+	/* Anchor the current-status ::after cloud icon to the option row (not a distant positioned ancestor). */
+	position: relative;
+}
+
+/* The radio matching the current server status gets a cloud icon to its right (Remote Status metabox). */
+.bh-email-status__option--current::after {
+	content: "\f176";
+	font-family: dashicons;
+	-webkit-font-smoothing: antialiased;
+	font-size: 16px;
+	line-height: 1;
+	/*vertical-align: bottom;*/
+	color: #646970;
+	position: absolute;
+	right: 0;
+	margin-right: 20px;
+	padding-top: 5px;
+}
+
+/* While the live status is being fetched on load, dim the (cached) current indicator. */
+.bh-email-status__options.is-loading .bh-email-status__option--current::after {
+	opacity: 0.5;
+}
+
+.bh-email-in-mailbox {
+	margin: 8px 0 0;
+}
+
+/* Initial-state hide for the read/unread buttons; the JS shows the relevant one (inline style wins). */
+.bh-email-hidden {
+	display: none;
+}
+
+/* Grey full-width footer like the comment-edit Save box. The negative margins cancel the
+   metabox .inside padding so the grey bar reaches the metabox edges. */
+#bh-email-status-box #major-publishing-actions {
+	background: #f6f7f7;
+	border-top: 1px solid #dcdcde;
+	overflow: hidden;
+}
+.bh-email-status-box__fields {
+	padding: 0 10px;
+}
+
+#bh-email-status-box #delete-action {
+	float: left;
+	line-height: 28px;
+}
+
+#bh-email-status-box #publishing-action {
+	float: right;
 	text-align: right;
+}
+
+#bh-email-status-box .submitdelete {
+	color: #b32d2e;
+	text-decoration: none;
+}
+
+#bh-email-status-box .submitdelete:hover {
+	color: #b32d2e;
+	text-decoration: underline;
+}
+
+#bh-email-status-box .clear {
+	clear: both;
+}
+
+/* Remote Status metabox footer — mirrors the Local Status footer (grey bar, red delete link, Save).
+   The local box reuses WP core's #major-publishing-actions (which adds padding:10px); this class
+   isn't that id, so set the matching padding explicitly. */
+/* Flexbox with align-items:center matches WP core's #major-publishing-actions, so the delete link is
+   vertically centred against the Save button (like "Move to Trash" in the Local Status box). */
+#bh-email-remote-status-box .bh-email-submit-footer {
+	display: flex;
+	align-items: center;
+	padding: 10px;
+	background: #f6f7f7;
+	border-top: 1px solid #dcdcde;
+}
+
+#bh-email-remote-status-box .bh-email-delete-action {
+	line-height: 28px;
+}
+
+/* Push the Save button to the right (and keep it right when it is the only control). */
+#bh-email-remote-status-box .bh-email-publishing-action {
+	margin-left: auto;
+	text-align: right;
+}
+
+#bh-email-remote-status-box .submitdelete {
+	color: #b32d2e;
+	text-decoration: none;
+}
+
+#bh-email-remote-status-box .submitdelete:hover {
+	color: #b32d2e;
+	text-decoration: underline;
+}
+
+#bh-email-remote-status-box .clear {
+	clear: both;
 }

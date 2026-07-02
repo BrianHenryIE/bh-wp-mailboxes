@@ -8,7 +8,7 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
-namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
+namespace BrianHenryIE\WP_Mailboxes\Connections\Imap;
 
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
@@ -24,7 +24,7 @@ use Mockery;
 use ZBateson\MailMimeParser\MailMimeParser;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection
  */
 class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
@@ -35,7 +35,7 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 	 * @param int                $uid_validity The folder UIDVALIDITY to report.
 	 * @param string             $folder_path  The folder path to report.
 	 */
-	private function make_sut_with_messages( array $messages, int $uid_validity = 12345, string $folder_path = 'INBOX' ): ImapEngine_Imap_Email_Fetcher {
+	private function make_sut_with_messages( array $messages, int $uid_validity = 12345, string $folder_path = 'INBOX' ): ImapEngine_Imap_Email_Connection {
 
 		$query = Mockery::mock( MessageQuery::class );
 		$query->allows( 'since' );
@@ -51,12 +51,13 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 		$folder->allows( 'messages' )->andReturn( $query );
 
 		$mailbox = Mockery::mock( Mailbox::class );
+		$mailbox->allows( 'connect' );
 		$mailbox->allows( 'inbox' )->andReturn( $folder );
 
 		$settings = Mockery::mock( Email_Account_Settings_Interface::class );
-		$sut      = new ImapEngine_Imap_Email_Fetcher( $settings, $this->logger );
+		$sut      = new ImapEngine_Imap_Email_Connection( $settings, $this->logger );
 
-		$property = new \ReflectionProperty( ImapEngine_Imap_Email_Fetcher::class, 'mailbox' );
+		$property = new \ReflectionProperty( ImapEngine_Imap_Email_Connection::class, 'mailbox' );
 		PHP_VERSION_ID < 80100 && $property->setAccessible( true );
 		$property->setValue( $sut, $mailbox );
 
@@ -158,10 +159,10 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 	 *
 	 * @param Mailbox $mailbox The mocked mailbox.
 	 */
-	private function make_sut_with_mailbox( Mailbox $mailbox ): ImapEngine_Imap_Email_Fetcher {
-		$sut = new ImapEngine_Imap_Email_Fetcher( Mockery::mock( Email_Account_Settings_Interface::class ), $this->logger );
+	private function make_sut_with_mailbox( Mailbox $mailbox ): ImapEngine_Imap_Email_Connection {
+		$sut = new ImapEngine_Imap_Email_Connection( Mockery::mock( Email_Account_Settings_Interface::class ), $this->logger );
 
-		$property = new \ReflectionProperty( ImapEngine_Imap_Email_Fetcher::class, 'mailbox' );
+		$property = new \ReflectionProperty( ImapEngine_Imap_Email_Connection::class, 'mailbox' );
 		PHP_VERSION_ID < 80100 && $property->setAccessible( true );
 		$property->setValue( $sut, $mailbox );
 
@@ -191,5 +192,15 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
 		$this->expectException( \RuntimeException::class );
 		$this->make_sut_with_mailbox( $mailbox )->test_connection();
+	}
+
+	/**
+	 * The connection reports a friendly "IMAP" name for the UI.
+	 *
+	 * @covers ::get_friendly_name
+	 */
+	public function test_get_friendly_name(): void {
+		$sut = new ImapEngine_Imap_Email_Connection( Mockery::mock( Email_Account_Settings_Interface::class ), $this->logger );
+		$this->assertSame( 'IMAP', $sut->get_friendly_name() );
 	}
 }

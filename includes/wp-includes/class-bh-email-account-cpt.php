@@ -1,8 +1,13 @@
 <?php
 /**
- * A custom post type for saving mailbox settings. Used in emails as post_parent for filtering to mailbox.
+ * A custom post type for saving email account config and state (excluding credentials).
  *
- * Use comments to log changes. Use md5 on credentials to watch for changes.
+ * An email uses email-account post_id as its post_parent for filtering to just that email address.
+ * An email uses post_type to filter to a mailbox (which can have many addresses in it).
+ *
+ * Use comments to log changes.
+ *
+ * TODO: Use md5 on credentials to watch for changes.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */

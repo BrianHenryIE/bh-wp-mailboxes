@@ -1,6 +1,6 @@
 <?php
 
-namespace BrianHenryIE\WP_Mailboxes\Providers\Gmail_API;
+namespace BrianHenryIE\WP_Mailboxes\Connections\Gmail_API;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
@@ -56,7 +56,7 @@ class Gmail_Email_Fetcher_Contract_Test extends Unit_Testcase {
 
 		$cpt = $this->settings->get_emails_cpt_underscored_20();
 
-		$sut = new Gmail_Email_Fetcher( $cpt, $mailbox_settings, $logger );
+		$sut = new Gmail_Email_Connection( $cpt, $mailbox_settings, $logger );
 
 		$since_datetime = \DateTime::createFromFormat( 'Y-m-d', '1970-1-1' );
 

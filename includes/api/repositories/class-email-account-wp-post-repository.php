@@ -7,10 +7,8 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
-use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Account_Factory;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Account_Query;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Query;
+use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Queries\BH_Email_Account_Query;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use DateTimeInterface;
 use Exception;
@@ -47,27 +45,38 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 *
 	 * @param string  $email_address Email address for id and display (credentials are separate).
 	 * @param string  $display_name Friendly display name.
-	 * @param string  $provider_type_class The API the account uses.
+	 * @param string  $connection_type_class The API the account uses.
 	 * @param ?string $from_address_regex_filter Only save emails whose from address matches this regex.
 	 * @param ?string $body_identifier_regex_filter Only save emails whose body matches this regex.
 	 * @param ?string $after_download_remote_email_action Delete or mark read or do nothing after download (if at all possible).
 	 * @param ?int    $delete_local_emails_after_n_days Delete locally stored emails after n days.
 	 *
-	 * @throws Exception When wp_insert_post fails.
+	 * @throws Exception When an account already exists for the email address, or when wp_insert_post fails.
 	 */
 	public function save_new(
 		string $email_address,
 		string $display_name,
-		string $provider_type_class,
+		string $connection_type_class,
 		?string $from_address_regex_filter,
 		?string $body_identifier_regex_filter,
 		?string $after_download_remote_email_action,
 		?int $delete_local_emails_after_n_days,
 	): BH_Email_Account {
 
+		// Enforce slug uniqueness in code (the database does not). This guarantees a one-to-one mapping
+		// between address and slug, so wp_unique_post_slug() never appends a "-2" suffix.
+		if ( ! is_null( $this->find_by_email_address( $email_address ) ) ) {
+			throw new Exception(
+				sprintf(
+					'An email account already exists for %s.',
+					esc_html( $email_address )
+				)
+			);
+		}
+
 		$query = new BH_Email_Account_Query(
 			post_type: $this->post_type,
-			provider_type_class: $provider_type_class,
+			connection_type_class: $connection_type_class,
 			post_id: null,
 			email_address: $email_address,
 			status: 'bh_email_ac_active',
@@ -100,6 +109,29 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	}
 
 	/**
+	 * Find an account by its email address via its unique, indexed slug.
+	 *
+	 * The address is stored URL-encoded as the post_name (an indexed column), so this is a faster,
+	 * status-agnostic lookup than a meta_query — get_page_by_path() reads the post regardless of the
+	 * account's custom post status, where WP_Query's `name` parameter would not. {@see self::save_new()}
+	 * guarantees the slug is unique.
+	 *
+	 * @param string $email_address The exact email address to look up.
+	 */
+	public function find_by_email_address( string $email_address ): ?BH_Email_Account {
+
+		$slug = sanitize_title( rawurlencode( $email_address ) );
+
+		$post = get_page_by_path( $slug, OBJECT, $this->post_type );
+
+		if ( ! ( $post instanceof WP_Post ) || $post->post_type !== $this->post_type ) {
+			return null;
+		}
+
+		return $this->bh_email_account_factory->from_wp_post( $post );
+	}
+
+	/**
 	 * Returns all email accounts, optionally filtered by status.
 	 *
 	 * @param string $status Post status to filter by, or 'all' for no filter.
@@ -117,10 +149,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			status: $status
 		);
 
-		return $this->run_query(
-			$args,
-			fn( string $key ): bool => in_array( $key, array( 'post_type', 'post_status' ), true ),
-		);
+		return $this->run_query( $args );
 	}
 
 
@@ -149,23 +178,13 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	/**
 	 * Executes a query and returns hydrated BH_Email_Account objects.
 	 *
-	 * @param BH_Email_Account_Query $query  Query object describing the criteria.
-	 * @param ?callable              $filter Optional key-filter applied to the query array before execution.
+	 * @param BH_Email_Account_Query $query Query object describing the criteria.
 	 *
 	 * @return BH_Email_Account[]
 	 */
-	protected function run_query( BH_Email_Account_Query $query, ?callable $filter = null ): array {
-		$query_args = $query->to_query_array();
+	protected function run_query( BH_Email_Account_Query $query ): array {
 
-		if ( $filter ) {
-			$query_args = array_filter(
-				$query_args,
-				$filter,
-				ARRAY_FILTER_USE_KEY,
-			);
-		}
-
-		$wp_query = new WP_Query( $query_args );
+		$wp_query = new WP_Query( $query->to_wp_query_args() );
 		/**
 		 * Array of WP_Post objects.
 		 *
@@ -236,7 +255,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			last_failed_login_time: $last_failed_login_time,
 		);
 
-		$args = $query->to_query_array();
+		$args = $query->to_wp_post_array();
 
 		if ( count( $args ) === 2 ) {
 			// Only the post_id + post_type remain.
@@ -244,6 +263,13 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			return $account;
 		}
 
+		/**
+		 * Occasionally tests fail with "Trying to get property 'feeds' of non-object".
+		 *
+		 * Suggested fix:
+		 *
+		 * @see https://stackoverflow.com/a/68476973
+		 */
 		$result = wp_update_post( $args, true );
 
 		if ( is_wp_error( $result ) ) {

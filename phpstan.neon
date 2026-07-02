@@ -7,7 +7,9 @@ parameters:
         - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
     scanDirectories:
         - wp-content/plugins
-        - vendor/wp-cli
+#        - vendor/wp-cli
+    scanFiles:
+        - stubs/wp-cli.stub
     dynamicConstantNames:
         - BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME
     ignoreErrors:

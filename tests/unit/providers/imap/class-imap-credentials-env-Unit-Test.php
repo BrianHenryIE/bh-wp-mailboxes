@@ -1,11 +1,11 @@
 <?php
 
-namespace BrianHenryIE\WP_Mailboxes\Providers\Imap;
+namespace BrianHenryIE\WP_Mailboxes\Connections\Imap;
 
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Providers\Imap\Imap_Credentials_Env
+ * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials_Env
  */
 class Imap_Credentials_Env_Unit_Test extends Unit_Testcase {
 

@@ -39,12 +39,17 @@ class Emails_List_Table_Ajax {
 	/**
 	 * Triggers an immediate email check for the current mailbox.
 	 *
-	 * @hooked wp_ajax_bh_wp_mailboxes_check_email
+	 * The action is suffixed with the emails CPT so each library instance only handles its own request.
+	 *
+	 * @hooked wp_ajax_bh_wp_mailboxes_check_email_{emails_cpt}
 	 */
 	public function check_email(): void {
 
 		if ( ! isset( $_POST['_wpnonce'], $_POST['mailboxes_cpt'] )
-			|| ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-check-email' ) ) {
+			|| ! is_string( $_POST['_wpnonce'] )
+			|| ! wp_verify_nonce( sanitize_key( $_POST['_wpnonce'] ), 'bh-wp-mailboxes-check-email' )
+			|| ! is_string( $_POST['mailboxes_cpt'] )
+		) {
 			return;
 		}
 
@@ -65,7 +70,10 @@ class Emails_List_Table_Ajax {
 	/**
 	 * Triggers an immediate email check for a single account.
 	 *
-	 * @hooked wp_ajax_bh_wp_mailboxes_check_account
+	 * The action is suffixed with the accounts CPT so each library instance only handles its own request.
+	 *
+	 * @hooked wp_ajax_bh_wp_mailboxes_check_account_{accounts_cpt}
+	 * @hooked wp_ajax_bh_wp_mailboxes_set_fetch_since_{accounts_cpt}
 	 */
 	public function check_account(): void {
 
@@ -76,7 +84,8 @@ class Emails_List_Table_Ajax {
 
 		$account_post_id = (int) $_POST['account_post_id'];
 		$account         = null;
-		foreach ( $this->api->get_email_accounts() as $candidate ) {
+		$all_accounts    = $this->api->get_email_accounts();
+		foreach ( $all_accounts as $candidate ) {
 			if ( $candidate->get_post_id() === $account_post_id ) {
 				$account = $candidate;
 				break;
@@ -89,14 +98,22 @@ class Emails_List_Table_Ajax {
 
 		$since = null;
 		if ( isset( $_POST['since_date'] ) ) {
-			$since_raw = sanitize_text_field( wp_unslash( (string) $_POST['since_date'] ) );
-			$since     = DateTimeImmutable::createFromFormat( 'Y-m-d', $since_raw, new DateTimeZone( 'UTC' ) ) ?: null;
+			if ( ! is_string( $_POST['since_date'] ) ) {
+				wp_send_json_error( array( 'message' => 'Invalid value for since.' ), 400 );
+			}
+			$since_raw = sanitize_text_field( wp_unslash( $_POST['since_date'] ) );
+			$since     = DateTimeImmutable::createFromFormat( 'Y-m-d', $since_raw, new DateTimeZone( 'UTC' ) );
+			if ( false === $since ) {
+				wp_send_json_error( array( 'message' => 'Unable to parse value for since.' ), 400 );
+			}
 		}
 
 		$result = $this->api->check_email_for_account( $account, $since );
 		wp_send_json_success(
 			array(
-				'new_email_count' => count( $result->new_emails ),
+				'new_email_count' => count( $result->bh_emails ),
+				// Post IDs of the new emails, so the JS can highlight their rows in the list table.
+				'new_email_ids'   => array_map( fn( $email ) => $email->get_post_id(), $result->bh_emails ),
 				/* translators: shown in the status card immediately after a manual check */
 				'last_fetched'    => __( 'Just now', 'bh-wp-mailboxes' ),
 			)

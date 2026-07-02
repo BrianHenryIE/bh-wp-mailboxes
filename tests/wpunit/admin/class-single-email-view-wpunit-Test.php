@@ -8,16 +8,17 @@
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
-use BrianHenryIE\WP_Mailboxes\API\Email_Fetcher_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
-use Codeception\Stub\Expected;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View
@@ -46,14 +47,14 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Get an API instance to test.
 	 *
-	 * @param BH_Email_Account         $email_account_fixture Default: boring fixture with not filters configured.
-	 * @param bool                     $can_return_email_account If there is a correspoinding BH_Email_Account for the BH_Email.
-	 * @param ?Email_Fetcher_Interface $provider_mock Default: mock that supports all features.
+	 * @param BH_Email_Account            $email_account_fixture Default: boring fixture with not filters configured.
+	 * @param bool                        $can_return_email_account If there is a correspoinding BH_Email_Account for the BH_Email.
+	 * @param ?Email_Connection_Interface $connection_mock Default: mock that supports all features.
 	 */
 	protected function make_api(
 		?BH_Email_Account $email_account_fixture = null,
 		bool $can_return_email_account = true,
-		?Email_Fetcher_Interface $provider_mock = null,
+		?Email_Connection_Interface $connection_mock = null,
 	): API_Interface {
 		$api_mock = \Mockery::mock( API_Interface::class );
 
@@ -64,13 +65,14 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			$api_mock->allows( 'get_email_account_for_email' )->andReturnNull();
 		}
 
-		if ( ! $provider_mock ) {
-			$provider_mock = \Mockery::mock( Email_Fetcher_Interface::class );
-			$provider_mock->expects( 'can_mark_read' )->andReturnTrue();
-			$provider_mock->expects( 'can_delete_on_server' )->andReturnTrue();
-			$provider_mock->expects( 'can_read_status' )->andReturnTrue();
+		if ( ! $connection_mock ) {
+			$connection_mock = \Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+			$connection_mock->expects( 'can_mark_read' )->andReturnTrue();
+			$connection_mock->expects( 'can_delete_on_server' )->andReturnTrue();
+			$connection_mock->expects( 'can_read_status' )->andReturnTrue();
 		}
-		$api_mock->allows( 'get_provider_for_email_account' )->andReturn( $provider_mock );
+		$connection_mock->allows( 'get_friendly_name' )->andReturn( 'Test' );
+		$api_mock->allows( 'get_connection_for_email_account' )->andReturn( $connection_mock );
 
 		return $api_mock;
 	}
@@ -150,11 +152,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		);
 
 		$filepath = codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
-
-		$post_id = $this->create_post_from_fixture(
-			$this->post_type,
-			$filepath
-		);
+		$bh_email = BH_Email_Fixture::make_from_file( $filepath );
+		$post_id  = $bh_email->post_id;
 
 		$post = get_post( $post_id );
 
@@ -169,7 +168,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		// remove_meta_box() sets entries to false rather than unsetting — filter before asserting.
 		$side_high_ids = array_keys( array_filter( $registered_boxes['side']['high'] ?? array() ) );
-		$this->assertContains( 'bh-email-status', $side_high_ids, 'Email Status metabox should be in side/high' );
+		$this->assertContains( 'bh-email-local-status', $side_high_ids, 'Local status metabox should be in side/high' );
+		$this->assertContains( 'bh-email-remote-status', $side_high_ids, 'Remote status metabox should be in side/high' );
 		$this->assertNotContains( 'submitdiv', $side_high_ids, 'submitdiv should be removed' );
 	}
 
@@ -191,8 +191,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
-		$post    = get_post( $post_id );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+		$post     = get_post( $post_id );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 		$sut->add_meta_boxes( $post );
@@ -215,17 +216,16 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$this->register_cpt();
 
 		// Post from plain-text-only fixture (non-multipart, no HTML part).
-		$post_id_no_html = $this->create_post_from_fixture(
-			$this->post_type,
-			codecept_root_dir( 'tests/_data/wpunit/non-multipart.eml' )
-		);
+
+		$filepath        = codecept_root_dir( 'tests/_data/wpunit/non-multipart.eml' );
+		$bh_email        = BH_Email_Fixture::make_from_file( $filepath );
+		$post_id_no_html = $bh_email->post_id;
 		$post_no_html    = get_post( $post_id_no_html );
 
 		// Post from HTML+plain-text fixture (has an HTML part).
-		$post_id_with_html = $this->create_post_from_fixture(
-			$this->post_type,
-			codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' )
-		);
+		$filepath          = codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
+		$bh_email          = BH_Email_Fixture::make_from_file( $filepath );
+		$post_id_with_html = $bh_email->post_id;
 		$post_with_html    = get_post( $post_id_with_html );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
@@ -289,47 +289,6 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertSame( $original_title, $result['post_title'] );
 		$this->assertSame( $original_content, $result['post_content'] );
-	}
-
-	// -------------------------------------------------------------------------
-	// Status change logging
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Log_status_change inserts a comment when the post status changes.
-	 */
-	public function test_log_status_change_inserts_log_comment(): void {
-
-		$this->markTestSkipped( 'this is in the wrong place' );
-
-		register_post_type(
-			$this->post_type,
-			array(
-				'public'  => false,
-				'show_ui' => true,
-			)
-		);
-
-		$post_id = $this->factory()->post->create(
-			array(
-				'post_type'   => $this->post_type,
-				'post_status' => 'bh_email_new',
-			)
-		);
-
-		$post_before             = get_post( $post_id );
-		$post_after              = clone $post_before;
-		$post_after->post_status = 'bh_email_processed';
-
-		$api = $this->makeEmpty(
-			API_Interface::class,
-			array(
-				'insert_email_log_note' => Expected::once(),
-			)
-		);
-
-		$sut = new Single_Email_View( $this->make_settings(), $api, $this->make_repository(), $this->logger );
-		$sut->log_status_change( $post_id, $post_after, $post_before );
 	}
 
 	// -------------------------------------------------------------------------
@@ -411,7 +370,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+
 		update_post_meta( $post_id, 'Date', 'Wed, 30 Jul 2025 03:38:07 +0000' );
 		$post = get_post( $post_id );
 
@@ -437,8 +398,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
-		$post    = get_post( $post_id );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+		$post     = get_post( $post_id );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 
@@ -451,55 +413,65 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * Requirement 10: "Read on server" badge shown when bh_email_is_read meta is truthy.
+	 * The current server status (read) is shown by highlighting its radio option.
 	 *
-	 * @covers ::render_local_status_metabox
+	 * @covers ::render_remote_status_metabox
 	 */
-	public function test_render_local_status_metabox_shows_read_badge_when_is_read_meta_set(): void {
+	public function test_render_remote_status_metabox_highlights_read_when_read(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
 		update_post_meta( $post_id, 'is_remote_read', 'yes' );
 		$post = get_post( $post_id );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_local_status_metabox( $post );
+		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
-		$this->assertStringContainsString( 'bh-email-badge--read', $html );
 		$this->assertStringContainsString( 'Read on server', $html );
+		$this->assertMatchesRegularExpression(
+			'/bh-email-status__option--current"><label><input[^>]*value="read"/',
+			$html,
+			'The "Read on server" radio should be highlighted as the current status.'
+		);
 	}
 
 	/**
-	 * Requirement 10: "Unread on server" badge shown when bh_email_is_read meta is explicitly false.
+	 * The current server status (unread) is shown by highlighting its radio option.
 	 *
-	 * @covers ::render_local_status_metabox
+	 * @covers ::render_remote_status_metabox
 	 */
-	public function test_render_local_status_metabox_shows_unread_badge_when_is_read_meta_is_false(): void {
+	public function test_render_remote_status_metabox_highlights_unread_when_unread(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
-		update_post_meta( $post_id, 'bh_email_is_read', '0' );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+		update_post_meta( $post_id, 'is_remote_read', 'no' );
 		$post = get_post( $post_id );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_local_status_metabox( $post );
+		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
-		$this->assertStringContainsString( 'bh-email-badge--unread', $html );
 		$this->assertStringContainsString( 'Unread on server', $html );
+		$this->assertMatchesRegularExpression(
+			'/bh-email-status__option--current"><label><input[^>]*value="unread"/',
+			$html,
+			'The "Unread on server" radio should be highlighted as the current status.'
+		);
 	}
 
 	/**
@@ -507,26 +479,27 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 *
 	 * @covers ::render_local_status_metabox
 	 */
-	public function test_render_local_status_metabox_shows_no_remote_badge_when_provider_cannot_mark_read(): void {
+	public function test_render_local_status_metabox_shows_no_remote_badge_when_connection_cannot_mark_read(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
-		$post    = get_post( $post_id );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+		$post     = get_post( $post_id );
 
-		$provider_mock = \Mockery::mock( Email_Fetcher_Interface::class );
-		$provider_mock->expects( 'can_mark_read' )->andReturnFalse();
-		$provider_mock->expects( 'can_delete_on_server' )->andReturnFalse();
-		$provider_mock->expects( 'can_read_status' )->andReturnFalse();
+		$connection_mock = \Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$connection_mock->expects( 'can_mark_read' )->andReturnFalse();
+		$connection_mock->expects( 'can_delete_on_server' )->andReturnFalse();
+		$connection_mock->expects( 'can_read_status' )->andReturnFalse();
 
-		$api_mock = $this->make_api( provider_mock: $provider_mock );
+		$api_mock = $this->make_api( connection_mock: $connection_mock );
 		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_local_status_metabox( $post );
+		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringNotContainsString( 'bh-email-badge--read', $html );
@@ -534,20 +507,20 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * Requirement 11: mark-read button shown when the resolved mailbox reports can_mark_read() = true.
+	 * Read status is a radio select (Read/Unread on server) with a Save button when the mailbox can mark read.
 	 *
-	 * @covers ::render_local_status_metabox
+	 * @covers ::render_remote_status_metabox
 	 */
-	public function test_render_local_status_metabox_shows_mark_read_button_when_mailbox_can_mark_read(): void {
+	public function test_render_remote_status_metabox_shows_read_status_radios(): void {
 
 		global $current_screen;
 		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
 
-		// Email is unread so the "Mark as read" button (not "Mark as unread") is rendered.
 		update_post_meta( $post_id, 'bh_email_is_read', '0' );
 		$post = get_post( $post_id );
 
@@ -573,10 +546,53 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_local_status_metabox( $post );
+		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
-		$this->assertStringContainsString( 'bh-email-mark-read', $html, '"Mark as read on server" button should appear' );
+		$this->assertStringContainsString( 'name="bh_email_remote_read"', $html, 'Read status should be a radio group.' );
+		$this->assertStringContainsString( 'Read on server', $html );
+		$this->assertStringContainsString( 'Unread on server', $html );
+		$this->assertStringContainsString( 'bh-email-remote-save', $html, 'An Update button should be present for the read status.' );
+		$this->assertStringContainsString( 'value="Update"', $html, 'The remote status button should be labelled "Update".' );
+		$this->assertStringContainsString( 'bh-email-field__icon--read-status', $html, 'The Status label should have its icon.' );
+		$this->assertStringContainsString( 'Account:', $html, 'The account name should be shown.' );
+		$this->assertStringContainsString( 'Connection:', $html, 'The connection type should be shown.' );
+		$this->assertStringContainsString( 'bh-email-field__icon--connection', $html, 'The Connection label should have its icon.' );
+	}
+
+	/**
+	 * When the email is deleted on the server, the Status says "Deleted" and the radios are not shown.
+	 *
+	 * @covers ::render_remote_status_metabox
+	 */
+	public function test_render_remote_status_metabox_shows_deleted_when_deleted(): void {
+
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+
+		$this->register_cpt();
+
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+		update_post_meta( $post_id, 'is_remote_deleted', 'yes' );
+		$post = get_post( $post_id );
+
+		$connection_mock = \Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$connection_mock->allows( 'can_mark_read' )->andReturnTrue();
+		$connection_mock->allows( 'can_delete_on_server' )->andReturnTrue();
+		$connection_mock->allows( 'can_read_status' )->andReturnTrue();
+
+		$api_mock = $this->make_api( connection_mock: $connection_mock );
+		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
+
+		ob_start();
+		$sut->render_remote_status_metabox( $post );
+		$html = (string) ob_get_clean();
+
+		// The Status field shows "Deleted" (visible, not the hidden class) and the radios are absent.
+		$this->assertStringContainsString( 'id="bh-email-remote-deleted" class="bh-email-status__deleted"', $html );
+		$this->assertStringContainsString( 'Deleted', $html );
+		$this->assertStringNotContainsString( 'bh-email-read-status-options', $html );
 	}
 
 	/**
@@ -591,7 +607,8 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
 
 		$post = get_post( $post_id );
 
@@ -599,7 +616,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_local_status_metabox( $post );
+		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringNotContainsString( 'bh-email-mark-read', $html );
@@ -619,8 +636,9 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$post_id = $this->create_post_from_fixture( post_type: $this->post_type );
-		$post    = get_post( $post_id );
+		$bh_email = BH_Email_Fixture::make_from_file();
+		$post_id  = $bh_email->post_id;
+		$post     = get_post( $post_id );
 
 		$mailbox_settings = $this->makeEmpty(
 			Email_Account_Settings_Interface::class,
@@ -644,7 +662,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger );
 
 		ob_start();
-		$sut->render_local_status_metabox( $post );
+		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'bh-email-delete-on-server', $html );

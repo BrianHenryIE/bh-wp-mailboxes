@@ -53,11 +53,11 @@ class Authentication {
 	 * @throws Exception When an invalid user is supplied.
 	 */
 	public function login_as_any_user(): void {
-		if ( ! isset( $_GET['login_as_user'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- intentional dev-only bypass.
+		if ( ! isset( $_GET['login_as_user'] ) || ! is_string( $_GET['login_as_user'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- intentional dev-only bypass.
 			return;
 		}
 
-		$login_as_user = sanitize_text_field( wp_unslash( $_GET['login_as_user'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- intentional dev-only bypass.
+		$login_as_user = sanitize_text_field( (string) wp_unslash( $_GET['login_as_user'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- intentional dev-only bypass.
 
 		/**
 		 * The user to log in as, or false if not found.

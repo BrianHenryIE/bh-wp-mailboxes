@@ -42,18 +42,30 @@
             "tests/unit",
             "tests/wpunit",
             "tests/integration",
-            "tests/_support"
+            "tests/_support",
+            "development-plugin"
         ]
     },
     "repositories": {
-        "composer/composer": {
-            "type": "composer",
-            "url": "https://wpackagist.org"
-        },
         "wordpress/wordpress": {
+            "type": "git",
             "url": "https://github.com/WordPress/wordpress-develop.git",
-            "type": "git"
+            "only": [
+                "wordpress/wordpress"
+            ]
+        },
+        "outlandish/wpackagist": {
+            "type": "composer",
+            "url": "https://wpackagist.org",
+            "only": [
+                "wpackagist-plugin/*",
+                "wpackagist-theme/*"
+            ]
         }
+    },
+    "suggest": {
+        "brianhenryie/bh-wp-private-uploads": "Enables attachments.",
+        "google/apiclient": "Enables Gmail API support via console.cloud.google.com (Google Developers console)."
     },
     "require": {
         "php": ">=8.4",
@@ -85,7 +97,6 @@
         "szepeviktor/phpstan-wordpress": "*",
         "vlucas/phpdotenv": "*",
         "wordpress/wordpress": "*",
-        "wp-cli/dist-archive-command": "*",
         "wp-coding-standards/wpcs": "*",
         "wpackagist-plugin/wp-crontrol": "^1.21",
         "wpackagist-theme/twentytwenty": "*"
@@ -97,13 +108,35 @@
             "vendor/bin/phpcov merge --clover tests/_output/clover.xml --html tests/_output/html tests/_output;",
             "open tests/_output/html/index.html"
         ],
-        "lint": [
-            "vendor/bin/phpcbf || true",
-            "vendor/bin/phpcs || true",
-            "vendor/bin/phpstan analyse --memory-limit 1G"
+        "coverage-tests": [
+            "codecept run unit --coverage unit.cov",
+            "codecept run wpunit --coverage wpunit.cov",
+            "phpcov merge --clover tests/_output/clover.xml --html tests/_output/phpunit tests/_output;",
+            "open tests/_output/phpunit/index.html"
         ],
-        "lint-changes": [
-            "updated_files=$( git status | grep 'modified:\\s.*.php$' | cut -c14- | awk '{ printf(\"%s \", $0) }' ); vendor/bin/phpcbf $(echo $updated_files); vendor/bin/phpcs $(echo $updated_files); vendor/bin/phpstan analyse $(echo $updated_files) --memory-limit 1G"
+        "cs" : [
+            "phpcs || true",
+            "phpcs --standard=phpcs.woocommerce.xml || true",
+            "phpstan analyse --memory-limit 1G"
+        ],
+        "cs-fix": [
+            "phpcbf || true",
+            "phpcbf --standard=phpcs.woocommerce.xml || true",
+            "@cs"
+        ],
+        "cs-changes": [
+            "updated_files=$( git status | grep 'modified:\\s.*.php$' | cut -c14- | awk '{ printf(\"%s \", $0) }' ); phpcs $(echo $updated_files); phpstan analyse $(echo $updated_files) --memory-limit 1G"
+        ],
+        "cs-fix-changes": [
+            "updated_files=$( git status | grep 'modified:\\s.*.php$' | cut -c14- | awk '{ printf(\"%s \", $0) }' ); phpcbf $(echo $updated_files);",
+            "@cs-changes"
+        ],
+        "cs-strict": [
+            "phpcs || true",
+            "phpstan analyse --level max --memory-limit 1G"
+        ],
+        "cs-changes-strict": [
+            "updated_files=$(echo $(git diff --name-only `git merge-base origin/master HEAD` | grep \\.php | tr '\\n' '\\0' | xargs -0 ls -1df 2>/dev/null)); if [ -n \"$updated_files\" ]; then phpcbf $(echo $updated_files); phpcs $(echo $updated_files); phpstan analyse $(echo $updated_files) --level max --memory-limit 1G; else echo \"No modified php files for phpstan.\"; fi;"
         ],
         "php-compatibility": [
             "vendor/bin/phpcs -p includes templates vendor-prefixed --standard=PHPCompatibilityWP --runtime-set testVersion 7.4-"
@@ -119,7 +152,8 @@
             "Google\\Task\\Composer::cleanup"
         ],
         "post-autoload-dump": [
-            "php ./bin/sync-composer-wpenv.php"
+            "php ./bin/sync-composer-wpenv.php",
+            "php ./bin/modify-autoload-patchwork.php"
         ]
     },
     "extra": {

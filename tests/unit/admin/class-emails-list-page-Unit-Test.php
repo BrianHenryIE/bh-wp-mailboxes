@@ -128,6 +128,13 @@ class Emails_List_Page_Unit_Test extends Unit_Testcase {
 			)
 		);
 
+		// The scoped AJAX action names + remote-action nonce are localised for the JS (see enqueue_scripts()).
+		\WP_Mock::userFunction( 'wp_create_nonce', array( 'return' => 'test-nonce' ) );
+		\WP_Mock::userFunction( 'wp_localize_script' );
+
+		// New-row highlight CSS is injected inline.
+		\WP_Mock::userFunction( 'wp_add_inline_style' );
+
 		$wp_screen            = new stdClass();
 		$wp_screen->post_type = $emails_cpt_underscored;
 
@@ -140,7 +147,8 @@ class Emails_List_Page_Unit_Test extends Unit_Testcase {
 		);
 
 		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
-		$settings->expects( 'get_emails_cpt_underscored_20' )->andReturn( $emails_cpt_underscored );
+		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $emails_cpt_underscored );
+		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( 'test_accounts_cpt' );
 		$settings->expects( 'get_emails_cpt_dashed' )->andReturn( $emails_cpt_dashed );
 
 		$sut = $this->get_sut( settings: $settings );

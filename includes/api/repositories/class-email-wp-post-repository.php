@@ -11,8 +11,8 @@ use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Queries\BH_Email_Query;
+use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Queries\BH_Email_Query;
 use BrianHenryIE\WP_Private_Uploads\API_Interface as Private_Uploads_API_Interface;
 use DateTimeInterface;
 use Exception;
@@ -21,6 +21,7 @@ use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Throwable;
 use WP_Post;
 use ZBateson\MailMimeParser\Header\AddressHeader;
 use ZBateson\MailMimeParser\Message\IMessagePart;
@@ -30,7 +31,7 @@ use ZBateson\MailMimeParser\Message\IMessagePart;
  *
  * @phpstan-type WpUpdatePostArray array{ID?: int, post_author?: int, post_date?: string, post_date_gmt?: string, post_content?: string, post_content_filtered?: string, post_title?: string, post_excerpt?: string}
  */
-class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
+class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Email_Repository_Interface {
 
 	use LoggerAwareTrait;
 
@@ -126,7 +127,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		}
 
 		$this->logger->info(
-			"Deleted {$count} emails older than " . $cutoff->format( 'Y-m-d H:i:s' ) . '.',
+			"Deleted {$count} local emails older than " . $cutoff->format( 'Y-m-d H:i:s' ) . '.',
 			array( 'cutoff' => $cutoff->format( DateTimeInterface::ATOM ) )
 		);
 
@@ -141,28 +142,44 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 */
 	public function is_post_for_message_id( string $account_email_address, string $message_id ): bool {
 
-		return (bool) $this->find_post_id_by_guid( self::guid_for( $this->post_type, $account_email_address, $message_id ) );
+		return ! is_null( $this->find_post_id_for_message_id( $account_email_address, $message_id ) );
 	}
 
 	/**
-	 * Query the WordPress posts table for a post with the given guid.
+	 * Find the saved post ID for an account + Message-ID via its (indexed) slug.
 	 *
-	 * @param string $guid The guid to search for.
+	 * The account+Message-ID key is stored as the post_name, an indexed column, so this matches directly
+	 * against the index. (get_page_by_path() can't be used: it only resolves top-level posts, whereas
+	 * emails are parented to their account.)
+	 *
+	 * @param string $account_email_address The account the email is filed under.
+	 * @param string $message_id            The email Message-ID.
 	 *
 	 * @return ?int The post ID, or null if not found.
 	 */
-	protected function find_post_id_by_guid( string $guid ): ?int {
+	protected function find_post_id_for_message_id( string $account_email_address, string $message_id ): ?int {
+		/**
+		 * The WordPress database ORM.
+		 *
+		 * @var \wpdb $wpdb
+		 */
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$result = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM $wpdb->posts WHERE guid=%s", $guid ) );
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT ID FROM %i WHERE post_name = %s AND post_type = %s LIMIT 1',
+				$wpdb->posts,
+				self::message_id_slug( $account_email_address, $message_id ),
+				$this->post_type
+			)
+		);
 		return is_numeric( $result ) ? (int) $result : null;
 	}
 
 	/**
 	 * Returns the number of saved emails for a given account email address.
 	 *
-	 * The account address is encoded in each email's GUID, so this uses a LIKE
-	 * query rather than a meta lookup.
+	 * Emails record their account as the post_parent (an indexed column), so this counts directly by it.
 	 *
 	 * @param BH_Email_Account $email_account The mailbox, e.g. "contact@example.com".
 	 */
@@ -171,36 +188,41 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$count = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM $wpdb->posts WHERE post_type = %s AND post_status != 'trash' AND post_parent = %s",
+				'SELECT COUNT(*) FROM %i WHERE post_type = %s AND post_status != \'trash\' AND post_parent = %s',
+				$wpdb->posts,
 				$this->post_type,
 				$email_account->get_post_id()
 			)
 		);
-		return (int) $count;
+		return is_numeric( $count )
+			? (int) $count
+			: ( function () {
+				throw new Exception( 'count was no numeric.' );
+			} )();
 	}
 
 	/**
 	 * Saves a new email to the database.
 	 *
-	 * @param Fetched_Email                      $fetched_email   The email plus its remote coordinates and read state.
-	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes       The mailboxes settings.
-	 * @param BH_Email_Account                   $email_account   The email account settings.
-	 * @param ?Private_Uploads_API_Interface     $private_uploads When present, email attachments are saved to private uploads.
+	 * @param Fetched_Email                      $fetched_email    The email plus its remote coordinates and read state.
+	 * @param BH_WP_Mailboxes_Settings_Interface $mailbox_settings The mailboxes settings.
+	 * @param BH_Email_Account                   $email_account    The email account settings.
+	 * @param ?Private_Uploads_API_Interface     $private_uploads  When present, email attachments are saved to private uploads.
 	 *
 	 * @return BH_Email
 	 * @throws Exception When WordPress fails to create the post.
 	 */
 	public function save_new(
 		Fetched_Email $fetched_email,
-		BH_WP_Mailboxes_Settings_Interface $mailboxes,
+		BH_WP_Mailboxes_Settings_Interface $mailbox_settings,
 		BH_Email_Account $email_account,
-		?Private_Uploads_API_Interface $private_uploads = null
+		?Private_Uploads_API_Interface $private_uploads = null // TODO: Is the strict typing allowed when the library is optional?
 	): BH_Email {
 
 		$email       = $fetched_email->message;
 		$coordinates = $fetched_email->coordinates;
 
-		$post_type = $mailboxes->get_emails_cpt_underscored_20();
+		$post_type = $mailbox_settings->get_emails_cpt_underscored_20();
 
 		$attachment_parts                     = $email->getAllAttachmentParts();
 		$all_parts                            = $email->getAllParts();
@@ -231,14 +253,12 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			remote_uid_validity: $coordinates->uid_validity,
 		);
 
-		// Deduplicate: the same email (account + Message-ID) may be fetched more than once.
-		// Its guid is stable, so if a post already exists we return it rather than inserting a duplicate.
-		$guid             = self::guid_for(
-			$post_type,
+		// Deduplicate: the same email (account + Message-ID) may be fetched more than once. The key is
+		// stored as the post slug, so if a post already exists we return it rather than inserting a duplicate.
+		$existing_post_id = $this->find_post_id_for_message_id(
 			$email_account->get_account_email_address(),
 			$email->getMessageId() ?? ''
 		);
-		$existing_post_id = $this->find_post_id_by_guid( $guid );
 		if ( null !== $existing_post_id ) {
 			return $this->find_by_post_id( $existing_post_id );
 		}
@@ -250,7 +270,12 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			update_post_meta( $post_id, 'attachment_ids', (string) wp_json_encode( $attachment_ids ) );
 		}
 
-		return $this->find_by_post_id( $post_id );
+		$bh_email = $this->find_by_post_id( $post_id );
+
+		// Record the download in the email's log.
+		$this->log( $bh_email, 'Email downloaded.', false, array(), 'info' );
+
+		return $bh_email;
 	}
 
 	/**
@@ -283,7 +308,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 				);
 
 				$attachment_ids[] = $result->post_id;
-			} catch ( \Throwable $e ) {
+			} catch ( Throwable $e ) {
 				$this->logger->error(
 					'Failed to save email attachment.',
 					array(
@@ -310,7 +335,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes              The mailboxes settings.
 	 * @param BH_Email_Account                   $email_account          The email account settings.
 	 *
-	 * @return array<int, \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email>
+	 * @return array<int, BH_Email>
 	 * @throws Exception When saving an individual email fails.
 	 */
 	/**
@@ -321,7 +346,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @param BH_Email_Account                   $email_account          The email account settings.
 	 * @param ?Private_Uploads_API_Interface     $private_uploads        When present, email attachments are saved to private uploads.
 	 *
-	 * @return array<int, \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email>
+	 * @return array<int, BH_Email>
 	 * @throws Exception When saving an individual email fails.
 	 */
 	public function save_all(
@@ -364,7 +389,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			is_remote_deleted: $is_remote_deleted !== $email->is_remote_deleted ? $is_remote_deleted : null,
 		);
 
-		$args = $query->to_query_array();
+		$args = $query->to_wp_post_array();
 
 		if ( count( $args ) === 2 ) {
 			// Only the post_id remains.
@@ -385,18 +410,21 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		}
 
 		/**
-		 * So far only logging staus update
-		 * TODO: delete, mark-read updates.
-		 * TODO: document how plugins can print to the log.
+		 * Log the local status change. Guarded so updates to other fields (e.g. remote read state,
+		 * which pass a null status) do not record a spurious "status changed" entry.
 		 */
-		if ( $email->local_status !== $local_status ) {
+		if ( ! is_null( $local_status ) && $email->local_status !== $local_status ) {
 			$this->log(
 				$email,
 				sprintf(
-					'Status changed from "%s" to "%s".',
+					/* translators: 1: previous status, 2: new status */
+					__( 'Status changed from "%1$s" to "%2$s".', 'bh-wp-mailboxes' ),
 					$email->local_status,
 					$local_status
-				)
+				),
+				false,
+				array(),
+				'info'
 			);
 		}
 
@@ -404,25 +432,16 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	}
 
 	/**
-	 * Builds the guid URL for the given email ID.
+	 * Builds the stable, slug-safe key that uniquely identifies an email by account + Message-ID.
 	 *
-	 * TODO: test that we're never passing an existing guid, only ever the email id itself.
-	 * TODO: this URL should work for admins to load the email.
+	 * Stored as the email's post_name (an indexed column) so the same email fetched twice deduplicates
+	 * against the index rather than scanning. The md5 hex (plus prefix) survives sanitize_title()
+	 * unchanged and fits within the 200-character post_name column regardless of Message-ID length.
 	 *
-	 * @param string $post_type The CPT type being saved under.
 	 * @param string $account_email_address The mailbox email address.
-	 * @param string $email_id              The email message ID.
-	 *
-	 * @example https://bhwp.ie/my-mailbox/contact@bhwp.ie/q1w2e3r4t5
+	 * @param string $email_id              The email Message-ID.
 	 */
-	public static function guid_for( string $post_type, string $account_email_address, string $email_id ): string {
-		$site_url = get_site_url();
-		return sprintf(
-			'%s/%s/%s/%s',
-			$site_url,
-			$post_type,
-			rawurlencode( $account_email_address ),
-			rawurlencode( sanitize_key( $email_id ) )
-		);
+	public static function message_id_slug( string $account_email_address, string $email_id ): string {
+		return 'bh-' . md5( $account_email_address . '|' . $email_id );
 	}
 }

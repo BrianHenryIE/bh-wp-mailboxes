@@ -13,7 +13,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
-use BrianHenryIE\WP_Mailboxes\API\Repositories\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads_API;
@@ -67,7 +67,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$email_account = BH_Email_Account_Fixture::make(
 			post_id: 456,
 			post_type: $post_type,
-			provider_type_class: 'SomeProvider',
+			connection_type_class: 'SomeConnection',
 			email_address: 'test@example.com',
 			display_name: 'Test Account',
 			delete_local_emails_after_n_days: null,
@@ -86,13 +86,86 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 	}
 
 	/**
-	 * Fetching the same email twice (same account + Message-ID, i.e. same guid) must not
-	 * create two posts. The second save_new should return the already-saved post.
+	 * Saving a new email records an info-level "downloaded" entry in its log.
 	 *
 	 * @covers ::save_new
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\WP_Post_Repository_Abstract::log
+	 */
+	public function test_save_new_logs_downloaded(): void {
+
+		$post_type = 'test_post_type';
+		$sut       = new Email_WP_Post_Repository( $post_type, new BH_Email_Factory( $this->logger ), $this->logger );
+
+		$parser = new MailMimeParser();
+		/** @var IMessage $email */
+		$email = $parser->parse( (string) file_get_contents( codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' ) ), true );
+
+		$result = $sut->save_new(
+			$this->make_fetched_email( $email ),
+			$this->settings,
+			BH_Email_Account_Fixture::make( post_type: $post_type ),
+		);
+
+		$log_notes = get_comments(
+			array(
+				'post_id' => $result->get_post_id(),
+				'type'    => 'bh_email_log',
+			)
+		);
+
+		$messages = array_map( fn( $comment ) => strtolower( (string) $comment->comment_content ), $log_notes );
+		$this->assertNotEmpty(
+			array_filter( $messages, fn( $message ) => str_contains( $message, 'downloaded' ) ),
+			'A "downloaded" log note should be recorded on save.'
+		);
+	}
+
+	/**
+	 * Updating an email's local status records a "status changed" log entry (no WordPress hook involved).
+	 *
+	 * @covers ::update
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\WP_Post_Repository_Abstract::log
+	 */
+	public function test_update_logs_status_change(): void {
+
+		$post_type = 'test_post_type';
+		$sut       = new Email_WP_Post_Repository( $post_type, new BH_Email_Factory( $this->logger ), $this->logger );
+
+		$parser = new MailMimeParser();
+		/** @var IMessage $email */
+		$email = $parser->parse( (string) file_get_contents( codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' ) ), true );
+
+		$saved = $sut->save_new(
+			$this->make_fetched_email( $email ),
+			$this->settings,
+			BH_Email_Account_Fixture::make( post_type: $post_type ),
+		);
+
+		$sut->update( $saved, local_status: 'bh_email_processed' );
+
+		$log_notes = get_comments(
+			array(
+				'post_id' => $saved->get_post_id(),
+				'type'    => 'bh_email_log',
+			)
+		);
+
+		$messages = array_map( fn( $comment ) => (string) $comment->comment_content, $log_notes );
+		$this->assertNotEmpty(
+			array_filter( $messages, fn( $message ) => str_contains( $message, 'Status changed' ) ),
+			'A "status changed" log note should be recorded on update.'
+		);
+	}
+
+	/**
+	 * Fetching the same email twice (same account + Message-ID) must not create two posts. The second
+	 * save_new should return the already-saved post, matched on the indexed message-id slug.
+	 *
+	 * @covers ::save_new
+	 * @covers ::message_id_slug
 	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\WP_Post_Repository_Abstract::insert
 	 */
-	public function test_save_new_dedups_by_guid(): void {
+	public function test_save_new_dedups_by_message_id(): void {
 
 		$post_type        = 'test_post_type';
 		$bh_email_factory = new BH_Email_Factory( $this->logger );
@@ -108,13 +181,18 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$email_account = BH_Email_Account_Fixture::make(
 			post_id: 456,
 			post_type: $post_type,
-			provider_type_class: 'SomeProvider',
+			connection_type_class: 'SomeConnection',
 			email_address: 'test@example.com',
 			display_name: 'Test Account',
 			delete_local_emails_after_n_days: null,
 		);
 
-		$first  = $sut->save_new( $this->make_fetched_email( $email ), $this->settings, $email_account );
+		$first = $sut->save_new( $this->make_fetched_email( $email ), $this->settings, $email_account );
+
+		// The dedup key is stored in the indexed post_name (slug).
+		$expected_slug = Email_WP_Post_Repository::message_id_slug( 'test@example.com', $email->getMessageId() ?? '' );
+		$this->assertSame( $expected_slug, get_post( $first->get_post_id() )->post_name );
+
 		$second = $sut->save_new( $this->make_fetched_email( $email ), $this->settings, $email_account );
 
 		$this->assertSame(
@@ -149,7 +227,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$email_account = BH_Email_Account_Fixture::make(
 			post_id: 456,
 			post_type: $post_type,
-			provider_type_class: 'SomeProvider',
+			connection_type_class: 'SomeConnection',
 			email_address: 'test@example.com',
 			display_name: 'Test Account',
 			delete_local_emails_after_n_days: null,

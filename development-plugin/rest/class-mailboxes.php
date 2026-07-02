@@ -11,25 +11,44 @@
 
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest;
 
+use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use Throwable;
 use WP_REST_Request;
 use WP_REST_Response;
 
 /**
- * `GET  /wp-json/bh-wp-mailboxes-dev/v1/status`     — is the library active + how many email posts exist.
- * `POST /wp-json/bh-wp-mailboxes-dev/v1/emails`     — create a fixture email post for assertions.
+ * `GET    /wp-json/bh-wp-mailboxes-dev/v1/status`   — is the library active + how many email posts exist.
+ * `POST   /wp-json/bh-wp-mailboxes-dev/v1/accounts` — create a fixture email account.
+ * `POST   /wp-json/bh-wp-mailboxes-dev/v1/emails`   — create a fixture email post for assertions.
+ * `DELETE /wp-json/bh-wp-mailboxes-dev/v1/emails`   — delete every fixture email post (reset).
+ * `POST   /wp-json/bh-wp-mailboxes-dev/v1/fetch`    — run the fetch for the registered mailboxes.
  */
 class Mailboxes {
 
 	const NAMESPACE = 'bh-wp-mailboxes-dev/v1';
 
 	/**
-	 * The custom post type the library registers for stored emails.
+	 * The emails CPT registered by the fixtures mailbox instance (friendly name "Fixtures Email").
 	 *
+	 * @see development-plugin.php — $fixtures_mailboxes_settings
 	 * @see \BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT
 	 */
-	const EMAIL_POST_TYPE = 'bh_wp_mailboxes_cpt';
+	const EMAIL_POST_TYPE = 'fixtures_email';
 
-	const ACCOUNT_POST_TYPE = 'my_plugin_account';
+	/**
+	 * The accounts CPT registered by the fixtures mailbox instance (friendly name "Fixtures Accounts").
+	 *
+	 * @see development-plugin.php — $fixtures_mailboxes_settings
+	 */
+	const ACCOUNT_POST_TYPE = 'fixtures_accounts';
+
+	/**
+	 * The connection class the fixtures mailbox uses; accounts must reference it so the
+	 * `bh_wp_mailboxes_connection_for_account` filter resolves the fixtures connection for them.
+	 *
+	 * @see \BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_Fixtures_Connection
+	 */
+	const ACCOUNT_PROVIDER_CLASS = 'BrianHenryIE\\\\WP_Mailboxes_Development_Plugin\\\\Connections\\\\Mock_Mailbox_Fixtures_Connection';
 
 	/**
 	 * Register the REST routes.
@@ -118,6 +137,26 @@ class Mailboxes {
 				),
 			)
 		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/emails',
+			array(
+				'methods'             => 'DELETE',
+				'callback'            => $this->delete_emails( ... ),
+				'permission_callback' => '__return_true',
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/fetch',
+			array(
+				'methods'             => 'POST',
+				'callback'            => $this->run_fetch( ... ),
+				'permission_callback' => '__return_true',
+			)
+		);
 	}
 
 	/**
@@ -171,7 +210,7 @@ class Mailboxes {
 
 		update_post_meta( $post_id, 'email_address', $email_address );
 		update_post_meta( $post_id, 'display_name', $display_name );
-		update_post_meta( $post_id, 'provider_type_class', 'BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap' );
+		update_post_meta( $post_id, 'connection_type_class', self::ACCOUNT_PROVIDER_CLASS );
 
 		return new WP_REST_Response( array( 'post_id' => $post_id ), 201 );
 	}
@@ -197,7 +236,7 @@ class Mailboxes {
 
 		$post_status = is_string( $request->get_param( 'post_status' ) )
 			? sanitize_key( $request->get_param( 'post_status' ) )
-			: 'publish';
+			: 'bh_email_new';
 
 		$post_id = wp_insert_post(
 			array(
@@ -215,6 +254,11 @@ class Mailboxes {
 		// Store body content as MIME so BH_Email_Factory::from_wp_post() (which uses MailMimeParser
 		// on post_content) can read it correctly. Bypass content_save_pre to avoid filter mangling.
 		if ( '' !== $body_plain || '' !== $body_html ) {
+			/**
+			 * The WordPress global database object.
+			 *
+			 * @var \wpdb $wpdb
+			 */
 			global $wpdb;
 			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->update( $wpdb->posts, array( 'post_content' => $this->build_mime( $body_plain, $body_html ) ), array( 'ID' => $post_id ) );
@@ -256,6 +300,72 @@ class Mailboxes {
 		}
 
 		return new WP_REST_Response( array( 'post_id' => $post_id ), 201 );
+	}
+
+	/**
+	 * Delete every fixture email post and clear per-user fixture read/unread/deleted state.
+	 *
+	 * Used by Playwright tests to reset to a clean slate between scenarios.
+	 *
+	 * Returns { deleted: int } with HTTP 200.
+	 */
+	public function delete_emails(): WP_REST_Response {
+
+		$email_post_ids = get_posts(
+			array(
+				'post_type'   => self::EMAIL_POST_TYPE,
+				'post_status' => 'any',
+				'numberposts' => -1,
+				'fields'      => 'ids',
+			)
+		);
+
+		$deleted = 0;
+		foreach ( $email_post_ids as $post_id ) {
+			if ( null !== wp_delete_post( (int) $post_id, true ) ) {
+				++$deleted;
+			}
+		}
+
+		// Clear the per-user fixture state written by Mock_Mailbox_Fixtures_Connection, for every user.
+		foreach (
+			array(
+				'_mock_mailbox_fixtures_connection_is_remote_deleted',
+				'_mock_mailbox_fixtures_connection_is_remote_read',
+				'_mock_mailbox_fixtures_connection_is_remote_unread',
+			) as $meta_key
+		) {
+			delete_metadata( 'user', 0, $meta_key, '', true );
+		}
+
+		return new WP_REST_Response( array( 'deleted' => $deleted ), 200 );
+	}
+
+	/**
+	 * Run the email fetch for every registered mailbox and report how many new emails were saved.
+	 *
+	 * Mirrors the Settings "Run now" button so Playwright can drive the fetch pipeline via REST.
+	 *
+	 * Returns { fetched: int } with HTTP 200.
+	 */
+	public function run_fetch(): WP_REST_Response {
+
+		$mailboxes = apply_filters( 'bh_wp_mailboxes_registered_mailboxes', array(), 'development-plugin' );
+
+		$fetched = 0;
+		foreach ( (array) $mailboxes as $api ) {
+			if ( ! $api instanceof API_Interface ) {
+				continue;
+			}
+			try {
+				$fetched += count( $api->check_email()->get_emails() );
+			} catch ( Throwable $t ) {
+				// A test mailbox may be unreachable; don't fail the whole request.
+				continue;
+			}
+		}
+
+		return new WP_REST_Response( array( 'fetched' => $fetched ), 200 );
 	}
 
 	/**

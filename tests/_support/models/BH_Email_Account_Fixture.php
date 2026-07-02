@@ -3,14 +3,14 @@
 namespace BrianHenryIE\WP_Mailboxes\Models;
 
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
-use BrianHenryIE\WP_Mailboxes\Providers\Imap\ImapEngine_Imap_Email_Fetcher;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
 
 class BH_Email_Account_Fixture {
 	public static function make(
 		?int $post_id = 2,
 		?string $post_type = 'test-email-account',
 		?string $local_status = 'bh_email_ac_active',
-		?string $provider_type_class = ImapEngine_Imap_Email_Fetcher::class,
+		?string $connection_type_class = ImapEngine_Imap_Email_Connection::class,
 		?string $email_address = 'test@example.org',
 		?string $display_name = 'Brian Henry',
 		?string $from_address_regex_filter = null,
@@ -24,7 +24,7 @@ class BH_Email_Account_Fixture {
 			post_id: $post_id,
 			post_type: $post_type,
 			local_status: $local_status,
-			provider_type_class: $provider_type_class,
+			connection_type_class: $connection_type_class,
 			email_address: $email_address,
 			display_name: $display_name,
 			from_address_regex_filter: $from_address_regex_filter,

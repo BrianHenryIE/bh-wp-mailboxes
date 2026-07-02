@@ -16,6 +16,7 @@
 
     <exclude-pattern>/assets/</exclude-pattern>
     <exclude-pattern>/bin/</exclude-pattern>
+    <exclude-pattern>/docs/</exclude-pattern>
     <exclude-pattern>/scratch/</exclude-pattern>
     <exclude-pattern>/tests/_data/</exclude-pattern>
     <exclude-pattern>/tests/_output/</exclude-pattern>
