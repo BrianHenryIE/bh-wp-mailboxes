@@ -166,7 +166,8 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT ID FROM $wpdb->posts WHERE post_name = %s AND post_type = %s LIMIT 1",
+				'SELECT ID FROM %i WHERE post_name = %s AND post_type = %s LIMIT 1',
+				$wpdb->posts,
 				self::message_id_slug( $account_email_address, $message_id ),
 				$this->post_type
 			)
