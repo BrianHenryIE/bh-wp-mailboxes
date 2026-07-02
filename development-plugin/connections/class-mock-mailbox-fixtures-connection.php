@@ -80,8 +80,8 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 			return;
 		}
 
-		if ( ! isset( $_GET['_wpnonce_checknow'] )
-			|| ! wp_verify_nonce( sanitize_key( wp_unslash( $_GET['_wpnonce_checknow'] ) ), 'bh-wp-mailboxes-reset-fixtures' ) ) {
+		if ( ! isset( $_GET['_wpnonce_reset_fixtures'] )
+			|| ! wp_verify_nonce( sanitize_key( wp_unslash( $_GET['_wpnonce_reset_fixtures'] ) ), 'bh-wp-mailboxes-reset-fixtures' ) ) {
 			return;
 		}
 
@@ -139,7 +139,9 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 			return;
 		}
 
-		wp_nonce_field( 'bh-wp-mailboxes-reset-fixtures', '_wpnonce_checknow' );
+		// Use a distinct nonce field name; Emails_List_Page renders its own `_wpnonce_checknow` in the
+		// same form for the "Check now" button, and two fields with the same name would collide.
+		wp_nonce_field( 'bh-wp-mailboxes-reset-fixtures', '_wpnonce_reset_fixtures' );
 		echo '<button name="reset-fixtures" id="reset-fixtures" class="button button-primary">Reset</button>';
 	}
 
