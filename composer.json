@@ -91,7 +91,7 @@
         "phpstan/phpstan-mockery": "^2.0",
         "phpstan/phpstan-phpunit": "^2.0",
         "phpunit/phpcov": "*",
-        "rector/rector": "^2.4",
+        "rector/rector": "^2.5",
         "squizlabs/php_codesniffer": "*",
         "szepeviktor/phpstan-wordpress": "*",
         "vlucas/phpdotenv": "*",
