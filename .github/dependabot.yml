@@ -33,6 +33,24 @@ updates:
       - "dependencies"
       - "js"
 
+  # maintain dependencies for npm in the Cloudflare worker
+  - package-ecosystem: "npm"
+    directory: "/cloudflare-worker"
+    target-branch: "master"
+    allow:
+      - dependency-type: direct
+    schedule:
+      interval: "daily"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "NPM"
+      prefix-development: "NPM Dev"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "js"
+      - "cloudflare-worker"
+
   # maintain dependencies for Composer
   - package-ecosystem: "composer"
     directory: "/"
