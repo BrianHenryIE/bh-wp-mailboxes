@@ -9,6 +9,7 @@ namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
 use BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract;
 use Exception;
+use Psr\Log\LoggerAwareTrait;
 
 /**
  * Subclasses should implement: (no generics in PHP!)
@@ -19,6 +20,7 @@ use Exception;
  * @phpstan-type WpUpdatePostArray array{ID?: int, post_author?: int, post_date?: string, post_date_gmt?: string, post_content?: string, post_content_filtered?: string, post_title?: string, post_excerpt?: string, meta_input?:array<string,mixed>}
  */
 abstract class WP_Post_Repository_Abstract {
+	use LoggerAwareTrait;
 
 	/**
 	 * Add a new post from a query object. Returns the post ID.
@@ -38,6 +40,10 @@ abstract class WP_Post_Repository_Abstract {
 		 * @var WpUpdatePostArray $args
 		 */
 		$args = $query->to_wp_post_array();
+
+		if ( isset( $args['post_content'] ) ) {
+			$args['post_content'] = htmlspecialchars( $args['post_content'] );
+		}
 
 		$filter_name = 'content_save_pre';
 		/**
@@ -62,7 +68,14 @@ abstract class WP_Post_Repository_Abstract {
 		$hook->callbacks = $callbacks_before;
 
 		if ( is_wp_error( $post_id ) ) {
-			// TODO Log.
+			$this->logger->warning(
+				'Failed wp_insert_post() in WP_Post_Repository_Abstract::insert(): {error_code}',
+				array(
+					'error_code' => $post_id->get_error_code(),
+					'wp_error'   => $post_id,
+					'args'       => $args,
+				)
+			);
 			throw new Exception( 'WordPress failed to create new post.' );
 		}
 
