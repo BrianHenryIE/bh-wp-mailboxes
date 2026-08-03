@@ -41,7 +41,9 @@ abstract class WP_Post_Repository_Abstract {
 		 */
 		$args = $query->to_wp_post_array();
 
-		$args['post_content'] = htmlspecialchars( $args['post_content'] );
+		if ( isset( $args['post_content'] ) ) {
+			$args['post_content'] = htmlspecialchars( $args['post_content'] );
+		}
 
 		$filter_name = 'content_save_pre';
 		/**
