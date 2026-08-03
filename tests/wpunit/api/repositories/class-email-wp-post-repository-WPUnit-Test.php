@@ -11,6 +11,7 @@ use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
+use BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
@@ -403,5 +404,36 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 
 		$sut = new Single_Email_View( $this->make_settings(), $api, $this->make_repository(), $this->logger );
 		$sut->log_status_change( $post_id, $post_after, $post_before );
+	}
+
+	public function test_invalid_characters(): void {
+
+		$sut = new class() extends WP_Post_Repository_Abstract {
+			public function test_insert( WP_Post_Query_Abstract $query ): int {
+				return $this->insert( $query );
+			}
+		};
+		$sut->setLogger( $this->logger );
+
+		$result = $sut->test_insert(
+			new readonly class() extends WP_Post_Query_Abstract {
+				public function __construct() {
+					parent::__construct( 'post' );
+				}
+
+				public function to_wp_post_array(): array {
+					return array(
+						// "\xF0" is a four-byte UTF-8 lead byte with no continuation bytes, i.e. invalid UTF-8,
+						// as seen in a real email whose body contained directory traversal probe strings.
+						'post_content' => "Blocked for Directory Traversal in query string: src = ../../../../../../../.env\xF0.php",
+					);
+				}
+				protected function get_meta_input(): array {
+					return array();
+				}
+			}
+		);
+
+		$this->assertIsInt( $result );
 	}
 }

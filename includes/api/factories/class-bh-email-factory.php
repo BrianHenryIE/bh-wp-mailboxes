@@ -44,7 +44,9 @@ class BH_Email_Factory {
 
 		$parser = new MailMimeParser();
 
-		$message = $parser->parse( $post->post_content, true );
+		$post_content = htmlspecialchars_decode( $post->post_content );
+
+		$message = $parser->parse( $post_content, true );
 
 		$from_header = $message->getHeader( 'From' );
 		$from_email  = '';
@@ -118,7 +120,7 @@ class BH_Email_Factory {
 			subject: $post->post_title,
 			from_email: $from_email,
 			from_name: $from_name,
-			original_mime_message: $post->post_content,
+			original_mime_message: $post_content,
 			body_plain_text: $message->getTextContent(),
 			body_html: $message->getHtmlContent(),
 			attachment_ids: $attachment_ids,
