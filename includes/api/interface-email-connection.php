@@ -19,6 +19,8 @@ interface Email_Connection_Interface {
 	/**
 	 * Connect to the server and verify the credentials authenticate, without returning emails.
 	 *
+	 * TODO: This should move to `Supports_Fetching` and a ~`::debug_info()` method added here that reports when the last received email was.
+	 *
 	 * @return bool True when the connection and authentication succeed.
 	 * @throws \Throwable When the connection or authentication fails.
 	 */
