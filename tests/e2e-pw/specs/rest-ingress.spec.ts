@@ -97,21 +97,45 @@ test.afterAll( async ( { requestUtils } ) => {
 } );
 
 test.describe( 'REST ingress — discovery', () => {
-	test( 'the unauthenticated REST index advertises exactly one ingress endpoint', async () => {
+	test( 'the unauthenticated REST index advertises every mailbox ingress endpoint', async () => {
 		const response = await fetch( new URL( '/wp-json/', BASE_URL ).href );
 		expect( response.status ).toBe( 200 );
 
 		const index = await response.json();
 		expect( Array.isArray( index.email_ingress_endpoints ) ).toBe( true );
-		// The worker treats more than one advertised endpoint as a configuration error.
-		expect( index.email_ingress_endpoints ).toHaveLength( 1 );
+		// The dev plugin enables REST on two mailboxes (Fixtures + E2E); the
+		// worker fans out every email to every advertised endpoint.
+		expect( index.email_ingress_endpoints ).toHaveLength( 2 );
 
-		const entry = index.email_ingress_endpoints[ 0 ];
-		expect( entry.version ).toBe( 1 );
-		expect( entry.namespace ).toBe( DEV_INGRESS_NAMESPACE );
-		expect( entry.url ).toContain( INGRESS_PATH );
-		expect( entry.accepts ).toBe( 'message/rfc822' );
-		expect( entry.max_message_size_bytes ).toBeGreaterThan( 0 );
+		for ( const entry of index.email_ingress_endpoints ) {
+			expect( entry.version ).toBe( 1 );
+			expect( entry.namespace ).toBe( DEV_INGRESS_NAMESPACE );
+			expect( entry.accepts ).toBe( 'message/rfc822' );
+			expect( entry.max_message_size_bytes ).toBeGreaterThan( 0 );
+		}
+
+		const urls = index.email_ingress_endpoints.map( ( entry: { url: string } ) => entry.url );
+		expect( urls.some( ( url: string ) => url.includes( INGRESS_PATH ) ) ).toBe( true );
+		expect(
+			urls.some( ( url: string ) =>
+				url.includes( `/wp-json/${ DEV_INGRESS_NAMESPACE }/fixtures-email/new` )
+			)
+		).toBe( true );
+	} );
+
+	test( 'every advertised endpoint accepts a delivery', async () => {
+		const index = await ( await fetch( new URL( '/wp-json/', BASE_URL ).href ) ).json();
+		const authorization = basicAuthHeader( applicationPassword );
+
+		// The worker fans out each email to all endpoints; prove each one accepts independently.
+		for ( const entry of index.email_ingress_endpoints ) {
+			const fixture = uniquifiedFixture( 'plain-text-simple.eml' );
+			const response = await postRawMime( entry.url, fixture.raw, {
+				Authorization: authorization,
+			} );
+			expect( response.status ).toBe( 201 );
+			expect( ( await response.json() ).post_id ).toBeGreaterThan( 0 );
+		}
 	} );
 } );
 
@@ -120,9 +144,11 @@ test.describe( 'REST ingress — delivery', () => {
 		admin,
 		page,
 	} ) => {
-		// Discover the endpoint the way the worker does, and use the discovered URL.
+		// Discover the endpoints the way the worker does, and use the E2E mailbox's discovered URL.
 		const index = await ( await fetch( new URL( '/wp-json/', BASE_URL ).href ) ).json();
-		const ingressUrl: string = index.email_ingress_endpoints[ 0 ].url;
+		const ingressUrl: string = index.email_ingress_endpoints.find( ( entry: { url: string } ) =>
+			entry.url.includes( INGRESS_PATH )
+		).url;
 
 		const fixture = uniquifiedFixture( 'plain-text-simple.eml' );
 		const authorization = basicAuthHeader( applicationPassword );

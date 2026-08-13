@@ -27,8 +27,8 @@ class Mailbox_Settings implements BH_WP_Mailboxes_Settings_Interface {
 	 * @param string  $emails_cpt_friendly_name         Display name for the emails CPT.
 	 * @param string  $email_accounts_cpt_friendly_name Display name for the email-accounts CPT.
 	 * @param ?string $rest_namespace                   REST namespace to enable the ingress endpoint + CPT REST, or null to disable.
-	 *                                                  Only one mailbox instance should set this: the Cloudflare worker treats more
-	 *                                                  than one advertised ingress endpoint as a configuration error.
+	 *                                                  Each mailbox instance that sets this advertises its own ingress endpoint;
+	 *                                                  the Cloudflare worker fans out every email to every advertised endpoint.
 	 */
 	public function __construct(
 		private string $plugin_slug,

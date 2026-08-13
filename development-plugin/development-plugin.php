@@ -191,7 +191,9 @@ $on_plugins_loaded = function () {
 		add_action( 'cli_init', $gmail_cli->register_commands( ... ) );
 	}
 
-	$fixtures_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'Fixtures Email', 'Fixtures Accounts' );
+	// The Fixtures mailbox also enables REST so the dev site advertises two ingress endpoints,
+	// exercising the worker's fan-out delivery (every advertised endpoint receives every email).
+	$fixtures_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'Fixtures Email', 'Fixtures Accounts', 'bh-wp-mailboxes-dev' );
 	$fixtures_mailboxes_api      = BH_WP_Mailboxes::make( $fixtures_mailboxes_settings, $logger );
 	$fixtures_mailboxes_accounts = $fixtures_mailboxes_api->get_email_accounts();
 
@@ -224,8 +226,8 @@ $on_plugins_loaded = function () {
 	// its own `e2e_email` / `e2e_accounts` CPTs and never pollutes the human-facing "Fixtures" demo mailbox.
 	// It is registered (so the dev REST /fetch can reach it) but excluded from the admin menu (see Menu);
 	// accounts are created on demand by the dev REST endpoints, so no account is pre-seeded here.
-	// Only the E2E mailbox enables REST: the Cloudflare worker treats more than one advertised
-	// ingress endpoint as a configuration error, and Playwright ingress tests use this instance.
+	// The E2E mailbox enables REST; Playwright ingress tests target its endpoint specifically
+	// (the Fixtures mailbox above advertises the second endpoint).
 	$e2e_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'E2E Email', 'E2E Accounts', 'bh-wp-mailboxes-dev' );
 	BH_WP_Mailboxes::make( $e2e_mailboxes_settings, $logger );
 	$e2e_email_repository = new Email_WP_Post_Repository(
