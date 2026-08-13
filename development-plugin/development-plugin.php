@@ -224,7 +224,9 @@ $on_plugins_loaded = function () {
 	// its own `e2e_email` / `e2e_accounts` CPTs and never pollutes the human-facing "Fixtures" demo mailbox.
 	// It is registered (so the dev REST /fetch can reach it) but excluded from the admin menu (see Menu);
 	// accounts are created on demand by the dev REST endpoints, so no account is pre-seeded here.
-	$e2e_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'E2E Email', 'E2E Accounts' );
+	// Only the E2E mailbox enables REST: the Cloudflare worker treats more than one advertised
+	// ingress endpoint as a configuration error, and Playwright ingress tests use this instance.
+	$e2e_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'E2E Email', 'E2E Accounts', 'bh-wp-mailboxes-dev' );
 	BH_WP_Mailboxes::make( $e2e_mailboxes_settings, $logger );
 	$e2e_email_repository = new Email_WP_Post_Repository(
 		$e2e_mailboxes_settings->get_emails_cpt_underscored_20(),

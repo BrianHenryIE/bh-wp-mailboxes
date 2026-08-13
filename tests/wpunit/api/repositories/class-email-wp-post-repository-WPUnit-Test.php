@@ -39,6 +39,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$this->settings = Mockery::mock( \BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface::class );
 		$this->settings->expects( 'get_emails_cpt_underscored_20' )->andReturn( 'test_post_type' );
 		$this->settings->expects( 'get_emails_cpt_friendly_name' )->andReturn( 'Test Post Type' );
+		$this->settings->allows( 'get_rest_namespace' )->andReturn( null );
 
 		$cpt = new BH_Email_CPT( $this->settings, $this->logger );
 		$cpt->register_cpt();

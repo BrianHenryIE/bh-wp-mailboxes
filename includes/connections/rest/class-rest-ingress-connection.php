@@ -39,10 +39,21 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 	/**
 	 * Fallback advertised maximum message size when `post_max_size` is unlimited.
 	 *
+	 * 33554432 = 32 Mb.
+	 *
 	 * @see self::get_max_message_size_bytes()
 	 */
 	protected const DEFAULT_MAX_MESSAGE_SIZE_BYTES = 33554432;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes_settings       Plugin settings, incl. the REST namespace.
+	 * @param Email_Repository_Interface         $email_repository         Persists the received emails.
+	 * @param Email_Account_WP_Post_Repository   $email_account_repository Persists the auto-created ingress account.
+	 * @param ?Private_Uploads_API_Interface     $private_uploads          Private uploads API, or null to skip attachment saving.
+	 * @param LoggerInterface                    $logger                   PSR-3 logger.
+	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $mailboxes_settings,
 		protected Email_Repository_Interface $email_repository,
@@ -53,6 +64,8 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 	}
 
 	/**
+	 * Register the ingress route, unless the settings do not provide a REST namespace.
+	 *
 	 * @hook rest_api_init
 	 * @see rest_get_server()
 	 */
@@ -64,9 +77,12 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 		$this->register_rest_route();
 	}
 
+	/**
+	 * Register the POST `{namespace}/v2/{emails-cpt-dashed}/new` route.
+	 */
 	protected function register_rest_route(): void {
 		register_rest_route(
-			$this->mailboxes_settings->get_rest_namespace() . '/v1',
+			$this->mailboxes_settings->get_rest_namespace() . '/v2',
 			sprintf(
 				'%s/new',
 				$this->mailboxes_settings->get_emails_cpt_dashed(),
@@ -89,6 +105,9 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 	public function create_new_email_permission_callback() {
 		$post_type_object        = get_post_type_object( $this->mailboxes_settings->get_emails_cpt_underscored_20() );
 		$create_posts_capability = $post_type_object->cap->create_posts ?? 'edit_posts';
+		if ( ! is_string( $create_posts_capability ) ) {
+			$create_posts_capability = 'edit_posts';
+		}
 
 		if ( current_user_can( $create_posts_capability ) ) {
 			return true;
@@ -124,13 +143,16 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 		 */
 		$data = (array) $response->get_data();
 
-		$data['email_ingress_endpoints'] ??= array();
-		$data['email_ingress_endpoints'][] = array(
+		$existing_endpoints = $data['email_ingress_endpoints'] ?? array();
+		if ( ! is_array( $existing_endpoints ) ) {
+			$existing_endpoints = array();
+		}
+		$existing_endpoints[] = array(
 			'version'                => 1,
-			'namespace'              => $rest_namespace . '/v1',
+			'namespace'              => $rest_namespace . '/v2',
 			'url'                    => rest_url(
 				sprintf(
-					'%s/v1/%s/new',
+					'%s/v2/%s/new',
 					$rest_namespace,
 					$this->mailboxes_settings->get_emails_cpt_dashed(),
 				)
@@ -138,6 +160,8 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 			'accepts'                => 'message/rfc822',
 			'max_message_size_bytes' => $this->get_max_message_size_bytes(),
 		);
+
+		$data['email_ingress_endpoints'] = $existing_endpoints;
 
 		$response->set_data( $data );
 
@@ -159,10 +183,14 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 		 * Filter the maximum raw MIME message size advertised in the REST index.
 		 *
 		 * @param int $post_max_size_bytes The maximum message size in bytes.
+		 * @param BH_WP_Mailboxes_Settings_Interface $mailbox_settings What mailbox instance is calling the filter.
 		 */
-		return (int) apply_filters( 'bh_wp_mailboxes_max_message_size_bytes', $post_max_size_bytes );
+		return (int) apply_filters( 'bh_wp_mailboxes_max_message_size_bytes', $post_max_size_bytes, $this->mailboxes_settings );
 	}
 
+	/**
+	 * A short human-readable name for the connection type, for display in the UI.
+	 */
 	public function get_friendly_name(): string {
 		return __( 'Email REST Ingress', 'bh-wp-mailboxes' );
 	}
@@ -222,6 +250,7 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 	public function create_new_email( WP_REST_Request $request ) {
 
 		$content_type = $request->get_content_type();
+
 		if ( ! is_array( $content_type ) || 'message/rfc822' !== $content_type['value'] ) {
 			return new WP_Error(
 				'rest_invalid_content_type',
@@ -268,7 +297,6 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 				new Fetched_Email(
 					$message,
 					new Remote_Email_Coordinates( $message_id ),
-					is_remote_read: false, // Although it's never stored.
 				),
 				$this->mailboxes_settings,
 				$email_account,

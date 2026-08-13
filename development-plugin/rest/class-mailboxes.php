@@ -26,7 +26,7 @@ use WP_REST_Response;
  */
 class Mailboxes {
 
-	const NAMESPACE = 'bh-wp-mailboxes-dev/v1';
+	const NAMESPACE = 'bh-wp-mailboxes-dev/v2';
 
 	/**
 	 * The emails CPT of the dedicated e2e mailbox (friendly name "E2E Email"). Arranging here keeps the

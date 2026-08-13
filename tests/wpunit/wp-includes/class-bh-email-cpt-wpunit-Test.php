@@ -25,6 +25,7 @@ class BH_Email_CPT_WPUnit_Test extends WPUnit_Testcase {
 	): BH_WP_Mailboxes_Settings_Interface {
 		$mock = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$mock->allows( 'get_plugin_slug' )->andReturn( $plugin_slug );
+		$mock->allows( 'get_rest_namespace' )->andReturn( null );
 		$mock->allows( 'get_emails_cpt_friendly_name' )->andReturn( $emails_cpt_friendly_name );
 		$mock->allows( 'get_emails_cpt_underscored_20' )->andReturn( $emails_cpt_underscored_20 );
 

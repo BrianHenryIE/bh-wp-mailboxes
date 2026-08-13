@@ -31,6 +31,7 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( $this->post_type );
 		$settings->allows( 'get_email_accounts_cpt_friendly_name' )->andReturn( 'Test Accounts' );
+		$settings->allows( 'get_rest_namespace' )->andReturn( null );
 
 		$cpt = new BH_Email_Account_CPT( $settings, $this->logger );
 		$cpt->register_cpt();
