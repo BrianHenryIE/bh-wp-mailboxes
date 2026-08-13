@@ -5,12 +5,12 @@
  * dropdown filter, the post-status filter regression (a specific status must not be clobbered to "any"),
  * and the removal of "Quick Edit" from the row actions.
  *
- * Arrange via the dev REST namespace `bh-wp-mailboxes-dev/v1`; drive the UI only for the behaviour under test.
+ * Arrange via the dev REST namespace `bh-wp-mailboxes-dev/v2`; drive the UI only for the behaviour under test.
  */
 import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import type { APIRequestContext } from '@playwright/test';
 
-const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v1';
+const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v2';
 const POST_TYPE = 'e2e_email';
 
 /** A subject present in exactly one of the five bundled fixture `.eml` files. */

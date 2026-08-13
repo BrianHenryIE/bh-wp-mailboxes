@@ -9,7 +9,7 @@
  */
 import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 
-const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v1';
+const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v2';
 
 test.describe( 'bh-wp-mailboxes', () => {
 	test( 'library loads and the test-plugin is active', async ( { request } ) => {

@@ -6,7 +6,7 @@
  */
 import type { FullConfig } from '@playwright/test';
 
-const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v1';
+const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v2';
 
 function baseUrl(): string {
 	return process.env.WP_BASE_URL || process.env.BASEURL || 'http://localhost:8888';
