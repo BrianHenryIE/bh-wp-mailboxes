@@ -6,6 +6,9 @@
  * via the `email_ingress_endpoints` key in the REST index and POSTs each incoming email as
  * `message/rfc822`, authenticated with a WordPress application password.
  *
+ * TODO: Allow somewhere to add a note to document details about e.g. the cloudflare worker setup URL
+ * TODO: The Cloudflare worker should, ala referrer, include a header about itself in HTTP requests.
+ *
  * @package brianhenryie/bh-wp-mailboxes
  */
 

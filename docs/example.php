@@ -20,7 +20,7 @@ try {
 	$imap_mailboxes_api->add_email_account(
 		email_address: $imap_env_settings->get_account_email_address(),
 		display_name: $imap_env_settings->get_account_display_friendly_name(),
-		provider_type_class: \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Provider::class,
+		connection_type_class: \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Provider::class,
 		body_identifier_regex_filter: 'unsubscribe',
 	);
 } catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
