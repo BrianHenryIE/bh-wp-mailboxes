@@ -40,6 +40,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$this->settings = Mockery::mock( \BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface::class );
 		$this->settings->expects( 'get_emails_cpt_underscored_20' )->andReturn( 'test_post_type' );
 		$this->settings->expects( 'get_emails_cpt_friendly_name' )->andReturn( 'Test Post Type' );
+		$this->settings->allows( 'get_rest_namespace' )->andReturn( null );
 
 		$cpt = new BH_Email_CPT( $this->settings, $this->logger );
 		$cpt->register_cpt();
@@ -277,22 +278,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$post_type = 'test_post_type';
 		$sut       = new Email_WP_Post_Repository( $post_type, new BH_Email_Factory( $this->logger ), $this->logger );
 
-		// move_file_to_private_uploads() requires the `upload_files` capability.
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
-
-		/** @var Private_Uploads_Settings_Interface $private_uploads_settings */
-		$private_uploads_settings = new class() implements Private_Uploads_Settings_Interface {
-			use Private_Uploads_Settings_Trait;
-
-			public function get_plugin_slug(): string {
-				return 'bh-wp-mailboxes-test';
-			}
-
-			public function get_uploads_subdirectory_name(): string {
-				return 'bh-wp-mailboxes-test-attachments';
-			}
-		};
-		$private_uploads          = new Private_Uploads_API( $private_uploads_settings, $this->logger );
 
 		$email_filepath = codecept_root_dir( 'tests/_data/wpunit/with-attachment.eml' );
 		$parser         = new MailMimeParser();
@@ -303,7 +289,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 			$this->make_fetched_email( $email ),
 			$this->settings,
 			BH_Email_Account_Fixture::make( post_type: $post_type ),
-			$private_uploads,
+			$this->make_private_uploads(),
 		);
 
 		// One attachment → one real post id recorded on the email and rehydrated from meta.
@@ -323,6 +309,46 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$this->assertIsString( $file );
 		$this->assertFileExists( $file );
 		$this->assertStringEndsWith( '.txt', $file );
+		$this->assertSame( "hello world\n", file_get_contents( $file ) );
+
+		// The moved file lives outside the test DB transaction; remove it.
+		wp_delete_file( $file );
+	}
+
+	/**
+	 * Cron and WP-CLI run with no logged-in user. `bh-wp-private-uploads` 0.3.0 rejected uploads when
+	 * `current_user_can( 'upload_files' )` was false, and `save_attachments()` catches and logs that
+	 * failure rather than rethrowing, so every scheduled fetch silently discarded its attachments.
+	 * 0.4.0 removed the capability check.
+	 *
+	 * @covers ::save_new
+	 */
+	public function test_save_new_saves_attachments_with_no_current_user(): void {
+
+		$post_type = 'test_post_type';
+		$sut       = new Email_WP_Post_Repository( $post_type, new BH_Email_Factory( $this->logger ), $this->logger );
+
+		wp_set_current_user( 0 );
+
+		$email_filepath = codecept_root_dir( 'tests/_data/wpunit/with-attachment.eml' );
+		$parser         = new MailMimeParser();
+		/** @var IMessage $email */
+		$email = $parser->parse( (string) file_get_contents( $email_filepath ), true );
+
+		$result = $sut->save_new(
+			$this->make_fetched_email( $email ),
+			$this->settings,
+			BH_Email_Account_Fixture::make( post_type: $post_type ),
+			$this->make_private_uploads(),
+		);
+
+		$ids = $result->attachment_ids;
+		$this->assertIsArray( $ids );
+		$this->assertCount( 1, $ids );
+
+		$file = get_attached_file( $ids[0] );
+		$this->assertIsString( $file );
+		$this->assertFileExists( $file );
 		$this->assertSame( "hello world\n", file_get_contents( $file ) );
 
 		// The moved file lives outside the test DB transaction; remove it.
@@ -366,6 +392,27 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 			new Remote_Email_Coordinates( message_id: $email->getMessageId() ?? '' ),
 			false,
 		);
+	}
+
+	/**
+	 * A real private-uploads API writing to its own test subdirectory.
+	 */
+	private function make_private_uploads(): Private_Uploads_API {
+
+		/** @var Private_Uploads_Settings_Interface $settings */
+		$settings = new class() implements Private_Uploads_Settings_Interface {
+			use Private_Uploads_Settings_Trait;
+
+			public function get_plugin_slug(): string {
+				return 'bh-wp-mailboxes-test';
+			}
+
+			public function get_uploads_subdirectory_name(): string {
+				return 'bh-wp-mailboxes-test-attachments';
+			}
+		};
+
+		return new Private_Uploads_API( $settings, $this->logger );
 	}
 
 	/**

@@ -12,7 +12,7 @@
 import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import type { APIRequestContext } from '@playwright/test';
 
-const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v1';
+const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v2';
 
 /** A collision-free email address, even across parallel workers running in the same millisecond. */
 function uniqueEmail( prefix: string ): string {

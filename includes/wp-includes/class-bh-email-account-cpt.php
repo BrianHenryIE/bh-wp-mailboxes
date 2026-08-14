@@ -81,22 +81,27 @@ class BH_Email_Account_CPT {
 			'name_admin_bar'           => __( 'Email Account', 'bh-wp-mailboxes' ),
 		);
 
-		$registered_post_type = register_post_type(
-			$post_type,
-			array(
-				'description'         => __( 'Store email account/mailbox configuration in WordPress', 'bh-wp-mailboxes' ),
-				'labels'              => $labels,
-				'has_archive'         => false,
-				'rewrite'             => array( 'slug' => sanitize_title( $this->settings->get_email_accounts_cpt_friendly_name() ) ),
-				'supports'            => array( 'title', 'comments' ),
-				'public'              => false,
-				'show_ui'             => true,
-				'menu_position'       => 25,
-				'show_in_menu'        => false,
-				'exclude_from_search' => true,
-				'show_in_rest'        => false,
-			)
+		$args = array(
+			'description'         => __( 'Store email account/mailbox configuration in WordPress', 'bh-wp-mailboxes' ),
+			'labels'              => $labels,
+			'has_archive'         => false,
+			'rewrite'             => array( 'slug' => sanitize_title( $this->settings->get_email_accounts_cpt_friendly_name() ) ),
+			'supports'            => array( 'title', 'comments' ),
+			'public'              => false,
+			'show_ui'             => true,
+			'menu_position'       => 25,
+			'show_in_menu'        => false,
+			'exclude_from_search' => true,
+			'show_in_rest'        => false,
 		);
+
+		$rest_namespace = $this->settings->get_rest_namespace();
+		if ( ! empty( $rest_namespace ) ) {
+			$args['show_in_rest']   = true;
+			$args['rest_namespace'] = $rest_namespace . '/v2';
+		}
+
+		$registered_post_type = register_post_type( $post_type, $args );
 
 		if ( is_wp_error( $registered_post_type ) ) {
 			$this->logger->error( $registered_post_type->get_error_message() );

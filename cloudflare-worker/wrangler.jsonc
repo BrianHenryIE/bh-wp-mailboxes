@@ -1,0 +1,34 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "bh-wp-mailboxes-incoming-email-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-08",
+  "vars": {
+    // Base URL of the WordPress site that receives incoming email.
+    // Independent of the email recipient domain — which mail reaches the worker
+    // is controlled by the zone's Email Routing rules.
+    "TARGET_WORDPRESS_SITE_URL": "https://example.org",
+  },
+  "kv_namespaces": [
+    {
+      "binding": "WORKER_CONFIGURATION_KV",
+      // Replace with a real namespace id: `wrangler kv namespace create WORKER_CONFIGURATION_KV`
+      "id": "REPLACE_WITH_KV_NAMESPACE_ID",
+    },
+  ],
+  // Secrets (set with `wrangler secret put <name>`):
+  //   SETUP_TOKEN — one-time token protecting the /setup route.
+  //
+  // Optional delivery-failure alerting (at most one email per day, sent through
+  // Cloudflare Email Routing — independent of the WordPress site). To enable,
+  // uncomment the binding, add both addresses to "vars", and note the recipient
+  // must be a verified Email Routing destination address on this zone:
+  // "send_email": [
+  //   { "name": "ALERT_EMAIL" },
+  // ],
+  // "vars": {
+  //   ...
+  //   "ALERT_FROM_EMAIL_ADDRESS": "worker@example.org",
+  //   "ALERT_RECIPIENT_EMAIL_ADDRESS": "admin@example.net",
+  // },
+}

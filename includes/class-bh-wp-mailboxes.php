@@ -116,7 +116,7 @@ class BH_WP_Mailboxes extends API {
 			$private_uploads,
 			$logger
 		);
-		new BH_WP_Mailboxes_Hooks( $mailboxes_api, $settings, $logger );
+		new BH_WP_Mailboxes_Hooks( $mailboxes_api, $settings, $logger, $private_uploads );
 
 		self::$mailboxes[] = $mailboxes_api;
 

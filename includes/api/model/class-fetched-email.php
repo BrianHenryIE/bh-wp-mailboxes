@@ -28,6 +28,6 @@ readonly class Fetched_Email {
 	public function __construct(
 		public IMessage $message,
 		public Remote_Email_Coordinates $coordinates,
-		public bool $is_remote_read,
+		public bool $is_remote_read = false, // Not always possible depending on the connection and credentials used.
 	) {}
 }

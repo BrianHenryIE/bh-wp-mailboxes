@@ -14,6 +14,7 @@ use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Email_Connection;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Rest\REST_Ingress_Connection;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Account_Result;
@@ -659,6 +660,15 @@ class API implements API_Interface {
 			return new ImapEngine_Imap_Email_Connection( $email_account, $this->logger );
 		} elseif ( Google_API_Credentials_Interface::class === $email_account->connection_type_class ) {
 			return new Gmail_Email_Connection( $email_account, $this->logger );
+		} elseif ( REST_Ingress_Connection::class === $email_account->connection_type_class ) {
+			// Receive-only: cron's fetch loop will skip it quietly ("does not support fetching").
+			return new REST_Ingress_Connection(
+				$this->settings,
+				$this->email_repository,
+				$this->email_account_repository,
+				$this->private_uploads,
+				$this->logger
+			);
 		} else {
 			$this->logger->warning(
 				'No email fetcher found for connection type: {connection_type_class}',

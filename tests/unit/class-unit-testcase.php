@@ -32,6 +32,11 @@ class Unit_Testcase extends Unit {
 		WP_Mock::passthruFunction( 'sanitize_key' );
 		WP_Mock::passthruFunction( '__' );
 
+		/**
+		 * @see absint()
+		 */
+		WP_Mock::userFunction( 'absint' )->andReturnUsing( fn( $value ): int => abs( (int) $value ) );
+
 		$this->logger = new ColorLogger();
 
 		\Patchwork\redefine(

@@ -83,42 +83,47 @@ class BH_Email_CPT {
 			'name_admin_bar'           => __( 'Email', 'bh-wp-mailboxes' ),
 		);
 
+		$args = array(
+			'description'         => __( 'Store copies of emails in WordPress', 'bh-wp-mailboxes' ),
+			'labels'              => $labels,
+			'has_archive'         => false,
+			'rewrite'             => array( 'slug' => sanitize_title( $this->settings->get_emails_cpt_friendly_name() ) ),
+			'supports'            => array(
+				'title',
+				'comments',
+			),
+			'public'              => false, // This is required to have the edit.php page.
+			'show_ui'             => true,
+			// TODO: implement capabilities so access to mailboxes can be granular.
+			// phpcs:disable Squiz.PHP.CommentedOutCode.Found
+			// 'capabilities'        => array(
+			// 'publish_posts'       => 'update_core',
+			// 'edit_others_posts'   => 'update_core',
+			// 'delete_posts'        => 'update_core',
+			// 'delete_others_posts' => 'update_core',
+			// 'read_private_posts'  => 'update_core',
+			// 'edit_post'           => 'edit_posts',
+			// 'delete_post'         => 'update_core',
+			// 'read_post'           => 'edit_posts',
+			// ),
+			'menu_position'       => 25,
+			'show_in_menu'        => false,
+			'exclude_from_search' => true,
+			'show_in_rest'        => false,
+		);
+
+		$rest_namespace = $this->settings->get_rest_namespace();
+		if ( ! empty( $rest_namespace ) ) {
+			$args['show_in_rest']   = true;
+			$args['rest_namespace'] = $rest_namespace . '/v2';
+		}
+
 		/**
 		 * Result of registering the post type.
 		 *
 		 * @var \WP_Post_Type|WP_Error $registered_post_type
 		 */
-		$registered_post_type = register_post_type(
-			$post_type,
-			array(
-				'description'         => __( 'Store copies of emails in WordPress', 'bh-wp-mailboxes' ),
-				'labels'              => $labels,
-				'has_archive'         => false,
-				'rewrite'             => array( 'slug' => sanitize_title( $this->settings->get_emails_cpt_friendly_name() ) ),
-				'supports'            => array(
-					'title',
-					'comments',
-				),
-				'public'              => false, // This is required to have the edit.php page.
-				'show_ui'             => true,
-				// TODO: implement capabilities so access to mailboxes can be granular.
-				// phpcs:disable Squiz.PHP.CommentedOutCode.Found
-				// 'capabilities'        => array(
-				// 'publish_posts'       => 'update_core',
-				// 'edit_others_posts'   => 'update_core',
-				// 'delete_posts'        => 'update_core',
-				// 'delete_others_posts' => 'update_core',
-				// 'read_private_posts'  => 'update_core',
-				// 'edit_post'           => 'edit_posts',
-				// 'delete_post'         => 'update_core',
-				// 'read_post'           => 'edit_posts',
-				// ),
-				'menu_position'       => 25,
-				'show_in_menu'        => false,
-				'exclude_from_search' => true,
-				'show_in_rest'        => false,
-			)
-		);
+		$registered_post_type = register_post_type( $post_type, $args );
 
 		// TODO: throw an exception... if this fails, nothing here will really work.
 		if ( is_wp_error( $registered_post_type ) ) {

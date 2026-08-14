@@ -125,4 +125,13 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 	public function get_cli_base(): ?string {
 		return $this->get_plugin_slug();
 	}
+
+	/**
+	 * Enable REST endpoints for emails and email accounts by providing a REST namespace.
+	 *
+	 * @see BH_WP_Mailboxes_Settings_Interface::get_rest_namespace()
+	 */
+	public function get_rest_namespace(): ?string {
+		return null;
+	}
 }

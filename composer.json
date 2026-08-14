@@ -71,7 +71,7 @@
         "php": ">=8.4",
         "ext-json": "*",
         "directorytree/imapengine": "^1.25",
-        "psr/log": "*",
+        "psr/log-implementation": "*",
         "wptrt/admin-notices": "^1.0"
     },
     "require-dev": {
@@ -80,7 +80,7 @@
         "alleyinteractive/wordpress-autoloader": "^1.2",
         "antecedent/patchwork": "^2.2",
         "brianhenryie/bh-wp-logger": ">0.3.3",
-        "brianhenryie/bh-wp-private-uploads": ">0.3.0",
+        "brianhenryie/bh-wp-private-uploads": "^0.4.0",
         "brianhenryie/color-logger": "*",
         "dealerdirect/phpcodesniffer-composer-installer": "*",
         "google/apiclient": "^2.19",

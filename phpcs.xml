@@ -16,8 +16,10 @@
 
     <exclude-pattern>/assets/</exclude-pattern>
     <exclude-pattern>/bin/</exclude-pattern>
+    <exclude-pattern>/cloudflare-worker/</exclude-pattern>
     <exclude-pattern>/docs/</exclude-pattern>
     <exclude-pattern>/scratch/</exclude-pattern>
+    <exclude-pattern>/stubs/</exclude-pattern>
     <exclude-pattern>/tests/_data/</exclude-pattern>
     <exclude-pattern>/tests/_output/</exclude-pattern>
     <exclude-pattern>/tests/_support/</exclude-pattern>

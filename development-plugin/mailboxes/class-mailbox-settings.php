@@ -23,14 +23,18 @@ class Mailbox_Settings implements BH_WP_Mailboxes_Settings_Interface {
 	/**
 	 * Constructor.
 	 *
-	 * @param string $plugin_slug                      The plugin slug (namespaces the CPTs, CLI, and filters).
-	 * @param string $emails_cpt_friendly_name         Display name for the emails CPT.
-	 * @param string $email_accounts_cpt_friendly_name Display name for the email-accounts CPT.
+	 * @param string  $plugin_slug                      The plugin slug (namespaces the CPTs, CLI, and filters).
+	 * @param string  $emails_cpt_friendly_name         Display name for the emails CPT.
+	 * @param string  $email_accounts_cpt_friendly_name Display name for the email-accounts CPT.
+	 * @param ?string $rest_namespace                   REST namespace to enable the ingress endpoint + CPT REST, or null to disable.
+	 *                                                  Each mailbox instance that sets this advertises its own ingress endpoint;
+	 *                                                  the Cloudflare worker fans out every email to every advertised endpoint.
 	 */
 	public function __construct(
 		private string $plugin_slug,
 		private string $emails_cpt_friendly_name,
 		private string $email_accounts_cpt_friendly_name,
+		private ?string $rest_namespace = null,
 	) {
 	}
 
@@ -53,5 +57,12 @@ class Mailbox_Settings implements BH_WP_Mailboxes_Settings_Interface {
 	 */
 	public function get_email_accounts_cpt_friendly_name(): string {
 		return $this->email_accounts_cpt_friendly_name;
+	}
+
+	/**
+	 * Returns the REST namespace, or null when REST is disabled for this mailbox.
+	 */
+	public function get_rest_namespace(): ?string {
+		return $this->rest_namespace;
 	}
 }

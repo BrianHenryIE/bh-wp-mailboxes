@@ -163,9 +163,12 @@ class BH_Email_Account_Factory {
 		if ( ! empty( $errors ) ) {
 			throw new Exception(
 				sprintf(
-					'Param error hydrating BH_Email_Account from WP_Post ID %d: %s',
+					'Param error hydrating BH_Email_Account from WP_Post ID %d: %s. Try: wp post meta get %d %s / wp post meta list %d',
 					intval( $post->ID ),
-					implode( ', ', array_map( 'esc_html', array_keys( $errors ) ) )
+					implode( ', ', array_map( 'esc_html', array_keys( $errors ) ) ),
+					intval( $post->ID ),
+					esc_html( (string) array_key_first( $errors ) ),
+					intval( $post->ID ),
 				)
 			);
 		}

@@ -6,7 +6,7 @@
  */
 import type { FullConfig } from '@playwright/test';
 
-const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v1';
+const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v2';
 
 /** Lines matching any of these are benign WordPress-core noise, not defects under test. */
 const ALLOWLIST: RegExp[] = [

@@ -32,6 +32,7 @@ class BH_Email_Factory_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WPUnit_Tes
 		$this->settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$this->settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $this->post_type );
 		$this->settings->allows( 'get_emails_cpt_friendly_name' )->andReturn( 'Test Factory CPT' );
+		$this->settings->allows( 'get_rest_namespace' )->andReturn( null );
 
 		$cpt = new BH_Email_CPT( $this->settings, $this->logger );
 		$cpt->register_cpt();

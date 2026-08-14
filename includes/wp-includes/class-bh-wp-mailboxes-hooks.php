@@ -14,12 +14,16 @@ use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View_Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Status_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_CLI;
+use BrianHenryIE\WP_Mailboxes\Connections\Rest\REST_Ingress_Connection;
+use BrianHenryIE\WP_Private_Uploads\API_Interface as Private_Uploads_API_Interface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -35,6 +39,13 @@ class BH_WP_Mailboxes_Hooks {
 	protected Email_Repository_Interface $email_wp_post_repository;
 
 	/**
+	 * Email account repository shared across hooks that need account persistence.
+	 *
+	 * @var Email_Account_WP_Post_Repository
+	 */
+	protected Email_Account_WP_Post_Repository $email_account_wp_post_repository;
+
+	/**
 	 * Factory for creating BH_Email instances from posts.
 	 *
 	 * @var BH_Email_Factory
@@ -42,21 +53,33 @@ class BH_WP_Mailboxes_Hooks {
 	protected BH_Email_Factory $bh_email_factory;
 
 	/**
+	 * Factory for creating BH_Email_Account instances from posts.
+	 *
+	 * @var BH_Email_Account_Factory
+	 */
+	protected BH_Email_Account_Factory $bh_email_account_factory;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param API_Interface                      $api      Main API / BH_WP_Mailboxes instance.
-	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings.
-	 * @param LoggerInterface                    $logger   PSR-3 logger.
+	 * @param API_Interface                      $api             Main API / BH_WP_Mailboxes instance.
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings        Plugin settings.
+	 * @param LoggerInterface                    $logger          PSR-3 logger.
+	 * @param ?Private_Uploads_API_Interface     $private_uploads Private uploads API, or null to skip attachment saving.
 	 */
 	public function __construct(
 		protected API_Interface $api,
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
-		protected LoggerInterface $logger
+		protected LoggerInterface $logger,
+		protected ?Private_Uploads_API_Interface $private_uploads = null,
 	) {
-		$this->bh_email_factory         = new BH_Email_Factory( $this->logger );
-		$this->email_wp_post_repository = new Email_WP_Post_Repository( $this->settings->get_emails_cpt_underscored_20(), $this->bh_email_factory, $this->logger );
+		$this->bh_email_factory                 = new BH_Email_Factory( $this->logger );
+		$this->email_wp_post_repository         = new Email_WP_Post_Repository( $this->settings->get_emails_cpt_underscored_20(), $this->bh_email_factory, $this->logger );
+		$this->bh_email_account_factory         = new BH_Email_Account_Factory( $this->logger );
+		$this->email_account_wp_post_repository = new Email_Account_WP_Post_Repository( $this->settings->get_email_accounts_cpt_underscored_20(), $this->bh_email_account_factory, $this->logger );
 
 		$this->define_cpt_hooks();
+		$this->define_rest_hooks();
 		$this->define_cron_hooks();
 
 		$this->define_admin_ui_hooks();
@@ -101,6 +124,25 @@ class BH_WP_Mailboxes_Hooks {
 		add_filter( 'wp_insert_post_data', $email_cpt->prevent_content_edits( ... ), 10, 2 );
 
 		add_action( 'admin_enqueue_scripts', $email_cpt->disable_autosave( ... ) );
+	}
+
+	/**
+	 * Register the REST ingress endpoint and advertise it in the REST index.
+	 *
+	 * No-ops internally when {@see BH_WP_Mailboxes_Settings_Interface::get_rest_namespace()} is null.
+	 */
+	protected function define_rest_hooks(): void {
+
+		$rest_ingress_connection = new REST_Ingress_Connection(
+			$this->settings,
+			$this->email_wp_post_repository,
+			$this->email_account_wp_post_repository,
+			$this->private_uploads,
+			$this->logger
+		);
+
+		add_action( 'rest_api_init', $rest_ingress_connection->rest_init( ... ) );
+		add_filter( 'rest_index', $rest_ingress_connection->add_email_ingress_endpoint_to_index( ... ) );
 	}
 
 	/**

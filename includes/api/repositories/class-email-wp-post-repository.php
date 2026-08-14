@@ -235,11 +235,18 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 		$from_header = $email->getHeader( 'From' );
 		$sender      = $from_header instanceof AddressHeader ? $from_header->getEmail() ?? '' : '';
 
+		// Prefer the coordinates' message id: connections without a Message-ID header substitute a
+		// stable fallback there (e.g. the REST ingress uses a digest of the raw message), which keeps
+		// retries idempotent and keeps two distinct no-Message-ID emails distinct.
+		$message_id = '' !== $coordinates->message_id
+			? $coordinates->message_id
+			: ( $email->getMessageId() ?? '' );
+
 		$query = new BH_Email_Query(
 			post_type: $post_type,
 			post_parent: $email_account->get_post_id(),
 			account_email_address: $email_account->get_account_email_address(),
-			email_id: $email->getMessageId() ?? '', // TODO: This should never be empty.
+			email_id: $message_id, // TODO: This should never be empty.
 			subject: $email->getSubject() ?? '',
 			from_address: $sender, // We'll save this in meta because if it matches a user account it is relevant.
 			original_email: $original_email_no_attachments_string,
@@ -257,7 +264,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 		// stored as the post slug, so if a post already exists we return it rather than inserting a duplicate.
 		$existing_post_id = $this->find_post_id_for_message_id(
 			$email_account->get_account_email_address(),
-			$email->getMessageId() ?? ''
+			$message_id
 		);
 		if ( null !== $existing_post_id ) {
 			return $this->find_by_post_id( $existing_post_id );

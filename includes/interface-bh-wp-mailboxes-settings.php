@@ -99,4 +99,15 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_cli_base() Defaults to the plugin slug.
 	 */
 	public function get_cli_base(): ?string;
+
+	/**
+	 * Give the plugin's REST namespace to enable the REST API for email post type and email-account post type.
+	 * It will also add a `wp-env/namespace/v2/email-post-type/new` endpoint where raw MIME messages can be POSTed.
+	 * `v2` is used because that is the version the posts are available under.
+	 *
+	 * This also creates a single email-account post to act as the parent-post for emails created via REST.
+	 *
+	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_rest_namespace() Defaults to `null` and REST is not enabled.
+	 */
+	public function get_rest_namespace(): ?string;
 }

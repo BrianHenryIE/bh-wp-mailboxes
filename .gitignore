@@ -65,6 +65,8 @@ quickstart-cli.php
 
 *.secret.*
 /playwright-report
+# @wordpress/e2e-test-utils-playwright requestUtils storage state.
+/artifacts
 /tests/e2e-pw/.auth
 /tests/_data/emails
 /tests/_data/temp

@@ -10,7 +10,7 @@
 import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import type { APIRequestContext, Page } from '@playwright/test';
 
-const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v1';
+const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v2';
 const POST_TYPE = 'e2e_email';
 
 /** A collision-free email address, even across parallel workers running in the same millisecond. */
