@@ -2,7 +2,8 @@
 /**
  * A REST endpoint that takes a raw MIME email and creates a stored email post.
  *
- * The Cloudflare Email Routing worker (see /cloudflare-worker/PLAN.md) discovers this endpoint
+ * The Cloudflare Email Routing worker (https://github.com/BrianHenryIE/bh-wp-mailboxes-cloudflare-worker,
+ * see its PLAN.md) discovers this endpoint
  * via the `email_ingress_endpoints` key in the REST index and POSTs each incoming email as
  * `message/rfc822`, authenticated with a WordPress application password.
  *
@@ -127,7 +128,7 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 	 * Advertise the ingress endpoint in the REST index so the Cloudflare worker can discover it
 	 * without knowing the namespace. Appends, so multiple library instances each advertise.
 	 *
-	 * @see /cloudflare-worker/PLAN.md "Ingress contract"
+	 * @see https://github.com/BrianHenryIE/bh-wp-mailboxes-cloudflare-worker PLAN.md "Ingress contract"
 	 *
 	 * @hook rest_index
 	 *

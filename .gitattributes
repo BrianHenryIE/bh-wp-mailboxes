@@ -6,7 +6,6 @@
 /README.md                export-ignore
 /artifacts                export-ignore
 /bin                      export-ignore
-/cloudflare-worker        export-ignore
 /codeception.dist.yml     export-ignore
 /composer.lock            export-ignore
 /development-plugin       export-ignore

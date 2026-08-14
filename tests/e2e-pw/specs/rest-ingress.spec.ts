@@ -4,7 +4,8 @@
  * Proves the Cloudflare worker ⇄ plugin contract end-to-end the way the worker actually uses it:
  * discover the endpoint from the unauthenticated REST index (`email_ingress_endpoints`), then POST
  * raw MIME (`message/rfc822`) authenticated with a WordPress application password over Basic auth.
- * The worker's own `.eml` fixtures are the payloads.
+ * The worker's own `.eml` fixtures are the payloads (copied from
+ * https://github.com/BrianHenryIE/bh-wp-mailboxes-cloudflare-worker).
  *
  * The ingress requests use plain `fetch()` — the same API the worker delivers with — rather than
  * Playwright's request context. (Playwright's APIRequestContext drops/mishandles the Basic
@@ -27,7 +28,9 @@ test.describe.configure( { mode: 'serial' } );
 const ADMIN_USER = process.env.WP_ADMIN_USER || 'admin';
 const BASE_URL = process.env.BASEURL || process.env.WP_BASE_URL || 'http://localhost:8888';
 
-const WORKER_FIXTURES_DIR = path.resolve( __dirname, '../../../cloudflare-worker/tests/fixtures' );
+// Copies of the Cloudflare worker's .eml fixtures; the worker now lives at
+// https://github.com/BrianHenryIE/bh-wp-mailboxes-cloudflare-worker
+const WORKER_FIXTURES_DIR = path.resolve( __dirname, '../fixtures' );
 
 const DEV_INGRESS_NAMESPACE = 'bh-wp-mailboxes-dev/v2';
 const INGRESS_PATH = `/wp-json/${ DEV_INGRESS_NAMESPACE }/e2e-email/new`;
