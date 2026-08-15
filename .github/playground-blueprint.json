@@ -1,0 +1,9 @@
+{
+	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
+	"steps": [
+		{
+			"step": "activatePlugin",
+			"pluginPath": "/wordpress/wp-content/plugins/development-plugin/development-plugin.php"
+		}
+	]
+}

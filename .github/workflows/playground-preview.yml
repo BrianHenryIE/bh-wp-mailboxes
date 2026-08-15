@@ -1,0 +1,210 @@
+name: Playground Preview
+
+# After the E2E tests pass on a pull request, build the development plugin as a self-contained
+# plugin, verify it boots in WordPress Playground, publish the zip to the gh-pages branch, and
+# post (or update) a sticky comment linking to WordPress Playground with the plugin installed
+# and activated.
+#
+# The project is a library, so the preview is its development plugin. The plugin directory is
+# copied outside the project along with the project composer.json, and a Composer `path`
+# repository pointing back at the project is added, so `composer install` places the library
+# and its dependencies inside the plugin's own vendor directory (see the matching autoloader
+# branch in development-plugin.php).
+#
+# The zip is published to gh-pages because Playground fetches it from the browser: GitHub Pages
+# serves `access-control-allow-origin: *`, whereas Actions artifacts require authentication.
+#
+# NB: `workflow_run` workflows only run from the copy of this file on the *default* branch, so
+# this will not run on the pull request that introduces it.
+#
+# @author BrianHenryIE
+
+on:
+  workflow_run:
+    workflows: ["E2E Tests"]
+    types: [completed]
+
+jobs:
+
+  playground-preview:
+    runs-on: ubuntu-latest
+
+    # Only for pull requests whose E2E run passed.
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+
+    permissions:
+      contents: write # To commit the zip to gh-pages.
+      pull-requests: write # To add the comment.
+
+    env:
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      BUILD_PARENT: ${{ runner.temp }}/playground-build
+      BUILD_DIR: ${{ runner.temp }}/playground-build/development-plugin
+
+    steps:
+
+      # `workflow_run` runs against the default branch, so check out the commit that was tested.
+      - name: Git checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: true
+
+      - name: Checkout GitHub Pages branch
+        uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      # `github.event.workflow_run.pull_requests` is empty for pull requests from forks, so look
+      # the number up from the head SHA instead.
+      - name: Find the pull request number
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh api "repos/${{ github.repository }}/commits/${HEAD_SHA}/pulls" \
+            --jq '[.[] | select(.state == "open")][0].number // empty')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No open pull request found for ${HEAD_SHA}; nothing to comment on."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Found pull request #${PR_NUMBER}"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install PHP
+        if: ${{ steps.pr.outputs.found == 'true' }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer
+
+      - name: Setup Node.js
+        if: ${{ steps.pr.outputs.found == 'true' }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      # Copies the plugin and composer.json to $BUILD_PARENT/development-plugin, adds the
+      # project as a Composer path repository, installs the library and its dependencies into
+      # the plugin's own vendor directory, and zips it. See the script for details.
+      - name: Build the development plugin archive
+        if: ${{ steps.pr.outputs.found == 'true' }}
+        run: composer create-development-plugin-archive
+
+      # The self-contained layout is only exercised here (wp-env and the E2E tests use a
+      # different, mapped layout), so boot the build in Playground before publishing it.
+      # The blueprint activates the plugin — a fatal on activation fails the boot — and the
+      # REST namespace assertion proves the plugin's code actually ran.
+      - name: Boot check in WordPress Playground
+        if: ${{ steps.pr.outputs.found == 'true' }}
+        run: |
+          nohup npx @wp-playground/cli@latest server \
+            --php=8.4 \
+            --wp=latest \
+            --port=9400 \
+            --mount="$BUILD_DIR:/wordpress/wp-content/plugins/development-plugin" \
+            --blueprint=.github/playground-blueprint.json \
+            > "$RUNNER_TEMP/playground.log" 2>&1 &
+
+          # The port answers 502 "WordPress is not ready yet" while Playground boots,
+          # so wait for HTTP 200 specifically.
+          echo "Waiting for WordPress Playground to be ready..."
+          READY=false
+          for i in {1..90}; do
+            if [ "$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9400/)" = "200" ]; then
+              echo "WordPress Playground is ready!"
+              READY=true
+              break
+            fi
+            echo "Attempt $i: WordPress Playground not ready yet..."
+            sleep 2
+          done
+
+          if [ "$READY" = "true" ] \
+            && curl -sf 'http://127.0.0.1:9400/?rest_route=/' > "$RUNNER_TEMP/rest-index.json" \
+            && jq -e '.namespaces | index("bh-wp-mailboxes-dev/v2")' "$RUNNER_TEMP/rest-index.json" > /dev/null; then
+            echo "Development plugin is active."
+            pkill -f wp-playground-cli || true
+          else
+            echo "Development plugin failed to boot in WordPress Playground."
+            cat "$RUNNER_TEMP/playground.log"
+            exit 1
+          fi
+
+      # Published under the commit SHA so each preview link is immutable and the sticky
+      # comment always matches the zip it points to.
+      - name: Publish the zip to gh-pages
+        if: ${{ steps.pr.outputs.found == 'true' }}
+        id: publish
+        run: |
+          DEST="gh-pages/${HEAD_SHA}/playground"
+          mkdir -p "$DEST"
+          cp "$BUILD_PARENT/development-plugin.zip" "$DEST/development-plugin.zip"
+          echo "url=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${HEAD_SHA}/playground/development-plugin.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Pre-commit `git pull gh-pages`
+        if: ${{ steps.pr.outputs.found == 'true' }}
+        run: |
+          cd gh-pages
+          # Re-fetch: the coverage job pushes to gh-pages too, so this ref may already be stale.
+          # The zip is untracked, so a force checkout keeps it.
+          git fetch origin gh-pages || true
+          (git ls-remote --heads --exit-code origin gh-pages &>/dev/null) && (git checkout --progress --force -B gh-pages refs/remotes/origin/gh-pages)
+
+      - name: Commit the zip to gh-pages
+        if: ${{ steps.pr.outputs.found == 'true' }}
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          repository: gh-pages
+          branch: gh-pages
+          commit_message: "🤖 Commit Playground preview build"
+
+      - name: Build the Playground URL
+        if: ${{ steps.pr.outputs.found == 'true' }}
+        id: playground
+        env:
+          ZIP_URL: ${{ steps.publish.outputs.url }}
+        run: |
+          # The blueprint is passed in the URL fragment so it does not need hosting itself.
+          BLUEPRINT=$(jq -cn --arg url "$ZIP_URL" '{
+            "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+            "landingPage": "/wp-admin/admin.php?page=development-plugin-settings",
+            "preferredVersions": { "php": "8.4", "wp": "latest" },
+            "steps": [
+              { "step": "login", "username": "admin", "password": "password" },
+              {
+                "step": "installPlugin",
+                "pluginData": { "resource": "url", "url": $url },
+                "options": { "activate": true }
+              }
+            ]
+          }')
+          ENCODED=$(printf '%s' "$BLUEPRINT" | jq -sRr @uri)
+          echo "url=https://playground.wordpress.net/#${ENCODED}" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on the pull request
+        if: ${{ steps.pr.outputs.found == 'true' }}
+        uses: mshick/add-pr-comment@v3
+        continue-on-error: true # Pull requests opened by non-members have no write permissions.
+        with:
+          issue: ${{ steps.pr.outputs.number }}
+          message-id: playground-preview
+          message: |
+            ### ▶️ [Try this branch's development plugin in WordPress Playground](${{ steps.playground.outputs.url }})
+
+            A one-click sandbox with the development plugin (and the library inside it) installed
+            and activated, opened on its Mailboxes settings page and logged in as `admin`. Nothing
+            is installed on your machine and the site is discarded when you close the tab.
+
+            | | |
+            |---|---|
+            | Commit | [`${{ github.event.workflow_run.head_sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}) |
+            | Zip | [`development-plugin.zip`](${{ steps.publish.outputs.url }}) |
+            | E2E run | [#${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }}) |
+
+            <sub>Rebuilt each time the E2E tests pass.</sub>
