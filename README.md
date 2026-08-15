@@ -14,6 +14,8 @@ A plugin user should be able to configure an inbox in the plugin settings, the l
 
 ![WP List Table of emails](.github/wp-list-table-inbox.png)
 
+![Single Email View](.github/example-email.png)
+
 The core library this is built around is [zbateson/mail-mime-parser](https://github.com/zbateson/mail-mime-parser) – [mail-mime-parser.org](https://mail-mime-parser.org/).
 
 ## Goals
