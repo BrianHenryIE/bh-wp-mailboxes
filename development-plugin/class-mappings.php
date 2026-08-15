@@ -59,6 +59,11 @@ class Mappings {
 		if ( ! is_string( $url ) ) {
 			return $url;
 		}
+		// Only rewrite URLs when running under wp-env's mapped-directories layout, otherwise
+		// (e.g. the self-contained WordPress Playground build) the URLs are already correct.
+		if ( ! file_exists( '/var/www/html/wp-content/uploads/bh-wp-mailboxes/' ) ) {
+			return $url;
+		}
 		$url = str_replace( 'wp-content/plugins/var/www/html/', '', $url );
 		$url = str_replace( 'plugins/development-plugin/vendor', 'uploads/bh-wp-mailboxes/vendor', $url );
 		$url = str_replace( 'plugins/development-plugin/includes', 'uploads/bh-wp-mailboxes/includes', $url );
