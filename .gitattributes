@@ -6,6 +6,12 @@
 /README.md                export-ignore
 /artifacts                export-ignore
 /bin                      export-ignore
+/node_modules             export-ignore
+/playwright-report        export-ignore
+/scratch                  export-ignore
+/test-results             export-ignore
+/vendor                   export-ignore
+/wordpress                export-ignore
 /codeception.dist.yml     export-ignore
 /composer.lock            export-ignore
 /development-plugin       export-ignore

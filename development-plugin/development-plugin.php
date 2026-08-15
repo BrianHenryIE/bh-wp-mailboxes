@@ -61,7 +61,7 @@ if ( file_exists( $autoloader_path ) ) {
 }
 
 // Self-contained build – the library is installed into the plugin's own vendor directory
-// via a Composer path repository. E.g. WordPress Playground in .github/workflows/playground.yml.
+// via a Composer path repository. E.g. WordPress Playground in .github/workflows/playground-preview.yml.
 if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
 	require_once __DIR__ . '/vendor/autoload.php';
 	$includes_dir = __DIR__ . '/vendor/brianhenryie/bh-wp-mailboxes/includes/';
