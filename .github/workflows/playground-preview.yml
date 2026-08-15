@@ -40,10 +40,15 @@ jobs:
 
     env:
       HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-      BUILD_PARENT: ${{ runner.temp }}/playground-build
-      BUILD_DIR: ${{ runner.temp }}/playground-build/development-plugin
 
     steps:
+
+      # The `runner` context is not available in job-level `env` (the workflow fails to parse),
+      # so the build paths are set at runtime instead.
+      - name: Set build paths
+        run: |
+          echo "BUILD_PARENT=$RUNNER_TEMP/playground-build" >> "$GITHUB_ENV"
+          echo "BUILD_DIR=$RUNNER_TEMP/playground-build/development-plugin" >> "$GITHUB_ENV"
 
       # `workflow_run` runs against the default branch, so check out the commit that was tested.
       - name: Git checkout
