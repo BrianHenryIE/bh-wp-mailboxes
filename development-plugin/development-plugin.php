@@ -89,15 +89,19 @@ Autoloader::generate(
 
 new Mappings()->register_hooks();
 
+// The settings for the menu-hidden mailbox used only by the end-to-end tests (see the
+// `plugins_loaded` callback below, where the mailbox itself is registered).
+$e2e_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'E2E Email', 'E2E Accounts', 'bh-wp-mailboxes-dev' );
+
 // Custom REST endpoints for arranging/asserting e2e tests.
-new Mailboxes()->register_hooks();
+new Mailboxes( $e2e_mailboxes_settings )->register_hooks();
 
 $development_settings_page = new Settings();
 $development_settings_page->register_hooks();
 new Menu( $development_settings_page )->register_hooks();
 
 
-$on_plugins_loaded = function () {
+$on_plugins_loaded = function () use ( $e2e_mailboxes_settings ) {
 
 	$logger_settings = new class() implements Logger_Settings_Interface {
 		use Logger_Settings_Trait;
@@ -235,7 +239,6 @@ $on_plugins_loaded = function () {
 	// accounts are created on demand by the dev REST endpoints, so no account is pre-seeded here.
 	// The E2E mailbox enables REST; Playwright ingress tests target its endpoint specifically
 	// (the Fixtures mailbox above advertises the second endpoint).
-	$e2e_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'E2E Email', 'E2E Accounts', 'bh-wp-mailboxes-dev' );
 	BH_WP_Mailboxes::make( $e2e_mailboxes_settings, $logger );
 	$e2e_email_repository = new Email_WP_Post_Repository(
 		$e2e_mailboxes_settings->get_emails_cpt_underscored_20(),
