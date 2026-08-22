@@ -12,21 +12,59 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_E2E_Connection;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Mailbox_Settings;
+use Exception;
+use Psr\Log\NullLogger;
 use Throwable;
 use WP_REST_Request;
 use WP_REST_Response;
+use ZBateson\MailMimeParser\MailMimeParser;
 
 /**
- * `GET    /wp-json/bh-wp-mailboxes-dev/v1/status`   — is the library active + how many email posts exist.
- * `POST   /wp-json/bh-wp-mailboxes-dev/v1/accounts` — create a fixture email account.
- * `POST   /wp-json/bh-wp-mailboxes-dev/v1/emails`   — create a fixture email post for assertions.
- * `DELETE /wp-json/bh-wp-mailboxes-dev/v1/emails`   — delete every fixture email post (reset).
- * `POST   /wp-json/bh-wp-mailboxes-dev/v1/fetch`    — run the fetch for the registered mailboxes.
+ * `GET    /wp-json/bh-wp-mailboxes-dev/v2/status`   — is the library active + how many email posts exist.
+ * `POST   /wp-json/bh-wp-mailboxes-dev/v2/accounts` — create a fixture email account.
+ * `POST   /wp-json/bh-wp-mailboxes-dev/v2/emails`   — create a fixture email post for assertions.
+ * `DELETE /wp-json/bh-wp-mailboxes-dev/v2/emails`   — delete every fixture email post (reset).
+ * `POST   /wp-json/bh-wp-mailboxes-dev/v2/fetch`    — run the fetch for the registered mailboxes.
+ *
+ * Fixtures are stored through the library's own repositories (the same code the production fetch and
+ * REST-ingress paths use), so what the tests arrange is byte-for-byte what production would store; only
+ * the e2e-specific knobs (post_status, tri-state remote flags) are applied on top.
  */
 class Mailboxes {
 
 	const NAMESPACE = 'bh-wp-mailboxes-dev/v2';
+
+	/**
+	 * The account fixture emails are filed under when a test does not supply `account_id`
+	 * (`Email_WP_Post_Repository::save_new()` requires an account). Created on first use.
+	 */
+	const FIXTURE_ACCOUNT_EMAIL_ADDRESS = 'e2e-fixtures@bh-wp-mailboxes.test';
+
+	/**
+	 * Deliberately not a real class: no `bh_wp_mailboxes_connection_for_account` filter resolves it, so
+	 * emails filed under the default fixture account keep behaving as "no linked connection" (no
+	 * remote-status badges, no "Connection:" line), as when they were parented to no account at all.
+	 */
+	const NO_CONNECTION_TYPE_CLASS = 'BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest\No_Connection';
+
+	/**
+	 * Constructor.
+	 *
+	 * @param Mailbox_Settings $e2e_mailbox_settings The e2e mailbox's settings: its CPTs are where fixtures are arranged.
+	 */
+	public function __construct(
+		protected Mailbox_Settings $e2e_mailbox_settings,
+	) {
+	}
 
 	/**
 	 * The emails CPT of the dedicated e2e mailbox (friendly name "E2E Email"). Arranging here keeps the
@@ -43,14 +81,6 @@ class Mailboxes {
 	 * @see development-plugin.php — $e2e_mailboxes_settings
 	 */
 	const ACCOUNT_POST_TYPE = Mock_Mailbox_E2E_Connection::ACCOUNTS_CPT;
-
-	/**
-	 * The connection class the e2e mailbox uses; accounts must reference it so the
-	 * `bh_wp_mailboxes_connection_for_account` filter resolves the e2e connection for them.
-	 *
-	 * @see \BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_E2E_Connection
-	 */
-	const ACCOUNT_PROVIDER_CLASS = 'BrianHenryIE\\\\WP_Mailboxes_Development_Plugin\\\\Connections\\\\Mock_Mailbox_E2E_Connection';
 
 	/**
 	 * Register the REST routes.
@@ -264,12 +294,13 @@ class Mailboxes {
 	}
 
 	/**
-	 * Create a fixture email account post for e2e tests.
+	 * Create a fixture email account post for e2e tests, via the library's account repository
+	 * (the same path `BH_WP_Mailboxes::add_email_account()` and the REST-ingress connection use).
 	 *
 	 * Required body param: email_address.
 	 * Optional: display_name.
 	 *
-	 * Returns { post_id: int } with HTTP 201.
+	 * Returns { post_id: int } with HTTP 201 (idempotent when the account already exists).
 	 *
 	 * @param WP_REST_Request $request The REST request object.
 	 */
@@ -280,32 +311,37 @@ class Mailboxes {
 			? sanitize_text_field( $request->get_param( 'display_name' ) )
 			: $email_address;
 
-		$post_id = wp_insert_post(
-			array(
-				'post_type'   => self::ACCOUNT_POST_TYPE,
-				'post_status' => 'bh_email_ac_active',
-				'post_title'  => $display_name,
-				'post_name'   => sanitize_title( $email_address ),
-			),
-			true
-		);
-
-		if ( is_wp_error( $post_id ) ) {
-			return new WP_REST_Response( array( 'error' => $post_id->get_error_message() ), 500 );
+		try {
+			$account = $this->account_repository()->save_new(
+				email_address: $email_address,
+				display_name: $display_name,
+				connection_type_class: Mock_Mailbox_E2E_Connection::class,
+				from_address_regex_filter: null,
+				body_identifier_regex_filter: null,
+				after_download_remote_email_action: null,
+				delete_local_emails_after_n_days: null,
+			);
+		} catch ( Throwable $throwable ) {
+			// The account may already exist from an earlier request.
+			$account = $this->account_repository()->find_by_email_address( $email_address );
+			if ( null === $account ) {
+				return new WP_REST_Response( array( 'error' => $throwable->getMessage() ), 500 );
+			}
 		}
 
-		update_post_meta( $post_id, 'email_address', $email_address );
-		update_post_meta( $post_id, 'display_name', $display_name );
-		update_post_meta( $post_id, 'connection_type_class', self::ACCOUNT_PROVIDER_CLASS );
-
-		return new WP_REST_Response( array( 'post_id' => $post_id ), 201 );
+		return new WP_REST_Response( array( 'post_id' => $account->get_post_id() ), 201 );
 	}
 
 	/**
 	 * Create a fixture email post so a test can assert it appears in the admin.
 	 *
-	 * Supported body params: subject, body_plain, body_html, post_status,
-	 * is_read (bool), deleted_on_server (bool), has_attachment (bool).
+	 * The email is built as a MIME message and stored via `Email_WP_Post_Repository::save_new()` — the
+	 * same production pipeline the fetch and REST-ingress paths use — so parsing, storage encoding, and
+	 * the Date/From/Subject headers all behave exactly as for a real email. The e2e-only knobs
+	 * (post_status, tri-state remote flags, the attachment shim) are applied afterwards.
+	 *
+	 * Supported body params: subject, body_plain, body_html, post_status, account_id,
+	 * is_read (bool), deleted_on_server (bool), has_attachment (bool), date_header.
 	 *
 	 * Returns { post_id: int } with HTTP 201.
 	 *
@@ -328,44 +364,56 @@ class Mailboxes {
 		// test can filter the list to just its own emails via the account dropdown / `bh_email_account` arg.
 		$account_id = is_numeric( $request->get_param( 'account_id' ) ) ? (int) $request->get_param( 'account_id' ) : 0;
 
-		$post_id = wp_insert_post(
-			array(
-				'post_type'   => self::EMAIL_POST_TYPE,
-				'post_status' => $post_status,
-				'post_title'  => $subject,
-				'post_parent' => $account_id,
-			),
-			true
-		);
+		$date_header = is_string( $request->get_param( 'date_header' ) )
+			? sanitize_text_field( $request->get_param( 'date_header' ) )
+			: null;
 
-		if ( is_wp_error( $post_id ) ) {
-			return new WP_REST_Response( array( 'error' => $post_id->get_error_message() ), 500 );
-		}
-
-		// Store body content as MIME so BH_Email_Factory::from_wp_post() (which uses MailMimeParser
-		// on post_content) can read it correctly. Bypass content_save_pre to avoid filter mangling.
-		if ( '' !== $body_plain || '' !== $body_html ) {
-			/**
-			 * The WordPress global database object.
-			 *
-			 * @var \wpdb $wpdb
-			 */
-			global $wpdb;
-			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->update( $wpdb->posts, array( 'post_content' => $this->build_mime( $body_plain, $body_html ) ), array( 'ID' => $post_id ) );
-			clean_post_cache( $post_id );
-		}
-
-		$is_read = $request->get_param( 'is_read' );
-		if ( null !== $is_read ) {
-			update_post_meta( $post_id, 'is_remote_read', true === $is_read ? 'yes' : 'no' );
-		}
-
+		$is_read           = $request->get_param( 'is_read' );
 		$deleted_on_server = $request->get_param( 'deleted_on_server' );
-		if ( true === $deleted_on_server ) {
-			update_post_meta( $post_id, 'is_remote_deleted', 'yes' );
+
+		// A unique Message-ID keeps the repository's dedupe from matching an earlier fixture email.
+		$message_id = sprintf( '<e2e-fixture-%s@bh-wp-mailboxes.test>', wp_generate_uuid4() );
+
+		$raw_mime = $this->build_mime( $subject, $message_id, $body_plain, $body_html, $date_header );
+
+		try {
+			$message = new MailMimeParser()->parse( $raw_mime, true );
+
+			$bh_email = $this->email_repository()->save_new(
+				new Fetched_Email(
+					$message,
+					new Remote_Email_Coordinates( $message_id ),
+					is_remote_read: true === $is_read,
+				),
+				$this->e2e_mailbox_settings,
+				$this->get_email_account( $account_id ),
+			);
+
+			// The production pipeline always saves as `bh_email_new`; other fixture statuses are an update.
+			if ( 'bh_email_new' !== $post_status ) {
+				$bh_email = $this->email_repository()->update( $bh_email, local_status: $post_status );
+			}
+
+			if ( true === $deleted_on_server ) {
+				$this->email_repository()->update( $bh_email, is_remote_deleted: true );
+			}
+		} catch ( Throwable $throwable ) {
+			return new WP_REST_Response( array( 'error' => $throwable->getMessage() ), 500 );
 		}
 
+		$post_id = $bh_email->get_post_id();
+
+		// The UI treats missing remote-state meta as "unknown", but the production save always writes
+		// it; remove it when the test did not specify a value so absent means absent.
+		if ( null === $is_read ) {
+			delete_post_meta( $post_id, 'is_remote_read' );
+		}
+		if ( null === $deleted_on_server ) {
+			delete_post_meta( $post_id, 'is_remote_deleted' );
+		}
+
+		// Shim: a real attachment would need private-uploads wiring; the attachments-metabox test only
+		// needs a child attachment post to exist.
 		$has_attachment = $request->get_param( 'has_attachment' );
 		if ( true === $has_attachment ) {
 			wp_insert_post(
@@ -379,18 +427,71 @@ class Mailboxes {
 			);
 		}
 
-		$date_header = $request->get_param( 'date_header' );
-		if ( is_string( $date_header ) && '' !== $date_header ) {
-			$existing = get_post_meta( $post_id, 'headers', true );
-			$headers  = is_array( $existing ) ? $existing : array();
-			if ( ! in_array( 'Date', $headers, true ) ) {
-				$headers[] = 'Date';
-			}
-			update_post_meta( $post_id, 'headers', $headers );
-			update_post_meta( $post_id, 'Date', sanitize_text_field( $date_header ) );
+		return new WP_REST_Response( array( 'post_id' => $post_id ), 201 );
+	}
+
+	/**
+	 * The account to file a fixture email under: the given account, or a default no-connection
+	 * account created on first use (mirrors `REST_Ingress_Connection::get_email_account_wp_post_for_mailbox()`).
+	 *
+	 * @param int $account_id A fixture account's post ID, or 0 for the default account.
+	 *
+	 * @throws Exception When the default account cannot be created.
+	 * @throws \InvalidArgumentException When no account exists for the given post ID.
+	 */
+	private function get_email_account( int $account_id ): BH_Email_Account {
+
+		if ( $account_id > 0 ) {
+			return $this->account_repository()->find_by_post_id( $account_id );
 		}
 
-		return new WP_REST_Response( array( 'post_id' => $post_id ), 201 );
+		$existing = $this->account_repository()->find_by_email_address( self::FIXTURE_ACCOUNT_EMAIL_ADDRESS );
+		if ( null !== $existing ) {
+			return $existing;
+		}
+
+		try {
+			return $this->account_repository()->save_new(
+				email_address: self::FIXTURE_ACCOUNT_EMAIL_ADDRESS,
+				display_name: 'E2E fixture emails',
+				connection_type_class: self::NO_CONNECTION_TYPE_CLASS,
+				from_address_regex_filter: null,
+				body_identifier_regex_filter: null,
+				after_download_remote_email_action: null,
+				delete_local_emails_after_n_days: null,
+			);
+		} catch ( Exception $exception ) {
+			// A concurrent request may have created the account between the find and the save.
+			$existing = $this->account_repository()->find_by_email_address( self::FIXTURE_ACCOUNT_EMAIL_ADDRESS );
+			if ( null !== $existing ) {
+				return $existing;
+			}
+			throw $exception;
+		}
+	}
+
+	/**
+	 * The library's email repository for the e2e mailbox's CPT.
+	 */
+	private function email_repository(): Email_WP_Post_Repository {
+		$logger = new NullLogger();
+		return new Email_WP_Post_Repository(
+			$this->e2e_mailbox_settings->get_emails_cpt_underscored_20(),
+			new BH_Email_Factory( $logger ),
+			$logger,
+		);
+	}
+
+	/**
+	 * The library's email-account repository for the e2e mailbox's accounts CPT.
+	 */
+	private function account_repository(): Email_Account_WP_Post_Repository {
+		$logger = new NullLogger();
+		return new Email_Account_WP_Post_Repository(
+			$this->e2e_mailbox_settings->get_email_accounts_cpt_underscored_20(),
+			new BH_Email_Account_Factory( $logger ),
+			$logger,
+		);
 	}
 
 	/**
@@ -515,20 +616,36 @@ class Mailboxes {
 	/**
 	 * Build a minimal RFC2822 MIME message from plain and/or HTML body parts.
 	 *
-	 * @param string $plain Plain-text body (may be empty).
-	 * @param string $html  HTML body (may be empty).
+	 * The headers (From, Subject, Message-ID, Date) are real message headers, parsed by the production
+	 * pipeline exactly as for a fetched or REST-ingested email.
+	 *
+	 * @param string  $subject     The email subject.
+	 * @param string  $message_id  The Message-ID header value.
+	 * @param string  $plain       Plain-text body (may be empty).
+	 * @param string  $html        HTML body (may be empty).
+	 * @param ?string $date_header RFC2822 Date header value, or null for no Date header.
 	 */
-	protected function build_mime( string $plain, string $html ): string {
+	protected function build_mime( string $subject, string $message_id, string $plain, string $html, ?string $date_header ): string {
+
+		$headers  = "From: fixture@bh-wp-mailboxes.test\r\n";
+		$headers .= "Subject: $subject\r\n";
+		$headers .= "Message-ID: $message_id\r\n";
+		if ( null !== $date_header && '' !== $date_header ) {
+			$headers .= "Date: $date_header\r\n";
+		}
+		$headers .= "MIME-Version: 1.0\r\n";
+
 		if ( '' !== $plain && '' !== $html ) {
 			$boundary = '----=_Part_' . md5( $plain . $html );
-			return "MIME-Version: 1.0\r\nContent-Type: multipart/alternative; boundary=\"$boundary\"\r\n\r\n"
+			return $headers
+				. "Content-Type: multipart/alternative; boundary=\"$boundary\"\r\n\r\n"
 				. "--$boundary\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n$plain\r\n"
 				. "--$boundary\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n$html\r\n"
 				. "--$boundary--\r\n";
 		}
 		if ( '' !== $html ) {
-			return "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n$html";
+			return $headers . "Content-Type: text/html; charset=UTF-8\r\n\r\n$html";
 		}
-		return "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n$plain";
+		return $headers . "Content-Type: text/plain; charset=UTF-8\r\n\r\n$plain";
 	}
 }

@@ -167,6 +167,7 @@ jobs:
         with:
           repository: gh-pages
           branch: gh-pages
+          before_commit_hook: "git pull"
           commit_message: "🤖 Commit Playground preview build"
 
       - name: Build the Playground URL
