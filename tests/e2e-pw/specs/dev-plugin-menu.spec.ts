@@ -16,7 +16,7 @@ test.describe( 'Development plugin Mailboxes menu', () => {
 	} ) => {
 		// The admin menu is identical on every admin screen; use the emails list page (the dashboard
 		// surfaces an unrelated, pre-existing dev-plugin PHP notice).
-		await admin.visitAdminPage( 'edit.php', 'post_type=imap_email_env' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=mailbox_one_email' );
 
 		const items = await page.evaluate( () =>
 			[ ...document.querySelectorAll( '#adminmenu > li' ) ]
@@ -44,7 +44,7 @@ test.describe( 'Development plugin Mailboxes menu', () => {
 	test( 'has a green background', async ( { admin, page } ) => {
 		// The admin menu is identical on every admin screen; use the emails list page (the dashboard
 		// surfaces an unrelated, pre-existing dev-plugin PHP notice).
-		await admin.visitAdminPage( 'edit.php', 'post_type=imap_email_env' );
+		await admin.visitAdminPage( 'edit.php', 'post_type=mailbox_one_email' );
 
 		const anchor = page.locator(
 			`#adminmenu a.menu-top[href="${ MAILBOXES_HREF }"]`

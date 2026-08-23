@@ -32,8 +32,11 @@ use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Settings;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Dev_Mailboxes;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Fixtures_Account_Settings;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_API;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_Credentials_Options;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_CLI;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap_Credentials_Settings;
@@ -141,64 +144,60 @@ $on_plugins_loaded = function () use ( $e2e_mailboxes_settings ) {
 	// Example parent-plugin integration: log each newly downloaded email (see Example_Integration).
 	new Example_Integration( $logger )->register_hooks();
 
-	$imap_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'IMAP Email ENV', 'IMAP Accounts ENV' );
-	$imap_mailboxes_api      = BH_WP_Mailboxes::make( $imap_mailboxes_settings, $logger );
-	$imap_accounts           = $imap_mailboxes_api->get_email_accounts();
-
 	// Load test-credentials/.env.secret into $_ENV when present (side effect), so environment variables
 	// take precedence over the settings-page transients in Imap_Credentials_Settings.
 	new Imap()->get_mailbox_settings();
 
-	// Credentials come from ENV (preferred) or the dev settings page (transients) — the latter lets the
-	// test mailbox be configured in WordPress Playground, where there is no .env.secret file.
-	$imap_credentials = new Imap_Credentials_Settings();
-	if ( $imap_credentials->is_complete() ) {
-		$imap_email = $imap_credentials->get_email_account_username();
-
-		if ( ! isset( $imap_accounts[ $imap_email ] ) ) {
-			try {
-				$imap_mailboxes_api->add_email_account(
-					email_address: $imap_email,
-					display_name: $imap_email,
-					connection_type_class: \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection::class,
-					from_address_regex_filter: null,
-					body_identifier_regex_filter: null,
-					after_download_remote_email_action: null,
-					delete_local_emails_after_n_days: 1,
-				);
-			} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
-				// Account already exists; ignore.
-			}
-		}
-
-		$imap_credentials_filter = function ( mixed $value, mixed $plugin_slug, mixed $account ) use ( $imap_email, $imap_credentials ) {
-			if ( $account->email_address === $imap_email ) {
-				return $imap_credentials;
-			}
-			return $value;
-		};
-		add_filter( 'bh_wp_mailboxes_credentials', $imap_credentials_filter, 10, 3 );
+	// Two empty demo mailboxes ("Mailbox One" / "Mailbox Two"), configured from the dev settings page:
+	// no accounts are pre-seeded — the settings page creates them (from .env.secret, typed-in IMAP
+	// credentials, or Gmail credentials) — and REST is enabled per mailbox via a wp_option (the
+	// mailbox slug doubles as its REST namespace).
+	foreach ( Dev_Mailboxes::get_slugs() as $dev_mailbox_slug ) {
+		BH_WP_Mailboxes::make( Dev_Mailboxes::make_settings( $dev_mailbox_slug ), $logger );
 	}
 
-	// Gmail mailbox. Wired only when the OAuth client secret is present. The account itself is created,
-	// and its first auth token obtained, via `wp development-plugin gmail connect` (see Gmail_CLI).
+	// IMAP credentials for settings-page-created IMAP accounts: ENV (preferred) or the dev settings
+	// page (transients) — the latter lets a mailbox be configured in WordPress Playground, where there
+	// is no .env.secret file.
+	$imap_credentials        = new Imap_Credentials_Settings();
+	$imap_credentials_filter = function ( mixed $value, string $plugin_slug, BH_Email_Account $account ) use ( $imap_credentials ) {
+		if ( \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection::class === $account->connection_type_class
+			&& $imap_credentials->is_complete()
+			&& $account->email_address === $imap_credentials->get_email_account_username() ) {
+			return $imap_credentials;
+		}
+		return $value;
+	};
+	add_filter( 'bh_wp_mailboxes_credentials', $imap_credentials_filter, 10, 3 );
+
+	// Gmail credentials pasted into the settings page, stored as wp_options. Registered before the
+	// file-based filter so files, like ENV for IMAP, take precedence on an email-address collision.
+	$gmail_pasted_credentials = new Gmail_Credentials_Options();
+	$gmail_pasted_filter      = function ( mixed $value, string $plugin_slug, BH_Email_Account $account ) use ( $gmail_pasted_credentials ) {
+		if ( Google_API_Credentials_Interface::class === $account->connection_type_class
+			&& $gmail_pasted_credentials->is_complete()
+			&& $account->email_address === $gmail_pasted_credentials->get_email_address() ) {
+			return $gmail_pasted_credentials;
+		}
+		return $value;
+	};
+	add_filter( 'bh_wp_mailboxes_credentials', $gmail_pasted_filter, 10, 3 );
+
+	// Gmail credentials from /var/www/test-credentials files. The account itself is created via the
+	// settings page or `wp development-plugin gmail connect` (see Gmail_CLI).
 	$gmail_api_helper = new Gmail_API();
 	if ( $gmail_api_helper->is_client_secret_present() ) {
 
-		$gmail_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'Gmail Email', 'Gmail Accounts' );
-
-		$gmail_mailboxes_api = BH_WP_Mailboxes::make( $gmail_mailboxes_settings, $logger );
-
-		// Resolve the Gmail account's credentials from /var/www/test-credentials.
 		$gmail_credentials = function ( mixed $value, string $plugin_slug, BH_Email_Account $account ) use ( $gmail_api_helper ) {
-			if ( $account->email_address === $gmail_api_helper->get_account_email_address() ) {
+			if ( Google_API_Credentials_Interface::class === $account->connection_type_class
+				&& $account->email_address === $gmail_api_helper->get_account_email_address() ) {
 				return $gmail_api_helper->get_credentials();
 			}
 			return $value;
 		};
 		add_filter( 'bh_wp_mailboxes_credentials', $gmail_credentials, 10, 3 );
 
-		$gmail_cli = new Gmail_CLI( $gmail_mailboxes_api, $gmail_mailboxes_settings, $gmail_api_helper, $logger );
+		$gmail_cli = new Gmail_CLI( $gmail_api_helper, $logger );
 		add_action( 'cli_init', $gmail_cli->register_commands( ... ) );
 	}
 
