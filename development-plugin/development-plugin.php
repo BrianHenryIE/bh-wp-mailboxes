@@ -160,7 +160,7 @@ $on_plugins_loaded = function () use ( $e2e_mailboxes_settings ) {
 	// page (transients) — the latter lets a mailbox be configured in WordPress Playground, where there
 	// is no .env.secret file.
 	$imap_credentials        = new Imap_Credentials_Settings();
-	$imap_credentials_filter = function ( mixed $value, string $plugin_slug, BH_Email_Account $account ) use ( $imap_credentials ) {
+	$imap_credentials_filter = function ( mixed $value, string $plugin_slug, string $emails_post_type, BH_Email_Account $account ) use ( $imap_credentials ) {
 		if ( \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection::class === $account->connection_type_class
 			&& $imap_credentials->is_complete()
 			&& $account->email_address === $imap_credentials->get_email_account_username() ) {
@@ -168,12 +168,12 @@ $on_plugins_loaded = function () use ( $e2e_mailboxes_settings ) {
 		}
 		return $value;
 	};
-	add_filter( 'bh_wp_mailboxes_credentials', $imap_credentials_filter, 10, 3 );
+	add_filter( 'bh_wp_mailboxes_credentials', $imap_credentials_filter, 10, 4 );
 
 	// Gmail credentials pasted into the settings page, stored as wp_options. Registered before the
 	// file-based filter so files, like ENV for IMAP, take precedence on an email-address collision.
 	$gmail_pasted_credentials = new Gmail_Credentials_Options();
-	$gmail_pasted_filter      = function ( mixed $value, string $plugin_slug, BH_Email_Account $account ) use ( $gmail_pasted_credentials ) {
+	$gmail_pasted_filter      = function ( mixed $value, string $plugin_slug, string $emails_post_type, BH_Email_Account $account ) use ( $gmail_pasted_credentials ) {
 		if ( Google_API_Credentials_Interface::class === $account->connection_type_class
 			&& $gmail_pasted_credentials->is_complete()
 			&& $account->email_address === $gmail_pasted_credentials->get_email_address() ) {
@@ -181,21 +181,21 @@ $on_plugins_loaded = function () use ( $e2e_mailboxes_settings ) {
 		}
 		return $value;
 	};
-	add_filter( 'bh_wp_mailboxes_credentials', $gmail_pasted_filter, 10, 3 );
+	add_filter( 'bh_wp_mailboxes_credentials', $gmail_pasted_filter, 10, 4 );
 
 	// Gmail credentials from /var/www/test-credentials files. The account itself is created via the
 	// settings page or `wp development-plugin gmail connect` (see Gmail_CLI).
 	$gmail_api_helper = new Gmail_API();
 	if ( $gmail_api_helper->is_client_secret_present() ) {
 
-		$gmail_credentials = function ( mixed $value, string $plugin_slug, BH_Email_Account $account ) use ( $gmail_api_helper ) {
+		$gmail_credentials = function ( mixed $value, string $plugin_slug, string $emails_post_type, BH_Email_Account $account ) use ( $gmail_api_helper ) {
 			if ( Google_API_Credentials_Interface::class === $account->connection_type_class
 				&& $account->email_address === $gmail_api_helper->get_account_email_address() ) {
 				return $gmail_api_helper->get_credentials();
 			}
 			return $value;
 		};
-		add_filter( 'bh_wp_mailboxes_credentials', $gmail_credentials, 10, 3 );
+		add_filter( 'bh_wp_mailboxes_credentials', $gmail_credentials, 10, 4 );
 
 		$gmail_cli = new Gmail_CLI( $gmail_api_helper, $logger );
 		add_action( 'cli_init', $gmail_cli->register_commands( ... ) );

@@ -187,9 +187,10 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 		 * Filter the maximum raw MIME message size advertised in the REST index.
 		 *
 		 * @param int $post_max_size_bytes The maximum message size in bytes.
+		 * @param string $plugin_slug The plugin slug the library is running as.
 		 * @param BH_WP_Mailboxes_Settings_Interface $mailbox_settings What mailbox instance is calling the filter.
 		 */
-		return (int) apply_filters( 'bh_wp_mailboxes_max_message_size_bytes', $post_max_size_bytes, $this->mailboxes_settings );
+		return (int) apply_filters( 'bh_wp_mailboxes_max_message_size_bytes', $post_max_size_bytes, $this->mailboxes_settings->get_plugin_slug(), $this->mailboxes_settings );
 	}
 
 	/**

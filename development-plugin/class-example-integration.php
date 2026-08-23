@@ -35,7 +35,7 @@ class Example_Integration {
 	 * Register the new-email hook.
 	 */
 	public function register_hooks(): void {
-		add_action( 'bh_wp_mailboxes_new_email', array( $this, 'log_new_email' ), 10, 3 );
+		add_action( 'bh_wp_mailboxes_new_email', array( $this, 'log_new_email' ), 10, 4 );
 	}
 
 	/**
@@ -43,11 +43,12 @@ class Example_Integration {
 	 *
 	 * @hooked bh_wp_mailboxes_new_email
 	 *
-	 * @param string              $plugin_slug The slug of the plugin instance that downloaded the email.
-	 * @param BH_Email_Account    $account     The account the email was downloaded from.
-	 * @param New_Email_Interface $new_email  The newly saved email, wrapped for the consumer.
+	 * @param string              $plugin_slug      The slug of the plugin instance that downloaded the email.
+	 * @param string              $emails_post_type The emails post type key, identifying which mailbox instance fired the action.
+	 * @param BH_Email_Account    $account          The account the email was downloaded from.
+	 * @param New_Email_Interface $new_email        The newly saved email, wrapped for the consumer.
 	 */
-	public function log_new_email( string $plugin_slug, BH_Email_Account $account, New_Email_Interface $new_email ): void {
+	public function log_new_email( string $plugin_slug, string $emails_post_type, BH_Email_Account $account, New_Email_Interface $new_email ): void {
 
 		$email = $new_email->get_email();
 

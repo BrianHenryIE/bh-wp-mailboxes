@@ -64,6 +64,7 @@ class Gmail_CLI_Unit_Test extends Unit_Testcase {
 	private function make_settings(): BH_WP_Mailboxes_Settings_Interface {
 		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$settings->allows( 'get_plugin_slug' )->andReturn( 'test-plugin' );
+		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( 'test_emails' );
 		return $settings;
 	}
 
@@ -139,7 +140,7 @@ class Gmail_CLI_Unit_Test extends Unit_Testcase {
 
 		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )->withAnyArgs()->reply( $credentials );
 		\WP_Mock::userFunction( 'wp_json_encode' )->andReturn( '{"access_token":"fresh-access-token"}' );
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_gmail_access_token_refreshed', $token, 'you@example.com' );
+		\WP_Mock::expectAction( 'bh_wp_mailboxes_gmail_access_token_refreshed', 'test-plugin', $token, 'you@example.com' );
 
 		$connection = Mockery::mock( Gmail_Email_Connection::class );
 		$connection->expects( 'set_credentials' )->with( $credentials )->once();

@@ -43,6 +43,7 @@ class Example_Integration_Unit_Test extends Unit_Testcase {
 
 		new Example_Integration( $this->logger )->log_new_email(
 			'test-plugin',
+			'fixtures_email',
 			BH_Email_Account_Fixture::make(),
 			$new_email
 		);

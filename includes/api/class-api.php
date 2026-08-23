@@ -160,8 +160,9 @@ class API implements API_Interface {
 
 		$fetched = $this->fetch_for_account( $account, $since, $now_time );
 
-		$plugin_slug    = $this->settings->get_plugin_slug();
-		$all_new_emails = array();
+		$plugin_slug      = $this->settings->get_plugin_slug();
+		$emails_post_type = $this->settings->get_emails_cpt_underscored_20();
+		$all_new_emails   = array();
 		foreach ( $fetched as $new_bh_email ) {
 			// Create an object wrapping this API and the email with convenient methods for the consumer.
 			$new_email        = $this->new_email_factory->make( api: $this, account: $account, email: $new_bh_email );
@@ -170,10 +171,11 @@ class API implements API_Interface {
 			 * Fire event for every new email.
 			 *
 			 * @param string $plugin_slug Plugin the library is firing from.
+			 * @param string $emails_post_type The emails post type key, identifying which mailbox instance fired the action.
 			 * @param BH_Email_Account $account The account that has been checked (immutable data object).
 			 * @param New_Email_Interface|New_Email_Remote_Interface $new_email Object with methods to manipulate the email; ::get_email() to get immutable data object.
 			 */
-			do_action( 'bh_wp_mailboxes_new_email', $plugin_slug, $account, $new_email );
+			do_action( 'bh_wp_mailboxes_new_email', $plugin_slug, $emails_post_type, $account, $new_email );
 		}
 
 		return new Check_Email_Account_Result( bh_account: $account, success: true, bh_emails: $fetched, new_emails: $all_new_emails );
@@ -222,9 +224,10 @@ class API implements API_Interface {
 				 *
 				 * @param ?Account_Credentials_Interface $credentials The null value being filtered which should return Account_Credentials_Interface instance.
 				 * @param string $plugin_slug To allow multiple plugins (and potentially library verions) to use this same filter name.
+				 * @param string $emails_post_type The emails post type key, identifying which mailbox instance is asking.
 				 * @param BH_Email_Account $email_account The account config to get credentials for {@see BH_Email_Account::$connection_type_class}.
 				 */
-				$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $email_account );
+				$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $email_account );
 			} catch ( Throwable $throwable ) {
 
 				// E.g. "Too few arguments to function..." which means the `add_filter()` implementation is incorrect.
@@ -329,7 +332,7 @@ class API implements API_Interface {
 
 		if ( $connection instanceof Requires_Credentials ) {
 			$plugin_slug = $this->settings->get_plugin_slug();
-			$credentials = $credentials ?? apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $account );
+			$credentials = $credentials ?? apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $account );
 
 			if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
 				return new Test_Connection_Result( success: false, message: 'No credentials found for ' . $account->display_name . '.' );
@@ -442,7 +445,7 @@ class API implements API_Interface {
 	/**
 	 * Apply the account's credentials to a connection that requires them.
 	 *
-	 * Resolves the credentials via the `bh_wp_mailboxes_credentials` filter (args: value, plugin_slug, account)
+	 * Resolves the credentials via the `bh_wp_mailboxes_credentials` filter (args: value, plugin_slug, emails_post_type, account)
 	 * and sets them on the connection. No-op for connections that do not implement {@see Requires_Credentials}.
 	 *
 	 * @param Email_Connection_Interface $connection      The connection to credential.
@@ -463,7 +466,7 @@ class API implements API_Interface {
 		 *
 		 * @see API::fetch_for_account()
 		 */
-		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $email_account );
+		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $email_account );
 
 		if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
 			throw new \InvalidArgumentException( 'Credentials were not Account_Credentials_Interface' );
@@ -648,9 +651,10 @@ class API implements API_Interface {
 		 *
 		 * @param mixed|Email_Connection_Interface  $connection The email fetcher for the account, or null if none is found.
 		 * @param string $plugin_slug To allow multiple plugins (and potentially library verions) to use this same filter name.
+		 * @param string $emails_post_type The emails post type key, identifying which mailbox instance is asking.
 		 * @param BH_Email_Account $email_account The account config to get connection for {@see BH_Email_Account::$connection_type_class}.
 		 */
-		$connection = apply_filters( 'bh_wp_mailboxes_connection_for_account', null, $plugin_slug, $email_account );
+		$connection = apply_filters( 'bh_wp_mailboxes_connection_for_account', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $email_account );
 
 		if ( $connection instanceof Email_Connection_Interface ) {
 			return $connection;

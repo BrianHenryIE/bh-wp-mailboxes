@@ -84,7 +84,7 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	 * Register the WordPress hooks this connection uses.
 	 */
 	public function register_hooks(): void {
-		add_filter( 'bh_wp_mailboxes_connection_for_account', array( $this, 'connection' ), 10, 3 );
+		add_filter( 'bh_wp_mailboxes_connection_for_account', array( $this, 'connection' ), 10, 4 );
 		add_filter( 'get_post_metadata', array( $this, 'meta_filter' ), 10, 5 );
 		add_action( 'manage_posts_extra_tablenav', array( $this, 'print_extra_table_controls_at_top' ), 10, 1 );
 		add_action( 'load-edit.php', array( $this, 'handle_reset_submission' ) );
@@ -140,12 +140,14 @@ class Mock_Mailbox_Fixtures_Connection implements Email_Connection_Interface, Su
 	 *
 	 * @param mixed|Email_Connection_Interface|null $value Existing filtered value – begins as null – should be `Email_Connection_Interface` but WordPress does not enforce types in filters.
 	 * @param string                                $plugin_slug Is the API instance from this plugin (otherwise it may be a different, incompatible version).
+	 * @param string                                $emails_post_type The emails post type key, identifying which mailbox instance is asking.
 	 * @param BH_Email_Account                      $email_account The account whose email is being checked.
 	 *
 	 * @return mixed|Email_Connection_Interface|null
 	 */
-	public function connection( mixed $value, string $plugin_slug, BH_Email_Account $email_account ): mixed {
+	public function connection( mixed $value, string $plugin_slug, string $emails_post_type, BH_Email_Account $email_account ): mixed {
 		if ( $this->mailbox_settings->get_plugin_slug() === $plugin_slug
+			&& $this->mailbox_settings->get_emails_cpt_underscored_20() === $emails_post_type
 			&& get_class( $this ) === $email_account->connection_type_class ) {
 			// Remember which account this connection was just resolved for, so retrieve_emails() (which gets
 			// no account argument) can honour a per-account simulated-failure flag.
