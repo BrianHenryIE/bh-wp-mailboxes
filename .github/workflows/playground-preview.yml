@@ -149,6 +149,9 @@ jobs:
           SIZE_BYTES=$(stat -c%s "$BUILD_PARENT/development-plugin.zip")
           SIZE_MB=$(( SIZE_BYTES / 1024 / 1024 ))
           echo "Zip size: ${SIZE_MB}MB"
+          # The comment is edited in place with no new-activity indicator, so date it: without a
+          # timestamp a reader cannot tell a fresh rebuild from a stale one.
+          echo "built_at=$(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_OUTPUT"
           if [ "$SIZE_BYTES" -gt $(( 20 * 1024 * 1024 )) ]; then
             echo "warning=> ⚠️ \`development-plugin.zip\` is ${SIZE_MB}MB — expected ~4MB. Stray files may have been swept into the build." >> "$GITHUB_OUTPUT"
           else
@@ -235,7 +238,8 @@ jobs:
             | Commit | [`${{ github.event.workflow_run.head_sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}) |
             | Zip | [`development-plugin.zip`](${{ steps.publish.outputs.url }}) |
             | E2E run | [#${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }}) |
+            | Built | ${{ steps.zipsize.outputs.built_at }} |
 
             ${{ steps.zipsize.outputs.warning }}
 
-            <sub>Rebuilt each time the E2E tests pass.</sub>
+            <sub>Rebuilt each time the E2E tests pass on this pull request.</sub>
