@@ -100,21 +100,17 @@ class Gmail_CLI {
 
 		$email = $this->gmail_api->get_account_email_address();
 
-		// 1. Create the connection: add the email account if it does not already exist.
-		try {
-			$api->add_email_account(
-				email_address: $email,
-				display_name: $email,
-				connection_type_class: Google_API_Credentials_Interface::class,
-				from_address_regex_filter: null,
-				body_identifier_regex_filter: null,
-				after_download_remote_email_action: null,
-				delete_local_emails_after_n_days: 1,
-			);
-			WP_CLI::log( "Created Gmail connection for {$email} in {$mailbox_slug}." );
-		} catch ( Exception $e ) {
-			WP_CLI::log( "Gmail account for {$email} already exists in {$mailbox_slug}." );
-		}
+		// 1. Create (or update) the connection's email account.
+		$api->configure_email_account(
+			email_address: $email,
+			display_name: $email,
+			connection_type_class: Google_API_Credentials_Interface::class,
+			from_address_regex_filter: null,
+			body_identifier_regex_filter: null,
+			after_download_remote_email_action: null,
+			delete_local_emails_after_n_days: 1,
+		);
+		WP_CLI::log( "Configured Gmail account {$email} in {$mailbox_slug}." );
 
 		// 2. Obtain the first auth token, unless one already exists.
 		$credentials = $this->gmail_api->get_credentials();

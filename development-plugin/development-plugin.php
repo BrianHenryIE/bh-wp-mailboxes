@@ -205,14 +205,21 @@ $on_plugins_loaded = function () use ( $e2e_mailboxes_settings ) {
 	// exercising the worker's fan-out delivery (every advertised endpoint receives every email).
 	$fixtures_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'Fixtures Email', 'Fixtures Accounts', 'bh-wp-mailboxes-dev' );
 	$fixtures_mailboxes_api      = BH_WP_Mailboxes::make( $fixtures_mailboxes_settings, $logger );
-	$fixtures_mailboxes_accounts = $fixtures_mailboxes_api->get_email_accounts();
 
 	$fixtures_settings = new Fixtures_Account_Settings();
 
-	// Ensure the fixtures account exists (its connection is wired up via the filter below).
-	if ( ! isset( $fixtures_mailboxes_accounts[ $fixtures_settings->get_account_email_address() ] ) ) {
-		try {
-			$fixtures_mailboxes_api->add_email_account(
+	// Ensure the fixtures account exists (its connection is wired up via the filter below). Seeded on
+	// `init` (after the CPT is registered, at priority 10): inserting a post on `plugins_loaded` runs
+	// before `$wp_rewrite` exists, which `wp_unique_post_slug()` reads. The isset guard just avoids a
+	// redundant post update on every request.
+	add_action(
+		'init',
+		function () use ( $fixtures_mailboxes_api, $fixtures_settings ) {
+			$fixtures_mailboxes_accounts = $fixtures_mailboxes_api->get_email_accounts();
+			if ( isset( $fixtures_mailboxes_accounts[ $fixtures_settings->get_account_email_address() ] ) ) {
+				return;
+			}
+			$fixtures_mailboxes_api->configure_email_account(
 				email_address: $fixtures_settings->get_account_email_address(),
 				display_name: $fixtures_settings->get_account_display_friendly_name(),
 				connection_type_class: Mock_Mailbox_Fixtures_Connection::class,
@@ -221,10 +228,9 @@ $on_plugins_loaded = function () use ( $e2e_mailboxes_settings ) {
 				after_download_remote_email_action: null,
 				delete_local_emails_after_n_days: 1,
 			);
-		} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
-			// Account already exists; ignore.
-		}
-	}
+		},
+		20
+	);
 	$email_factory       = new Email_WP_Post_Repository(
 		$fixtures_mailboxes_settings->get_emails_cpt_underscored_20(),
 		new BH_Email_Factory( $logger ),

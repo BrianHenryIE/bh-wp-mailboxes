@@ -79,6 +79,11 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 
 		$api->insert_email_log_note( $post_id, 'Status changed from "bh_email_new" to "bh_email_processed".' );
 
+		/**
+		 * Without `count => true`, `get_comments()` returns an array of comments.
+		 *
+		 * @var \WP_Comment[] $comments
+		 */
 		$comments = get_comments(
 			array(
 				'post_id' => $post_id,
@@ -97,17 +102,13 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * The add_email_account() duplicate check must only reject a genuinely duplicate address; a second,
-	 * distinct account must be allowed even when one already exists.
+	 * Register the accounts CPT and build an API instance backed by a real account repository.
 	 *
-	 * Regression: the dedup query filtered by post_name/meta_input (both ignored by WP_Query), so it
-	 * matched every existing account and false-positived "already exists" once any account existed.
+	 * @param string $post_type The accounts CPT key to register.
 	 *
-	 * @covers ::add_email_account
+	 * @return array{0:\BrianHenryIE\WP_Mailboxes\API\API, 1:Email_Account_WP_Post_Repository}
 	 */
-	public function test_add_email_account_allows_distinct_addresses_and_rejects_duplicates(): void {
-
-		$post_type = 'test_api_account';
+	protected function get_api_with_account_repository( string $post_type ): array {
 
 		$settings = \Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( $post_type );
@@ -124,17 +125,134 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 			$this->logger,
 		);
 
-		$api = $this->get_api( settings: $settings, email_account_repository: $account_repository );
+		return array( $this->get_api( settings: $settings, email_account_repository: $account_repository ), $account_repository );
+	}
 
-		$first = $api->add_email_account( 'first@example.com', 'First', 'SomeConnection', null, null, null, null );
+	/**
+	 * The address is the unique id: configure_email_account() creates distinct accounts per address.
+	 *
+	 * Regression (from the former add_email_account()): the dedup query filtered by
+	 * post_name/meta_input (both ignored by WP_Query), so it matched every existing account and
+	 * false-positived "already exists" once any account existed.
+	 *
+	 * @covers ::configure_email_account
+	 */
+	public function test_configure_email_account_creates_distinct_accounts_per_address(): void {
+
+		[ $api ] = $this->get_api_with_account_repository( 'test_api_account' );
+
+		$first = $api->configure_email_account( 'first@example.com', 'First', 'SomeConnection', null, null, null, null );
 		// A second, distinct account must be allowed even though one already exists.
-		$second = $api->add_email_account( 'second@example.com', 'Second', 'SomeConnection', null, null, null, null );
+		$second = $api->configure_email_account( 'second@example.com', 'Second', 'SomeConnection', null, null, null, null );
 
 		$this->assertSame( 'first@example.com', $first->email_address );
 		$this->assertSame( 'second@example.com', $second->email_address );
+	}
 
-		// A genuine duplicate is still rejected.
-		$this->expectException( \Exception::class );
-		$api->add_email_account( 'first@example.com', 'Dup', 'SomeConnection', null, null, null, null );
+	/**
+	 * Configuring an address that already has an account updates it in place rather than throwing;
+	 * null values leave the existing configuration unchanged.
+	 *
+	 * @covers ::configure_email_account
+	 */
+	public function test_configure_email_account_updates_existing_account(): void {
+
+		[ $api, $account_repository ] = $this->get_api_with_account_repository( 'test_api_acc_upd' );
+
+		$created = $api->configure_email_account( 'inbox@example.com', 'Original Name', 'SomeConnection', null, null, 'mark_read', 30 );
+
+		$updated = $api->configure_email_account( 'inbox@example.com', 'New Name', 'AnotherConnection', null, null, null, null );
+
+		$this->assertSame( $created->get_post_id(), $updated->get_post_id(), 'The existing account post should be updated, not a new one created.' );
+		$this->assertSame( 'New Name', $updated->display_name );
+		$this->assertSame( 'AnotherConnection', $updated->connection_type_class );
+		// Null leaves the existing values unchanged.
+		$this->assertSame( 'mark_read', $updated->after_download_remote_email_action() );
+
+		$this->assertCount( 1, $account_repository->get_all() );
+	}
+
+	/**
+	 * Only the email address is required once an account exists, but creating an account needs the
+	 * display name and connection class; a create attempt without them throws and creates nothing.
+	 *
+	 * @covers ::configure_email_account
+	 */
+	public function test_configure_email_account_throws_when_creating_without_required_configuration(): void {
+
+		[ $api, $account_repository ] = $this->get_api_with_account_repository( 'test_api_acc_req' );
+
+		$exception = null;
+		try {
+			$api->configure_email_account( 'new@example.com' );
+		} catch ( \InvalidArgumentException $exception ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+			// Verified below.
+		}
+
+		$this->assertInstanceOf( \InvalidArgumentException::class, $exception );
+		$this->assertStringContainsString( 'display_name and connection_type_class are required', $exception->getMessage() );
+		$this->assertNull( $account_repository->find_by_email_address( 'new@example.com' ), 'No account should be created.' );
+
+		// One-missing case names just the missing parameter.
+		try {
+			$api->configure_email_account( 'new@example.com', display_name: 'New Account' );
+			$this->fail( 'An InvalidArgumentException should have been thrown.' );
+		} catch ( \InvalidArgumentException $exception ) {
+			$this->assertStringContainsString( 'connection_type_class is required', $exception->getMessage() );
+		}
+	}
+
+	/**
+	 * Once the account exists, a later call needs only the email address plus whatever is changing.
+	 *
+	 * @covers ::configure_email_account
+	 */
+	public function test_configure_email_account_updates_with_only_email_address_and_changed_value(): void {
+
+		[ $api ] = $this->get_api_with_account_repository( 'test_api_acc_min' );
+
+		$created = $api->configure_email_account( 'min@example.com', 'Original Name', 'SomeConnection' );
+
+		$updated = $api->configure_email_account( 'min@example.com', display_name: 'Renamed' );
+
+		$this->assertSame( $created->get_post_id(), $updated->get_post_id() );
+		$this->assertSame( 'Renamed', $updated->display_name );
+		$this->assertSame( 'SomeConnection', $updated->connection_type_class );
+	}
+
+	/**
+	 * A call with only the email address for an existing account is a no-op returning the account.
+	 *
+	 * @covers ::configure_email_account
+	 */
+	public function test_configure_email_account_with_only_email_address_returns_existing_account(): void {
+
+		[ $api ] = $this->get_api_with_account_repository( 'test_api_acc_noop' );
+
+		$created = $api->configure_email_account( 'noop@example.com', 'Noop Name', 'SomeConnection' );
+
+		$result = $api->configure_email_account( 'noop@example.com' );
+
+		$this->assertSame( $created->get_post_id(), $result->get_post_id() );
+		$this->assertSame( 'Noop Name', $result->display_name );
+	}
+
+	/**
+	 * Deleting permanently deletes the account's post; returns false when no account exists.
+	 *
+	 * @covers ::delete_email_account
+	 */
+	public function test_delete_email_account(): void {
+
+		[ $api, $account_repository ] = $this->get_api_with_account_repository( 'test_api_acc_del' );
+
+		$account = $api->configure_email_account( 'delete-me@example.com', 'Delete Me', 'SomeConnection', null, null, null, null );
+
+		$this->assertTrue( $api->delete_email_account( 'delete-me@example.com' ) );
+
+		$this->assertNull( $account_repository->find_by_email_address( 'delete-me@example.com' ) );
+		$this->assertNull( get_post( $account->get_post_id() ), 'The post should be deleted, not trashed.' );
+
+		$this->assertFalse( $api->delete_email_account( 'delete-me@example.com' ), 'Deleting a non-existent account should return false.' );
 	}
 }

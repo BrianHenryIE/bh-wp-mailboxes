@@ -375,7 +375,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		/**
 		 * On a fetch failure `update()` is called once; the mock declares the full signature, so the
-		 * named `last_failed_login_time` argument binds to its declared position (index 9).
+		 * named `last_failed_login_time` argument binds to its declared position (index 10).
 		 */
 		$captured_update_args = array();
 
@@ -402,7 +402,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$this->assertNotEmpty( $captured_update_args, 'Email_Account_WP_Post_Repository::update() was not called.' );
 		$this->assertSame( $email_account, $captured_update_args[0][0] );
 
-		$last_failed_login_time = $captured_update_args[0][9] ?? null;
+		$last_failed_login_time = $captured_update_args[0][10] ?? null;
 		$this->assertInstanceOf( DateTimeInterface::class, $last_failed_login_time );
 		$this->assertEqualsWithDelta( time(), $last_failed_login_time->getTimestamp(), 60 );
 	}

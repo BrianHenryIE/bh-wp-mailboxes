@@ -52,15 +52,13 @@ class Settings {
 	 * @var array<string,string>
 	 */
 	private const NOTICES = array(
-		'saved'                     => 'IMAP credentials saved.',
-		'saved_account_added'       => 'IMAP credentials saved and account added to the mailbox.',
-		'saved_account_exists'      => 'IMAP credentials saved; the account already exists in the mailbox.',
-		'rest_saved'                => 'REST settings saved. Changes take effect on the next page load.',
-		'env_account_added'         => 'Account from .env.secret added to the mailbox.',
-		'account_exists'            => 'The account already exists in that mailbox.',
-		'gmail_files_account_added' => 'Gmail account (file credentials) added to the mailbox.',
-		'gmail_saved'               => 'Gmail credentials saved.',
-		'gmail_saved_account_added' => 'Gmail credentials saved and account added to the mailbox.',
+		'saved'                          => 'IMAP credentials saved.',
+		'saved_account_configured'       => 'IMAP credentials saved and account configured in the mailbox.',
+		'rest_saved'                     => 'REST settings saved. Changes take effect on the next page load.',
+		'env_account_configured'         => 'Account from .env.secret configured in the mailbox.',
+		'gmail_files_account_configured' => 'Gmail account (file credentials) configured in the mailbox.',
+		'gmail_saved'                    => 'Gmail credentials saved.',
+		'gmail_saved_account_configured' => 'Gmail credentials saved and account configured in the mailbox.',
 	);
 
 	/**
@@ -144,36 +142,32 @@ class Settings {
 	}
 
 	/**
-	 * Create an email account in the given mailbox.
+	 * Create or update an email account in the given mailbox.
 	 *
-	 * @param string $mailbox_slug          The mailbox to add the account to.
+	 * @param string $mailbox_slug          The mailbox to configure the account in.
 	 * @param string $email_address         The account's email address.
 	 * @param string $connection_type_class The connection class for fetching.
 	 *
-	 * @return string Notice key: account_added|account_exists|mailbox_not_found.
+	 * @return string Notice key: account_configured|mailbox_not_found.
 	 */
-	private function add_account_to_mailbox( string $mailbox_slug, string $email_address, string $connection_type_class ): string {
+	private function configure_account_in_mailbox( string $mailbox_slug, string $email_address, string $connection_type_class ): string {
 
 		$api = Dev_Mailboxes::get_api( $mailbox_slug );
 		if ( is_null( $api ) ) {
 			return 'mailbox_not_found';
 		}
 
-		try {
-			$api->add_email_account(
-				email_address: $email_address,
-				display_name: $email_address,
-				connection_type_class: $connection_type_class,
-				from_address_regex_filter: null,
-				body_identifier_regex_filter: null,
-				after_download_remote_email_action: null,
-				delete_local_emails_after_n_days: 1,
-			);
-		} catch ( Exception $e ) {
-			return 'account_exists';
-		}
+		$api->configure_email_account(
+			email_address: $email_address,
+			display_name: $email_address,
+			connection_type_class: $connection_type_class,
+			from_address_regex_filter: null,
+			body_identifier_regex_filter: null,
+			after_download_remote_email_action: null,
+			delete_local_emails_after_n_days: 1,
+		);
 
-		return 'account_added';
+		return 'account_configured';
 	}
 
 	/**
@@ -240,16 +234,15 @@ class Settings {
 			$this->redirect_with_notice( 'bh_notice', 'saved' );
 		}
 
-		$result = $this->add_account_to_mailbox(
+		$result = $this->configure_account_in_mailbox(
 			$mailbox_slug,
 			$credentials->get_email_account_username(),
 			ImapEngine_Imap_Email_Connection::class
 		);
 
 		match ( $result ) {
-			'account_added'  => $this->redirect_with_notice( 'bh_notice', 'saved_account_added' ),
-			'account_exists' => $this->redirect_with_notice( 'bh_notice', 'saved_account_exists' ),
-			default          => $this->redirect_with_notice( 'bh_error', 'mailbox_not_found' ),
+			'account_configured' => $this->redirect_with_notice( 'bh_notice', 'saved_account_configured' ),
+			default              => $this->redirect_with_notice( 'bh_error', 'mailbox_not_found' ),
 		};
 	}
 
@@ -274,16 +267,15 @@ class Settings {
 			$this->redirect_with_notice( 'bh_error', 'no_mailbox' );
 		}
 
-		$result = $this->add_account_to_mailbox(
+		$result = $this->configure_account_in_mailbox(
 			$mailbox_slug,
 			$env_settings->get_account_email_address(),
 			ImapEngine_Imap_Email_Connection::class
 		);
 
 		match ( $result ) {
-			'account_added'  => $this->redirect_with_notice( 'bh_notice', 'env_account_added' ),
-			'account_exists' => $this->redirect_with_notice( 'bh_notice', 'account_exists' ),
-			default          => $this->redirect_with_notice( 'bh_error', 'mailbox_not_found' ),
+			'account_configured' => $this->redirect_with_notice( 'bh_notice', 'env_account_configured' ),
+			default              => $this->redirect_with_notice( 'bh_error', 'mailbox_not_found' ),
 		};
 	}
 
@@ -307,16 +299,15 @@ class Settings {
 			$this->redirect_with_notice( 'bh_error', 'no_mailbox' );
 		}
 
-		$result = $this->add_account_to_mailbox(
+		$result = $this->configure_account_in_mailbox(
 			$mailbox_slug,
 			$gmail_api->get_account_email_address(),
 			Google_API_Credentials_Interface::class
 		);
 
 		match ( $result ) {
-			'account_added'  => $this->redirect_with_notice( 'bh_notice', 'gmail_files_account_added' ),
-			'account_exists' => $this->redirect_with_notice( 'bh_notice', 'account_exists' ),
-			default          => $this->redirect_with_notice( 'bh_error', 'mailbox_not_found' ),
+			'account_configured' => $this->redirect_with_notice( 'bh_notice', 'gmail_files_account_configured' ),
+			default              => $this->redirect_with_notice( 'bh_error', 'mailbox_not_found' ),
 		};
 	}
 
@@ -360,16 +351,15 @@ class Settings {
 			$this->redirect_with_notice( 'bh_notice', 'gmail_saved' );
 		}
 
-		$result = $this->add_account_to_mailbox(
+		$result = $this->configure_account_in_mailbox(
 			$mailbox_slug,
 			$credentials->get_email_address(),
 			Google_API_Credentials_Interface::class
 		);
 
 		match ( $result ) {
-			'account_added'  => $this->redirect_with_notice( 'bh_notice', 'gmail_saved_account_added' ),
-			'account_exists' => $this->redirect_with_notice( 'bh_notice', 'gmail_saved' ),
-			default          => $this->redirect_with_notice( 'bh_error', 'mailbox_not_found' ),
+			'account_configured' => $this->redirect_with_notice( 'bh_notice', 'gmail_saved_account_configured' ),
+			default              => $this->redirect_with_notice( 'bh_error', 'mailbox_not_found' ),
 		};
 	}
 

@@ -215,6 +215,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 *
 	 * @param BH_Email_Account   $account The account to update.
 	 * @param ?string            $display_name The friendly name for UI.
+	 * @param ?string            $connection_type_class The {@see \BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface} implementation used for this account.
 	 * @param ?string            $from_address_regex_filter Filter to only save emails whose from address matches this.
 	 * @param ?string            $body_identifier_regex_filter Filter to only save emails whose body matches this.
 	 * @param ?string            $after_download_remote_email_action Operation to perform after: delete|mark-read|nothing.
@@ -230,6 +231,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		BH_Email_Account $account,
 		// Configuration.
 		?string $display_name = null,
+		?string $connection_type_class = null,
 		?string $from_address_regex_filter = null,
 		?string $body_identifier_regex_filter = null,
 		?string $after_download_remote_email_action = null,
@@ -243,6 +245,7 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 
 		$query = new BH_Email_Account_Query(
 			post_type: $account->get_post_type(),
+			connection_type_class: $connection_type_class,
 			post_id: $account->get_post_id(),
 			status: $status,
 			last_checked_time: $last_checked_time,
@@ -301,5 +304,20 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		}
 
 		return $this->find_by_post_id( $account->post_id );
+	}
+
+	/**
+	 * Permanently delete an email account (the CPT post is deleted, not trashed).
+	 *
+	 * Locally saved emails belonging to the account are not deleted.
+	 *
+	 * @param BH_Email_Account $account The account to delete.
+	 *
+	 * @return bool True when the post was deleted.
+	 */
+	public function delete( BH_Email_Account $account ): bool {
+		$result = wp_delete_post( $account->get_post_id(), true );
+
+		return $result instanceof WP_Post;
 	}
 }
