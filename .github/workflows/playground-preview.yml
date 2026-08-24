@@ -238,8 +238,7 @@ jobs:
             | Commit | [`${{ github.event.workflow_run.head_sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}) |
             | Zip | [`development-plugin.zip`](${{ steps.publish.outputs.url }}) |
             | E2E run | [#${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }}) |
-            | Built | ${{ steps.zipsize.outputs.built_at }} |
 
             ${{ steps.zipsize.outputs.warning }}
 
-            <sub>Rebuilt each time the E2E tests pass on this pull request.</sub>
+            <sub>Rebuilt each time the E2E tests pass on this pull request. Last updated ${{ steps.zipsize.outputs.built_at }}.</sub>
