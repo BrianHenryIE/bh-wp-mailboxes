@@ -57,12 +57,6 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: true
 
-      - name: Checkout GitHub Pages branch
-        uses: actions/checkout@v7
-        with:
-          ref: gh-pages
-          path: gh-pages
-
       # `github.event.workflow_run.pull_requests` is empty for pull requests from forks, so look
       # the number up from the head SHA instead.
       - name: Find the pull request number
@@ -97,6 +91,11 @@ jobs:
       # Copies the plugin and composer.json to $BUILD_PARENT/development-plugin, adds the
       # project as a Composer path repository, installs the library and its dependencies into
       # the plugin's own vendor directory, and zips it. See the script for details.
+      #
+      # NB: must run before the gh-pages checkout below: the Composer path-repository copy
+      # includes untracked directories, so a pre-existing gh-pages/ checkout (holding every
+      # previous preview zip and coverage report) would be swept into the zip — which compounded
+      # each run until the zip exceeded GitHub's 100MB push limit.
       - name: Build the development plugin archive
         if: ${{ steps.pr.outputs.found == 'true' }}
         run: composer create-development-plugin-archive
@@ -141,6 +140,33 @@ jobs:
             exit 1
           fi
 
+      # Warn (in the pull request comment) when the zip is unexpectedly large — e.g. stray
+      # directories swept into the Composer path-repository copy again. Expected size is ~4MB.
+      - name: Check the zip size
+        if: ${{ steps.pr.outputs.found == 'true' }}
+        id: zipsize
+        run: |
+          SIZE_BYTES=$(stat -c%s "$BUILD_PARENT/development-plugin.zip")
+          SIZE_MB=$(( SIZE_BYTES / 1024 / 1024 ))
+          echo "Zip size: ${SIZE_MB}MB"
+          # The comment is edited in place with no new-activity indicator, so date it: without a
+          # timestamp a reader cannot tell a fresh rebuild from a stale one.
+          echo "built_at=$(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_OUTPUT"
+          if [ "$SIZE_BYTES" -gt $(( 20 * 1024 * 1024 )) ]; then
+            echo "warning=> ⚠️ \`development-plugin.zip\` is ${SIZE_MB}MB — expected ~4MB. Stray files may have been swept into the build." >> "$GITHUB_OUTPUT"
+          else
+            echo "warning=" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Checked out only now, after the build, so the Composer path-repository copy above cannot
+      # sweep it into the zip.
+      - name: Checkout GitHub Pages branch
+        if: ${{ steps.pr.outputs.found == 'true' }}
+        uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: gh-pages
+
       # Published under the commit SHA so each preview link is immutable and the sticky
       # comment always matches the zip it points to.
       - name: Publish the zip to gh-pages
@@ -167,6 +193,7 @@ jobs:
         with:
           repository: gh-pages
           branch: gh-pages
+          before_commit_hook: "git pull"
           commit_message: "🤖 Commit Playground preview build"
 
       - name: Build the Playground URL
@@ -212,4 +239,6 @@ jobs:
             | Zip | [`development-plugin.zip`](${{ steps.publish.outputs.url }}) |
             | E2E run | [#${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }}) |
 
-            <sub>Rebuilt each time the E2E tests pass.</sub>
+            ${{ steps.zipsize.outputs.warning }}
+
+            <sub>Rebuilt each time the E2E tests pass on this pull request. Last updated ${{ steps.zipsize.outputs.built_at }}.</sub>

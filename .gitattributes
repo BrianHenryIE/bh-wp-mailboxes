@@ -16,6 +16,7 @@
 /composer.lock            export-ignore
 /development-plugin       export-ignore
 /docs                     export-ignore
+/gh-pages                 export-ignore
 /package-lock.json        export-ignore
 /package.json             export-ignore
 /patchwork.json           export-ignore
