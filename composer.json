@@ -113,7 +113,7 @@
             "phpcov merge --clover tests/_output/clover.xml --html tests/_output/phpunit tests/_output;",
             "open tests/_output/phpunit/index.html"
         ],
-        "cs" : [
+        "cs": [
             "phpcs || true",
             "phpcs --standard=phpcs.woocommerce.xml || true",
             "phpstan analyse --memory-limit 1G"
@@ -142,6 +142,9 @@
         ],
         "create-development-plugin-archive": [
             "./bin/create-development-plugin-archive.sh"
+        ],
+        "playground-serve": [
+            "./bin/playground-serve.sh"
         ],
         "github-actions": [
             "act -P ubuntu-latest=shivammathur/node:latest"

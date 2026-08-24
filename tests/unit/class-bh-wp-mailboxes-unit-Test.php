@@ -25,6 +25,10 @@ class BH_WP_Mailboxes_Unit_Test extends Unit_Testcase {
 		$property = new ReflectionClass( BH_WP_Mailboxes::class )->getProperty( 'private_uploads_instances' );
 		$property->setValue( null, array() );
 
+		// Reset the registered mailbox instances between tests.
+		$mailboxes_property = new ReflectionClass( BH_WP_Mailboxes::class )->getProperty( 'mailboxes' );
+		$mailboxes_property->setValue( null, array() );
+
 		// The Private_Uploads hooks class registers its actions and filters in its constructor.
 		WP_Mock::userFunction( 'add_action' );
 		WP_Mock::userFunction( 'add_filter' );
@@ -88,6 +92,55 @@ class BH_WP_Mailboxes_Unit_Test extends Unit_Testcase {
 	public function test_null_directory_returns_null(): void {
 
 		$this->assertNull( $this->invoke_make_private_uploads( $this->make_settings( null ) ) );
+	}
+
+	/**
+	 * The registry filter matches each instance by its own settings' plugin slug — not by a slug
+	 * derived from the library file's path, which breaks when the library is nested in a plugin's
+	 * vendor directory (the self-contained WordPress Playground build), where every registration
+	 * was silently discarded and the dev settings page reported "The selected mailbox is not
+	 * registered".
+	 *
+	 * @covers ::filter
+	 */
+	public function test_filter_matches_instances_by_their_own_plugin_slug(): void {
+
+		$plugin_a_settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
+		$plugin_a_settings->allows( 'get_plugin_slug' )->andReturns( 'plugin-a' );
+		$plugin_a_api = Mockery::mock( \BrianHenryIE\WP_Mailboxes\API\API_Interface::class );
+		$plugin_a_api->allows( 'get_settings' )->andReturns( $plugin_a_settings );
+
+		$plugin_b_settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
+		$plugin_b_settings->allows( 'get_plugin_slug' )->andReturns( 'plugin-b' );
+		$plugin_b_api = Mockery::mock( \BrianHenryIE\WP_Mailboxes\API\API_Interface::class );
+		$plugin_b_api->allows( 'get_settings' )->andReturns( $plugin_b_settings );
+
+		$mailboxes_property = new ReflectionClass( BH_WP_Mailboxes::class )->getProperty( 'mailboxes' );
+		$mailboxes_property->setValue( null, array( $plugin_a_api, $plugin_b_api ) );
+
+		$this->assertSame( array( $plugin_a_api ), BH_WP_Mailboxes::filter( array(), 'plugin-a' ) );
+		$this->assertSame( array( $plugin_b_api ), BH_WP_Mailboxes::filter( array(), 'plugin-b' ) );
+		$this->assertSame( array(), BH_WP_Mailboxes::filter( array(), 'plugin-c' ) );
+	}
+
+	/**
+	 * Earlier-registered mailboxes from other filter callbacks are preserved.
+	 *
+	 * @covers ::filter
+	 */
+	public function test_filter_appends_to_existing_mailboxes(): void {
+
+		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
+		$settings->allows( 'get_plugin_slug' )->andReturns( 'plugin-a' );
+		$api = Mockery::mock( \BrianHenryIE\WP_Mailboxes\API\API_Interface::class );
+		$api->allows( 'get_settings' )->andReturns( $settings );
+
+		$mailboxes_property = new ReflectionClass( BH_WP_Mailboxes::class )->getProperty( 'mailboxes' );
+		$mailboxes_property->setValue( null, array( $api ) );
+
+		$existing = Mockery::mock( \BrianHenryIE\WP_Mailboxes\API\API_Interface::class );
+
+		$this->assertSame( array( $existing, $api ), BH_WP_Mailboxes::filter( array( $existing ), 'plugin-a' ) );
 	}
 
 	/**

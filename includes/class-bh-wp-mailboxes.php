@@ -45,7 +45,12 @@ class BH_WP_Mailboxes extends API {
 	protected static array $mailboxes = array();
 
 	/**
-	 * Append this plugin's registered mailbox instances to the registry.
+	 * Append the requested plugin's registered mailbox instances to the registry.
+	 *
+	 * Each instance is matched by its own settings' plugin slug. (Deriving the slug from this
+	 * file's path – `dirname( plugin_basename( __DIR__ ) )` – breaks when the library is nested
+	 * in a plugin's vendor directory, e.g. the self-contained WordPress Playground build, where
+	 * it silently discarded every registration.)
 	 *
 	 * @hooked bh_wp_mailboxes_registered_mailboxes
 	 *
@@ -56,12 +61,12 @@ class BH_WP_Mailboxes extends API {
 	 */
 	public static function filter( array $mailboxes, string $plugin_slug ): array {
 
-		$file_plugin_slug = dirname( plugin_basename( __DIR__ ) );
-		if ( $file_plugin_slug !== $plugin_slug ) {
-			return $mailboxes;
-		}
+		$matching_mailboxes = array_filter(
+			self::$mailboxes,
+			fn( API_Interface $mailboxes_api ): bool => $mailboxes_api->get_settings()->get_plugin_slug() === $plugin_slug
+		);
 
-		return array_merge( $mailboxes, self::$mailboxes );
+		return array_merge( $mailboxes, array_values( $matching_mailboxes ) );
 	}
 
 	/**
