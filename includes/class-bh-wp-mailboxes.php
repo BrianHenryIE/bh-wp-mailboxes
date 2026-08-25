@@ -45,7 +45,12 @@ class BH_WP_Mailboxes extends API {
 	protected static array $mailboxes = array();
 
 	/**
-	 * Append this plugin's registered mailbox instances to the registry.
+	 * Append the requested plugin's registered mailbox instances to the registry.
+	 *
+	 * Each instance is matched by its own settings' plugin slug. (Deriving the slug from this
+	 * file's path – `dirname( plugin_basename( __DIR__ ) )` – breaks when the library is nested
+	 * in a plugin's vendor directory, e.g. the self-contained WordPress Playground build, where
+	 * it silently discarded every registration.)
 	 *
 	 * @hooked bh_wp_mailboxes_registered_mailboxes
 	 *
@@ -56,12 +61,12 @@ class BH_WP_Mailboxes extends API {
 	 */
 	public static function filter( array $mailboxes, string $plugin_slug ): array {
 
-		$file_plugin_slug = dirname( plugin_basename( __DIR__ ) );
-		if ( $file_plugin_slug !== $plugin_slug ) {
-			return $mailboxes;
-		}
+		$matching_mailboxes = array_filter(
+			self::$mailboxes,
+			fn( API_Interface $mailboxes_api ): bool => $mailboxes_api->get_settings()->get_plugin_slug() === $plugin_slug
+		);
 
-		return array_merge( $mailboxes, self::$mailboxes );
+		return array_merge( $mailboxes, array_values( $matching_mailboxes ) );
 	}
 
 	/**
@@ -140,6 +145,16 @@ class BH_WP_Mailboxes extends API {
 	}
 
 	/**
+	 * One Private_Uploads instance per uploads directory. {@see self::make()} runs once per mailbox,
+	 * but every mailbox of a plugin shares one attachments directory, so the instance – and its hooks
+	 * (post type registration, URL-check crons, the publicly-accessible admin notice) – must only be
+	 * created once per directory, not once per mailbox.
+	 *
+	 * @var array<string, Private_Uploads>
+	 */
+	protected static array $private_uploads_instances = array();
+
+	/**
 	 * We save attachments in a secure directory.
 	 *
 	 * @see https://github.com/BrianHenryIE/bh-wp-private-uploads
@@ -148,8 +163,15 @@ class BH_WP_Mailboxes extends API {
 	 * @param LoggerInterface                    $logger PSR logger.
 	 */
 	protected static function make_private_uploads( BH_WP_Mailboxes_Settings_Interface $settings, LoggerInterface $logger ): ?Private_Uploads {
-		if ( is_null( $settings->get_private_uploads_directory_name() ) || ! class_exists( Private_Uploads::class ) ) {
+
+		$directory_name = $settings->get_private_uploads_directory_name();
+
+		if ( is_null( $directory_name ) || ! class_exists( Private_Uploads::class ) ) {
 			return null;
+		}
+
+		if ( isset( self::$private_uploads_instances[ $directory_name ] ) ) {
+			return self::$private_uploads_instances[ $directory_name ];
 		}
 
 		// Make the attachments' directory inaccessible to the public.
@@ -177,11 +199,26 @@ class BH_WP_Mailboxes extends API {
 			public function get_uploads_subdirectory_name(): string {
 				return $this->mailboxes_settings->get_private_uploads_directory_name();
 			}
+
+			/**
+			 * The private-uploads trait default truncates the plugin slug to 12 characters + `_private`,
+			 * which collides with other plugins' private-uploads instances whose slugs share a prefix
+			 * (e.g. `development-plugin` and bh-wp-logger's `development-plugin-logger` both derive
+			 * `development__private`), duplicating the post type, admin notice, and dismissal option.
+			 * Use an email-attachments-specific name instead.
+			 */
+			public function get_post_type_name(): string {
+				// Post type names are limited to 20 characters; `_email_attach` is 13.
+				return sanitize_key( substr( str_replace( '-', '_', $this->get_plugin_slug() ), 0, 7 ) . '_email_attach' );
+			}
 		};
 
 		// We don't use the Private_Uploads singleton in case the parent plugin also needs it.
 		$private_uploads = new Private_Uploads( $private_uploads_settings, $logger );
 		new BH_WP_Private_Uploads_Hooks( $private_uploads, $private_uploads_settings, $logger );
+
+		self::$private_uploads_instances[ $directory_name ] = $private_uploads;
+
 		return $private_uploads;
 	}
 }

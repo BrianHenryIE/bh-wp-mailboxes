@@ -128,15 +128,17 @@ class Admin_Notices {
 			 * Filter the auth-failure notice message — e.g. a consuming plugin can return a message linking
 			 * to its own settings screen (wptrt permits `a`, `em`, `strong`, `br`, `p` tags in the message).
 			 *
-			 * @param string           $message     The default notice message.
-			 * @param BH_Email_Account $account     The failing account.
-			 * @param string           $plugin_slug The plugin slug the library is running as.
+			 * @param string           $message          The default notice message.
+			 * @param string           $plugin_slug      The plugin slug the library is running as.
+			 * @param string           $emails_post_type The emails post type key, identifying which mailbox instance is asking.
+			 * @param BH_Email_Account $account          The failing account.
 			 */
 			$message = apply_filters(
 				'bh_wp_mailboxes_auth_failure_notice_message',
 				$this->default_message( $account ),
-				$account,
-				$plugin_slug
+				$plugin_slug,
+				$this->settings->get_emails_cpt_underscored_20(),
+				$account
 			);
 
 			$this->notices->add(

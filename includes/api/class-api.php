@@ -79,30 +79,82 @@ class API implements API_Interface {
 	}
 
 	/**
-	 * Add a new email account configuration.
+	 * Add or update an email account configuration; the email address is the account's unique id.
+	 *
+	 * Creates the account when none exists for the address – the display name and connection class
+	 * are required then – otherwise updates the existing account, where null values leave the
+	 * existing configuration unchanged (so only the email address is needed on later calls).
 	 *
 	 * @param string  $email_address               The mailbox address.
-	 * @param string  $display_name                Human-readable account name.
-	 * @param string  $connection_type_class         Connection class to use for fetching (class-string<Email_Fetcher_Interface>).
+	 * @param ?string $display_name                Human-readable account name. Required when creating.
+	 * @param ?string $connection_type_class         Connection class to use for fetching (class-string<Email_Fetcher_Interface>). Required when creating.
 	 * @param ?string $from_address_regex_filter   Optional regex to filter incoming senders.
 	 * @param ?string $body_identifier_regex_filter Optional regex to filter email bodies.
 	 * @param ?string $after_download_remote_email_action One of: nothing, mark_read, delete.
 	 * @param ?int    $delete_local_emails_after_n_days  Days before locally-saved emails are purged.
 	 *
-	 * @throws Exception When an account with this email address already exists.
+	 * @throws \InvalidArgumentException When no account exists for the address and the display name or connection class is missing.
+	 * @throws Exception When WordPress fails to save the account post.
 	 */
-	public function add_email_account(
+	public function configure_email_account(
 		string $email_address,
-		string $display_name,
-		string $connection_type_class,
-		?string $from_address_regex_filter,
-		?string $body_identifier_regex_filter,
-		?string $after_download_remote_email_action,
-		?int $delete_local_emails_after_n_days,
+		?string $display_name = null,
+		?string $connection_type_class = null,
+		?string $from_address_regex_filter = null,
+		?string $body_identifier_regex_filter = null,
+		?string $after_download_remote_email_action = null,
+		?int $delete_local_emails_after_n_days = null,
 	): BH_Email_Account {
-		// Uniqueness (no existing account for this address) is enforced by the repository's save_new().
-		return $this->email_account_repository->save_new(
-			email_address: $email_address,
+
+		$existing_account = $this->email_account_repository->find_by_email_address( $email_address );
+
+		if ( is_null( $existing_account ) ) {
+
+			if ( is_null( $display_name ) || is_null( $connection_type_class ) ) {
+				$missing = array_keys(
+					array_filter(
+						array(
+							'display_name'          => is_null( $display_name ),
+							'connection_type_class' => is_null( $connection_type_class ),
+						)
+					)
+				);
+				throw new \InvalidArgumentException(
+					sprintf(
+						'No email account exists for %s; %s required to create one.',
+						esc_html( $email_address ),
+						esc_html( implode( ' and ', $missing ) . ( 1 === count( $missing ) ? ' is' : ' are' ) )
+					)
+				);
+			}
+
+			return $this->email_account_repository->save_new(
+				email_address: $email_address,
+				display_name: $display_name,
+				connection_type_class: $connection_type_class,
+				from_address_regex_filter: $from_address_regex_filter,
+				body_identifier_regex_filter: $body_identifier_regex_filter,
+				after_download_remote_email_action: $after_download_remote_email_action,
+				delete_local_emails_after_n_days: $delete_local_emails_after_n_days,
+			);
+		}
+
+		$configuration_updates = array(
+			'display_name'                       => $display_name,
+			'connection_type_class'              => $connection_type_class,
+			'from_address_regex_filter'          => $from_address_regex_filter,
+			'body_identifier_regex_filter'       => $body_identifier_regex_filter,
+			'after_download_remote_email_action' => $after_download_remote_email_action,
+			'delete_local_emails_after_n_days'   => $delete_local_emails_after_n_days,
+		);
+
+		// Nothing to change; skip the repository's (logged) no-op update.
+		if ( array() === array_filter( $configuration_updates, fn( $value ) => ! is_null( $value ) ) ) {
+			return $existing_account;
+		}
+
+		return $this->email_account_repository->update(
+			$existing_account,
 			display_name: $display_name,
 			connection_type_class: $connection_type_class,
 			from_address_regex_filter: $from_address_regex_filter,
@@ -110,6 +162,26 @@ class API implements API_Interface {
 			after_download_remote_email_action: $after_download_remote_email_action,
 			delete_local_emails_after_n_days: $delete_local_emails_after_n_days,
 		);
+	}
+
+	/**
+	 * Delete an email account configuration; the email address is the account's unique id.
+	 *
+	 * The account's CPT post is permanently deleted. Locally saved emails are not deleted.
+	 *
+	 * @param string $email_address The mailbox address of the account to delete.
+	 *
+	 * @return bool True when the account was deleted; false when no account exists for the address.
+	 */
+	public function delete_email_account( string $email_address ): bool {
+
+		$account = $this->email_account_repository->find_by_email_address( $email_address );
+
+		if ( is_null( $account ) ) {
+			return false;
+		}
+
+		return $this->email_account_repository->delete( $account );
 	}
 
 	/**
@@ -160,8 +232,9 @@ class API implements API_Interface {
 
 		$fetched = $this->fetch_for_account( $account, $since, $now_time );
 
-		$plugin_slug    = $this->settings->get_plugin_slug();
-		$all_new_emails = array();
+		$plugin_slug      = $this->settings->get_plugin_slug();
+		$emails_post_type = $this->settings->get_emails_cpt_underscored_20();
+		$all_new_emails   = array();
 		foreach ( $fetched as $new_bh_email ) {
 			// Create an object wrapping this API and the email with convenient methods for the consumer.
 			$new_email        = $this->new_email_factory->make( api: $this, account: $account, email: $new_bh_email );
@@ -170,10 +243,11 @@ class API implements API_Interface {
 			 * Fire event for every new email.
 			 *
 			 * @param string $plugin_slug Plugin the library is firing from.
+			 * @param string $emails_post_type The emails post type key, identifying which mailbox instance fired the action.
 			 * @param BH_Email_Account $account The account that has been checked (immutable data object).
 			 * @param New_Email_Interface|New_Email_Remote_Interface $new_email Object with methods to manipulate the email; ::get_email() to get immutable data object.
 			 */
-			do_action( 'bh_wp_mailboxes_new_email', $plugin_slug, $account, $new_email );
+			do_action( 'bh_wp_mailboxes_new_email', $plugin_slug, $emails_post_type, $account, $new_email );
 		}
 
 		return new Check_Email_Account_Result( bh_account: $account, success: true, bh_emails: $fetched, new_emails: $all_new_emails );
@@ -222,9 +296,10 @@ class API implements API_Interface {
 				 *
 				 * @param ?Account_Credentials_Interface $credentials The null value being filtered which should return Account_Credentials_Interface instance.
 				 * @param string $plugin_slug To allow multiple plugins (and potentially library verions) to use this same filter name.
+				 * @param string $emails_post_type The emails post type key, identifying which mailbox instance is asking.
 				 * @param BH_Email_Account $email_account The account config to get credentials for {@see BH_Email_Account::$connection_type_class}.
 				 */
-				$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $email_account );
+				$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $email_account );
 			} catch ( Throwable $throwable ) {
 
 				// E.g. "Too few arguments to function..." which means the `add_filter()` implementation is incorrect.
@@ -329,7 +404,7 @@ class API implements API_Interface {
 
 		if ( $connection instanceof Requires_Credentials ) {
 			$plugin_slug = $this->settings->get_plugin_slug();
-			$credentials = $credentials ?? apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $account );
+			$credentials = $credentials ?? apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $account );
 
 			if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
 				return new Test_Connection_Result( success: false, message: 'No credentials found for ' . $account->display_name . '.' );
@@ -442,7 +517,7 @@ class API implements API_Interface {
 	/**
 	 * Apply the account's credentials to a connection that requires them.
 	 *
-	 * Resolves the credentials via the `bh_wp_mailboxes_credentials` filter (args: value, plugin_slug, account)
+	 * Resolves the credentials via the `bh_wp_mailboxes_credentials` filter (args: value, plugin_slug, emails_post_type, account)
 	 * and sets them on the connection. No-op for connections that do not implement {@see Requires_Credentials}.
 	 *
 	 * @param Email_Connection_Interface $connection      The connection to credential.
@@ -463,7 +538,7 @@ class API implements API_Interface {
 		 *
 		 * @see API::fetch_for_account()
 		 */
-		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $email_account );
+		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $email_account );
 
 		if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
 			throw new \InvalidArgumentException( 'Credentials were not Account_Credentials_Interface' );
@@ -648,9 +723,10 @@ class API implements API_Interface {
 		 *
 		 * @param mixed|Email_Connection_Interface  $connection The email fetcher for the account, or null if none is found.
 		 * @param string $plugin_slug To allow multiple plugins (and potentially library verions) to use this same filter name.
+		 * @param string $emails_post_type The emails post type key, identifying which mailbox instance is asking.
 		 * @param BH_Email_Account $email_account The account config to get connection for {@see BH_Email_Account::$connection_type_class}.
 		 */
-		$connection = apply_filters( 'bh_wp_mailboxes_connection_for_account', null, $plugin_slug, $email_account );
+		$connection = apply_filters( 'bh_wp_mailboxes_connection_for_account', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $email_account );
 
 		if ( $connection instanceof Email_Connection_Interface ) {
 			return $connection;

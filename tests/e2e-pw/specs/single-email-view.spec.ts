@@ -235,9 +235,10 @@ test.describe( 'Single email view', () => {
 		await expect( page.locator( '#bh-email-remote-status' ) ).toContainText( 'Sent:' );
 	} );
 
-	// The "Connection:" line is gated on a resolved account/connection; fixture emails created via the
-	// dev REST endpoint have no linked account/connection, so it never appears. Skip until connection setup
-	// is added (same as the remote-status badge tests below). Unit coverage: class-single-email-view-wpunit-Test.
+	// The "Connection:" line is gated on a resolved connection; fixture emails created via the dev REST
+	// endpoint are filed under an account whose connection type deliberately resolves to no connection,
+	// so it never appears. Skip until connection setup is added (same as the remote-status badge tests
+	// below). Unit coverage: class-single-email-view-wpunit-Test.
 	test.skip( 'remote status metabox shows the "Connection:" type with an icon', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
@@ -271,8 +272,9 @@ test.describe( 'Single email view', () => {
 	// Requirement 10: Remote status badges
 	// -------------------------------------------------------------------------
 
-	// Badges are gated on connection.can_read_status() && can_delete_on_server(); fixture emails have
-	// no linked account/connection, so badges never appear. Skip until connection setup is added.
+	// Badges are gated on connection.can_read_status() && can_delete_on_server(); fixture emails'
+	// default account deliberately resolves to no connection, so badges never appear. Skip until
+	// connection setup is added.
 	test.skip( '"Read on server" badge shown when email is_read meta is true', async ( { admin, page, request } ) => {
 		const postId = await createEmail( request, { is_read: true } );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );

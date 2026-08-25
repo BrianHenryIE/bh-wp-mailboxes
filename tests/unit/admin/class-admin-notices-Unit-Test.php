@@ -220,7 +220,7 @@ class Admin_Notices_Unit_Test extends Unit_Testcase {
 		);
 		$filtered = 'Connection failed — <a href="/settings">open settings</a>.';
 		WP_Mock::onFilter( 'bh_wp_mailboxes_auth_failure_notice_message' )
-			->with( $default, $account, 'bh-wp-mailboxes' )
+			->with( $default, 'bh-wp-mailboxes', 'fixtures_email', $account )
 			->reply( $filtered );
 
 		$captured = array();

@@ -7,8 +7,6 @@
 
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes;
 
-use BrianHenryIE\WP_Mailboxes\API\API;
-use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Email_Connection;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Interface;
 use Exception;
@@ -17,39 +15,34 @@ use Throwable;
 use WP_CLI;
 
 /**
- * `wp {cli_base} gmail connect`
+ * `wp development-plugin gmail connect [--mailbox=<mailbox>]`
  */
 class Gmail_CLI {
 
 	/**
+	 * The CLI base the command is registered under (the plugin slug shared by all dev mailboxes).
+	 */
+	public const CLI_BASE = 'development-plugin';
+
+	/**
 	 * Constructor.
 	 *
-	 * @param API                                $api      The Gmail mailbox API instance.
-	 * @param BH_WP_Mailboxes_Settings_Interface $settings The Gmail mailbox settings (for the CLI base).
-	 * @param Gmail_API                          $gmail_api The test-credentials helper.
-	 * @param LoggerInterface                    $logger   A logger.
+	 * @param Gmail_API       $gmail_api The test-credentials helper.
+	 * @param LoggerInterface $logger    A logger.
 	 */
 	public function __construct(
-		protected API $api,
-		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		protected Gmail_API $gmail_api,
 		protected LoggerInterface $logger,
 	) {
 	}
 
 	/**
-	 * Register the WP-CLI command under the mailbox's CLI base.
+	 * Register the WP-CLI command.
 	 */
 	public function register_commands(): void {
 
-		$cli_base = $this->settings->get_cli_base();
-
-		if ( is_null( $cli_base ) ) {
-			return;
-		}
-
 		try {
-			WP_CLI::add_command( "{$cli_base} gmail connect", array( $this, 'connect' ) );
+			WP_CLI::add_command( self::CLI_BASE . ' gmail connect', array( $this, 'connect' ) );
 		} catch ( Exception $e ) {
 			$this->logger->error( 'Failed to register WP CLI command: ' . $e->getMessage(), array( 'exception' => $e ) );
 		}
@@ -58,14 +51,25 @@ class Gmail_CLI {
 	/**
 	 * Connect the test Gmail account and obtain its first OAuth access token.
 	 *
-	 * Adds the email account (the "connection"), then — if no access token exists yet — runs the
-	 * interactive authorization flow against /var/www/test-credentials/client_secret.json and saves the
-	 * resulting token to /var/www/test-credentials/access_token.json.
+	 * Adds the email account (the "connection") to the chosen mailbox, then — if no access token exists
+	 * yet — runs the interactive authorization flow against /var/www/test-credentials/client_secret.json
+	 * and saves the resulting token to /var/www/test-credentials/access_token.json.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--mailbox=<mailbox>]
+	 * : Which demo mailbox to add the account to.
+	 * ---
+	 * default: mailbox-one
+	 * options:
+	 *   - mailbox-one
+	 *   - mailbox-two
+	 * ---
 	 *
 	 * ## EXAMPLES
 	 *
 	 *   # Connect Gmail and authorize.
-	 *   $ wp development-plugin gmail connect
+	 *   $ wp development-plugin gmail connect --mailbox=mailbox-one
 	 *   Created Gmail connection for brianhenryie@gmail.com.
 	 *   Open this URL in your browser and grant access:
 	 *   https://accounts.google.com/o/oauth2/auth?...
@@ -73,32 +77,40 @@ class Gmail_CLI {
 	 *   Success: Saved Gmail access token to /var/www/test-credentials/access_token.json.
 	 *
 	 * @param string[]             $_args      The unlabelled command line arguments.
-	 * @param array<string,string> $_assoc_args The labelled command line arguments.
+	 * @param array<string,string> $assoc_args The labelled command line arguments.
 	 */
-	public function connect( array $_args, array $_assoc_args ): void {
+	public function connect( array $_args, array $assoc_args ): void {
 
 		if ( ! $this->gmail_api->is_client_secret_present() ) {
 			WP_CLI::error( 'client_secret.json not found in ' . Gmail_API::CREDENTIALS_DIRECTORY . '.' );
 			return;
 		}
 
+		$mailbox_slug = $assoc_args['mailbox'] ?? Dev_Mailboxes::MAILBOX_ONE;
+		if ( ! Dev_Mailboxes::is_valid_slug( $mailbox_slug ) ) {
+			WP_CLI::error( 'Unknown mailbox: ' . $mailbox_slug . '. Use ' . implode( ' or ', Dev_Mailboxes::get_slugs() ) . '.' );
+			return;
+		}
+
+		$api = Dev_Mailboxes::get_api( $mailbox_slug );
+		if ( is_null( $api ) ) {
+			WP_CLI::error( 'The ' . $mailbox_slug . ' mailbox is not registered.' );
+			return;
+		}
+
 		$email = $this->gmail_api->get_account_email_address();
 
-		// 1. Create the connection: add the email account if it does not already exist.
-		try {
-			$this->api->add_email_account(
-				email_address: $email,
-				display_name: $email,
-				connection_type_class: Google_API_Credentials_Interface::class,
-				from_address_regex_filter: null,
-				body_identifier_regex_filter: null,
-				after_download_remote_email_action: null,
-				delete_local_emails_after_n_days: 1,
-			);
-			WP_CLI::log( "Created Gmail connection for {$email}." );
-		} catch ( Exception $e ) {
-			WP_CLI::log( "Gmail bh_email_account for {$email} already exists." );
-		}
+		// 1. Create (or update) the connection's email account.
+		$api->configure_email_account(
+			email_address: $email,
+			display_name: $email,
+			connection_type_class: Google_API_Credentials_Interface::class,
+			from_address_regex_filter: null,
+			body_identifier_regex_filter: null,
+			after_download_remote_email_action: null,
+			delete_local_emails_after_n_days: 1,
+		);
+		WP_CLI::log( "Configured Gmail account {$email} in {$mailbox_slug}." );
 
 		// 2. Obtain the first auth token, unless one already exists.
 		$credentials = $this->gmail_api->get_credentials();

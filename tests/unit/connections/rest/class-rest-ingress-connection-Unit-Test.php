@@ -70,6 +70,7 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 		$this->settings->allows( 'get_rest_namespace' )->andReturn( $rest_namespace );
 		$this->settings->allows( 'get_emails_cpt_dashed' )->andReturn( 'test-email' );
 		$this->settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( 'test_email' );
+		$this->settings->allows( 'get_plugin_slug' )->andReturn( 'test-plugin' );
 
 		$this->email_repository         = Mockery::mock( Email_Repository_Interface::class );
 		$this->email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );

@@ -117,7 +117,7 @@ class Gmail_CLI {
 		 *
 		 * @see \BrianHenryIE\WP_Mailboxes\API\API::set_connection_credentials()
 		 */
-		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $account );
+		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $account );
 
 		if ( ! ( $credentials instanceof Google_API_Credentials_Interface ) ) {
 			WP_CLI::error( 'No Gmail API credentials found for ' . $account_email . '.' );
@@ -140,10 +140,11 @@ class Gmail_CLI {
 		 *
 		 * The token is not persisted by the command; hook here to save it.
 		 *
+		 * @param string                                                           $plugin_slug   The plugin slug the library is running as.
 		 * @param \BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token $access_token  The new access token.
 		 * @param string                                                           $account_email The account's email address.
 		 */
-		do_action( 'bh_wp_mailboxes_gmail_access_token_refreshed', $access_token, $account_email );
+		do_action( 'bh_wp_mailboxes_gmail_access_token_refreshed', $plugin_slug, $access_token, $account_email );
 
 		WP_CLI::success( 'Refreshed the Gmail access token for ' . $account_email . '.' );
 	}
