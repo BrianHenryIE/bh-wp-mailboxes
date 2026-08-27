@@ -232,25 +232,44 @@ class API implements API_Interface {
 
 		$fetched = $this->fetch_for_account( $account, $since, $now_time );
 
-		$plugin_slug      = $this->settings->get_plugin_slug();
-		$emails_post_type = $this->settings->get_emails_cpt_underscored_20();
-		$all_new_emails   = array();
+		$all_new_emails = array();
 		foreach ( $fetched as $new_bh_email ) {
-			// Create an object wrapping this API and the email with convenient methods for the consumer.
-			$new_email        = $this->new_email_factory->make( api: $this, account: $account, email: $new_bh_email );
-			$all_new_emails[] = $new_email;
-			/**
-			 * Fire event for every new email.
-			 *
-			 * @param string $plugin_slug Plugin the library is firing from.
-			 * @param string $emails_post_type The emails post type key, identifying which mailbox instance fired the action.
-			 * @param BH_Email_Account $account The account that has been checked (immutable data object).
-			 * @param New_Email_Interface|New_Email_Remote_Interface $new_email Object with methods to manipulate the email; ::get_email() to get immutable data object.
-			 */
-			do_action( 'bh_wp_mailboxes_new_email', $plugin_slug, $emails_post_type, $account, $new_email );
+			$all_new_emails[] = $this->alert_new_email( $account, $new_bh_email );
 		}
 
 		return new Check_Email_Account_Result( bh_account: $account, success: true, bh_emails: $fetched, new_emails: $all_new_emails );
+	}
+
+	/**
+	 * Wrap a newly saved email and announce it via the `bh_wp_mailboxes_new_email` action.
+	 *
+	 * Callers must not announce duplicates: idempotent-retry suppression is the caller's
+	 * responsibility, since only the caller knows whether the email was already stored.
+	 *
+	 * @param BH_Email_Account $account The account the email was filed under.
+	 * @param BH_Email         $email   The newly saved email.
+	 */
+	public function alert_new_email( BH_Email_Account $account, BH_Email $email ): New_Email_Interface {
+		// Create an object wrapping this API and the email with convenient methods for the consumer.
+		$new_email = $this->new_email_factory->make( api: $this, account: $account, email: $email );
+
+		/**
+		 * Fire event for every new email.
+		 *
+		 * @param string $plugin_slug Plugin the library is firing from.
+		 * @param string $emails_post_type The emails post type key, identifying which mailbox instance fired the action.
+		 * @param BH_Email_Account $account The account the email was filed under (immutable data object).
+		 * @param New_Email_Interface|New_Email_Remote_Interface $new_email Object with methods to manipulate the email; ::get_email() to get immutable data object.
+		 */
+		do_action(
+			'bh_wp_mailboxes_new_email',
+			$this->settings->get_plugin_slug(),
+			$this->settings->get_emails_cpt_underscored_20(),
+			$account,
+			$new_email
+		);
+
+		return $new_email;
 	}
 
 	/**
@@ -739,6 +758,7 @@ class API implements API_Interface {
 		} elseif ( REST_Ingress_Connection::class === $email_account->connection_type_class ) {
 			// Receive-only: cron's fetch loop will skip it quietly ("does not support fetching").
 			return new REST_Ingress_Connection(
+				$this,
 				$this->settings,
 				$this->email_repository,
 				$this->email_account_repository,

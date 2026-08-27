@@ -9,8 +9,10 @@ declare(strict_types=1);
 
 namespace BrianHenryIE\WP_Mailboxes\Connections\Rest;
 
+use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
+use BrianHenryIE\WP_Mailboxes\API\New_Email_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
@@ -28,6 +30,13 @@ use ZBateson\MailMimeParser\Message;
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Connections\Rest\REST_Ingress_Connection
  */
 class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
+
+	/**
+	 * Mocked main API.
+	 *
+	 * @var API_Interface&MockInterface
+	 */
+	protected API_Interface&MockInterface $api;
 
 	/**
 	 * Mocked plugin settings.
@@ -72,10 +81,12 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 		$this->settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( 'test_email' );
 		$this->settings->allows( 'get_plugin_slug' )->andReturn( 'test-plugin' );
 
+		$this->api                      = Mockery::mock( API_Interface::class );
 		$this->email_repository         = Mockery::mock( Email_Repository_Interface::class );
 		$this->email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 
 		return new REST_Ingress_Connection(
+			$this->api,
 			$this->settings,
 			$this->email_repository,
 			$this->email_account_repository,
@@ -338,6 +349,10 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 				}
 			);
 
+		$this->api
+			->expects( 'alert_new_email' )
+			->andReturn( Mockery::mock( New_Email_Interface::class ) );
+
 		$result = $sut->create_new_email( $this->make_request( $this->raw_mime_with_message_id() ) );
 
 		self::assertInstanceOf( WP_REST_Response::class, $result );
@@ -363,6 +378,8 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 		$this->email_account_repository->expects( 'find_by_email_address' )->andReturn( $this->make_account() );
 		$this->email_repository->expects( 'is_post_for_message_id' )->andReturn( true );
 		$this->email_repository->expects( 'save_new' )->andReturn( $this->make_bh_email( 123 ) );
+
+		$this->api->expects( 'alert_new_email' )->never();
 
 		$result = $sut->create_new_email( $this->make_request( $this->raw_mime_with_message_id() ) );
 
@@ -403,6 +420,10 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 					return $this->make_bh_email( 124 );
 				}
 			);
+
+		$this->api
+			->expects( 'alert_new_email' )
+			->andReturn( Mockery::mock( New_Email_Interface::class ) );
 
 		$result = $sut->create_new_email( $this->make_request( $raw_mime ) );
 

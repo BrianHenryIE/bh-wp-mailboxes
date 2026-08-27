@@ -50,6 +50,19 @@ interface API_Interface {
 	public function check_email_for_account( BH_Email_Account $account, ?DateTimeInterface $since = null ): Check_Email_Account_Result;
 
 	/**
+	 * Wrap a newly saved email and announce it via the `bh_wp_mailboxes_new_email` action.
+	 *
+	 * Callers must not announce duplicates: idempotent-retry suppression is the caller's
+	 * responsibility, since only the caller knows whether the email was already stored.
+	 *
+	 * @param BH_Email_Account $account The account the email was filed under.
+	 * @param BH_Email         $email   The newly saved email.
+	 *
+	 * @return New_Email_Interface The wrapper object the action was fired with.
+	 */
+	public function alert_new_email( BH_Email_Account $account, BH_Email $email ): New_Email_Interface;
+
+	/**
 	 * Mark the email as read on its remote server and update local post meta.
 	 *
 	 * @param BH_Email $email The email to mark as read.

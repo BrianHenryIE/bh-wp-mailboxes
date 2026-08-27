@@ -18,7 +18,9 @@ use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Factories\New_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\New_Email_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
@@ -105,7 +107,17 @@ class REST_Ingress_Connection_WPUnit_Test extends WPUnit_Testcase {
 		?Private_Uploads_API_Interface $private_uploads = null,
 		?BH_WP_Mailboxes_Settings_Interface $settings = null,
 	): REST_Ingress_Connection {
+		// A real API so `alert_new_email()` genuinely fires the `bh_wp_mailboxes_new_email` action.
+		$api = new API(
+			$settings ?? $this->settings,
+			$this->email_repository,
+			$this->email_account_repository,
+			new New_Email_Factory(),
+			null,
+			$this->logger,
+		);
 		return new REST_Ingress_Connection(
+			$api,
 			$settings ?? $this->settings,
 			$this->email_repository,
 			$this->email_account_repository,
@@ -227,6 +239,45 @@ class REST_Ingress_Connection_WPUnit_Test extends WPUnit_Testcase {
 		self::assertNotNull( $account );
 		self::assertSame( REST_Ingress_Connection::class, $account->connection_type_class );
 		self::assertSame( $account->get_post_id(), get_post( $post_id )->post_parent );
+	}
+
+	/**
+	 * A newly stored email is announced via `bh_wp_mailboxes_new_email` with the same signature as
+	 * the fetch path; idempotent retries (duplicates) are not re-announced.
+	 *
+	 * @covers ::create_new_email
+	 */
+	public function test_create_new_email_fires_new_email_action(): void {
+
+		$this->boot_rest( $this->make_sut() );
+		$this->login_as_admin();
+
+		$calls = array();
+		add_action(
+			'bh_wp_mailboxes_new_email',
+			function ( $plugin_slug, $emails_post_type, $account, $new_email ) use ( &$calls ): void {
+				$calls[] = func_get_args();
+			},
+			10,
+			4
+		);
+
+		$raw_mime = (string) file_get_contents( codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' ) );
+
+		$first = $this->dispatch_raw_mime( $raw_mime );
+		self::assertSame( 201, $first->get_status() );
+
+		self::assertCount( 1, $calls );
+		list( $plugin_slug, $emails_post_type, $account, $new_email ) = $calls[0];
+		self::assertSame( 'test-plugin', $plugin_slug );
+		self::assertSame( 'test_email', $emails_post_type );
+		self::assertInstanceOf( BH_Email_Account::class, $account );
+		self::assertInstanceOf( New_Email_Interface::class, $new_email );
+		self::assertSame( $first->get_data()['post_id'], $new_email->get_email()->get_post_id() );
+
+		$second = $this->dispatch_raw_mime( $raw_mime );
+		self::assertSame( 200, $second->get_status() );
+		self::assertCount( 1, $calls, 'A duplicate (idempotent retry) must not be re-announced.' );
 	}
 
 	/**

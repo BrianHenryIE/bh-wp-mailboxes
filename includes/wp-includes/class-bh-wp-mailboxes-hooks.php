@@ -134,6 +134,7 @@ class BH_WP_Mailboxes_Hooks {
 	protected function define_rest_hooks(): void {
 
 		$rest_ingress_connection = new REST_Ingress_Connection(
+			$this->api,
 			$this->settings,
 			$this->email_wp_post_repository,
 			$this->email_account_wp_post_repository,

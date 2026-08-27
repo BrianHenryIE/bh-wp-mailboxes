@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace BrianHenryIE\WP_Mailboxes\Connections\Rest;
 
+use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
@@ -36,7 +37,8 @@ use ZBateson\MailMimeParser\MailMimeParser;
 
 /**
  * Receives raw MIME emails POSTed to the REST API and stores them, filed under an
- * auto-created "ingress" email account. Receive-only: does not implement Supports_Fetching.
+ * auto-created "ingress" email account, announcing each newly stored email via the
+ * `bh_wp_mailboxes_new_email` action. Receive-only: does not implement Supports_Fetching.
  */
 class REST_Ingress_Connection implements Email_Connection_Interface {
 
@@ -52,6 +54,7 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 	/**
 	 * Constructor.
 	 *
+	 * @param API_Interface                      $api                      The main API instance, for announcing received emails.
 	 * @param BH_WP_Mailboxes_Settings_Interface $mailboxes_settings       Plugin settings, incl. the REST namespace.
 	 * @param Email_Repository_Interface         $email_repository         Persists the received emails.
 	 * @param Email_Account_WP_Post_Repository   $email_account_repository Persists the auto-created ingress account.
@@ -59,6 +62,7 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 	 * @param LoggerInterface                    $logger                   PSR-3 logger.
 	 */
 	public function __construct(
+		protected API_Interface $api,
 		protected BH_WP_Mailboxes_Settings_Interface $mailboxes_settings,
 		protected Email_Repository_Interface $email_repository,
 		protected Email_Account_WP_Post_Repository $email_account_repository,
@@ -317,6 +321,11 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 				__( 'The email could not be saved.', 'bh-wp-mailboxes' ),
 				array( 'status' => 500 )
 			);
+		}
+
+		if ( ! $is_duplicate ) {
+			// Idempotent retries (duplicates) are not re-announced.
+			$this->api->alert_new_email( account: $email_account, email: $bh_email );
 		}
 
 		return new WP_REST_Response(
