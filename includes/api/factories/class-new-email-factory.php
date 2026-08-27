@@ -2,6 +2,9 @@
 /**
  * Builds the appropriate New_Email_Interface wrapper for a downloaded email.
  *
+ * I.e. Supports_Fetching ? New_Email_Remote : New_Email_Local, where New_Email_Remote extends New_Email_Local to
+ * provide functions to modify the email on the server.
+ *
  * @package brianhenryie/bh-wp-mailboxes
  */
 
