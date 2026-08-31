@@ -9722,15 +9722,15 @@
         },
         {
             "name": "wpackagist-plugin/wp-crontrol",
-            "version": "1.21.1",
+            "version": "1.21.2",
             "source": {
                 "type": "svn",
                 "url": "https://plugins.svn.wordpress.org/wp-crontrol/",
-                "reference": "tags/1.21.1"
+                "reference": "tags/1.21.2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://downloads.wordpress.org/plugin/wp-crontrol.1.21.1.zip"
+                "url": "https://downloads.wordpress.org/plugin/wp-crontrol.1.21.2.zip"
             },
             "require": {
                 "composer/installers": "^1.0 || ^2.0"
