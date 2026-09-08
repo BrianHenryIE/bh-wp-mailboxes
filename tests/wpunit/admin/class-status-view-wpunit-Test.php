@@ -175,7 +175,6 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 * "Never" is shown for last-fetched when the account has never been fetched.
 	 *
 	 * @covers ::display
-	 * @covers ::format_time
 	 */
 	public function test_display_shows_never_when_last_fetched_is_null(): void {
 		$account = BH_Email_Account_Fixture::make( last_successful_login_time: null );
@@ -194,7 +193,6 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 * "Never" is shown for last-failure when the account has no recorded failure.
 	 *
 	 * @covers ::display
-	 * @covers ::format_time
 	 */
 	public function test_display_shows_never_when_last_failure_is_null(): void {
 		$account = BH_Email_Account_Fixture::make( last_failed_login_time: null );
@@ -213,7 +211,6 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 * A relative time string is shown when last-fetched is set.
 	 *
 	 * @covers ::display
-	 * @covers ::format_time
 	 */
 	public function test_display_shows_relative_time_when_last_fetched_is_set(): void {
 		$one_hour_ago = new DateTimeImmutable( '-1 hour', new DateTimeZone( 'UTC' ) );
