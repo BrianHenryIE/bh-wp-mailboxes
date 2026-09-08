@@ -185,6 +185,36 @@ class API implements API_Interface {
 	}
 
 	/**
+	 * Enable or disable an email account without deleting it; the email address is the account's unique id.
+	 *
+	 * Inactive accounts are skipped by the cron fetch. The account's configuration is kept.
+	 *
+	 * @param string $email_address The mailbox address of the account.
+	 * @param bool   $active        True to check the account on cron; false to skip it.
+	 *
+	 * @return ?BH_Email_Account The updated account, or null when no account exists for the address.
+	 *
+	 * @throws Exception When WordPress fails to save the account post.
+	 */
+	public function set_email_account_active( string $email_address, bool $active ): ?BH_Email_Account {
+
+		$account = $this->email_account_repository->find_by_email_address( $email_address );
+
+		if ( is_null( $account ) ) {
+			return null;
+		}
+
+		if ( $account->is_active() === $active ) {
+			return $account;
+		}
+
+		return $this->email_account_repository->update(
+			$account,
+			status: $active ? 'bh_email_ac_active' : 'bh_email_ac_inactive',
+		);
+	}
+
+	/**
 	 * Fetches the emails and saves them to the cpt.
 	 *
 	 * Must be run after CPT is registered.

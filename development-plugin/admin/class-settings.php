@@ -12,6 +12,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin;
 
+use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Modal;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
@@ -95,7 +96,19 @@ class Settings {
 	);
 
 	/**
-	 * Register the admin-post handlers for the form actions.
+	 * The mailbox the reusable add-account modal on this page adds accounts to.
+	 */
+	public const MODAL_MAILBOX = Dev_Mailboxes::MAILBOX_ONE;
+
+	/**
+	 * The library's add/edit IMAP account modal, printed on this page (see {@see render_modal_section()}).
+	 *
+	 * @var ?Email_Account_Modal
+	 */
+	private ?Email_Account_Modal $modal = null;
+
+	/**
+	 * Register the admin-post handlers for the form actions, and the modal's assets and markup on this screen.
 	 */
 	public function register_hooks(): void {
 		add_action( 'admin_post_' . self::SAVE_ACTION, array( $this, 'save_imap_credentials' ) );
@@ -104,6 +117,55 @@ class Settings {
 		add_action( 'admin_post_' . self::ADD_ENV_IMAP_ACTION, array( $this, 'add_env_imap_account' ) );
 		add_action( 'admin_post_' . self::USE_GMAIL_FILES_ACTION, array( $this, 'use_gmail_file_credentials' ) );
 		add_action( 'admin_post_' . self::SAVE_GMAIL_ACTION, array( $this, 'save_gmail_credentials' ) );
+
+		// The README's "Managing accounts from your own screen" recipe: enqueue the modal's script/style and
+		// print its markup only on this screen; the button is printed in render_modal_section().
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_modal_assets' ) );
+		add_action( 'admin_footer', array( $this, 'print_modal' ) );
+	}
+
+	/**
+	 * The screen id WordPress assigns this top-level menu page.
+	 */
+	private function get_screen_id(): string {
+		return 'toplevel_page_' . self::MENU_SLUG;
+	}
+
+	/**
+	 * The modal for {@see self::MODAL_MAILBOX}, built lazily (its settings read a wp_option).
+	 */
+	private function get_modal(): Email_Account_Modal {
+		if ( null === $this->modal ) {
+			$this->modal = new Email_Account_Modal( Dev_Mailboxes::make_settings( self::MODAL_MAILBOX ) );
+		}
+		return $this->modal;
+	}
+
+	/**
+	 * Enqueue the modal's script and stylesheet on the settings screen only.
+	 *
+	 * @hooked admin_enqueue_scripts
+	 *
+	 * @param string $hook_suffix The current admin page.
+	 */
+	public function enqueue_modal_assets( string $hook_suffix ): void {
+		if ( $this->get_screen_id() !== $hook_suffix ) {
+			return;
+		}
+		$this->get_modal()->enqueue_assets();
+	}
+
+	/**
+	 * Print the modal markup (and its nonce) in the footer of the settings screen only.
+	 *
+	 * @hooked admin_footer
+	 */
+	public function print_modal(): void {
+		$screen = get_current_screen();
+		if ( null === $screen || $this->get_screen_id() !== $screen->id ) {
+			return;
+		}
+		$this->get_modal()->print_modal();
 	}
 
 	/**
@@ -395,11 +457,14 @@ class Settings {
 
 		echo '<div class="wrap">';
 		echo '<h1>BH WP Mailboxes — Development</h1>';
+		// WordPress core's marker for where admin notices are inserted (the library's JS notices use it too).
+		echo '<hr class="wp-header-end">';
 
 		$this->render_notices();
 		$this->render_mailboxes_section();
 		$this->render_env_secret_section();
 		$this->render_imap_section();
+		$this->render_modal_section();
 		$this->render_gmail_section();
 		$this->render_cron_section();
 		$this->render_cpt_section();
@@ -519,6 +584,25 @@ class Settings {
 		echo '</tbody></table>';
 		submit_button( 'Save IMAP credentials' );
 		echo '</form>';
+	}
+
+	/**
+	 * Render the library's reusable add-account modal section: the "Add account" button that opens
+	 * `Email_Account_Modal` outside the emails list screen, as a consumer would on its own settings page.
+	 */
+	private function render_modal_section(): void {
+
+		$mailbox_name = Dev_Mailboxes::get_names()[ self::MODAL_MAILBOX ]['emails'];
+		$list_url     = admin_url( 'edit.php?post_type=' . Dev_Mailboxes::make_settings( self::MODAL_MAILBOX )->get_emails_cpt_underscored_20() );
+
+		echo '<div class="bh-dev-modal-section">';
+		echo '<h2>Add IMAP account (modal)</h2>';
+		echo '<p>The library\'s add/edit account modal, reused outside the emails list screen (the README\'s "Managing accounts from your own screen"). ';
+		echo 'The modal\'s AJAX actions are bound to one mailbox, so this one adds accounts to <strong>' . esc_html( $mailbox_name ) . '</strong>; ';
+		echo 'the account then appears in <a href="' . esc_url( $list_url ) . '">its emails list\'s accounts table</a>, where it can be edited, disabled and deleted. ';
+		echo 'The credentials are stored by <code>Imap_Credentials_Options</code> via <code>bh_wp_mailboxes_save_account_credentials</code>.</p>';
+		$this->get_modal()->print_add_button();
+		echo '</div>';
 	}
 
 	/**

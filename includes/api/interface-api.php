@@ -134,6 +134,48 @@ interface API_Interface {
 	public function get_email_accounts(): array;
 
 	/**
+	 * Add or update an email account configuration; the email address is the account's unique id.
+	 *
+	 * @see API::configure_email_account()
+	 *
+	 * @param string  $email_address                      The mailbox address.
+	 * @param ?string $display_name                       Human-readable account name. Required when creating.
+	 * @param ?string $connection_type_class              Connection class (class-string<Email_Connection_Interface>). Required when creating.
+	 * @param ?string $from_address_regex_filter          Optional regex to filter incoming senders.
+	 * @param ?string $body_identifier_regex_filter       Optional regex to filter email bodies.
+	 * @param ?string $after_download_remote_email_action One of: nothing, mark_read, delete.
+	 * @param ?int    $delete_local_emails_after_n_days   Days before locally-saved emails are purged.
+	 */
+	public function configure_email_account(
+		string $email_address,
+		?string $display_name = null,
+		?string $connection_type_class = null,
+		?string $from_address_regex_filter = null,
+		?string $body_identifier_regex_filter = null,
+		?string $after_download_remote_email_action = null,
+		?int $delete_local_emails_after_n_days = null,
+	): BH_Email_Account;
+
+	/**
+	 * Enable or disable an email account without deleting it.
+	 *
+	 * @param string $email_address The mailbox address of the account.
+	 * @param bool   $active        True to check the account on cron; false to skip it.
+	 *
+	 * @return ?BH_Email_Account The updated account, or null when no account exists for the address.
+	 */
+	public function set_email_account_active( string $email_address, bool $active ): ?BH_Email_Account;
+
+	/**
+	 * Delete an email account configuration. Locally saved emails are not deleted.
+	 *
+	 * @param string $email_address The mailbox address of the account to delete.
+	 *
+	 * @return bool True when the account was deleted; false when no account exists for the address.
+	 */
+	public function delete_email_account( string $email_address ): bool;
+
+	/**
 	 * Return the settings used to configure the instance.
 	 */
 	public function get_settings(): BH_WP_Mailboxes_Settings_Interface;

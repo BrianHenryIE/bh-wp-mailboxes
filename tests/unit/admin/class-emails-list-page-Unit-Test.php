@@ -51,50 +51,8 @@ class Emails_List_Page_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * Verifies enqueue_styles() calls wp_enqueue_style() with appropriate parameters.
-	 * Verifies the .css file exists.
-	 *
-	 * @covers ::enqueue_styles
-	 * @see wp_enqueue_style()
-	 */
-	public function test_enqueue_styles() {
-
-		$this->markTestIncomplete( 'No styles enqueued yet.' );
-
-		global $plugin_root_dir;
-
-		// Return any old url.
-		\WP_Mock::userFunction(
-			'plugin_dir_url',
-			array(
-				'return' => $plugin_root_dir . '/admin/',
-			)
-		);
-
-		$css_file = $plugin_root_dir . '/admin/css/bh-wp-mailboxes-admin.css';
-
-		\WP_Mock::userFunction(
-			'wp_enqueue_style',
-			array(
-				'times' => 1,
-				'args'  => array( $handle, $css_file, array(), $version, 'all' ),
-			)
-		);
-
-		$api      = $this->makeEmpty( API_Interface::class );
-		$settings = $this->makeEmpty( Email_Account_Settings_Interface::class );
-		$logger   = new ColorLogger();
-
-		$sut = new Emails_List_Page( $api, $settings, $logger );
-
-		$sut->enqueue_styles();
-
-		$this->assertFileExists( $css_file );
-	}
-
-	/**
-	 * Verifies enqueue_scripts() calls wp_enqueue_script() with appropriate parameters.
-	 * Verifies the .js file exists.
+	 * Verifies enqueue_scripts() enqueues the modal's script (via Email_Account_Modal) and then the
+	 * accounts table script, which depends on the modal's handle. Verifies both .js files exist.
 	 *
 	 * @covers ::enqueue_scripts
 	 * @see wp_enqueue_script()
@@ -103,34 +61,44 @@ class Emails_List_Page_Unit_Test extends Unit_Testcase {
 
 		global $plugin_root_dir;
 
+		// Called for each script and each stylesheet.
 		\WP_Mock::userFunction(
 			'plugin_dir_url',
 			array(
 				'return' => $plugin_root_dir . '/admin/',
-				'times'  => 1,
+				'times'  => 4,
 			)
 		);
 
-		$emails_cpt_dashed      = 'test-cpt';
 		$emails_cpt_underscored = 'test_cpt';
 
-		$handle    = "{$emails_cpt_dashed}-list-page-script";
-		$src       = $plugin_root_dir . '/admin/js/bh-wp-mailboxes.js';
-		$deps      = array( 'jquery' );
-		$ver       = BH_WP_Mailboxes::get_version();
-		$in_footer = true;
+		$modal_handle = 'bh-wp-mailboxes-account-modal-test-accounts-cpt';
+		$modal_src    = $plugin_root_dir . '/admin/js/account-modal.js';
+		$table_handle = 'bh-wp-mailboxes-admin-test-accounts-cpt';
+		$table_src    = $plugin_root_dir . '/admin/js/bh-wp-mailboxes.js';
+		$ver          = BH_WP_Mailboxes::get_version();
+		$in_footer    = true;
 
 		\WP_Mock::userFunction(
 			'wp_enqueue_script',
 			array(
 				'times' => 1,
-				'args'  => array( $handle, $src, $deps, $ver, $in_footer ),
+				'args'  => array( $modal_handle, $modal_src, array( 'jquery' ), $ver, $in_footer ),
+			)
+		);
+		\WP_Mock::userFunction(
+			'wp_enqueue_script',
+			array(
+				'times' => 1,
+				'args'  => array( $table_handle, $table_src, array( 'jquery', $modal_handle ), $ver, $in_footer ),
 			)
 		);
 
-		// The scoped AJAX action names + remote-action nonce are localised for the JS (see enqueue_scripts()).
+		// The scoped AJAX action names + remote-action nonce are localised for the JS (see Email_Account_Modal::enqueue_assets()).
 		\WP_Mock::userFunction( 'wp_create_nonce', array( 'return' => 'test-nonce' ) );
 		\WP_Mock::userFunction( 'wp_localize_script' );
+		\WP_Mock::userFunction( 'wp_script_is', array( 'return' => false ) );
+		\WP_Mock::userFunction( 'wp_enqueue_style', array( 'times' => 2 ) );
 
 		// New-row highlight CSS is injected inline.
 		\WP_Mock::userFunction( 'wp_add_inline_style' );
@@ -149,12 +117,15 @@ class Emails_List_Page_Unit_Test extends Unit_Testcase {
 		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $emails_cpt_underscored );
 		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( 'test_accounts_cpt' );
-		$settings->expects( 'get_emails_cpt_dashed' )->andReturn( $emails_cpt_dashed );
+		$settings->allows( 'get_email_accounts_cpt_dashed' )->andReturn( 'test-accounts-cpt' );
 
 		$sut = $this->get_sut( settings: $settings );
 
 		$sut->enqueue_scripts();
 
-		$this->assertFileExists( $src );
+		$this->assertFileExists( $modal_src );
+		$this->assertFileExists( $table_src );
+		$this->assertFileExists( $plugin_root_dir . '/admin/css/account-modal.css' );
+		$this->assertFileExists( $plugin_root_dir . '/admin/css/accounts-table.css' );
 	}
 }

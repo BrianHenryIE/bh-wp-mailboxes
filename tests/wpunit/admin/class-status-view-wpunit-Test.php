@@ -1,6 +1,6 @@
 <?php
 /**
- * WPUnit tests for Status_View.
+ * WPUnit tests for Status_View (the accounts table above the emails list).
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -8,6 +8,8 @@
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
@@ -62,6 +64,8 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		/** @var BH_WP_Mailboxes_Settings_Interface $settings */
 		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $this->post_type );
+		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( $this->post_type . '_accounts' );
+		$settings->allows( 'get_plugin_slug' )->andReturn( 'test-plugin' );
 
 		return new Status_View(
 			$api,
@@ -69,6 +73,13 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 			$repo ?? $this->make_repository(),
 			$this->logger,
 		);
+	}
+
+	/**
+	 * A fetch-capable connection, so rows render "Check now", last fetched/failure times and Delete.
+	 */
+	private function fetching_connection(): Supports_Fetching {
+		return Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
 	}
 
 	private function capture_display( Status_View $sut ): string {
@@ -132,7 +143,8 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertStringContainsString( 'id="bh-mailboxes-status"', $html );
 		$this->assertStringContainsString( 'No accounts configured', $html );
-		$this->assertStringNotContainsString( '<div class="bh-mailboxes-account-card">', $html );
+		$this->assertStringNotContainsString( 'class="bh-mailboxes-account"', $html );
+		$this->assertStringContainsString( 'bh-account-add', $html, 'The "Add account" button is shown even with no accounts.' );
 	}
 
 	// -------------------------------------------------------------------------
@@ -150,18 +162,19 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		/** @var API_Interface $api */
 		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
 
 		$this->assertStringContainsString( 'inbox@example.com', $html );
-		$this->assertStringContainsString( 'class="bh-mailboxes-account-card"', $html );
+		$this->assertStringContainsString( 'class="bh-mailboxes-account"', $html );
+		$this->assertStringContainsString( 'data-email-address="inbox@example.com"', $html );
 	}
 
 	/**
 	 * "Never" is shown for last-fetched when the account has never been fetched.
 	 *
 	 * @covers ::display
-	 * @covers ::format_time
 	 */
 	public function test_display_shows_never_when_last_fetched_is_null(): void {
 		$account = BH_Email_Account_Fixture::make( last_successful_login_time: null );
@@ -169,6 +182,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		/** @var API_Interface $api */
 		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
 
@@ -179,7 +193,6 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 * "Never" is shown for last-failure when the account has no recorded failure.
 	 *
 	 * @covers ::display
-	 * @covers ::format_time
 	 */
 	public function test_display_shows_never_when_last_failure_is_null(): void {
 		$account = BH_Email_Account_Fixture::make( last_failed_login_time: null );
@@ -187,6 +200,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		/** @var API_Interface $api */
 		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
 
@@ -197,7 +211,6 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 * A relative time string is shown when last-fetched is set.
 	 *
 	 * @covers ::display
-	 * @covers ::format_time
 	 */
 	public function test_display_shows_relative_time_when_last_fetched_is_set(): void {
 		$one_hour_ago = new DateTimeImmutable( '-1 hour', new DateTimeZone( 'UTC' ) );
@@ -206,6 +219,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		/** @var API_Interface $api */
 		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
 
@@ -240,6 +254,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		/** @var API_Interface $api */
 		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
 
@@ -257,6 +272,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		/** @var API_Interface $api */
 		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
 
@@ -274,9 +290,85 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		/** @var API_Interface $api */
 		$api = Mockery::mock( API_Interface::class );
 		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
 
 		$html = $this->capture_display( $this->make_sut( $api ) );
 
 		$this->assertStringContainsString( 'Inactive', $html );
+	}
+
+	/**
+	 * A receive-only account (its connection cannot fetch) has nothing to check: "N/A" replaces the
+	 * times, and it can be disabled but not checked or deleted.
+	 *
+	 * @covers ::display
+	 * @covers ::render_table
+	 */
+	public function test_display_receive_only_account_shows_not_applicable(): void {
+		$account = BH_Email_Account_Fixture::make( email_address: 'ingress@example.com' );
+
+		/** @var API_Interface $api */
+		$api = Mockery::mock( API_Interface::class );
+		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( Mockery::mock( Email_Connection_Interface::class ) );
+
+		$html = $this->capture_display( $this->make_sut( $api ) );
+
+		$this->assertStringContainsString( 'N/A', $html );
+		$this->assertStringNotContainsString( 'Never', $html );
+		$this->assertStringNotContainsString( 'bh-check-account', $html );
+		$this->assertStringNotContainsString( 'bh-account-delete', $html );
+		$this->assertStringContainsString( 'bh-account-toggle', $html );
+	}
+
+	/**
+	 * A fetch-capable account offers "Check now", the set-fetch-since date input, and Delete.
+	 *
+	 * @covers ::display
+	 * @covers ::render_table
+	 */
+	public function test_display_fetching_account_offers_check_now_and_delete(): void {
+		$account = BH_Email_Account_Fixture::make( post_id: 77 );
+
+		/** @var API_Interface $api */
+		$api = Mockery::mock( API_Interface::class );
+		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
+
+		$html = $this->capture_display( $this->make_sut( $api ) );
+
+		$this->assertStringContainsString( 'class="bh-check-account" data-account-id="77"', $html );
+		$this->assertStringContainsString( 'bh-fetch-since-input', $html );
+		$this->assertStringContainsString( '<div class="row-actions"><span class=\'toggle\'>', $html, 'Enable/disable, edit, delete are row actions on the account column.' );
+		$this->assertStringContainsString( 'bh-account-delete', $html );
+		$this->assertStringNotContainsString( 'column-actions', $html );
+		$this->assertStringContainsString( 'id="bh-mailboxes-account-dialog"', $html, 'The add/edit modal is printed.' );
+	}
+
+	/**
+	 * The table is a WP_List_Table keyed to the accounts CPT screen, without a checkbox column, bulk
+	 * actions or table nav, and without core's `id="the-list"` tbody (that is the emails list table's).
+	 *
+	 * @covers ::render_table
+	 * @covers \BrianHenryIE\WP_Mailboxes\Admin\Email_Accounts_List_Table
+	 */
+	public function test_display_renders_a_list_table_without_checkbox_or_bulk_actions(): void {
+		$account = BH_Email_Account_Fixture::make();
+
+		/** @var API_Interface $api */
+		$api = Mockery::mock( API_Interface::class );
+		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
+
+		$html = $this->capture_display( $this->make_sut( $api ) );
+
+		$this->assertStringContainsString( 'class="wp-list-table widefat striped bh-mailboxes-accounts"', $html );
+		$this->assertStringContainsString( "class='manage-column column-account", $html );
+		$this->assertStringNotContainsString( 'type="checkbox"', $html );
+		$this->assertStringNotContainsString( 'bulkactions', $html );
+		$this->assertStringNotContainsString( 'class="tablenav', $html );
+		$this->assertStringNotContainsString( 'id="the-list"', $html );
+		$this->assertStringContainsString( 'class="bh-mailboxes-accounts__rows"', $html );
+		$this->assertFalse( has_filter( 'manage_edit-' . $this->post_type . '_columns' ), 'The emails screen columns filter must not be touched.' );
 	}
 }

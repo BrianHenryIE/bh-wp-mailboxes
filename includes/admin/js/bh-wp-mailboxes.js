@@ -1,38 +1,30 @@
+/**
+ * The emails list screen: the accounts table (enable/disable, "Check now", "Check since…"), the
+ * page-wide "Check all" button, and the "Delete on server" row action.
+ *
+ * Depends on account-modal.js, which owns the add/edit/delete dialogs and the shared helpers
+ * (notices, AJAX posting, table refresh) exposed as `bhWpMailboxesAccountModal`.
+ */
 (function( $ ) {
     'use strict';
 
-    function makeCheckNotice( accountId, accountName ) {
-        $( '.bh-check-notice[data-account-id="' + accountId + '"]' ).remove();
-        var $n = $( '<div class="notice bh-check-notice" data-account-id="' + accountId + '"><p></p>' +
-            '<button type="button" class="notice-dismiss">' +
-            '<span class="screen-reader-text">Dismiss this notice.</span></button></div>' );
-        $n.css( 'border-left-color', '#8d96a0' );
-        $n.find( 'p' )
-            .append( $( '<span class="spinner is-active">' ) )
-            .append( document.createTextNode( 'Checking email for ' ) )
-            .append( $( '<strong>' ).text( accountName ) )
-            .append( document.createTextNode( '…' ) );
-        $n.on( 'click', '.notice-dismiss', function() {
-            $n.fadeOut( 200, function() { $( this ).remove(); } );
-        } );
-        $( '.wp-header-end' ).after( $n );
-        return $n;
-    }
+    var modal           = window.bhWpMailboxesAccountModal;
+    var makeCheckNotice = modal.makeCheckNotice;
+    var finishNotice    = modal.finishNotice;
+    var showTableNotice = modal.showTableNotice;
+    var accountRow      = modal.accountRow;
+    var replaceTable    = modal.replaceTable;
+    var postAccounts    = modal.postAccounts;
+    var failMessage     = modal.failMessage;
 
-    function finishNotice( $notice, msg, borderColor ) {
-        $notice.find( '.spinner' ).remove();
-        $notice.find( 'p' ).text( msg );
-        $notice.css( 'border-left-color', borderColor );
-    }
-
-    function handleCheckResponse( response, $card, $notice ) {
-        var accountName = $card.data( 'account-name' );
+    function handleCheckResponse( response, $row, $notice ) {
+        var accountName = $row.data( 'account-name' );
         var prefix      = accountName ? accountName + ': ' : '';
         if ( response.success ) {
             var count = response.data.new_email_count;
-            $card.find( '[data-field="last-fetched"]' ).text( response.data.last_fetched );
+            $row.find( '[data-field="last-fetched"]' ).text( response.data.last_fetched );
             if ( count > 0 ) {
-                var $countEl = $card.find( '[data-field="email-count"]' );
+                var $countEl = $row.find( '[data-field="email-count"]' );
                 $countEl.text( parseInt( $countEl.text(), 10 ) + count );
                 refreshTable( response.data.new_email_ids );
             }
@@ -71,6 +63,23 @@
 
     $( function() {
 
+        $( document ).on( 'click', '.bh-account-toggle', function( event ) {
+            event.preventDefault();
+            var $btn         = $( this );
+            var accountId    = $btn.data( 'account-id' );
+            var active       = String( $btn.data( 'active' ) ) === '1';
+            var emailAddress = accountRow( accountId ).data( 'email-address' );
+            $btn.attr( 'aria-disabled', 'true' ).addClass( 'disabled' );
+
+            postAccounts( bh_wp_mailboxes_ajax.set_account_active_action, { account_post_id: accountId, active: active ? '1' : '0' } ).done( function( response ) {
+                replaceTable( response.data.table_html );
+                showTableNotice( emailAddress + ( active ? ' enabled.' : ' disabled.' ), 'success' );
+            } ).fail( function( xhr ) {
+                $btn.removeAttr( 'aria-disabled' ).removeClass( 'disabled' );
+                showTableNotice( failMessage( xhr, 'The account status could not be changed.' ), 'error' );
+            } );
+        } );
+
         // ── Move the check button into the page title, replacing "Add New Email" ─
         var $checkBtn = $( '#check-email' );
         if ( $checkBtn.length ) {
@@ -83,8 +92,8 @@
             event.preventDefault();
             var urlParams = new URLSearchParams( window.location.search );
 
-            // Name the account(s) being checked, taken from the status cards.
-            var names = $( '.bh-mailboxes-account-card' ).map( function() {
+            // Name the account(s) being checked, taken from the accounts table.
+            var names = $( '.bh-mailboxes-account' ).map( function() {
                 return $( this ).data( 'account-name' );
             } ).get().filter( Boolean );
             var label = names.length ? names.join( ', ' ) : 'all accounts';
@@ -111,27 +120,23 @@
         } );
 
         // ── Per-account: Check now ─────────────────────────────────────────────
-        $( document ).on( 'click', '.bh-check-account', function() {
+        $( document ).on( 'click', '.bh-check-account', function( event ) {
+            event.preventDefault();
             var $btn        = $( this );
             var accountId   = $btn.data( 'account-id' );
-            var $card       = $( '.bh-mailboxes-account-card[data-account-id="' + accountId + '"]' );
-            var accountName = $card.data( 'account-name' );
+            var $row        = accountRow( accountId );
+            var accountName = $row.data( 'account-name' );
             var origLabel   = $btn.text();
-            $btn.prop( 'disabled', true ).text( 'Checking…' );
+            $btn.attr( 'aria-disabled', 'true' ).addClass( 'disabled' ).text( 'Checking…' );
 
             var $notice = makeCheckNotice( accountId, accountName );
 
-            $.post( ajaxurl, {
-                action:          bh_wp_mailboxes_ajax.check_account_action,
-                account_post_id: accountId,
-                _wpnonce:        $( '#_wpnonce_account_actions' ).val(),
-            } ).done( function( response ) {
-                $btn.prop( 'disabled', false ).text( origLabel );
-                handleCheckResponse( response, $card, $notice );
-            } ).fail( function() {
-                $btn.prop( 'disabled', false ).text( origLabel );
-                // TODO: message should come from the server. E.g. "could not find saved account".
-                finishNotice( $notice, 'Check failed: server error.', '#d63638' );
+            postAccounts( bh_wp_mailboxes_ajax.check_account_action, { account_post_id: accountId } ).done( function( response ) {
+                $btn.removeAttr( 'aria-disabled' ).removeClass( 'disabled' ).text( origLabel );
+                handleCheckResponse( response, $row, $notice );
+            } ).fail( function( xhr ) {
+                $btn.removeAttr( 'aria-disabled' ).removeClass( 'disabled' ).text( origLabel );
+                finishNotice( $notice, failMessage( xhr, 'Check failed: server error.' ), '#d63638' );
             } );
         } );
 
@@ -169,7 +174,8 @@
         } );
 
         // ── Per-account: Since toggle ──────────────────────────────────────────
-        $( document ).on( 'click', '.bh-fetch-since-toggle', function() {
+        $( document ).on( 'click', '.bh-fetch-since-toggle', function( event ) {
+            event.preventDefault();
             var accountId = $( this ).data( 'account-id' );
             $( '.bh-fetch-since-input[data-account-id="' + accountId + '"]' ).toggle().focus();
         } );
@@ -178,8 +184,8 @@
         $( document ).on( 'change', '.bh-fetch-since-input', function() {
             var $input      = $( this );
             var accountId   = $input.data( 'account-id' );
-            var $card       = $( '.bh-mailboxes-account-card[data-account-id="' + accountId + '"]' );
-            var accountName = $card.data( 'account-name' );
+            var $row        = accountRow( accountId );
+            var accountName = $row.data( 'account-name' );
             var sinceDate   = $input.val();
 
             if ( ! sinceDate ) {
@@ -195,16 +201,10 @@
 
             var $notice = makeCheckNotice( accountId, accountName );
 
-            $.post( ajaxurl, {
-                action:          bh_wp_mailboxes_ajax.check_account_action,
-                account_post_id: accountId,
-                since_date:      sinceDate,
-                _wpnonce:        $( '#_wpnonce_account_actions' ).val(),
-            } ).done( function( response ) {
-                handleCheckResponse( response, $card, $notice );
-            } ).fail( function() {
-                // TODO: message should come from the server. E.g. "could not find saved account". Unless, of course, it is a timeout.
-                finishNotice( $notice, 'Check failed: server error.', '#d63638' );
+            postAccounts( bh_wp_mailboxes_ajax.check_account_action, { account_post_id: accountId, since_date: sinceDate } ).done( function( response ) {
+                handleCheckResponse( response, $row, $notice );
+            } ).fail( function( xhr ) {
+                finishNotice( $notice, failMessage( xhr, 'Check failed: server error.' ), '#d63638' );
             } );
         } );
 

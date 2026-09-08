@@ -1,29 +1,47 @@
 <?php
 /**
- * Status cards rendered at the top of the emails list view.
+ * Email accounts table rendered at the top of the emails list view.
  *
- * Shows per-account: last fetched time, last failure time, and email count.
+ * Lists each account with its status, email count, last fetched/failure times, a "Check now"
+ * button (with the set-fetch-since date utility) and enable/disable, edit and delete actions, plus
+ * an "Add account" button. Adding and editing happen in the {@see Email_Account_Modal} (reusable on
+ * other screens); the library saves the account and hands the credentials to the consumer via the
+ * `bh_wp_mailboxes_save_account_credentials` action (see {@see Email_Accounts_Ajax}).
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
+use BrianHenryIE\WP_Mailboxes\Admin\Model\Email_Account_Row;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Requires_Credentials;
+use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
 use DateInterval;
 use DateTimeImmutable;
-use DateTimeInterface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 
 /**
- * Renders a per-account status summary above the emails list table.
+ * Renders the accounts table (an {@see Email_Accounts_List_Table}) and the add/edit modal above the emails list table.
  */
 class Status_View {
 
 	use LoggerAwareTrait;
+
+	/**
+	 * The add/edit account modal; also owns the shared admin script/style.
+	 *
+	 * @var Email_Account_Modal
+	 */
+	protected Email_Account_Modal $modal;
 
 	/**
 	 * Constructor.
@@ -32,18 +50,21 @@ class Status_View {
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings                Plugin settings.
 	 * @param Email_Repository_Interface         $email_wp_post_repository Email repository (for counts).
 	 * @param LoggerInterface                    $logger                  PSR-3 logger.
+	 * @param ?Email_Account_Modal               $modal                   The add/edit modal printed with the table; built from settings when omitted.
 	 */
 	public function __construct(
 		protected API_Interface $api,
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		protected Email_Repository_Interface $email_wp_post_repository,
 		LoggerInterface $logger,
+		?Email_Account_Modal $modal = null,
 	) {
 		$this->setLogger( $logger );
+		$this->modal = $modal ?? new Email_Account_Modal( $settings );
 	}
 
 	/**
-	 * Renders the status cards in the admin notices area of the emails list screen.
+	 * Renders the accounts table and modal in the admin notices area of the emails list screen.
 	 *
 	 * @hooked admin_notices
 	 */
@@ -56,73 +77,95 @@ class Status_View {
 			return;
 		}
 
-		$accounts = $this->api->get_email_accounts();
-
-		echo '<style>
-			#bh-mailboxes-status { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 12px; }
-			.bh-mailboxes-account-card { background:#fff; border:1px solid #c3c4c7; box-shadow:0 1px 1px rgba(0,0,0,.04); padding:8px 12px 10px; min-width:170px; }
-			.bh-mailboxes-account-card__title { font-weight:600; font-size:13px; padding-bottom:5px; margin-bottom:5px; border-bottom:1px solid #f0f0f1; }
-			.bh-mailboxes-account-card__details { margin:0; display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-size:12px; }
-			.bh-mailboxes-account-card__details dt { color:#646970; font-weight:500; }
-			.bh-mailboxes-account-card__details dd { margin:0; }
-			.bh-mailboxes-account-card__actions { margin-top:8px; display:flex; align-items:center; gap:5px; }
-			.bh-fetch-since-input { width:120px; }
-			.bh-fetch-since-toggle { background:none; border:none; box-shadow:none; cursor:pointer; padding:2px; color:#787c82; vertical-align:middle; line-height:1; min-height:0; }
-			.bh-fetch-since-toggle:hover { color:#1d2327; background:none; border:none; box-shadow:none; }
-			.bh-fetch-since-toggle .dashicons { font-size:18px; width:18px; height:18px; pointer-events:none; }
-			.bh-check-notice { transition:border-left-color 0.3s ease; }
-			.bh-check-notice .spinner { float:none; margin:0 5px 0 0; vertical-align:middle; }
-		</style>';
 		echo '<div id="bh-mailboxes-status" class="bh-mailboxes-status">';
-
-		if ( empty( $accounts ) ) {
-			echo '<p>' . esc_html__( 'No accounts configured.', 'bh-wp-mailboxes' ) . '</p>';
-			echo '</div>';
-			return;
-		}
-
-		wp_nonce_field( 'bh-wp-mailboxes-account-actions', '_wpnonce_account_actions' );
-
-		foreach ( $accounts as $account ) {
-			$email_count  = $this->email_wp_post_repository->count_for_account_email( $account );
-			$status_label = $account->is_active() ? __( 'Active', 'bh-wp-mailboxes' ) : __( 'Inactive', 'bh-wp-mailboxes' );
-			$since_value  = ( $account->last_successful_login_time ?? new DateTimeImmutable()->sub( new DateInterval( 'P1W' ) ) )->format( 'Y-m-d' );
-			$account_id   = (string) $account->get_post_id();
-
-			echo '<div class="bh-mailboxes-account-card" data-account-id="' . esc_attr( $account_id ) . '" data-account-name="' . esc_attr( $account->display_name ) . '">';
-			echo '<div class="bh-mailboxes-account-card__title">' . esc_html( $account->email_address ) . '</div>';
-			echo '<dl class="bh-mailboxes-account-card__details">';
-			echo '<dt>' . esc_html__( 'Status', 'bh-wp-mailboxes' ) . '</dt>';
-			echo '<dd>' . esc_html( $status_label ) . '</dd>';
-			echo '<dt>' . esc_html__( 'Emails', 'bh-wp-mailboxes' ) . '</dt>';
-			echo '<dd data-field="email-count">' . esc_html( (string) $email_count ) . '</dd>';
-			echo '<dt>' . esc_html__( 'Last fetched', 'bh-wp-mailboxes' ) . '</dt>';
-			echo '<dd data-field="last-fetched">' . esc_html( $this->format_time( $account->last_successful_login_time ) ) . '</dd>';
-			echo '<dt>' . esc_html__( 'Last failure', 'bh-wp-mailboxes' ) . '</dt>';
-			echo '<dd data-field="last-failure">' . esc_html( $this->format_time( $account->last_failed_login_time ) ) . '</dd>';
-			echo '</dl>';
-			echo '<div class="bh-mailboxes-account-card__actions">';
-			echo '<button type="button" class="button button-primary button-small bh-check-account" data-account-id="' . esc_attr( $account_id ) . '">' . esc_html__( 'Check now', 'bh-wp-mailboxes' ) . '</button>';
-			echo '<button type="button" class="bh-fetch-since-toggle" data-account-id="' . esc_attr( $account_id ) . '" title="' . esc_attr__( 'Set the date from which emails will be fetched', 'bh-wp-mailboxes' ) . '"><span class="dashicons dashicons-clock" aria-hidden="true"></span></button>';
-			echo '</div>';
-			echo '<input type="date" class="bh-fetch-since-input" data-account-id="' . esc_attr( $account_id ) . '" value="' . esc_attr( $since_value ) . '" style="display:none;margin-top:6px;width:100%;">';
-			echo '</div>';
-		}
-
+		echo '<div class="bh-mailboxes-status__table">';
+		$this->render_table();
 		echo '</div>';
+		echo '</div>';
+
+		// The nonce, the add/edit modal and the delete confirmation dialog.
+		$this->modal->print_modal();
+
+		// Move the table (and its notices) above the list table, directly under the page title.
 		echo '<script>document.addEventListener("DOMContentLoaded",function(){document.querySelector(".wp-header-end").after(document.getElementById("bh-mailboxes-status"));});</script>';
 	}
 
 	/**
-	 * Formats a datetime as a human-readable "X ago" string, or "Never" if null.
+	 * Renders the accounts table. Also returned by the AJAX handlers to refresh the table in place.
 	 *
-	 * @param ?DateTimeInterface $time The datetime to format.
+	 * The list table is instantiated here, not in the constructor: WP_List_Table registers a columns
+	 * filter for its screen on construction, which must not happen on the accounts CPT's own list page.
 	 */
-	protected function format_time( ?DateTimeInterface $time ): string {
-		if ( null === $time ) {
-			return __( 'Never', 'bh-wp-mailboxes' );
+	public function render_table(): void {
+
+		$accounts = $this->api->get_email_accounts();
+
+		echo '<div class="bh-mailboxes-status__toolbar">';
+		echo '<h2 class="bh-mailboxes-status__title">' . esc_html__( 'Email accounts', 'bh-wp-mailboxes' ) . '</h2>';
+		$this->modal->print_add_button();
+		echo '</div>';
+
+		$table = new Email_Accounts_List_Table(
+			$this->settings,
+			array_values( array_map( array( $this, 'make_row' ), $accounts ) )
+		);
+		$table->prepare_items();
+		$table->display();
+	}
+
+	/**
+	 * Gather what an account's row needs beyond the account itself.
+	 *
+	 * @param BH_Email_Account $account The account.
+	 */
+	protected function make_row( BH_Email_Account $account ): Email_Account_Row {
+
+		$connection        = $this->api->get_connection_for_email_account( $account );
+		$supports_fetching = $connection instanceof Supports_Fetching;
+		$can_edit          = $connection instanceof Requires_Credentials
+			&& ImapEngine_Imap_Email_Connection::class === $account->connection_type_class;
+
+		return new Email_Account_Row(
+			account: $account,
+			connection_label: $this->connection_label( $account->connection_type_class ),
+			supports_fetching: $supports_fetching,
+			can_edit: $can_edit,
+			credentials: $can_edit ? $this->get_credentials( $account ) : null,
+			email_count: $this->email_wp_post_repository->count_for_account_email( $account ),
+			has_login_failure: ! is_null( $account->last_failed_login_time )
+				&& ( is_null( $account->last_successful_login_time ) || $account->last_failed_login_time > $account->last_successful_login_time ),
+			since_value: ( $account->last_successful_login_time ?? new DateTimeImmutable()->sub( new DateInterval( 'P1W' ) ) )->format( 'Y-m-d' ),
+		);
+	}
+
+	/**
+	 * The consumer-supplied IMAP credentials for an account (never displayed: only the
+	 * server/username/encryption are used, to pre-fill the edit form).
+	 *
+	 * @param BH_Email_Account $account The account.
+	 */
+	protected function get_credentials( BH_Email_Account $account ): ?IMAP_Credentials_Interface {
+		/**
+		 * Resolve the account's credentials.
+		 *
+		 * @see \BrianHenryIE\WP_Mailboxes\API\API::fetch_for_account()
+		 */
+		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $this->settings->get_plugin_slug(), $this->settings->get_emails_cpt_underscored_20(), $account );
+
+		return $credentials instanceof IMAP_Credentials_Interface ? $credentials : null;
+	}
+
+	/**
+	 * A short name for the connection class, e.g. "IMAP", "REST Ingress".
+	 *
+	 * @param string $connection_type_class The account's connection class.
+	 */
+	protected function connection_label( string $connection_type_class ): string {
+		if ( ImapEngine_Imap_Email_Connection::class === $connection_type_class ) {
+			return 'IMAP';
 		}
-		/* translators: %s: human-readable time difference, e.g. "5 minutes" */
-		return sprintf( __( '%s ago', 'bh-wp-mailboxes' ), human_time_diff( $time->getTimestamp() ) );
+		$parts = explode( '\\', $connection_type_class );
+
+		return str_replace( array( '_Email_Connection', '_Connection', '_Interface', '_' ), array( '', '', '', ' ' ), (string) end( $parts ) );
 	}
 }

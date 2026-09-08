@@ -39,6 +39,8 @@ class BH_WP_Mailboxes_Hooks_WPUnit_Test extends WPUnit_Testcase {
 
 		$api = Mockery::mock( API_Interface::class )->shouldIgnoreMissing();
 
+		remove_all_actions( 'init' );
+
 		// Constructing the hooks registers the CPT registration callbacks on `init`.
 		new BH_WP_Mailboxes_Hooks( $api, $settings, $this->logger );
 

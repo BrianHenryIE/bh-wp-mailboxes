@@ -74,8 +74,8 @@ test.describe( 'Auth failure admin notice', () => {
 		await expect( notice ).toContainText( email );
 
 		// The failure was recorded: the card's "Last failure" is no longer "Never".
-		const card = page.locator( `.bh-mailboxes-account-card[data-account-id="${ accountId }"]` );
-		await expect( card.locator( 'dd[data-field="last-failure"]' ) ).not.toHaveText( 'Never' );
+		const card = page.locator( `.bh-mailboxes-account[data-account-id="${ accountId }"]` );
+		await expect( card.locator( '[data-field="last-failure"]' ) ).not.toHaveText( 'Never' );
 
 		// Clear the failure and fetch again → a success is recorded → the notice self-clears.
 		await setFixturesFail( request, email, false );

@@ -1,0 +1,105 @@
+/* The add/edit IMAP account modal, its delete confirmation, and the notices they report in (see Email_Account_Modal). */
+
+.bh-check-notice {
+	transition: border-left-color 0.3s ease;
+}
+
+.bh-check-notice .spinner {
+	float: none;
+	margin: 0 5px 0 0;
+	vertical-align: middle;
+}
+
+/* Dialogs. */
+
+.bh-mailboxes-account-dialog,
+.bh-mailboxes-account-confirm {
+	padding: 0 24px 20px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	box-shadow: 0 5px 15px rgba( 0, 0, 0, 0.3 );
+	color: #1d2327;
+}
+
+.bh-mailboxes-account-dialog {
+	width: min( 720px, calc( 100vw - 40px ) );
+	max-height: calc( 100vh - 40px );
+	overflow: auto;
+}
+
+.bh-mailboxes-account-confirm {
+	width: min( 480px, calc( 100vw - 40px ) );
+	padding-top: 20px;
+}
+
+.bh-mailboxes-account-dialog::backdrop,
+.bh-mailboxes-account-confirm::backdrop {
+	background: rgba( 0, 0, 0, 0.5 );
+}
+
+/* WordPress's .button display rule would otherwise override the hidden attribute. */
+.bh-mailboxes-account-dialog [hidden],
+.bh-mailboxes-account-confirm [hidden] {
+	display: none !important;
+}
+
+.bh-mailboxes-account-dialog__header {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	margin: 0 -24px 8px;
+	padding: 12px 24px;
+	border-bottom: 1px solid #dcdcde;
+}
+
+.bh-mailboxes-account-dialog__header h2,
+.bh-mailboxes-account-confirm h2 {
+	flex: 1;
+	margin: 0;
+	font-size: 1.3em;
+}
+
+.bh-mailboxes-account-confirm h2 {
+	margin-bottom: 8px;
+}
+
+.bh-mailboxes-account-dialog__close {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: #646970;
+	cursor: pointer;
+	line-height: 1;
+}
+
+.bh-mailboxes-account-dialog__close:hover,
+.bh-mailboxes-account-dialog__close:focus {
+	color: #135e96;
+}
+
+.bh-mailboxes-account-form__notice {
+	margin: 8px 0;
+}
+
+.bh-mailboxes-account-form .form-table th {
+	width: 160px;
+	padding: 10px 10px 10px 0;
+}
+
+.bh-mailboxes-account-form .form-table td {
+	padding: 10px;
+}
+
+.bh-mailboxes-account-form__actions,
+.bh-mailboxes-account-confirm__actions {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 8px;
+	margin: 16px 0 0;
+}
+
+.bh-mailboxes-account-form__actions .spinner {
+	float: none;
+	margin: 0;
+}

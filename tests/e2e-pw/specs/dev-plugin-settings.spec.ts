@@ -117,6 +117,62 @@ test.describe( 'Development plugin settings page', () => {
 		).toHaveText( 'Mailbox Two Email' );
 	} );
 
+	test( 'the reusable account modal on the settings page adds an account to Mailbox One', async ( {
+		admin,
+		page,
+	} ) => {
+		const emailAddress = `settings-modal-${ Date.now() }@example.com`;
+
+		await expect(
+			page.getByRole( 'heading', { name: 'Add IMAP account (modal)' } )
+		).toBeVisible();
+		const section = page.locator( '.bh-dev-modal-section' );
+		await section.getByRole( 'button', { name: 'Add account' } ).click();
+
+		const dialog = page.locator( '#bh-mailboxes-account-dialog' );
+		await expect( dialog ).toBeVisible();
+		await expect(
+			dialog.getByRole( 'heading', { name: 'Add IMAP account' } )
+		).toBeVisible();
+		await dialog.getByLabel( 'Account name' ).fill( 'Settings modal inbox' );
+		await dialog.getByLabel( 'Email address' ).fill( emailAddress );
+		await dialog.getByLabel( 'IMAP server' ).fill( '127.0.0.1:1' );
+		await dialog.getByLabel( 'Password' ).fill( 'not-a-real-password' );
+		await dialog.getByLabel( 'Encryption' ).selectOption( '' );
+		await dialog.getByRole( 'button', { name: 'Add account' } ).click();
+		await expect( dialog ).toBeHidden();
+
+		// No accounts table on this screen: the result is reported in a notice under the title.
+		const notice = page.locator( '.bh-check-notice' ).last();
+		await expect( notice ).toContainText(
+			'Account saved, but the connection test failed'
+		);
+		expect(
+			await notice.evaluate( ( el ) =>
+				el.previousElementSibling?.classList.contains( 'wp-header-end' )
+			)
+		).toBe( true );
+
+		// The account is listed in Mailbox One's accounts table, with its credentials stored.
+		await admin.visitAdminPage( 'edit.php', 'post_type=mailbox_one_email' );
+		const row = page.locator(
+			`.bh-mailboxes-account[data-email-address="${ emailAddress }"]`
+		);
+		await expect( row ).toBeVisible();
+		await expect( row ).toContainText( 'Settings modal inbox' );
+		await expect( row ).toContainText( 'IMAP' );
+		await expect( row.locator( '.bh-mailboxes-no-credentials' ) ).toHaveCount(
+			0
+		);
+
+		// Clean up so Mailbox One's cron does not keep trying the unreachable server.
+		await row.hover();
+		await row.getByRole( 'link', { name: 'Delete', exact: true } ).click();
+		const confirm = page.locator( '#bh-mailboxes-account-confirm' );
+		await confirm.getByRole( 'button', { name: 'Delete account' } ).click();
+		await expect( row ).toHaveCount( 0 );
+	} );
+
 	test( 'shows the Gmail pasted-credentials form with a mailbox dropdown', async ( {
 		page,
 	} ) => {
