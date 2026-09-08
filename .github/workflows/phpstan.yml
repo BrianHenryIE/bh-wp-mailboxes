@@ -65,7 +65,7 @@ jobs:
       # This probably needs DEPLOY_KEY set for PRs and private repos
       - name: Commit README badge changes
         uses: stefanzweifel/git-auto-commit-action@v7
-        if: ${{ matrix.php == '7.4' && github.event_name != 'pull_request' }}
+        if: ${{ matrix.php == '8.4' && github.event_name != 'pull_request' }}
         with:
           file_pattern: ".github/phpstan.svg"
           before_commit_hook: "git pull"
@@ -102,7 +102,7 @@ jobs:
           CHECKSTYLE_FILENAME: "phpstan-checkstyle.xml"
 
       - name: Install kamazee/pr-filter
-        run: composer require --dev kamazee/pr-filter
+        run: composer require --dev kamazee/pr-filter --no-scripts
 
       - name: Generate filtered-checkstyle.xml – PHPStan errors only the modified lines in the pr diff (to determine failure on PRs)
         if: ${{ github.event_name == 'pull_request' }}
