@@ -108,6 +108,22 @@ class Email_Account_WP_Post_Repository_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
+	 * Regression: the query did not set posts_per_page, so WP_Query's default page size (10) silently
+	 * dropped accounts once more than ten existed.
+	 *
+	 * @covers ::get_all
+	 */
+	public function test_get_all_returns_more_than_ten_accounts(): void {
+		$sut = $this->make_sut();
+
+		for ( $i = 1; $i <= 12; $i++ ) {
+			$this->save_account( $sut, "account-{$i}@example.com" );
+		}
+
+		$this->assertCount( 12, $sut->get_all() );
+	}
+
+	/**
 	 * Returns the matching account via its slug, or null when none exists.
 	 *
 	 * @covers ::find_by_email_address

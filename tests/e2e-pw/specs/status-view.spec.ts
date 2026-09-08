@@ -46,19 +46,19 @@ test.describe( 'Status_View', () => {
 		const container = page.locator( '#bh-mailboxes-status' );
 		await expect( container ).toBeAttached();
 
-		const hasCards = await page.locator( '.bh-mailboxes-account-card' ).count();
-		if ( hasCards === 0 ) {
+		const hasRows = await page.locator( '.bh-mailboxes-account' ).count();
+		if ( hasRows === 0 ) {
 			await expect( container ).toContainText( 'No accounts configured' );
 		}
 	} );
 
-	test( 'account email address appears in its status card', async ( { admin, page, request } ) => {
+	test( 'account email address appears in its account row', async ( { admin, page, request } ) => {
 		const email = `status-view-e2e-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		const card = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
+		const card = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
 		await expect( card ).toBeVisible();
 		await expect( card ).toContainText( email );
 	} );
@@ -69,7 +69,7 @@ test.describe( 'Status_View', () => {
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		const card = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
+		const card = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
 		await expect( card ).toContainText( 'Active' );
 	} );
 
@@ -82,7 +82,7 @@ test.describe( 'Status_View', () => {
 		await expect( page.locator( '#bh-mailboxes-status' ) ).toContainText( 'Never' );
 	} );
 
-	test( 'after a fetch, the card shows the server-rendered email count and a real last-fetched time', async ( {
+	test( 'after a fetch, the row shows the server-rendered email count and a real last-fetched time', async ( {
 		admin,
 		page,
 		request,
@@ -97,14 +97,14 @@ test.describe( 'Status_View', () => {
 		// which status-view-interactions covers).
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		const card = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
+		const card = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
 		await expect( card ).toBeVisible();
 
 		// Five emails were saved for this account.
-		await expect( card.locator( 'dd[data-field="email-count"]' ) ).toHaveText( '5' );
+		await expect( card.locator( '[data-field="email-count"]' ) ).toHaveText( '5' );
 
 		// Last fetched is now a real "X ago" time, no longer "Never".
-		const lastFetched = card.locator( 'dd[data-field="last-fetched"]' );
+		const lastFetched = card.locator( '[data-field="last-fetched"]' );
 		await expect( lastFetched ).toContainText( 'ago' );
 		await expect( lastFetched ).not.toHaveText( 'Never' );
 	} );

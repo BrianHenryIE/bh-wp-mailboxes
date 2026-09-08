@@ -19,6 +19,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_E2E_Connection;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Mailbox_Settings;
 use Exception;
@@ -137,6 +138,11 @@ class Mailboxes {
 					),
 					'display_name'  => array(
 						'type'     => 'string',
+						'required' => false,
+					),
+					'connection'    => array(
+						'type'     => 'string',
+						'enum'     => array( 'e2e', 'imap' ),
 						'required' => false,
 					),
 				),
@@ -298,7 +304,8 @@ class Mailboxes {
 	 * (the same path `BH_WP_Mailboxes::add_email_account()` and the REST-ingress connection use).
 	 *
 	 * Required body param: email_address.
-	 * Optional: display_name.
+	 * Optional: display_name; connection ('e2e', the default mock connection, or 'imap' for a real IMAP
+	 * account with no stored credentials, so tests can exercise the accounts table's "no credentials" state).
 	 *
 	 * Returns { post_id: int } with HTTP 201 (idempotent when the account already exists).
 	 *
@@ -310,12 +317,15 @@ class Mailboxes {
 		$display_name  = is_string( $request->get_param( 'display_name' ) )
 			? sanitize_text_field( $request->get_param( 'display_name' ) )
 			: $email_address;
+		$connection    = 'imap' === $request->get_param( 'connection' )
+			? ImapEngine_Imap_Email_Connection::class
+			: Mock_Mailbox_E2E_Connection::class;
 
 		try {
 			$account = $this->account_repository()->save_new(
 				email_address: $email_address,
 				display_name: $display_name,
-				connection_type_class: Mock_Mailbox_E2E_Connection::class,
+				connection_type_class: $connection,
 				from_address_regex_filter: null,
 				body_identifier_regex_filter: null,
 				after_download_remote_email_action: null,

@@ -35,6 +35,8 @@ const WORKER_FIXTURES_DIR = path.resolve( __dirname, '../fixtures' );
 const DEV_INGRESS_NAMESPACE = 'bh-wp-mailboxes-dev/v2';
 const INGRESS_PATH = `/wp-json/${ DEV_INGRESS_NAMESPACE }/e2e-email/new`;
 const POST_TYPE = 'e2e_email';
+/** The ingress account's address: `{rest namespace}@{site host}` (see REST_Ingress_Connection::get_email_account_wp_post_for_mailbox()). */
+const INGRESS_ACCOUNT_EMAIL = `${ DEV_INGRESS_NAMESPACE.split( '/' )[ 0 ] }@${ new URL( BASE_URL ).hostname }`;
 
 /** The application password created for this run (plaintext is only available at creation). */
 let applicationPassword: string;
@@ -173,6 +175,48 @@ test.describe( 'REST ingress — delivery', () => {
 		await admin.visitAdminPage( 'edit.php', `post_type=${ POST_TYPE }&s=${ encodeURIComponent( fixture.subject ) }` );
 		await expect( page.locator( `#post-${ firstBody.post_id }` ) ).toBeVisible();
 		await expect( page.locator( '#the-list tr.type-e2e_email' ) ).toHaveCount( 1 );
+	} );
+
+	test( 'a disabled ingress account rejects deliveries with 403 until it is re-enabled', async ( {
+		admin,
+		page,
+	} ) => {
+		const authorization = basicAuthHeader( applicationPassword );
+
+		// A first delivery makes sure the ingress account exists.
+		const before = await postRawMime( INGRESS_PATH, uniquifiedFixture( 'plain-text-simple.eml' ).raw, {
+			Authorization: authorization,
+		} );
+		expect( before.status ).toBe( 201 );
+
+		await admin.visitAdminPage( 'edit.php', `post_type=${ POST_TYPE }` );
+		// Not `[data-supports-fetching="0"]` alone: the dev plugin's fixtures account is also receive-only.
+		const ingressRow = () => page.locator( `.bh-mailboxes-account[data-email-address="${ INGRESS_ACCOUNT_EMAIL }"]` );
+		const row = ingressRow();
+		await expect( row ).toBeVisible();
+		await expect( row ).toHaveAttribute( 'data-supports-fetching', '0' );
+
+		try {
+			await row.hover();
+			await row.getByRole( 'link', { name: 'Disable', exact: true } ).click();
+			await expect( ingressRow().locator( '.bh-mailboxes-badge' ) ).toHaveText( 'Inactive' );
+
+			const rejected = await postRawMime( INGRESS_PATH, uniquifiedFixture( 'plain-text-simple.eml' ).raw, {
+				Authorization: authorization,
+			} );
+			expect( rejected.status ).toBe( 403 );
+			expect( ( await rejected.json() ).code ).toBe( 'rest_account_disabled' );
+		} finally {
+			// Re-enable so the other ingress tests (and the accounts-table spec) keep receiving.
+			await ingressRow().hover();
+			await ingressRow().getByRole( 'link', { name: 'Enable', exact: true } ).click();
+			await expect( ingressRow().locator( '.bh-mailboxes-badge' ) ).toHaveText( 'Active' );
+		}
+
+		const after = await postRawMime( INGRESS_PATH, uniquifiedFixture( 'plain-text-simple.eml' ).raw, {
+			Authorization: authorization,
+		} );
+		expect( after.status ).toBe( 201 );
 	} );
 
 	test( 'a multipart message with an attachment is accepted', async ( { admin, page } ) => {

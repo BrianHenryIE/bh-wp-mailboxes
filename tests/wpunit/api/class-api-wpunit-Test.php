@@ -255,4 +255,34 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertFalse( $api->delete_email_account( 'delete-me@example.com' ), 'Deleting a non-existent account should return false.' );
 	}
+
+	/**
+	 * Disabling keeps the account (and its configuration) but marks it inactive so cron skips it;
+	 * re-enabling restores it. Returns null when no account exists for the address.
+	 *
+	 * @covers ::set_email_account_active
+	 */
+	public function test_set_email_account_active(): void {
+
+		[ $api, $account_repository ] = $this->get_api_with_account_repository( 'test_api_acc_act' );
+
+		$created = $api->configure_email_account( 'toggle@example.com', 'Toggle Me', 'SomeConnection', null, null, 'mark_read', 30 );
+		$this->assertTrue( $created->is_active(), 'New accounts should be active.' );
+
+		$disabled = $api->set_email_account_active( 'toggle@example.com', false );
+
+		$this->assertNotNull( $disabled );
+		$this->assertFalse( $disabled->is_active() );
+		$this->assertSame( $created->get_post_id(), $disabled->get_post_id() );
+		$this->assertSame( 'mark_read', $disabled->after_download_remote_email_action(), 'Configuration should be unchanged.' );
+		$this->assertFalse( $account_repository->find_by_post_id( $created->get_post_id() )->is_active(), 'The status should be persisted.' );
+
+		// Setting the current status again is a no-op.
+		$this->assertFalse( $api->set_email_account_active( 'toggle@example.com', false )->is_active() );
+
+		$enabled = $api->set_email_account_active( 'toggle@example.com', true );
+		$this->assertTrue( $enabled->is_active() );
+
+		$this->assertNull( $api->set_email_account_active( 'missing@example.com', false ) );
+	}
 }

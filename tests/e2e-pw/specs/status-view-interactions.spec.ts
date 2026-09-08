@@ -115,13 +115,13 @@ test.describe( 'Status_View — Check now button', () => {
 		await expect( notice ).not.toBeVisible();
 	} );
 
-	test( '"Last fetched" updates to "Just now" in the card without a full page reload', async ( { admin, page, request } ) => {
+	test( '"Last fetched" updates to "Just now" in the row without a full page reload', async ( { admin, page, request } ) => {
 		const email = `last-fetched-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		const lastFetched = page
-			.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` )
+			.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` )
 			.locator( '[data-field="last-fetched"]' );
 		await expect( lastFetched ).toContainText( 'Never' );
 
@@ -139,14 +139,14 @@ test.describe( 'Status_View — Since (clock) button', () => {
 		const postId = await createAccount( request, email );
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		const card   = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
+		const card   = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
 		const input  = card.locator( '.bh-fetch-since-input' );
 		await expect( input ).not.toBeVisible();
 
 		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
 		await expect( input ).toBeVisible();
 
-		const actionsBox = await card.locator( '.bh-mailboxes-account-card__actions' ).boundingBox();
+		const actionsBox = await card.locator( '.bh-mailboxes-account__check' ).boundingBox();
 		const inputBox   = await input.boundingBox();
 		expect( actionsBox ).not.toBeNull();
 		expect( inputBox ).not.toBeNull();
@@ -160,7 +160,7 @@ test.describe( 'Status_View — Since (clock) button', () => {
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		const value = await page
-			.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"] .bh-fetch-since-input` )
+			.locator( `.bh-mailboxes-account[data-account-id="${ postId }"] .bh-fetch-since-input` )
 			.inputValue();
 
 		const oneWeekAgo = new Date();
@@ -181,7 +181,7 @@ test.describe( 'Status_View — Since (clock) button', () => {
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		const card  = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
+		const card  = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
 		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
 
 		const input = card.locator( '.bh-fetch-since-input' );
@@ -216,7 +216,7 @@ test.describe( 'Status_View — Since (clock) button', () => {
 		const postId = await createAccount( request, email );
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		const card  = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
+		const card  = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
 		const input = card.locator( '.bh-fetch-since-input' );
 
 		// First set-date check.
@@ -244,7 +244,7 @@ test.describe( 'Status_View — Since (clock) button', () => {
 		const postId = await createAccount( request, email );
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		const card  = page.locator( `.bh-mailboxes-account-card[data-account-id="${ postId }"]` );
+		const card  = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
 		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
 
 		const input = card.locator( '.bh-fetch-since-input' );

@@ -39,6 +39,7 @@ use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_API;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_Credentials_Options;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_CLI;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap_Credentials_Options;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap_Credentials_Settings;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Mailbox_Settings;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_Fixtures_Connection;
@@ -169,6 +170,10 @@ $on_plugins_loaded = function () use ( $e2e_mailboxes_settings ) {
 		return $value;
 	};
 	add_filter( 'bh_wp_mailboxes_credentials', $imap_credentials_filter, 10, 4 );
+
+	// IMAP accounts added/edited in the emails list's accounts table: the library hands the entered
+	// credentials to the consumer (`bh_wp_mailboxes_save_account_credentials`), which stores them.
+	new Imap_Credentials_Options()->register_hooks();
 
 	// Gmail credentials pasted into the settings page, stored as wp_options. Registered before the
 	// file-based filter so files, like ENV for IMAP, take precedence on an email-address collision.

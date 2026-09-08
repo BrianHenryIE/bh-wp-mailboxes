@@ -296,7 +296,26 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 
 		try {
 			$email_account = $this->get_email_account_wp_post_for_mailbox();
+		} catch ( Throwable $exception ) {
+			$this->logger->error( 'Failed to load the REST ingress email account: ' . $exception->getMessage(), array( 'exception' => $exception ) );
+			return new WP_Error(
+				'rest_email_not_saved',
+				__( 'The email could not be saved.', 'bh-wp-mailboxes' ),
+				array( 'status' => 500 )
+			);
+		}
 
+		// A disabled account refuses deliveries (permanently, as far as the sender is concerned).
+		if ( ! $email_account->is_active() ) {
+			$this->logger->info( 'Rejected REST-ingested email: the ingress account is disabled.', array( 'message_id' => $message_id ) );
+			return new WP_Error(
+				'rest_account_disabled',
+				__( 'The email account for this endpoint is disabled.', 'bh-wp-mailboxes' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		try {
 			$is_duplicate = $this->email_repository->is_post_for_message_id(
 				$email_account->get_account_email_address(),
 				$message_id

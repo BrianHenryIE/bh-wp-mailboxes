@@ -1,0 +1,95 @@
+/* Accounts table above the emails list table. The add/edit modal and its notices are styled in account-modal.css. */
+
+.bh-mailboxes-status {
+	margin: 12px 0 16px;
+}
+
+.bh-mailboxes-status__toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 8px;
+}
+
+.bh-mailboxes-status__title {
+	margin: 0;
+	font-size: 1.1em;
+}
+
+.bh-mailboxes-status__empty {
+	margin: 0;
+	color: #646970;
+}
+
+.bh-mailboxes-accounts td,
+.bh-mailboxes-accounts tbody th {
+	vertical-align: middle;
+	font-weight: normal;
+}
+
+.bh-mailboxes-accounts tfoot {
+	display: none;
+}
+
+.bh-mailboxes-account--inactive .bh-mailboxes-account__name {
+	color: #646970;
+}
+
+.bh-mailboxes-account__type,
+.bh-mailboxes-muted {
+	color: #646970;
+}
+
+.bh-mailboxes-accounts .column-status .bh-mailboxes-badge,
+.bh-mailboxes-accounts .column-status .bh-mailboxes-warning {
+	display: block;
+	margin-bottom: 4px;
+}
+
+.bh-mailboxes-badge {
+	display: inline-block;
+	width: max-content;
+	padding: 1px 8px;
+	border-radius: 10px;
+	font-size: 12px;
+	line-height: 18px;
+}
+
+.bh-mailboxes-badge--active {
+	background: #edfaef;
+	color: #00450c;
+}
+
+.bh-mailboxes-badge--inactive {
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.bh-mailboxes-warning {
+	color: #d63638;
+	white-space: nowrap;
+}
+
+.bh-mailboxes-warning .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	vertical-align: text-bottom;
+	margin-right: 2px;
+}
+
+.bh-mailboxes-accounts .column-last_fetched,
+.bh-mailboxes-accounts .column-last_failure {
+	white-space: nowrap;
+}
+
+.bh-mailboxes-accounts .row-actions a.disabled {
+	pointer-events: none;
+	color: #a7aaad;
+}
+
+.bh-fetch-since-input {
+	display: block;
+	margin-top: 6px;
+	width: 140px;
+}

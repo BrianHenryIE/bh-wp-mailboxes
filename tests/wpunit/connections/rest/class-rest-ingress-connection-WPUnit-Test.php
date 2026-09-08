@@ -353,6 +353,35 @@ class REST_Ingress_Connection_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
+	 * A disabled ingress account refuses deliveries with 403 (a permanent failure, so the sender
+	 * does not retry) and stores nothing; re-enabling it accepts them again.
+	 *
+	 * @covers ::create_new_email
+	 */
+	public function test_disabled_account_rejects_emails(): void {
+
+		$sut = $this->make_sut();
+		$this->boot_rest( $sut );
+		$this->login_as_admin();
+
+		$raw_mime = (string) file_get_contents( codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' ) );
+
+		// Auto-create the account, then disable it.
+		$account = $sut->get_email_account_wp_post_for_mailbox();
+		$this->email_account_repository->update( $account, status: 'bh_email_ac_inactive' );
+
+		$rejected = $this->dispatch_raw_mime( $raw_mime );
+
+		self::assertSame( 403, $rejected->get_status() );
+		self::assertSame( 'rest_account_disabled', $rejected->get_data()['code'] );
+		self::assertSame( 0, $this->email_repository->count_for_account_email( $account ) );
+
+		$this->email_account_repository->update( $account, status: 'bh_email_ac_active' );
+
+		self::assertSame( 201, $this->dispatch_raw_mime( $raw_mime )->get_status() );
+	}
+
+	/**
 	 * A message without a Message-ID gets a stable digest fallback: retries dedupe, but a
 	 * different no-Message-ID message still creates a second post.
 	 *

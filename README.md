@@ -102,6 +102,31 @@ wp <cli-base> accounts list [--format=<table|csv|json|yaml|count>]
 
 The default setting is to delete emails after 7 days. NB: if you're using a shared inbox for your plugin's purpose (e.g. Venmo receipt emails go to treasurer@company.com rather than payments@company.com) this library will download and save _all_ emails (that match the `Email_Account_Settings_Interface::get_from_email_regex()` and `::get_body_identifier_regex()`). You can immediately delete each emails that you know is not relevant, but that is not the default. Emails that are downloaded are saved for debugging, e.g. the format of the Venmo emails changes and regexes that used to work to extract the relevant data no longer work, so you can see the original email in the WP List Table UI. Be aware of this and inform your company's data controller. I am not a lawyer, but I think this is ok! 
 
+## Managing accounts from your own screen
+
+The emails list screen has an accounts table with an "Add account" button that opens the add/edit
+IMAP account modal. The modal is reusable: print it on any admin screen (e.g. a WooCommerce payment
+gateway settings page) together with an "Add account" button, and enqueue its assets there.
+
+```php
+use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Modal;
+
+$modal = new Email_Account_Modal( $settings );
+add_action( 'admin_enqueue_scripts', fn() => $modal->enqueue_assets() ); // Only on your screen.
+add_action( 'admin_footer', fn() => $modal->print_modal() );
+$modal->print_add_button(); // Where the button should appear.
+```
+
+The library saves the account and fires `bh_wp_mailboxes_save_account_credentials( $plugin_slug,
+$emails_post_type, $account, $credentials )`: it never stores credentials, so hook that action to
+persist them, return them from the `bh_wp_mailboxes_credentials` filter, and discard them on
+`bh_wp_mailboxes_account_deleted( $plugin_slug, $emails_post_type, $account )`.
+
+The result is reported in an admin notice inserted after your page's `<hr class="wp-header-end">`
+(or after its first heading when there is none). The development plugin's settings page
+(`development-plugin/admin/class-settings.php`) is a working example, with
+`development-plugin/mailboxes/class-imap-credentials-options.php` as the credentials store.
+
 ## Extensibility
 
 <!-- filters -->

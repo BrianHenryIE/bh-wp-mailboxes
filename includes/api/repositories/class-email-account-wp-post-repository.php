@@ -184,7 +184,8 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 */
 	protected function run_query( BH_Email_Account_Query $query ): array {
 
-		$wp_query = new WP_Query( $query->to_wp_query_args() );
+		// Accounts are few; return all of them rather than WP_Query's default page of 10.
+		$wp_query = new WP_Query( array_merge( array( 'posts_per_page' => -1 ), $query->to_wp_query_args() ) );
 		/**
 		 * Array of WP_Post objects.
 		 *

@@ -8,6 +8,8 @@
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
 use BrianHenryIE\WP_Mailboxes\Admin\Admin_Notices;
+use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Modal;
+use BrianHenryIE\WP_Mailboxes\Admin\Email_Accounts_Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Table_Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
@@ -167,7 +169,10 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function define_admin_ui_hooks(): void {
 
-		$status_view = new Status_View( $this->api, $this->settings, $this->email_wp_post_repository, $this->logger );
+		// The add/edit account modal, printed with the accounts table; it also owns the shared admin script/style.
+		$modal = new Email_Account_Modal( $this->settings );
+
+		$status_view = new Status_View( $this->api, $this->settings, $this->email_wp_post_repository, $this->logger, $modal );
 		add_action( 'admin_notices', $status_view->display( ... ) );
 
 		$admin_notices = new Admin_Notices( $this->api, $this->settings, $this->logger );
@@ -177,7 +182,7 @@ class BH_WP_Mailboxes_Hooks {
 		add_action( 'current_screen', $admin_notices->render_on_emails_screen( ... ) );
 		add_action( 'wp_loaded', $admin_notices->register_dismiss_handler( ... ) );
 
-		$mailbox_list_page = new Emails_List_Page( $this->email_wp_post_repository, $this->api, $this->settings, $this->logger );
+		$mailbox_list_page = new Emails_List_Page( $this->email_wp_post_repository, $this->api, $this->settings, $this->logger, $modal );
 
 		$post_type = $this->settings->get_emails_cpt_underscored_20();
 
@@ -188,7 +193,6 @@ class BH_WP_Mailboxes_Hooks {
 		add_action( 'restrict_manage_posts', $mailbox_list_page->table_filters( ... ) );
 		add_filter( 'post_row_actions', $mailbox_list_page->row_actions( ... ), 10, 2 );
 
-		add_action( 'admin_enqueue_scripts', $mailbox_list_page->enqueue_styles( ... ) );
 		add_action( 'admin_enqueue_scripts', $mailbox_list_page->enqueue_scripts( ... ) );
 		add_action( 'pre_get_posts', $mailbox_list_page->show_all_post_statuses( ... ) );
 		add_action( 'pre_get_posts', $mailbox_list_page->filter_by_account( ... ) );
@@ -233,7 +237,14 @@ class BH_WP_Mailboxes_Hooks {
 		$accounts_cpt = $this->settings->get_email_accounts_cpt_underscored_20();
 
 		add_action( "wp_ajax_bh_wp_mailboxes_check_email_{$emails_cpt}", $ajax->check_email( ... ) );
-		add_action( "wp_ajax_bh_wp_mailboxes_check_account_{$accounts_cpt}", $ajax->check_account( ... ) );
-		add_action( "wp_ajax_bh_wp_mailboxes_set_fetch_since_{$accounts_cpt}", $ajax->check_account( ... ) );
+
+		// Accounts table: check now (with optional since date), add/edit (modal), enable/disable, delete.
+		$status_view   = new Status_View( $this->api, $this->settings, $this->email_wp_post_repository, $this->logger );
+		$accounts_ajax = new Email_Accounts_Ajax( $this->api, $this->settings, $status_view, $this->logger );
+
+		add_action( "wp_ajax_bh_wp_mailboxes_check_account_{$accounts_cpt}", $accounts_ajax->handle_check( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_save_account_{$accounts_cpt}", $accounts_ajax->handle_save( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_set_account_active_{$accounts_cpt}", $accounts_ajax->handle_set_active( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_delete_account_{$accounts_cpt}", $accounts_ajax->handle_delete( ... ) );
 	}
 }

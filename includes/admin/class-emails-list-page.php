@@ -9,6 +9,8 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
@@ -38,20 +40,30 @@ class Emails_List_Page {
 	private array $account_can_delete_on_server = array();
 
 	/**
+	 * The add/edit account modal; also owns the shared admin script/style.
+	 *
+	 * @var Email_Account_Modal
+	 */
+	protected Email_Account_Modal $modal;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Email_Repository_Interface         $email_wp_post_repository Repository for email CPT posts.
 	 * @param API_Interface                      $api                      Main API instance.
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings                 Plugin settings.
 	 * @param LoggerInterface                    $logger                   PSR-3 logger.
+	 * @param ?Email_Account_Modal               $modal                    Owns the shared admin script/style; built from settings when omitted.
 	 */
 	public function __construct(
 		protected Email_Repository_Interface $email_wp_post_repository,
 		protected API_Interface $api,
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		LoggerInterface $logger,
+		?Email_Account_Modal $modal = null,
 	) {
 		$this->setLogger( $logger );
+		$this->modal = $modal ?? new Email_Account_Modal( $settings );
 	}
 
 	/**
@@ -334,42 +346,14 @@ class Emails_List_Page {
 	}
 
 	/**
-	 * Register the stylesheets for the logs page.
-	 *
-	 * @hooked admin_enqueue_scripts
-	 */
-	public function enqueue_styles(): void {
-
-		$current_screen = get_current_screen();
-
-		if ( is_null( $current_screen ) ) {
-			return;
-		}
-
-		if ( $this->settings->get_emails_cpt_underscored_20() !== $current_screen->post_type ) {
-			return;
-		}
-
-		$handle = "{$this->settings->get_emails_cpt_dashed()}-list-css";
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( ! isset( $_GET['page'] ) || $handle !== $_GET['page'] ) {
-			return;
-		}
-
-		// TODO: Enqueue stylesheet when one is added.
-	}
-
-
-	/**
-	 * Script to handle AJAX check-mail.
+	 * On the emails list screen, enqueue the modal's assets, then the accounts table / emails list
+	 * script and stylesheet (which depend on the modal's script for its dialogs and AJAX helpers),
+	 * plus this page's inline styles.
 	 *
 	 * @hooked admin_enqueue_scripts
 	 */
 	public function enqueue_scripts(): void {
 
-		// Only enqueue on the correct post type list page.
-
 		$current_screen = get_current_screen();
 
 		if ( is_null( $current_screen ) ) {
@@ -380,25 +364,12 @@ class Emails_List_Page {
 			return;
 		}
 
-		$handle = "{$this->settings->get_emails_cpt_dashed()}-list-page-script";
+		$this->modal->enqueue_assets();
 
-		$js_file = plugin_dir_url( __FILE__ ) . 'js/bh-wp-mailboxes.js';
+		$handle  = 'bh-wp-mailboxes-admin-' . $this->settings->get_email_accounts_cpt_dashed();
 		$version = BH_WP_Mailboxes::get_version();
-
-		wp_enqueue_script( $handle, $js_file, array( 'jquery' ), $version, true );
-
-		// The AJAX actions are scoped to this instance's post types (see BH_WP_Mailboxes_Hooks::define_ajax_hooks()),
-		// so the JS must post the matching, suffixed action names.
-		wp_localize_script(
-			$handle,
-			'bh_wp_mailboxes_ajax',
-			array(
-				'check_email_action'      => 'bh_wp_mailboxes_check_email_' . $this->settings->get_emails_cpt_underscored_20(),
-				'check_account_action'    => 'bh_wp_mailboxes_check_account_' . $this->settings->get_email_accounts_cpt_underscored_20(),
-				'delete_on_server_action' => 'bh_wp_mailboxes_delete_on_server_' . $this->settings->get_emails_cpt_underscored_20(),
-				'remote_action_nonce'     => wp_create_nonce( 'bh-wp-mailboxes-remote-action' ),
-			)
-		);
+		wp_enqueue_script( $handle, plugin_dir_url( __FILE__ ) . 'js/bh-wp-mailboxes.js', array( 'jquery', $this->modal->get_script_handle() ), $version, true );
+		wp_enqueue_style( $handle, plugin_dir_url( __FILE__ ) . 'css/accounts-table.css', array( 'dashicons' ), $version );
 
 		// Highlight newly-fetched rows for a few seconds, fading the highlight out (see refreshTable() in the JS).
 		// Also colour the "Delete on server" row action the same red as the core "Trash" action — WordPress
