@@ -427,6 +427,71 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		await dialog.getByRole( 'button', { name: 'Cancel' } ).click();
 	} );
 
+	test( '"Check now" against an unreachable IMAP server shows a red failure notice with the server error and records the failure', async ( {
+		admin,
+		page,
+	} ) => {
+		const emailAddress = `check-unreachable-${ Date.now() }@example.com`;
+		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
+		const row = await addImapAccount( page, emailAddress, 'Unreachable inbox' );
+		await expect( row.locator( '[data-field="last-failure"]' ) ).toHaveText( 'Never' );
+
+		await clickRowAction( row, 'Check now' );
+
+		// The notice is an error (red), says the check failed, and carries the connection's own message.
+		const notice = page.locator( `.bh-check-notice[data-account-id="${ await row.getAttribute( 'data-account-id' ) }"]` );
+		await expect( notice ).toContainText( 'Unreachable inbox: Check failed. Could not fetch emails:' );
+		await expect( notice.locator( '.spinner' ) ).not.toBeAttached();
+		await expect( notice ).toHaveCSS( 'border-left-color', 'rgb(214, 54, 56)' ); // #d63638
+
+		// The row reflects the failure without a reload: last failure "Just now", and the login-failure badge.
+		const updated = accountRow( page, emailAddress );
+		await expect( updated.locator( '[data-field="last-failure"]' ) ).toHaveText( 'Just now' );
+		await expect( updated.locator( '[data-field="last-fetched"]' ) ).toContainText( 'Never' );
+		await expect( updated.locator( '.bh-mailboxes-login-failure' ) ).toBeVisible();
+	} );
+
+	test( '"Check now" on an IMAP account without stored credentials fails, saying so', async ( {
+		admin,
+		page,
+		request,
+	} ) => {
+		const emailAddress = `check-no-credentials-${ Date.now() }@example.com`;
+		const created = await request.post( '/wp-json/bh-wp-mailboxes-dev/v2/accounts', {
+			data: { email_address: emailAddress, display_name: 'Credential-less inbox', connection: 'imap' },
+		} );
+		expect( created.status() ).toBe( 201 );
+		const accountId = ( await created.json() ).post_id as number;
+
+		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
+		await clickRowAction( accountRow( page, emailAddress ), 'Check now' );
+
+		const notice = page.locator( `.bh-check-notice[data-account-id="${ accountId }"]` );
+		await expect( notice ).toContainText( 'Credential-less inbox: Check failed. No credentials are saved for this account.' );
+		await expect( notice ).toHaveCSS( 'border-left-color', 'rgb(214, 54, 56)' ); // #d63638
+	} );
+
+	test( '"Check now" on a disabled account is reported as not checked (yellow), not as a success', async ( {
+		admin,
+		page,
+	} ) => {
+		const emailAddress = `check-disabled-${ Date.now() }@example.com`;
+		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
+		const row = await addImapAccount( page, emailAddress, 'Disabled inbox' );
+		const accountId = await row.getAttribute( 'data-account-id' );
+
+		await clickRowAction( row, 'Disable' );
+		await expect( accountRow( page, emailAddress ).locator( '.bh-mailboxes-badge' ) ).toHaveText( 'Inactive' );
+
+		await clickRowAction( accountRow( page, emailAddress ), 'Check now' );
+
+		const notice = page.locator( `.bh-check-notice[data-account-id="${ accountId }"]` );
+		await expect( notice ).toContainText( 'Disabled inbox: Not checked. The account is disabled.' );
+		await expect( notice ).toHaveCSS( 'border-left-color', 'rgb(219, 166, 23)' ); // #dba617
+		// Skipping is not a login failure.
+		await expect( accountRow( page, emailAddress ).locator( '[data-field="last-failure"]' ) ).toHaveText( 'Never' );
+	} );
+
 	test( 'an IMAP account without stored credentials warns, requires a password on edit, and is fixed by saving', async ( {
 		admin,
 		page,

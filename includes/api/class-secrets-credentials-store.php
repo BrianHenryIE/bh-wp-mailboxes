@@ -4,7 +4,8 @@
  *
  * Talks directly to a `WP_Secrets_Provider` (by default `WP_Secrets_Libsodium_Provider` over the options
  * store) built from the library's own copy of the API's classes, loaded from vendor by
- * {@see \BrianHenryIE\WP_Mailboxes\Secrets_API_Loader}. It deliberately never calls `wp_get_secret()` etc.:
+ * {@see \BrianHenryIE\WP_Mailboxes\Secrets_API_Loader} on the first read or write (never at bootstrap,
+ * so a request that does not touch credentials does no Secrets API work). It deliberately never calls `wp_get_secret()` etc.:
  * those resolve their provider through `$GLOBALS['wp_secrets_store']` / `wp_secrets_keyring` /
  * `wp_secrets_provider`, which a site's `secrets.php` drop-in sets, and this library's credentials should
  * not be redirected by it. (Consumers prefix the copy's names at build time.)
@@ -81,15 +82,23 @@ class Secrets_Credentials_Store implements Credentials_Store_Interface {
 	}
 
 	/**
-	 * A provider was injected, or the API is loaded ({@see Secrets_API_Loader::load()}).
+	 * A provider was injected, or the API loads (on first use; idempotent afterwards).
 	 */
 	public function is_available(): bool {
-		return ! is_null( $this->provider ) || Secrets_API_Loader::is_loaded();
+		return ! is_null( $this->provider ) || $this->load_api();
+	}
+
+	/**
+	 * Load the library's copy of the Secrets API. A seam for tests; the loader keeps process-wide state.
+	 */
+	protected function load_api(): bool {
+		return Secrets_API_Loader::load();
 	}
 
 	/**
 	 * The provider: libsodium encryption over the options store, with the root key wrapped by the
-	 * wp-config key provider (the same defaults the API itself uses).
+	 * wp-config key provider (the same defaults the API itself uses). Only reached after
+	 * {@see is_available()}, whose load registered the autoloader these classes come from.
 	 */
 	protected function get_provider(): WP_Secrets_Provider {
 		if ( is_null( $this->provider ) ) {

@@ -17,25 +17,87 @@
     var postAccounts    = modal.postAccounts;
     var failMessage     = modal.failMessage;
 
+    var COLOR = { success: '#00a32a', info: '#72aee6', warning: '#dba617', error: '#d63638' };
+
+    function pluralEmails( count ) {
+        return count + ' new email' + ( count !== 1 ? 's' : '' );
+    }
+
+    // Per-account check ("Check now" / "Check since…"). A success updates the row in place; a failure
+    // swaps in the re-rendered accounts table the server sends, so the row's last-failure time and
+    // login-failure badge reflect the check.
     function handleCheckResponse( response, $row, $notice ) {
+        var accountId   = $row.data( 'account-id' );
         var accountName = $row.data( 'account-name' );
         var prefix      = accountName ? accountName + ': ' : '';
+        var data        = response.data || {};
         if ( response.success ) {
-            var count = response.data.new_email_count;
-            $row.find( '[data-field="last-fetched"]' ).text( response.data.last_fetched );
+            var count = data.new_email_count;
+            $row.find( '[data-field="last-fetched"]' ).text( data.last_fetched );
+            $row.find( '.bh-mailboxes-login-failure' ).remove();
             if ( count > 0 ) {
                 var $countEl = $row.find( '[data-field="email-count"]' );
                 $countEl.text( parseInt( $countEl.text(), 10 ) + count );
-                refreshTable( response.data.new_email_ids );
+                refreshTable( data.new_email_ids );
             }
             var msg = count > 0
-                ? 'Email checked successfully, ' + count + ' new email' + ( count !== 1 ? 's' : '' ) + ' found.'
+                ? 'Email checked successfully, ' + pluralEmails( count ) + ' found.'
                 : 'Email checked successfully, no new emails.';
-            finishNotice( $notice, prefix + msg, count > 0 ? '#00a32a' : '#72aee6' );
+            var warnings = data.warnings || [];
+            if ( warnings.length ) {
+                finishNotice( $notice, prefix + msg + ' Warning: ' + warnings.join( ' ' ), COLOR.warning );
+            } else {
+                finishNotice( $notice, prefix + msg, count > 0 ? COLOR.success : COLOR.info );
+            }
         } else {
-            var errMsg = ( response.data && response.data.message ) ? response.data.message : 'Check failed.';
-            finishNotice( $notice, prefix + errMsg, '#d63638' );
+            var errMsg  = data.message || 'Check failed.';
+            var skipped = data.status === 'skipped';
+            if ( ! skipped && data.table_html ) {
+                replaceTable( data.table_html );
+                // The fresh row says e.g. "1 min ago"; "Just now" is clearer immediately after the click.
+                accountRow( accountId ).find( '[data-field="last-failure"]' ).text( 'Just now' );
+            }
+            finishNotice( $notice, prefix + ( skipped ? 'Not checked. ' : 'Check failed. ' ) + errMsg, skipped ? COLOR.warning : COLOR.error );
         }
+    }
+
+    // "Check all": one notice summarising every account, listing each failure by name.
+    function handleCheckAllResponse( response, label, $notice ) {
+        var data     = response.data || {};
+        var accounts = data.accounts || [];
+        var count    = data.new_email_count || 0;
+        var failed   = accounts.filter( function( a ) { return a.status === 'failed'; } );
+        var skipped  = accounts.filter( function( a ) { return a.status === 'skipped'; } );
+        var warned   = accounts.filter( function( a ) { return ( a.warnings || [] ).length > 0; } );
+
+        if ( count > 0 ) {
+            refreshTable( data.new_email_ids || [] );
+        }
+
+        var parts = [];
+        if ( ! accounts.length ) {
+            parts.push( 'No accounts to check.' );
+        } else if ( failed.length ) {
+            parts.push( ( data.message || 'Check failed.' ) + ' ' + failed.map( function( a ) {
+                return a.name + ': ' + ( a.message || 'Check failed.' );
+            } ).join( ' ' ) );
+            parts.push( pluralEmails( count ) + ' found.' );
+        } else {
+            parts.push( count > 0
+                ? 'Email checked successfully, ' + pluralEmails( count ) + ' found.'
+                : 'Email checked successfully, no new emails.' );
+        }
+        if ( skipped.length ) {
+            parts.push( 'Not checked: ' + skipped.map( function( a ) { return a.name + ' (' + ( a.message || 'skipped' ) + ')'; } ).join( ', ' ) + '.' );
+        }
+        warned.forEach( function( a ) {
+            parts.push( a.name + ' warning: ' + a.warnings.join( ' ' ) );
+        } );
+
+        var color = failed.length ? COLOR.error
+            : ( warned.length || ( skipped.length && ! count ) ) ? COLOR.warning
+            : count > 0 ? COLOR.success : COLOR.info;
+        finishNotice( $notice, label + ': ' + parts.join( ' ' ), color );
     }
 
     function refreshTable( newIds ) {
@@ -105,15 +167,7 @@
                 mailboxes_cpt: urlParams.get( 'post_type' ),
                 _wpnonce:      $( '#_wpnonce_checknow' ).val(),
             } ).done( function( response ) {
-                var newEmails = ( response.data && response.data.new_emails ) || [];
-                var count     = newEmails.length;
-                var msg = count > 0
-                    ? 'Email checked successfully, ' + count + ' new email' + ( count !== 1 ? 's' : '' ) + ' found.'
-                    : 'Email checked successfully, no new emails.';
-                finishNotice( $notice, label + ': ' + msg, count > 0 ? '#00a32a' : '#72aee6' );
-                if ( count > 0 ) {
-                    refreshTable( newEmails.map( function( email ) { return email.post_id; } ) );
-                }
+                handleCheckAllResponse( response, label, $notice );
             } ).fail( function() {
                 finishNotice( $notice, label + ': Check failed: server error.', '#d63638' );
             } );
