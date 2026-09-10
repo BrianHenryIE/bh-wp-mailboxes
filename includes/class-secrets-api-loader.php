@@ -76,11 +76,11 @@ class Secrets_API_Loader {
 	 * @return bool False when the package is not installed.
 	 */
 	public static function load(): bool {
-		if ( self::$registered ) {
+		if ( static::$registered ) {
 			return true;
 		}
 
-		$includes_dir = self::get_includes_dir();
+		$includes_dir = static::get_includes_dir();
 
 		if ( is_null( $includes_dir ) ) {
 			return false;
@@ -88,13 +88,13 @@ class Secrets_API_Loader {
 
 		// Skipped when its functions already exist (an unprefixed dev environment with the feature
 		// plugin active); the class autoloader below is only consulted for classes not already declared.
-		if ( ! function_exists( 'wp_secrets_memzero' ) ) {
+		if ( ! static::functions_exist() ) {
 			require_once $includes_dir . '/secrets.php';
 		}
 
-		self::$includes_dir = $includes_dir;
-		spl_autoload_register( array( self::class, 'autoload' ) );
-		self::$registered = true;
+		static::$includes_dir = $includes_dir;
+		spl_autoload_register( array( static::class, 'autoload' ) );
+		static::$registered = true;
 
 		return true;
 	}
@@ -103,7 +103,7 @@ class Secrets_API_Loader {
 	 * Whether {@see load()} has succeeded in this request.
 	 */
 	public static function is_loaded(): bool {
-		return self::$registered;
+		return static::$registered;
 	}
 
 	/**
@@ -112,11 +112,18 @@ class Secrets_API_Loader {
 	 * @param string $class_name The fully qualified name being autoloaded.
 	 */
 	public static function autoload( string $class_name ): void {
-		$file = self::CLASS_MAP[ $class_name ] ?? null;
+		$file = static::CLASS_MAP[ $class_name ] ?? null;
 
-		if ( ! is_null( $file ) && ! is_null( self::$includes_dir ) ) {
-			require_once self::$includes_dir . '/' . $file;
+		if ( ! is_null( $file ) && ! is_null( static::$includes_dir ) ) {
+			require_once static::$includes_dir . '/' . $file;
 		}
+	}
+
+	/**
+	 * Whether the package's functions are already defined (by an activated, unprefixed copy).
+	 */
+	protected static function functions_exist(): bool {
+		return function_exists( 'wp_secrets_memzero' );
 	}
 
 	/**
