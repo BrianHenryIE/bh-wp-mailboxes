@@ -9,11 +9,13 @@
  * `wp_get_secret()` etc. ({@see \BrianHenryIE\WP_Mailboxes\API\Secrets_Credentials_Store} uses
  * `WP_Secrets_Libsodium_Provider` directly).
  *
- * The package is located through Composer's runtime API (`composer-runtime-api` is a requirement).
- * Its `src/wp-includes/secrets.php` (constants and helper functions) is included eagerly, and an
- * autoloader is registered for the classes and interfaces in that directory ({@see self::CLASS_MAP}).
- * The plugin bootstrap (`secrets-api.php`, with its core-conflict checks, hooks and drop-in loading)
- * is never included.
+ * Loaded on first use by {@see \BrianHenryIE\WP_Mailboxes\API\Secrets_Credentials_Store}, not at
+ * bootstrap, so a request that never reads or writes credentials never touches the package. The
+ * package is located through Composer's runtime API (`composer-runtime-api` is a requirement); its
+ * `src/wp-includes/secrets.php` (constants and helper functions) is then included, and an autoloader
+ * is registered for the classes and interfaces in that directory ({@see self::CLASS_MAP}). The plugin
+ * bootstrap (`secrets-api.php`, with its core-conflict checks, hooks and drop-in loading) is never
+ * included.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -100,7 +102,7 @@ class Secrets_API_Loader {
 	}
 
 	/**
-	 * Whether {@see load()} has succeeded in this request.
+	 * Whether {@see load()} has run and succeeded in this request.
 	 */
 	public static function is_loaded(): bool {
 		return static::$registered;

@@ -83,20 +83,21 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * The store under test, with its availability stubbed (see {@see Stubbed_Secrets_Credentials_Store}).
+	 * The store under test, with its Secrets API load stubbed (see {@see Stubbed_Secrets_Credentials_Store}).
 	 *
 	 * @param string                $plugin_slug  The secret namespace.
 	 * @param string                $accounts_cpt The accounts post type in the secret key.
-	 * @param bool                  $available    What is_available() reports.
-	 * @param ?\WP_Secrets_Provider $provider     The provider to inject; defaults to the one {@see mock_provider()} built, or a bare mock.
+	 * @param bool                  $available    What the stubbed API load reports.
+	 * @param ?\WP_Secrets_Provider $provider     The provider get_provider() hands out; defaults to the one {@see mock_provider()} built, or a bare mock.
 	 */
 	protected function make_sut( string $plugin_slug = 'test-plugin', string $accounts_cpt = 'test_accounts', bool $available = true, ?\WP_Secrets_Provider $provider = null ): Stubbed_Secrets_Credentials_Store {
 		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$settings->allows( 'get_plugin_slug' )->andReturn( $plugin_slug );
 		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( $accounts_cpt );
 
-		$sut            = new Stubbed_Secrets_Credentials_Store( $settings, $this->logger, $provider ?? $this->provider ?? Mockery::mock( \WP_Secrets_Provider::class ) );
-		$sut->available = $available;
+		$sut                = new Stubbed_Secrets_Credentials_Store( $settings, $this->logger );
+		$sut->stub_provider = $provider ?? $this->provider ?? Mockery::mock( \WP_Secrets_Provider::class );
+		$sut->load_result   = $available;
 
 		return $sut;
 	}
@@ -161,12 +162,53 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * With the API's classes loaded (see setup) the store is available without an injected provider.
+	 * With the API loadable (see setup) the store is available without an injected provider.
 	 *
 	 * @covers ::is_available
+	 * @covers ::load_api
 	 */
 	public function test_is_available_with_the_secrets_api_classes(): void {
 		$this->assertTrue( $this->make_real_sut()->is_available() );
+	}
+
+	/**
+	 * Constructing the store (which the API does on every request) and naming a secret do not load the
+	 * Secrets API; only the first read or write does.
+	 *
+	 * @covers ::__construct
+	 * @covers ::get_secret_name
+	 * @covers ::is_available
+	 */
+	public function test_the_api_is_loaded_on_first_use_not_construction(): void {
+		$this->mock_provider();
+		$sut     = $this->make_sut();
+		$account = $this->make_account();
+
+		$sut->get_secret_name( $account );
+		$this->assertSame( 0, $sut->load_calls, 'Nothing loaded yet.' );
+
+		$sut->get( $account );
+		$this->assertSame( 1, $sut->load_calls, 'Loaded on the first read.' );
+
+		$sut->save( $account, new Imap_Credentials( 's', 'u', 'p' ) );
+		$sut->delete( $account );
+		$this->assertSame( 3, $sut->load_calls, 'Each operation asks the (idempotent) loader.' );
+	}
+
+	/**
+	 * An injected provider makes the store available without loading the API.
+	 *
+	 * @covers ::is_available
+	 */
+	public function test_an_injected_provider_needs_no_load(): void {
+		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
+		$settings->allows( 'get_plugin_slug' )->andReturn( 'test-plugin' );
+		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( 'test_accounts' );
+		$sut              = new Stubbed_Secrets_Credentials_Store( $settings, $this->logger, Mockery::mock( \WP_Secrets_Provider::class ) );
+		$sut->load_result = false;
+
+		$this->assertTrue( $sut->is_available() );
+		$this->assertSame( 0, $sut->load_calls );
 	}
 
 	/**
