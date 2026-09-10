@@ -1,9 +1,9 @@
 <?php
 /**
- * Unit tests for the Secrets-API-backed credentials store, with the Secrets API functions mocked.
+ * Unit tests for the Secrets-API-backed credentials store, with the Secrets API provider mocked.
  *
- * The round trips against the real feature plugin are in the wpunit test; these cover the
- * serialisation, naming, and the error paths (unavailable API, WP_Error, malformed records).
+ * The round trips against the real classes are in the wpunit test; these cover the naming, the
+ * dispatch on `type`, and the error paths (unavailable API, WP_Error, malformed records).
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -34,32 +34,39 @@ use WP_Mock;
 class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 
 	/**
-	 * The JSON most recently passed to wp_set_secret(), keyed by secret name.
+	 * The JSON most recently passed to the provider's set(), keyed by secret name.
 	 *
 	 * @var array<string, string>
 	 */
 	protected array $written = array();
 
 	/**
-	 * What the mocked wp_get_secret() answers: null, a WP_Error, or a plaintext string wrapped in a secret.
+	 * What the mocked provider's get() answers: null, a WP_Error, or a plaintext string wrapped in a secret.
 	 *
 	 * @var mixed
 	 */
 	protected mixed $stored = null;
 
 	/**
-	 * What the mocked wp_set_secret() answers.
+	 * What the mocked provider's set() answers.
 	 *
 	 * @var mixed
 	 */
 	protected mixed $set_result = true;
 
 	/**
-	 * What the mocked wp_delete_secret() answers.
+	 * What the mocked provider's delete() answers.
 	 *
 	 * @var mixed
 	 */
 	protected mixed $delete_result = true;
+
+	/**
+	 * The provider injected into the store under test.
+	 *
+	 * @var ?\WP_Secrets_Provider
+	 */
+	protected ?\WP_Secrets_Provider $provider = null;
 
 	protected function setup(): void {
 		parent::setup();
@@ -67,12 +74,12 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 		$this->stored        = null;
 		$this->set_result    = true;
 		$this->delete_result = true;
+		$this->provider      = null;
 		WP_Mock::userFunction( 'wp_json_encode' )->andReturnUsing( 'json_encode' );
 		WP_Mock::passthruFunction( 'esc_html' );
 
-		// The API's classes, for the provider-path tests (they are not autoloaded, and load() would skip
-		// them once an earlier test has defined the global functions).
-		$this->assertTrue( Secrets_API_Loader::load_classes() );
+		// The API's classes (WP_Secret, the provider interface) are not autoloaded.
+		$this->assertTrue( Secrets_API_Loader::load() );
 	}
 
 	/**
@@ -81,22 +88,21 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @param string                $plugin_slug  The secret namespace.
 	 * @param string                $accounts_cpt The accounts post type in the secret key.
 	 * @param bool                  $available    What is_available() reports.
-	 * @param ?\WP_Secrets_Provider $provider     A provider to use instead of the global functions.
+	 * @param ?\WP_Secrets_Provider $provider     The provider to inject; defaults to the one {@see mock_provider()} built, or a bare mock.
 	 */
 	protected function make_sut( string $plugin_slug = 'test-plugin', string $accounts_cpt = 'test_accounts', bool $available = true, ?\WP_Secrets_Provider $provider = null ): Stubbed_Secrets_Credentials_Store {
 		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$settings->allows( 'get_plugin_slug' )->andReturn( $plugin_slug );
 		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( $accounts_cpt );
 
-		$sut                = new Stubbed_Secrets_Credentials_Store( $settings, $this->logger, $provider );
-		$sut->available     = $available;
-		$sut->has_functions = is_null( $provider );
+		$sut            = new Stubbed_Secrets_Credentials_Store( $settings, $this->logger, $provider ?? $this->provider ?? Mockery::mock( \WP_Secrets_Provider::class ) );
+		$sut->available = $available;
 
 		return $sut;
 	}
 
 	/**
-	 * A store whose is_available() is the real function_exists() check.
+	 * A store with the real is_available() check and no injected provider.
 	 */
 	protected function make_real_sut(): Secrets_Credentials_Store {
 		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
@@ -114,30 +120,35 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * Define the three Secrets API functions, reading their answers from the test's properties at call
-	 * time (re-registering a WP_Mock user function within a test does not replace the first closure):
-	 * wp_get_secret() answers $stored, wp_set_secret() records the JSON and answers $set_result,
-	 * wp_delete_secret() answers $delete_result.
+	 * A provider reading its answers from the test's properties at call time: get() answers $stored,
+	 * set() records the JSON and answers $set_result, delete() answers $delete_result. Injected into
+	 * every store {@see make_sut()} builds afterwards.
 	 *
-	 * @param mixed $stored        What wp_get_secret() returns: null, a WP_Error, or a plaintext string to wrap in a secret.
-	 * @param mixed $set_result    What wp_set_secret() returns (true or WP_Error).
-	 * @param mixed $delete_result What wp_delete_secret() returns (true or WP_Error).
+	 * @param mixed $stored        What get() returns: null, a WP_Error, or a plaintext string to wrap in a secret.
+	 * @param mixed $set_result    What set() returns (true or WP_Error).
+	 * @param mixed $delete_result What delete() returns (true or WP_Error).
 	 */
-	protected function mock_secrets_api( mixed $stored = null, mixed $set_result = true, mixed $delete_result = true ): void {
+	protected function mock_provider( mixed $stored = null, mixed $set_result = true, mixed $delete_result = true ): void {
 		$this->stored        = $stored;
 		$this->set_result    = $set_result;
 		$this->delete_result = $delete_result;
 
-		WP_Mock::userFunction( 'wp_get_secret' )->andReturnUsing(
+		if ( ! is_null( $this->provider ) ) {
+			return;
+		}
+
+		$provider = Mockery::mock( \WP_Secrets_Provider::class );
+		$provider->allows( 'get' )->andReturnUsing(
 			fn() => is_string( $this->stored ) ? $this->make_secret( $this->stored ) : $this->stored
 		);
-		WP_Mock::userFunction( 'wp_set_secret' )->andReturnUsing(
+		$provider->allows( 'set' )->andReturnUsing(
 			function ( string $name, string $value ) {
 				$this->written[ $name ] = $value;
 				return $this->set_result;
 			}
 		);
-		WP_Mock::userFunction( 'wp_delete_secret' )->andReturnUsing( fn() => $this->delete_result );
+		$provider->allows( 'delete' )->andReturnUsing( fn() => $this->delete_result );
+		$this->provider = $provider;
 	}
 
 	/**
@@ -150,14 +161,11 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * The availability check is function_exists() on the three Secrets API functions. (Only the positive case can be
-	 * asserted here: once any test in the process has mocked them they stay defined.)
+	 * With the API's classes loaded (see setup) the store is available without an injected provider.
 	 *
 	 * @covers ::is_available
 	 */
-	public function test_is_available_with_the_secrets_api(): void {
-		$this->mock_secrets_api();
-
+	public function test_is_available_with_the_secrets_api_classes(): void {
 		$this->assertTrue( $this->make_real_sut()->is_available() );
 	}
 
@@ -200,7 +208,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::get
 	 */
 	public function test_get_returns_null_when_nothing_is_saved(): void {
-		$this->mock_secrets_api( null );
+		$this->mock_provider( null );
 
 		$this->assertNull( $this->make_sut()->get( $this->make_account() ) );
 		$this->assertFalse( $this->logger->hasErrorRecords() );
@@ -212,7 +220,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::get
 	 */
 	public function test_get_logs_and_returns_null_on_wp_error(): void {
-		$this->mock_secrets_api( new WP_Error( 'secret_key_unavailable', 'Keyring broken.' ) );
+		$this->mock_provider( new WP_Error( 'secret_key_unavailable', 'Keyring broken.' ) );
 
 		$this->assertNull( $this->make_sut()->get( $this->make_account() ) );
 		$this->assertTrue( $this->logger->hasErrorThatContains( 'Keyring broken.' ) );
@@ -222,7 +230,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::get
 	 */
 	public function test_get_logs_and_returns_null_for_invalid_json(): void {
-		$this->mock_secrets_api( 'not json' );
+		$this->mock_provider( 'not json' );
 
 		$this->assertNull( $this->make_sut()->get( $this->make_account() ) );
 		$this->assertTrue( $this->logger->hasErrorThatContains( 'not valid JSON' ) );
@@ -233,7 +241,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::from_array
 	 */
 	public function test_get_logs_and_returns_null_for_an_unknown_type(): void {
-		$this->mock_secrets_api( '{"type":"pop3"}' );
+		$this->mock_provider( '{"type":"pop3"}' );
 
 		$this->assertNull( $this->make_sut()->get( $this->make_account() ) );
 		$this->assertTrue( $this->logger->hasErrorThatContains( 'Unknown credentials type: pop3' ) );
@@ -244,7 +252,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::from_array
 	 */
 	public function test_get_logs_and_returns_null_for_gmail_without_a_client(): void {
-		$this->mock_secrets_api( '{"type":"gmail","access_token":null}' );
+		$this->mock_provider( '{"type":"gmail","access_token":null}' );
 
 		$this->assertNull( $this->make_sut()->get( $this->make_account() ) );
 		$this->assertTrue( $this->logger->hasErrorThatContains( 'missing the OAuth client' ) );
@@ -259,7 +267,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::from_array
 	 */
 	public function test_imap_round_trip(): void {
-		$this->mock_secrets_api();
+		$this->mock_provider();
 		$sut     = $this->make_sut();
 		$account = $this->make_account();
 
@@ -280,7 +288,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 		$this->assertTrue( $this->logger->hasInfoThatContains( 'Saved imap credentials for inbox@example.com' ) );
 
 		// Read the written document back.
-		$this->mock_secrets_api( $this->written[ $name ] );
+		$this->mock_provider( $this->written[ $name ] );
 		$loaded = $this->make_sut()->get( $account );
 		$this->assertInstanceOf( IMAP_Credentials_Interface::class, $loaded );
 		$this->assertSame( 'imap.example.com:993', $loaded->get_email_imap_server() );
@@ -288,7 +296,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 		$this->assertSame( 'p<a&ss"word', $loaded->get_email_account_password() );
 		$this->assertSame( '', $loaded->get_encryption() );
 
-		$this->mock_secrets_api( '{"type":"imap","server":"s","username":"u","password":"p"}' );
+		$this->mock_provider( '{"type":"imap","server":"s","username":"u","password":"p"}' );
 		$this->assertSame( 'TLS', $this->make_sut()->get( $account )->get_encryption() );
 	}
 
@@ -299,7 +307,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::save
 	 */
 	public function test_save_writes_the_credentials_own_json(): void {
-		$this->mock_secrets_api();
+		$this->mock_provider();
 		$credentials = new class() implements IMAP_Credentials_Interface {
 			use IMAP_Credentials_Json_Trait;
 
@@ -339,7 +347,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::from_array
 	 */
 	public function test_gmail_round_trip_with_and_without_a_token(): void {
-		$this->mock_secrets_api();
+		$this->mock_provider();
 		$sut     = $this->make_sut();
 		$account = $this->make_account( 'you@gmail.com' );
 		$client  = new OAuth_Client_Credentials( 'id', 'project', 'https://auth', 'https://token', 'https://certs', 'secret', array( 'http://localhost' ), array( 'https://example.com' ) );
@@ -352,7 +360,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 		$this->assertSame( 'secret', $written['client']['client_secret'] );
 		$this->assertNull( $written['access_token'] );
 
-		$this->mock_secrets_api( $this->written[ $name ] );
+		$this->mock_provider( $this->written[ $name ] );
 		$loaded = $this->make_sut()->get( $account );
 		$this->assertInstanceOf( Google_API_Credentials_Interface::class, $loaded );
 		$this->assertEquals( $client, $loaded->get_project_credentials() );
@@ -361,7 +369,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 		$sut->save( $account, new Gmail_Credentials( $client, $token ) );
 		$this->assertSame( 'refresh', json_decode( $this->written[ $name ], true )['access_token']['refresh_token'] );
 
-		$this->mock_secrets_api( $this->written[ $name ] );
+		$this->mock_provider( $this->written[ $name ] );
 		$loaded = $this->make_sut()->get( $account );
 		$this->assertEquals( $token, $loaded->get_access_token() );
 	}
@@ -372,7 +380,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::from_array
 	 */
 	public function test_gmail_client_uri_lists_keep_only_strings(): void {
-		$this->mock_secrets_api( '{"type":"gmail","client":{"client_id":"id","project_id":"p","auth_uri":"a","token_uri":"t","auth_provider_x509_cert_url":"c","client_secret":"s","redirect_uris":["http://localhost",5,null],"javascript_origins":"not-a-list"}}' );
+		$this->mock_provider( '{"type":"gmail","client":{"client_id":"id","project_id":"p","auth_uri":"a","token_uri":"t","auth_provider_x509_cert_url":"c","client_secret":"s","redirect_uris":["http://localhost",5,null],"javascript_origins":"not-a-list"}}' );
 
 		$loaded = $this->make_sut()->get( $this->make_account() );
 
@@ -382,12 +390,11 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * Without the global functions, reads go through the provider (current version, site scope).
+	 * Reads ask the provider for the current version, site scope.
 	 *
-	 * @covers ::read_secret
 	 * @covers ::get
 	 */
-	public function test_get_uses_the_provider_when_the_functions_are_absent(): void {
+	public function test_get_asks_the_provider_for_the_current_version(): void {
 		$account  = $this->make_account();
 		$provider = Mockery::mock( \WP_Secrets_Provider::class );
 		$sut      = $this->make_sut( provider: $provider );
@@ -403,12 +410,10 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * @covers ::write_secret
-	 * @covers ::delete_secret
 	 * @covers ::save
 	 * @covers ::delete
 	 */
-	public function test_save_and_delete_use_the_provider_when_the_functions_are_absent(): void {
+	public function test_save_and_delete_go_through_the_provider(): void {
 		$account  = $this->make_account();
 		$provider = Mockery::mock( \WP_Secrets_Provider::class );
 		$sut      = $this->make_sut( provider: $provider );
@@ -443,8 +448,10 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::get_provider
 	 */
 	public function test_default_provider_is_libsodium_over_the_options_store(): void {
-		$sut                = $this->make_sut();
-		$sut->has_functions = false;
+		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
+		$settings->allows( 'get_plugin_slug' )->andReturn( 'test-plugin' );
+		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( 'test_accounts' );
+		$sut = new Stubbed_Secrets_Credentials_Store( $settings, $this->logger );
 
 		$this->assertInstanceOf( \WP_Secrets_Libsodium_Provider::class, $sut->provider() );
 		$this->assertSame( $sut->provider(), $sut->provider(), 'Built once.' );
@@ -491,7 +498,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::save
 	 */
 	public function test_save_throws_and_logs_on_wp_error(): void {
-		$this->mock_secrets_api( null, new WP_Error( 'secret_key_unavailable', 'WP_SECRETS_KEY is not defined.' ) );
+		$this->mock_provider( null, new WP_Error( 'secret_key_unavailable', 'WP_SECRETS_KEY is not defined.' ) );
 
 		try {
 			$this->make_sut()->save( $this->make_account(), new Imap_Credentials( 's', 'u', 'p' ) );
@@ -515,7 +522,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::delete
 	 */
 	public function test_delete_succeeds_quietly(): void {
-		$this->mock_secrets_api();
+		$this->mock_provider();
 
 		$this->make_sut()->delete( $this->make_account() );
 
@@ -526,7 +533,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * @covers ::delete
 	 */
 	public function test_delete_throws_and_logs_on_wp_error(): void {
-		$this->mock_secrets_api( null, true, new WP_Error( 'secret_store_unavailable', 'Store down.' ) );
+		$this->mock_provider( null, true, new WP_Error( 'secret_store_unavailable', 'Store down.' ) );
 
 		$this->expectException( RuntimeException::class );
 		$this->expectExceptionMessage( 'Store down.' );

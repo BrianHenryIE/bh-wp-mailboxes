@@ -1,6 +1,6 @@
 <?php
 /**
- * WPUnit tests for loading the Secrets API's classes from Composer's vendor directory.
+ * WPUnit tests for loading the library's own copy of the Secrets API from Composer's vendor directory.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -30,11 +30,10 @@ class Secrets_API_Loader_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * Only the API's classes (and the compat globals they need) are loaded, never `secrets.php`'s
-	 * `wp_get_secret()` family: this library must not define those globals.
+	 * The API's `secrets.php` (constants and helpers) and its classes are loaded from the package; the
+	 * plugin bootstrap (`secrets-api.php`) is not.
 	 *
 	 * @covers ::load
-	 * @covers ::load_classes
 	 * @covers ::is_loaded
 	 * @covers ::find_includes_dir
 	 */
@@ -53,7 +52,7 @@ class Secrets_API_Loader_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertTrue( function_exists( 'wp_secrets_validate_name' ) );
 		$this->assertTrue( defined( 'WP_SECRETS_ERROR_INVALID_NAME' ) );
 
-		$this->assertFalse( function_exists( 'wp_get_secret' ), 'The global API functions must not be defined by this library.' );
+		$this->assertFalse( function_exists( 'wp_secrets_api_bootstrap' ), 'The plugin bootstrap must not be included.' );
 	}
 
 	/**
@@ -67,15 +66,15 @@ class Secrets_API_Loader_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * The compat name validation matches what the store produces and rejects what the API would.
+	 * The API's own name validation accepts what the store produces.
 	 *
 	 * @coversNothing
 	 */
-	public function test_compat_validate_name(): void {
+	public function test_validate_name(): void {
 		Secrets_API_Loader::load();
 
 		$this->assertTrue( wp_secrets_validate_name( 'my-plugin/my_accounts-0123abcd' ) );
-		foreach ( array( '', 'no-namespace', 'a/b/c', 'Upper/case', '-leading/key', 'ns/trailing_', str_repeat( 'a', 100 ) . '/' . str_repeat( 'b', 100 ) ) as $bad ) {
+		foreach ( array( '', 'a/b/c', 'Upper/case', '-leading/key', 'ns/trailing_', str_repeat( 'a', 100 ) . '/' . str_repeat( 'b', 100 ) ) as $bad ) {
 			$this->assertInstanceOf( \WP_Error::class, wp_secrets_validate_name( $bad ), $bad );
 		}
 	}

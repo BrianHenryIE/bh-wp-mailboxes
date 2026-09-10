@@ -3,12 +3,15 @@
  * Makes the WordPress Secrets API's classes available from Composer's vendor directory.
  *
  * The Secrets API is proposed for WordPress core and is currently the `wordpress/secrets-api`
- * feature plugin, which this library depends on via Composer. When core or the activated plugin
- * already provides the API (`wp_get_secret()` exists) nothing is loaded. Otherwise only the API's
- * class files are included, never its `secrets.php` (the global `wp_get_secret()` family) nor the
- * plugin bootstrap, so this library never defines those globals; {@see \BrianHenryIE\WP_Mailboxes\API\Secrets_Credentials_Store}
- * then talks to a `WP_Secrets_Libsodium_Provider` directly. The few globals the classes need are
- * provided by `secrets-api-compat.php`.
+ * feature plugin, which this library depends on via Composer and always uses as its own private
+ * copy: consumers prefix its class, function and constant names at build time, so it never
+ * interacts with core's or an activated plugin's implementation, and the library never calls
+ * `wp_get_secret()` etc. ({@see \BrianHenryIE\WP_Mailboxes\API\Secrets_Credentials_Store} uses
+ * `WP_Secrets_Libsodium_Provider` directly).
+ *
+ * Loaded from the package: `src/wp-includes/secrets.php` (the constants and helper functions the
+ * classes need) and the class files. The plugin bootstrap (`secrets-api.php`, with its core-conflict
+ * checks, hooks and drop-in loading) is never included.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -28,9 +31,10 @@ class Secrets_API_Loader {
 	const PACKAGE_NAME = 'wordpress/secrets-api';
 
 	/**
-	 * The class files, in dependency order, relative to the package's `src/wp-includes` directory.
+	 * The files to include, in dependency order, relative to the package's `src/wp-includes` directory.
 	 */
-	const CLASS_FILES = array(
+	const FILES = array(
+		'secrets.php',
 		'interface-wp-secrets-provider.php',
 		'interface-wp-secrets-keyring.php',
 		'interface-wp-secrets-store.php',
@@ -44,26 +48,12 @@ class Secrets_API_Loader {
 	);
 
 	/**
-	 * Ensure the Secrets API is usable: either its functions exist, or its provider classes are loaded.
-	 *
-	 * @return bool True when the API can be used afterwards.
-	 */
-	public static function load(): bool {
-		if ( self::is_loaded() ) {
-			return true;
-		}
-
-		return self::load_classes();
-	}
-
-	/**
-	 * Include the API's class files (and the compat globals they need) from the package, whether or
-	 * not the API's functions exist. Idempotent.
+	 * Ensure the Secrets API's provider classes are loaded. Idempotent.
 	 *
 	 * @return bool True when the provider class exists afterwards.
 	 */
-	public static function load_classes(): bool {
-		if ( class_exists( 'WP_Secrets_Libsodium_Provider', false ) ) {
+	public static function load(): bool {
+		if ( self::is_loaded() ) {
 			return true;
 		}
 
@@ -73,20 +63,23 @@ class Secrets_API_Loader {
 			return false;
 		}
 
-		require_once __DIR__ . '/secrets-api-compat.php';
-
-		foreach ( self::CLASS_FILES as $file ) {
+		foreach ( self::FILES as $file ) {
+			// `secrets.php` is skipped when its functions already exist (an unprefixed dev environment
+			// with the feature plugin active): the class files carry no such guard and are not redeclared.
+			if ( 'secrets.php' === $file && function_exists( 'wp_secrets_memzero' ) ) {
+				continue;
+			}
 			require_once $includes_dir . '/' . $file;
 		}
 
-		return class_exists( 'WP_Secrets_Libsodium_Provider', false );
+		return self::is_loaded();
 	}
 
 	/**
-	 * Whether the API is usable: the functions (core or the activated plugin) or the provider class.
+	 * Whether the provider class is loaded.
 	 */
 	public static function is_loaded(): bool {
-		return function_exists( 'wp_get_secret' ) || class_exists( 'WP_Secrets_Libsodium_Provider', false );
+		return class_exists( 'WP_Secrets_Libsodium_Provider', false );
 	}
 
 	/**

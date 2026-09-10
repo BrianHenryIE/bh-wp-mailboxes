@@ -11,7 +11,6 @@ parameters:
 #        - vendor/wp-cli
     scanFiles:
         - stubs/wp-cli.stub
-        - stubs/secrets-api.stub
     dynamicConstantNames:
         - BH_WP_MAILBOXES_DEVELOPMENT_PLUGIN_BASENAME
     ignoreErrors:
