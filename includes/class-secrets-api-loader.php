@@ -4,10 +4,9 @@
  *
  * The Secrets API is proposed for WordPress core and is currently the `wordpress/secrets-api`
  * feature plugin, which this library depends on via Composer and always uses as its own private
- * copy: consumers prefix its class, function and constant names at build time, so it never
- * interacts with core's or an activated plugin's implementation, and the library never calls
- * `wp_get_secret()` etc. ({@see \BrianHenryIE\WP_Mailboxes\API\Secrets_Credentials_Store} uses
- * `WP_Secrets_Libsodium_Provider` directly).
+ * copy: consumers prefix its class, function and constant names at build time, so
+ * {@see \BrianHenryIE\WP_Mailboxes\API\Secrets_Credentials_Store}'s calls to `wp_get_secret()` etc. reach
+ * this copy and never core's or an activated plugin's implementation.
  *
  * The package is located through Composer's runtime API (`composer-runtime-api` is a requirement).
  * Its `src/wp-includes/secrets.php` (constants and helper functions) is included eagerly, and an
