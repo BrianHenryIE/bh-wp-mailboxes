@@ -16,24 +16,18 @@ $imap_env_settings = new class() implements \BrianHenryIE\WP_Mailboxes\Email_Acc
 
 $imap_mailboxes_api = \BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes::make( $imap_mailboxes_settings );
 
-try {
-	$imap_mailboxes_api->add_email_account(
-		email_address: $imap_env_settings->get_account_email_address(),
-		display_name: $imap_env_settings->get_account_display_friendly_name(),
-		connection_type_class: \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Provider::class,
-		body_identifier_regex_filter: 'unsubscribe',
-	);
-} catch ( \Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
-	// Account already exists; ignore.
-}
+$imap_mailboxes_api->configure_email_account(
+	email_address: $imap_env_settings->get_account_email_address(),
+	display_name: $imap_env_settings->get_account_display_friendly_name(),
+	connection_type_class: \BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection::class,
+	body_identifier_regex_filter: 'unsubscribe',
+);
 
-$imap_credentials = function ( mixed $value, mixed $plugin_slug, mixed $account ) use ( $imap_env_settings ) {
-	if ( $account->email_address === $imap_env_settings->get_account_email_address() ) {
-		return new Imap_Credentials_Env();
-	}
-	return $value;
-};
-add_filter( 'bh_wp_mailboxes_credentials', $imap_credentials, 10, 3 );
+// Save the credentials once (encrypted, in the WordPress Secrets API); the library reads them when fetching.
+$imap_account = $imap_mailboxes_api->get_email_accounts()[ $imap_env_settings->get_account_email_address() ] ?? null;
+if ( $imap_account && is_null( $imap_mailboxes_api->get_account_credentials( $imap_account ) ) ) {
+	$imap_mailboxes_api->save_account_credentials( $imap_account, new Imap_Credentials_Env() );
+}
 
 $add_menu = function () use ( $imap_env_settings ) {
 	add_menu_page(

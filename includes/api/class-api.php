@@ -53,6 +53,7 @@ class API implements API_Interface {
 	 * @param New_Email_Factory                  $new_email_factory        Wraps fetched emails for consumers.
 	 * @param ?Private_Uploads                   $private_uploads          Private uploads API, or null to skip attachment saving.
 	 * @param ?LoggerInterface                   $logger                   PSR-3 logger.
+	 * @param ?Credentials_Store_Interface       $credentials_store        Where accounts' credentials are kept; defaults to the Secrets API.
 	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
@@ -60,9 +61,51 @@ class API implements API_Interface {
 		protected Email_Account_WP_Post_Repository $email_account_repository,
 		protected New_Email_Factory $new_email_factory,
 		protected ?Private_Uploads $private_uploads,
-		?LoggerInterface $logger = null
+		?LoggerInterface $logger = null,
+		?Credentials_Store_Interface $credentials_store = null,
 	) {
 		$this->setLogger( $logger ?? new NullLogger() );
+		$this->credentials_store = $credentials_store ?? new Secrets_Credentials_Store( $settings, $this->logger );
+	}
+
+	/**
+	 * Where accounts' credentials are saved and loaded (the Secrets API by default).
+	 *
+	 * @var Credentials_Store_Interface
+	 */
+	protected Credentials_Store_Interface $credentials_store;
+
+	/**
+	 * The account's saved credentials, or null when none are saved.
+	 *
+	 * @param BH_Email_Account $account The account.
+	 */
+	public function get_account_credentials( BH_Email_Account $account ): ?Account_Credentials_Interface {
+		return $this->credentials_store->get( $account );
+	}
+
+	/**
+	 * Save (or replace) the account's credentials in the credentials store.
+	 *
+	 * @param BH_Email_Account              $account     The account.
+	 * @param Account_Credentials_Interface $credentials IMAP or Gmail credentials.
+	 *
+	 * @throws \InvalidArgumentException When the credentials type cannot be stored.
+	 * @throws \RuntimeException When the store is unavailable or the write fails.
+	 */
+	public function save_account_credentials( BH_Email_Account $account, Account_Credentials_Interface $credentials ): void {
+		$this->credentials_store->save( $account, $credentials );
+	}
+
+	/**
+	 * Discard the account's saved credentials.
+	 *
+	 * @param BH_Email_Account $account The account.
+	 *
+	 * @throws \RuntimeException When the store is unavailable or the delete fails.
+	 */
+	public function delete_account_credentials( BH_Email_Account $account ): void {
+		$this->credentials_store->delete( $account );
 	}
 
 	/**
@@ -181,7 +224,20 @@ class API implements API_Interface {
 			return false;
 		}
 
-		return $this->email_account_repository->delete( $account );
+		$deleted = $this->email_account_repository->delete( $account );
+
+		if ( $deleted ) {
+			try {
+				$this->credentials_store->delete( $account );
+			} catch ( Throwable $throwable ) {
+				$this->logger->error(
+					'Deleted account ' . $email_address . ' but failed to discard its credentials: ' . $throwable->getMessage(),
+					array( 'exception' => $throwable )
+				);
+			}
+		}
+
+		return $deleted;
 	}
 
 	/**
@@ -339,23 +395,7 @@ class API implements API_Interface {
 
 		if ( $connection instanceof Requires_Credentials ) {
 
-			try {
-				/**
-				 * Given the email account, get the credentials required for its connection.
-				 *
-				 * @param ?Account_Credentials_Interface $credentials The null value being filtered which should return Account_Credentials_Interface instance.
-				 * @param string $plugin_slug To allow multiple plugins (and potentially library verions) to use this same filter name.
-				 * @param string $emails_post_type The emails post type key, identifying which mailbox instance is asking.
-				 * @param BH_Email_Account $email_account The account config to get credentials for {@see BH_Email_Account::$connection_type_class}.
-				 */
-				$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $email_account );
-			} catch ( Throwable $throwable ) {
-
-				// E.g. "Too few arguments to function..." which means the `add_filter()` implementation is incorrect.
-				$this->logger->error( $throwable->getMessage() );
-
-				throw new Exception( 'Error discovering account credentials.' );
-			}
+			$credentials = $this->credentials_store->get( $email_account );
 
 			if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
 				$this->logger->warning( 'No credentials found for ' . $email_account->display_name );
@@ -400,6 +440,8 @@ class API implements API_Interface {
 			last_checked_time: $now_time,
 			last_successful_login_time: $now_time,
 		);
+
+		$this->save_refreshed_credentials( $connection, $email_account );
 
 		// Drop any emails already saved locally (same account + Message-ID) so we never duplicate.
 		$all_new_account_emails = $all_new_account_emails->reject(
@@ -452,8 +494,7 @@ class API implements API_Interface {
 		}
 
 		if ( $connection instanceof Requires_Credentials ) {
-			$plugin_slug = $this->settings->get_plugin_slug();
-			$credentials = $credentials ?? apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $account );
+			$credentials = $credentials ?? $this->credentials_store->get( $account );
 
 			if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
 				return new Test_Connection_Result( success: false, message: 'No credentials found for ' . $account->display_name . '.' );
@@ -464,6 +505,8 @@ class API implements API_Interface {
 
 		try {
 			$connection->test_connection();
+
+			$this->save_refreshed_credentials( $connection, $account );
 
 			return new Test_Connection_Result( success: true, message: 'Connected successfully.' );
 		} catch ( Throwable $exception ) {
@@ -566,13 +609,13 @@ class API implements API_Interface {
 	/**
 	 * Apply the account's credentials to a connection that requires them.
 	 *
-	 * Resolves the credentials via the `bh_wp_mailboxes_credentials` filter (args: value, plugin_slug, emails_post_type, account)
-	 * and sets them on the connection. No-op for connections that do not implement {@see Requires_Credentials}.
+	 * Reads the account's saved credentials from the credentials store and sets them on the connection.
+	 * No-op for connections that do not implement {@see Requires_Credentials}.
 	 *
 	 * @param Email_Connection_Interface $connection      The connection to credential.
 	 * @param BH_Email_Account           $email_account The account whose credentials to resolve.
 	 *
-	 * @throws \InvalidArgumentException When the filter does not return an Account_Credentials_Interface.
+	 * @throws \InvalidArgumentException When no credentials are saved for the account.
 	 */
 	protected function set_connection_credentials( Email_Connection_Interface $connection, BH_Email_Account $email_account ): void {
 
@@ -580,20 +623,41 @@ class API implements API_Interface {
 			return;
 		}
 
-		$plugin_slug = $this->settings->get_plugin_slug();
-
-		/**
-		 * Resolve the account's credentials.
-		 *
-		 * @see API::fetch_for_account()
-		 */
-		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $email_account );
+		$credentials = $this->credentials_store->get( $email_account );
 
 		if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
-			throw new \InvalidArgumentException( 'Credentials were not Account_Credentials_Interface' );
+			throw new \InvalidArgumentException( 'No credentials are saved for ' . esc_html( $email_account->display_name ) . '.' );
 		}
 
 		$connection->set_credentials( $credentials );
+	}
+
+	/**
+	 * Persist credentials a connection renewed while it was in use (e.g. a refreshed Gmail access token),
+	 * so the next request does not have to refresh them again.
+	 *
+	 * @param Email_Connection_Interface $connection    The connection that was just used.
+	 * @param BH_Email_Account           $email_account Its account.
+	 */
+	protected function save_refreshed_credentials( Email_Connection_Interface $connection, BH_Email_Account $email_account ): void {
+		if ( ! ( $connection instanceof Refreshes_Credentials ) ) {
+			return;
+		}
+
+		$refreshed = $connection->get_refreshed_credentials();
+
+		if ( is_null( $refreshed ) ) {
+			return;
+		}
+
+		try {
+			$this->credentials_store->save( $email_account, $refreshed );
+		} catch ( Throwable $throwable ) {
+			$this->logger->error(
+				'Failed to save the refreshed credentials for ' . $email_account->display_name . ': ' . $throwable->getMessage(),
+				array( 'exception' => $throwable )
+			);
+		}
 	}
 
 	/**

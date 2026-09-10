@@ -2,8 +2,7 @@
 /**
  * IMAP credentials value object.
  *
- * The library never stores credentials; this carries them from the accounts admin UI to the
- * consumer (via the `bh_wp_mailboxes_save_account_credentials` action) and to the connection.
+ * Carries the credentials between the accounts admin UI, the credentials store and the connection.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */

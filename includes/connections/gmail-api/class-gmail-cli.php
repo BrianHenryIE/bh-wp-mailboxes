@@ -66,8 +66,7 @@ class Gmail_CLI {
 	/**
 	 * Use a Gmail account's stored refresh token to mint a fresh access token.
 	 *
-	 * The new token is printed as JSON and the `bh_wp_mailboxes_gmail_access_token_refreshed` action is
-	 * fired so it can be persisted elsewhere. The token is NOT saved by this command.
+	 * The new token is saved to the account's credentials in the credentials store (the Secrets API).
 	 *
 	 * ## OPTIONS
 	 *
@@ -78,10 +77,6 @@ class Gmail_CLI {
 	 *
 	 *   # Refresh the access token for a Gmail account.
 	 *   $ wp plugin-slug gmail refresh-access-token --account=you@example.com
-	 *   {
-	 *       "access_token": "ya29...",
-	 *       ...
-	 *   }
 	 *   Success: Refreshed the Gmail access token for you@example.com.
 	 *
 	 * @param string[]             $_args      The unlabelled command line arguments.
@@ -110,14 +105,7 @@ class Gmail_CLI {
 			return;
 		}
 
-		$plugin_slug = $this->settings->get_plugin_slug();
-
-		/**
-		 * Resolve the account's credentials.
-		 *
-		 * @see \BrianHenryIE\WP_Mailboxes\API\API::set_connection_credentials()
-		 */
-		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $plugin_slug, $this->settings->get_emails_cpt_underscored_20(), $account );
+		$credentials = $this->api->get_account_credentials( $account );
 
 		if ( ! ( $credentials instanceof Google_API_Credentials_Interface ) ) {
 			WP_CLI::error( 'No Gmail API credentials found for ' . $account_email . '.' );
@@ -133,18 +121,12 @@ class Gmail_CLI {
 			return;
 		}
 
-		WP_CLI::log( (string) wp_json_encode( $access_token, JSON_PRETTY_PRINT ) );
-
-		/**
-		 * Fires after a Gmail access token has been refreshed via WP-CLI.
-		 *
-		 * The token is not persisted by the command; hook here to save it.
-		 *
-		 * @param string                                                           $plugin_slug   The plugin slug the library is running as.
-		 * @param \BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token $access_token  The new access token.
-		 * @param string                                                           $account_email The account's email address.
-		 */
-		do_action( 'bh_wp_mailboxes_gmail_access_token_refreshed', $plugin_slug, $access_token, $account_email );
+		try {
+			$this->api->save_account_credentials( $account, new Gmail_Credentials( $credentials->get_project_credentials(), $access_token ) );
+		} catch ( Throwable $t ) {
+			WP_CLI::error( 'Refreshed the token but failed to save it: ' . $t->getMessage() );
+			return;
+		}
 
 		WP_CLI::success( 'Refreshed the Gmail access token for ' . $account_email . '.' );
 	}

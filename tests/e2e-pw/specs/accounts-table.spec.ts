@@ -2,9 +2,8 @@
  * Playwright tests for the accounts table's add/edit modal and enable/disable/delete actions.
  *
  * The IMAP server used (127.0.0.1:1) refuses connections immediately, so the connection test fails
- * fast. The development plugin stores the credentials the library hands over via
- * `bh_wp_mailboxes_save_account_credentials` (see Imap_Credentials_Options), which is what lets the
- * edit form pre-fill and the password be kept on edit.
+ * fast. The library saves the credentials in the WordPress Secrets API, which is what lets the edit
+ * form pre-fill and the password be kept on edit.
  */
 import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import type { Locator, Page } from '@playwright/test';

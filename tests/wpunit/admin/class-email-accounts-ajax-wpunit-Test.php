@@ -2,16 +2,15 @@
 /**
  * WPUnit tests for the accounts table's save handler.
  *
- * The `handle_*()` wrappers call wp_send_json_*() (which exits) and are covered by Playwright; these
- * tests cover `save()`: the account upsert, the credentials action for the consumer, password
- * retention on edit, and validation.
+ * Covers `save()`: the account upsert, saving the credentials to the credentials store (the Secrets
+ * API, loaded from vendor), password retention on edit, and validation; plus the `handle_*()` wrappers'
+ * error responses.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
 
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
-use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\API;
 use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
@@ -22,9 +21,9 @@ use BrianHenryIE\WP_Mailboxes\API\Requires_Credentials;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
-use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
+use BrianHenryIE\WP_Mailboxes\Secrets_API_Loader;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use InvalidArgumentException;
 use Mockery;
@@ -38,18 +37,11 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	const EMAILS_CPT   = 'test_eaa_emails';
 
 	/**
-	 * Credentials handed to the consumer, captured from the action.
+	 * The API under test, so tests can read back what was saved to the credentials store.
 	 *
-	 * @var array<int, array{0:string, 1:string, 2:BH_Email_Account, 3:Account_Credentials_Interface}>
+	 * @var API
 	 */
-	protected array $saved_credentials = array();
-
-	/**
-	 * What the consumer answers for `bh_wp_mailboxes_credentials`.
-	 *
-	 * @var ?IMAP_Credentials_Interface
-	 */
-	protected ?IMAP_Credentials_Interface $consumer_credentials = null;
+	protected API $api;
 
 	/**
 	 * The real accounts repository behind the API under test.
@@ -61,18 +53,7 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	public function setUp(): void {
 		parent::setUp();
 
-		$this->saved_credentials    = array();
-		$this->consumer_credentials = null;
-
-		add_action(
-			'bh_wp_mailboxes_save_account_credentials',
-			function ( string $plugin_slug, string $emails_post_type, BH_Email_Account $account, Account_Credentials_Interface $credentials ): void {
-				$this->saved_credentials[] = array( $plugin_slug, $emails_post_type, $account, $credentials );
-			},
-			10,
-			4
-		);
-		add_filter( 'bh_wp_mailboxes_credentials', fn( $value ) => $this->consumer_credentials ?? $value );
+		$this->assertTrue( Secrets_API_Loader::load(), 'The Secrets API feature plugin should load from vendor.' );
 
 		// Never connect to a real IMAP server: a connection that requires credentials and always connects.
 		add_filter(
@@ -87,8 +68,6 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	public function tearDown(): void {
-		remove_all_actions( 'bh_wp_mailboxes_save_account_credentials' );
-		remove_all_filters( 'bh_wp_mailboxes_credentials' );
 		remove_all_filters( 'bh_wp_mailboxes_connection_for_account' );
 		parent::tearDown();
 	}
@@ -107,7 +86,7 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->account_repository = new Email_Account_WP_Post_Repository( self::ACCOUNTS_CPT, new BH_Email_Account_Factory( $this->logger ), $this->logger );
 
-		$api = new API(
+		$this->api = new API(
 			$settings,
 			Mockery::mock( Email_WP_Post_Repository::class ),
 			$this->account_repository,
@@ -118,12 +97,12 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 
 		$status_view = Mockery::mock( Status_View::class );
 
-		return new Email_Accounts_Ajax( $api, $settings, $status_view, $this->logger );
+		return new Email_Accounts_Ajax( $this->api, $settings, $status_view, $this->logger );
 	}
 
 	/**
-	 * Saving a new account creates an IMAP account post and hands the credentials (username defaulting
-	 * to the address) to the consumer via the action, then tests the connection.
+	 * Saving a new account creates an IMAP account post and saves the credentials (username defaulting
+	 * to the address) to the credentials store, then tests the connection.
 	 *
 	 * @covers ::save
 	 */
@@ -138,11 +117,7 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( ImapEngine_Imap_Email_Connection::class, $result->account->connection_type_class );
 		$this->assertNotNull( $this->account_repository->find_by_email_address( 'inbox@example.com' ) );
 
-		$this->assertCount( 1, $this->saved_credentials );
-		[ $plugin_slug, $emails_post_type, $account, $credentials ] = $this->saved_credentials[0];
-		$this->assertSame( 'test-plugin', $plugin_slug );
-		$this->assertSame( self::EMAILS_CPT, $emails_post_type );
-		$this->assertSame( $result->account->get_post_id(), $account->get_post_id() );
+		$credentials = $this->api->get_account_credentials( $result->account );
 		$this->assertInstanceOf( IMAP_Credentials_Interface::class, $credentials );
 		$this->assertSame( 'imap.example.com:993', $credentials->get_email_imap_server() );
 		$this->assertSame( 'inbox@example.com', $credentials->get_email_account_username(), 'Username defaults to the email address.' );
@@ -151,8 +126,7 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * Saving an existing address updates the account in place; an empty password keeps the one the
-	 * consumer already holds (read through the credentials filter).
+	 * Saving an existing address updates the account in place; an empty password keeps the saved one.
 	 *
 	 * @covers ::save
 	 */
@@ -161,8 +135,6 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 
 		$created = $sut->save( 'inbox@example.com', 'Inbox', 'imap.example.com', '', 'original-password' );
 
-		$this->consumer_credentials = new Imap_Credentials( 'imap.example.com', 'inbox@example.com', 'original-password' );
-
 		$updated = $sut->save( 'inbox@example.com', 'Renamed', 'imap.example.com:143', 'user', '', '' );
 
 		$this->assertFalse( $updated->created );
@@ -170,7 +142,7 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( 'Renamed', $updated->account->display_name );
 		$this->assertCount( 1, $this->account_repository->get_all() );
 
-		$credentials = $this->saved_credentials[1][3];
+		$credentials = $this->api->get_account_credentials( $updated->account );
 		$this->assertInstanceOf( IMAP_Credentials_Interface::class, $credentials );
 		$this->assertSame( 'imap.example.com:143', $credentials->get_email_imap_server() );
 		$this->assertSame( 'user', $credentials->get_email_account_username() );
@@ -203,7 +175,6 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		}
 
 		$this->assertCount( 0, $this->account_repository->get_all(), 'No account should be created.' );
-		$this->assertCount( 0, $this->saved_credentials, 'No credentials should be announced.' );
 	}
 
 	/**
@@ -254,7 +225,7 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertNotNull( $account );
 		$this->assertSame( 'Some\Other\Connection', $account->connection_type_class, 'The connection class must be unchanged.' );
 		$this->assertSame( 'Ingress', $account->display_name );
-		$this->assertCount( 0, $this->saved_credentials, 'No credentials should be announced.' );
+		$this->assertNull( $this->api->get_account_credentials( $account ), 'No credentials should be saved.' );
 	}
 
 	/**

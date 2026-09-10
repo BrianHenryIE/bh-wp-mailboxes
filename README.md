@@ -44,7 +44,9 @@ Somewhere in your plugin's settings you'll want to add a section for email accou
 
 Using `API::save_new_mailbox()`, save the account configuration to a `wp_post`. When saving you will set the `connection_type_class`, e.g. `ImapEngine_Imap_Email_Connection`
 
-Add a filter on `bh_wp_mailboxes_credentials` to provide the credentials (this allows abstracting credential storage from the library)
+Credentials are saved by the library, encrypted, using the [WordPress Secrets API](https://make.wordpress.org/core/2026/08/25/proposal-a-secrets-api-for-wordpress-7-2/) (currently the `wordpress/secrets-api` feature plugin, which this library depends on via Composer and loads from `vendor/` when it is not active as a plugin or shipped by core). Save them with `API::save_account_credentials( $account, $credentials )` (e.g. an `Imap_Credentials` or `Imap_Credentials_Env`); the accounts table's add/edit modal does this for you. Read them back with `API::get_account_credentials( $account )`; they are discarded with `API::delete_email_account()`.
+
+The Secrets API derives its encryption key from `LOGGED_IN_KEY`/`LOGGED_IN_SALT`, or from a `WP_SECRETS_KEY` constant (base64-encoded 32 bytes) when defined; a site whose `wp-config.php` still has the sample placeholders (e.g. WordPress Playground) must define `WP_SECRETS_KEY` or saving fails with a logged error.
 
 Saved mailboxes are checked on a cron job for new emails. When a new email is downloaded, the library fires `bh_wp_mailboxes_new_email` for you to listen for.  
 Use the methods on `New_Email_Interface` to read the email, log any action taken, and maybe mark it to be saved 
@@ -117,15 +119,13 @@ add_action( 'admin_footer', fn() => $modal->print_modal() );
 $modal->print_add_button(); // Where the button should appear.
 ```
 
-The library saves the account and fires `bh_wp_mailboxes_save_account_credentials( $plugin_slug,
-$emails_post_type, $account, $credentials )`: it never stores credentials, so hook that action to
-persist them, return them from the `bh_wp_mailboxes_credentials` filter, and discard them on
-`bh_wp_mailboxes_account_deleted( $plugin_slug, $emails_post_type, $account )`.
+The library saves the account and its credentials (encrypted, in the WordPress Secrets API): there is
+nothing for you to persist.
 
 The result is reported in an admin notice inserted after your page's `<hr class="wp-header-end">`
 (or after its first heading when there is none). The development plugin's settings page
-(`development-plugin/admin/class-settings.php`) is a working example, with
-`development-plugin/mailboxes/class-imap-credentials-options.php` as the credentials store.
+(`development-plugin/admin/class-settings.php`) is a working example, including saving credentials
+from its own forms with `API::save_account_credentials()`.
 
 ## Extensibility
 

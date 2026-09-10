@@ -5,8 +5,7 @@
  * Lists each account with its status, email count, last fetched/failure times, a "Check now"
  * button (with the set-fetch-since date utility) and enable/disable, edit and delete actions, plus
  * an "Add account" button. Adding and editing happen in the {@see Email_Account_Modal} (reusable on
- * other screens); the library saves the account and hands the credentials to the consumer via the
- * `bh_wp_mailboxes_save_account_credentials` action (see {@see Email_Accounts_Ajax}).
+ * other screens); the library saves the account and its credentials (see {@see Email_Accounts_Ajax}).
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -139,18 +138,13 @@ class Status_View {
 	}
 
 	/**
-	 * The consumer-supplied IMAP credentials for an account (never displayed: only the
-	 * server/username/encryption are used, to pre-fill the edit form).
+	 * The saved IMAP credentials for an account (never displayed: only the server/username/encryption
+	 * are used, to pre-fill the edit form).
 	 *
 	 * @param BH_Email_Account $account The account.
 	 */
 	protected function get_credentials( BH_Email_Account $account ): ?IMAP_Credentials_Interface {
-		/**
-		 * Resolve the account's credentials.
-		 *
-		 * @see \BrianHenryIE\WP_Mailboxes\API\API::fetch_for_account()
-		 */
-		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $this->settings->get_plugin_slug(), $this->settings->get_emails_cpt_underscored_20(), $account );
+		$credentials = $this->api->get_account_credentials( $account );
 
 		return $credentials instanceof IMAP_Credentials_Interface ? $credentials : null;
 	}

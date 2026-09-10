@@ -50,11 +50,13 @@ jq --arg url "$PROJECT_DIR" '
           "symlink": false,
           "versions": { "brianhenryie/bh-wp-mailboxes": "dev-master" }
         }
-      }
+      },
+      "wordpress/secrets-api": (.repositories[] | select(.name == "wordpress/secrets-api") | del(.name))
     }
   | .require = {
       "php": .require.php,
       "brianhenryie/bh-wp-mailboxes": "dev-master",
+      "wordpress/secrets-api": .require["wordpress/secrets-api"],
       "alleyinteractive/wordpress-autoloader": .["require-dev"]["alleyinteractive/wordpress-autoloader"],
       "brianhenryie/bh-wp-logger": .["require-dev"]["brianhenryie/bh-wp-logger"],
       "google/apiclient": .["require-dev"]["google/apiclient"],

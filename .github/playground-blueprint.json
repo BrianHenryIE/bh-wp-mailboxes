@@ -2,6 +2,13 @@
 	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
 	"steps": [
 		{
+			"step": "defineWpConfigConsts",
+			"consts": {
+				"WP_SECRETS_KEY": "SebvK4mJsMmChn9h9x1XiRZx1erUiCnZWOWSsMtH+zY="
+			},
+			"method": "rewrite-wp-config"
+		},
+		{
 			"step": "activatePlugin",
 			"pluginPath": "/wordpress/wp-content/plugins/development-plugin/development-plugin.php"
 		}

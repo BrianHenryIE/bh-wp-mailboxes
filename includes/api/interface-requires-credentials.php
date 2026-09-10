@@ -21,7 +21,7 @@ interface Requires_Credentials {
 	/**
 	 * Set credentials (and presumably connect if relevant).
 	 *
-	 * @param Account_Credentials_Interface $credentials From the `bh_wp_mailboxes_credentials` filter.
+	 * @param Account_Credentials_Interface $credentials The account's saved credentials.
 	 */
 	public function set_credentials( Account_Credentials_Interface $credentials ): void;
 }

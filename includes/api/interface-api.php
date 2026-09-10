@@ -167,13 +167,40 @@ interface API_Interface {
 	public function set_email_account_active( string $email_address, bool $active ): ?BH_Email_Account;
 
 	/**
-	 * Delete an email account configuration. Locally saved emails are not deleted.
+	 * Delete an email account configuration and its saved credentials. Locally saved emails are not deleted.
 	 *
 	 * @param string $email_address The mailbox address of the account to delete.
 	 *
 	 * @return bool True when the account was deleted; false when no account exists for the address.
 	 */
 	public function delete_email_account( string $email_address ): bool;
+
+	/**
+	 * The account's saved credentials, or null when none are saved.
+	 *
+	 * @param BH_Email_Account $account The account.
+	 */
+	public function get_account_credentials( BH_Email_Account $account ): ?Account_Credentials_Interface;
+
+	/**
+	 * Save (or replace) the account's credentials. Stored encrypted via the WordPress Secrets API.
+	 *
+	 * @param BH_Email_Account              $account     The account.
+	 * @param Account_Credentials_Interface $credentials IMAP ({@see \BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface}) or Gmail ({@see \BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Interface}) credentials.
+	 *
+	 * @throws \InvalidArgumentException When the credentials type cannot be stored.
+	 * @throws \RuntimeException When the store is unavailable or the write fails.
+	 */
+	public function save_account_credentials( BH_Email_Account $account, Account_Credentials_Interface $credentials ): void;
+
+	/**
+	 * Discard the account's saved credentials. Also done by {@see self::delete_email_account()}.
+	 *
+	 * @param BH_Email_Account $account The account.
+	 *
+	 * @throws \RuntimeException When the store is unavailable or the delete fails.
+	 */
+	public function delete_account_credentials( BH_Email_Account $account ): void;
 
 	/**
 	 * Return the settings used to configure the instance.
@@ -184,8 +211,7 @@ interface API_Interface {
 	 * Validate an account's credentials by connecting to the server.
 	 *
 	 * Intended for the settings-save flow. Pass `$credentials` to validate candidate credentials
-	 * before the account is saved; otherwise they are resolved via the `bh_wp_mailboxes_credentials`
-	 * filter.
+	 * before they are saved; otherwise the account's saved credentials are used.
 	 *
 	 * @param BH_Email_Account               $account     The account whose connection to connect with.
 	 * @param ?Account_Credentials_Interface $credentials Candidate credentials, or null to resolve them.

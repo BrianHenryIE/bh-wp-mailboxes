@@ -146,7 +146,7 @@ A Desktop-app client's JSON has a top-level **`installed`** key (a Web-applicati
 }
 ```
 
-## 6. Authorize once to obtain `access_token.json`
+## 6. Authorize once to obtain an access token
 
 The first authorization is interactive and, with a Desktop-app client, **has no callback URL** — so you copy the authorization code out of the browser by hand. The flow is implemented in [`Gmail_Email_Connection::get_authorization_url()`](class-gmail-email-connection.php) and [`fetch_access_token_with_auth_code()`](class-gmail-email-connection.php); the development plugin drives it from a WP-CLI command:
 
@@ -165,7 +165,7 @@ To complete it:
 2. Because the Desktop-app client redirects to a loopback address that nothing is listening on, the browser lands on an **unreachable `http://localhost/?code=…&scope=…` page** (a "can't reach this site" error). That is expected.
 3. Copy the value of the **`code`** query-string parameter from the browser's address bar and paste it at the prompt.
 
-The command exchanges the code for a token (including the long-lived **`refresh_token`**) and writes it to `access_token.json` next to `client_secret.json`. The file looks like:
+The command exchanges the code for a token (including the long-lived **`refresh_token`**) and saves the client secret and token to the account's credentials in the WordPress Secrets API (`API::save_account_credentials()` with a `Gmail_Credentials`). Read from files, the token looks like:
 
 ```json
 {
@@ -188,22 +188,7 @@ Access tokens expire after ~1 hour. To mint a fresh one from the refresh token w
 wp <plugin-slug> gmail refresh-access-token --account=you@example.com
 ```
 
-`<plugin-slug>` is the slug of the plugin embedding this library. The command:
-
-* resolves the account's credentials via the `bh_wp_mailboxes_credentials` filter,
-* uses the stored refresh token to obtain a new access token,
-* prints the new token as JSON,
-* fires the `bh_wp_mailboxes_gmail_access_token_refreshed` action with the new [`Access_Token`](model/class-access-token.php) and the account email.
-
-It does **not** save the token anywhere. Persist it by hooking the action:
-
-```php
-add_action(
-	'bh_wp_mailboxes_gmail_access_token_refreshed',
-	function ( $access_token, $account_email ) {
-		// e.g. write $access_token to access_token.json or store in the database.
-	},
-	10,
-	2
-);
-```
+`<plugin-slug>` is the slug of the plugin embedding this library. The command reads the account's saved
+credentials, uses the stored refresh token to obtain a new access token, and saves the new token back
+to the account's credentials (the WordPress Secrets API). The same refresh happens automatically when a
+fetch or connection test finds the token expired.

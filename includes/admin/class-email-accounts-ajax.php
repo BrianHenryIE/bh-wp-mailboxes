@@ -2,10 +2,9 @@
 /**
  * AJAX handlers for the accounts table on the emails list view: check now, add/edit, enable/disable, delete.
  *
- * The library stores the account (address, display name, connection class, status) but never
- * credentials. When an IMAP account is saved, the credentials entered in the modal are handed to
- * the consumer through the `bh_wp_mailboxes_save_account_credentials` action, and deleted accounts
- * are announced with `bh_wp_mailboxes_account_deleted` so the consumer can discard them.
+ * The account (address, display name, connection class, status) is a post; the credentials entered
+ * in the modal are saved through {@see API_Interface::save_account_credentials()} (encrypted, via the
+ * WordPress Secrets API) and discarded with the account.
  *
  * The actions are suffixed with the accounts CPT so each library instance handles only its own
  * requests (see {@see \BrianHenryIE\WP_Mailboxes\WP_Includes\BH_WP_Mailboxes_Hooks::define_ajax_hooks()}).
@@ -98,11 +97,11 @@ class Email_Accounts_Ajax {
 	}
 
 	/**
-	 * Save an IMAP account: upsert the account post (keyed by email address), hand the credentials to
-	 * the consumer, and test the connection.
+	 * Save an IMAP account: upsert the account post (keyed by email address), save the credentials,
+	 * and test the connection.
 	 *
 	 * A failed connection test does not discard the account, so the credentials can be corrected by
-	 * saving again. When editing, an empty password keeps the one the consumer already holds.
+	 * saving again. When editing, an empty password keeps the saved one.
 	 *
 	 * @param string $email_address The mailbox address; the account's unique id.
 	 * @param string $display_name  Human-readable name; defaults to the address.
@@ -112,7 +111,7 @@ class Email_Accounts_Ajax {
 	 * @param string $encryption    TLS, STARTTLS or empty for none.
 	 *
 	 * @throws InvalidArgumentException When a required value is missing or invalid.
-	 * @throws \Exception When WordPress fails to save the account post.
+	 * @throws \Exception When WordPress fails to save the account post, or the credentials cannot be saved.
 	 */
 	public function save(
 		string $email_address,
@@ -145,7 +144,7 @@ class Email_Accounts_Ajax {
 			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
-		// Editing: keep the consumer's saved password when none is entered.
+		// Editing: keep the saved password when none is entered.
 		if ( '' === $password && ! is_null( $existing ) ) {
 			$saved = $this->get_saved_credentials( $existing );
 			if ( ! is_null( $saved ) ) {
@@ -179,16 +178,7 @@ class Email_Accounts_Ajax {
 
 		$credentials = new Imap_Credentials( $server, '' === $username ? $email_address : $username, $password, $encryption );
 
-		/**
-		 * Persist the credentials entered for an account. The library never stores credentials; the
-		 * consumer should save these and return them from the `bh_wp_mailboxes_credentials` filter.
-		 *
-		 * @param string                        $plugin_slug      The plugin the library instance is running as.
-		 * @param string                        $emails_post_type The emails post type key, identifying which mailbox instance fired the action.
-		 * @param BH_Email_Account              $account          The saved account.
-		 * @param \BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface $credentials The credentials to save ({@see IMAP_Credentials_Interface} for IMAP accounts).
-		 */
-		do_action( 'bh_wp_mailboxes_save_account_credentials', $this->settings->get_plugin_slug(), $this->settings->get_emails_cpt_underscored_20(), $account, $credentials );
+		$this->api->save_account_credentials( $account, $credentials );
 
 		$this->logger->info( ( is_null( $existing ) ? 'Added' : 'Updated' ) . ' IMAP account ' . $account->display_name );
 
@@ -266,7 +256,7 @@ class Email_Accounts_Ajax {
 	}
 
 	/**
-	 * Delete an account (locally saved emails are kept) and tell the consumer to discard its credentials.
+	 * Delete an account and its credentials (locally saved emails are kept).
 	 *
 	 * Receive-only accounts (e.g. the REST ingress) are created by their endpoint and would be
 	 * recreated on the next delivery, so they can only be disabled.
@@ -285,15 +275,6 @@ class Email_Accounts_Ajax {
 		if ( ! $this->api->delete_email_account( $account->email_address ) ) {
 			wp_send_json_error( array( 'message' => __( 'The account could not be deleted.', 'bh-wp-mailboxes' ) ), 500 );
 		}
-
-		/**
-		 * An account was deleted; the consumer should discard any credentials it holds for it.
-		 *
-		 * @param string           $plugin_slug      The plugin the library instance is running as.
-		 * @param string           $emails_post_type The emails post type key, identifying which mailbox instance fired the action.
-		 * @param BH_Email_Account $account          The deleted account.
-		 */
-		do_action( 'bh_wp_mailboxes_account_deleted', $this->settings->get_plugin_slug(), $this->settings->get_emails_cpt_underscored_20(), $account );
 
 		$this->logger->info( 'Deleted email account ' . $account->display_name );
 
@@ -353,12 +334,12 @@ class Email_Accounts_Ajax {
 	}
 
 	/**
-	 * The consumer's saved IMAP credentials for an account, if any.
+	 * The saved IMAP credentials for an account, if any.
 	 *
 	 * @param BH_Email_Account $account The account.
 	 */
 	protected function get_saved_credentials( BH_Email_Account $account ): ?IMAP_Credentials_Interface {
-		$credentials = apply_filters( 'bh_wp_mailboxes_credentials', null, $this->settings->get_plugin_slug(), $this->settings->get_emails_cpt_underscored_20(), $account );
+		$credentials = $this->api->get_account_credentials( $account );
 
 		return $credentials instanceof IMAP_Credentials_Interface ? $credentials : null;
 	}

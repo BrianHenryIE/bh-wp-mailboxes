@@ -46,23 +46,26 @@
             "development-plugin"
         ]
     },
-    "repositories": {
-        "wordpress/wordpress": {
+    "repositories": [
+        {
+            "name": "wordpress/secrets-api",
+            "type": "git",
+            "url": "https://github.com/ericmann/secrets-api",
+            "only": ["wordpress/secrets-api"]
+        },
+        {
+            "name": "wordpress/wordpress",
             "type": "git",
             "url": "https://github.com/WordPress/wordpress-develop.git",
-            "only": [
-                "wordpress/wordpress"
-            ]
+            "only": ["wordpress/wordpress"]
         },
-        "outlandish/wpackagist": {
+        {
+            "name": "outlandish/wpackagist",
             "type": "composer",
             "url": "https://wpackagist.org",
-            "only": [
-                "wpackagist-plugin/*",
-                "wpackagist-theme/*"
-            ]
+            "only": ["wpackagist-plugin/*", "wpackagist-theme/*"]
         }
-    },
+    ],
     "suggest": {
         "brianhenryie/bh-wp-private-uploads": "Enables attachments.",
         "google/apiclient": "Enables Gmail API support via console.cloud.google.com (Google Developers console)."
@@ -72,6 +75,7 @@
         "ext-json": "*",
         "directorytree/imapengine": "^1.25",
         "psr/log": "*",
+        "wordpress/secrets-api": "dev-main#ffe647beff839024722eac1964d310125388c355",
         "wptrt/admin-notices": "^1.0"
     },
     "require-dev": {
@@ -160,6 +164,11 @@
     "extra": {
         "google/apiclient-services": [
             "Gmail"
-        ]
+        ],
+        "installer-paths": {
+            "vendor/{$vendor}/{$name}/": [
+                "wordpress/secrets-api"
+            ]
+        }
     }
 }

@@ -10,8 +10,8 @@
  *     add_action( 'admin_footer', fn() => $modal->print_modal() );
  *     $modal->print_add_button(); // Wherever the button should appear.
  *
- * Saving posts to {@see Email_Accounts_Ajax}, which stores the account and hands the credentials to the
- * consumer via `bh_wp_mailboxes_save_account_credentials`. Where an accounts table
+ * Saving posts to {@see Email_Accounts_Ajax}, which stores the account and its credentials (encrypted,
+ * via the WordPress Secrets API). Where an accounts table
  * (`.bh-mailboxes-status__table`) is on the page the JS refreshes it from the response; otherwise the
  * result is only reported in a notice.
  *
