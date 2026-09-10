@@ -1,6 +1,11 @@
 <?php
 /**
- * Credentials store backed by the WordPress Secrets API (`wp_set_secret()`, `wp_get_secret()`, `wp_delete_secret()`).
+ * Credentials store backed by the WordPress Secrets API.
+ *
+ * Uses `wp_get_secret()` / `wp_set_secret()` / `wp_delete_secret()` when WordPress core or the activated
+ * feature plugin provides them; otherwise talks directly to a `WP_Secrets_Libsodium_Provider` built from
+ * the API's classes (loaded from vendor by {@see \BrianHenryIE\WP_Mailboxes\Secrets_API_Loader}), so the
+ * library never has to define the global functions itself.
  *
  * One secret per account, named `{plugin-slug}/{accounts-post-type}-{hash of the email address}`, holding
  * a JSON document with a `type` key (`imap` or `gmail`) and the credential fields. The Secrets API
@@ -28,6 +33,12 @@ use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use WP_Error;
+use WP_Secret_Version;
+use WP_Secrets_Config_Key_Provider;
+use WP_Secrets_Key_Manager;
+use WP_Secrets_Libsodium_Provider;
+use WP_Secrets_Option_Store;
+use WP_Secrets_Provider;
 
 /**
  * Serialises IMAP and Gmail credentials to JSON and keeps them in the Secrets API.
@@ -40,23 +51,89 @@ class Secrets_Credentials_Store implements Credentials_Store_Interface {
 	const TYPE_GMAIL = 'gmail';
 
 	/**
+	 * The provider used when the API's functions are absent; built lazily.
+	 *
+	 * @var ?WP_Secrets_Provider
+	 */
+	protected ?WP_Secrets_Provider $provider;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings Provides the plugin slug (the secret namespace) and the accounts post type.
 	 * @param LoggerInterface                    $logger   PSR-3 logger.
+	 * @param ?WP_Secrets_Provider               $provider The provider to use when `wp_get_secret()` is absent; defaults to the libsodium provider over the options store.
 	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		LoggerInterface $logger,
+		?WP_Secrets_Provider $provider = null,
 	) {
 		$this->setLogger( $logger );
+		$this->provider = $provider;
 	}
 
 	/**
-	 * The Secrets API functions exist (core, the activated feature plugin, or {@see \BrianHenryIE\WP_Mailboxes\Secrets_API_Loader}).
+	 * The Secrets API functions exist (core or the activated feature plugin), or its classes are loaded.
 	 */
 	public function is_available(): bool {
+		return $this->has_functions() || ! is_null( $this->provider ) || class_exists( WP_Secrets_Libsodium_Provider::class, false );
+	}
+
+	/**
+	 * Whether the global functions are defined (core or the activated feature plugin); preferred when they are.
+	 */
+	protected function has_functions(): bool {
 		return function_exists( 'wp_get_secret' ) && function_exists( 'wp_set_secret' ) && function_exists( 'wp_delete_secret' );
+	}
+
+	/**
+	 * The provider to use when the functions are absent: libsodium encryption over the options store,
+	 * with the root key wrapped by the wp-config key provider (the same defaults the API itself uses).
+	 */
+	protected function get_provider(): WP_Secrets_Provider {
+		if ( is_null( $this->provider ) ) {
+			$this->provider = new WP_Secrets_Libsodium_Provider(
+				new WP_Secrets_Option_Store(),
+				new WP_Secrets_Key_Manager( new WP_Secrets_Config_Key_Provider() )
+			);
+		}
+
+		return $this->provider;
+	}
+
+	/**
+	 * Read a secret via the functions when they exist, else the provider.
+	 *
+	 * @param string $name The secret's name.
+	 *
+	 * @return \WP_Secret|null|WP_Error
+	 */
+	protected function read_secret( string $name ) {
+		return $this->has_functions() ? wp_get_secret( $name ) : $this->get_provider()->get( $name, WP_Secret_Version::CURRENT );
+	}
+
+	/**
+	 * Write a secret via the functions when they exist, else the provider.
+	 *
+	 * @param string $name  The secret's name.
+	 * @param string $value The plaintext.
+	 *
+	 * @return true|WP_Error
+	 */
+	protected function write_secret( string $name, string $value ) {
+		return $this->has_functions() ? wp_set_secret( $name, $value ) : $this->get_provider()->set( $name, $value );
+	}
+
+	/**
+	 * Delete a secret via the functions when they exist, else the provider.
+	 *
+	 * @param string $name The secret's name.
+	 *
+	 * @return true|WP_Error
+	 */
+	protected function delete_secret( string $name ) {
+		return $this->has_functions() ? wp_delete_secret( $name ) : $this->get_provider()->delete( $name );
 	}
 
 	/**
@@ -86,7 +163,7 @@ class Secrets_Credentials_Store implements Credentials_Store_Interface {
 			return null;
 		}
 
-		$secret = wp_get_secret( $this->get_secret_name( $account ) );
+		$secret = $this->read_secret( $this->get_secret_name( $account ) );
 
 		if ( is_null( $secret ) ) {
 			return null;
@@ -136,7 +213,7 @@ class Secrets_Credentials_Store implements Credentials_Store_Interface {
 		}
 
 		$type   = $data['type'];
-		$result = wp_set_secret( $this->get_secret_name( $account ), (string) wp_json_encode( $data ) );
+		$result = $this->write_secret( $this->get_secret_name( $account ), (string) wp_json_encode( $data ) );
 
 		if ( $result instanceof WP_Error ) {
 			$this->logger->error(
@@ -161,7 +238,7 @@ class Secrets_Credentials_Store implements Credentials_Store_Interface {
 			throw new RuntimeException( 'The Secrets API is not available; credentials cannot be deleted.' );
 		}
 
-		$result = wp_delete_secret( $this->get_secret_name( $account ) );
+		$result = $this->delete_secret( $this->get_secret_name( $account ) );
 
 		if ( $result instanceof WP_Error ) {
 			$this->logger->error(

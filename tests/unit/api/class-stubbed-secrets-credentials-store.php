@@ -22,7 +22,25 @@ class Stubbed_Secrets_Credentials_Store extends Secrets_Credentials_Store {
 	 */
 	public bool $available = true;
 
+	/**
+	 * What has_functions() reports; null for the real function_exists() check.
+	 *
+	 * @var ?bool
+	 */
+	public ?bool $has_functions = null;
+
 	public function is_available(): bool {
 		return $this->available;
+	}
+
+	protected function has_functions(): bool {
+		return $this->has_functions ?? parent::has_functions();
+	}
+
+	/**
+	 * Expose the lazily built provider.
+	 */
+	public function provider(): \WP_Secrets_Provider {
+		return $this->get_provider();
 	}
 }

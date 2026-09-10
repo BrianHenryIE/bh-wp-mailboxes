@@ -19,6 +19,7 @@ use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\OAuth_Client_Credentials;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Secrets_API_Loader;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use InvalidArgumentException;
 use Mockery;
@@ -67,22 +68,28 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 		$this->delete_result = true;
 		WP_Mock::userFunction( 'wp_json_encode' )->andReturnUsing( 'json_encode' );
 		WP_Mock::passthruFunction( 'esc_html' );
+
+		// The API's classes, for the provider-path tests (they are not autoloaded, and load() would skip
+		// them once an earlier test has defined the global functions).
+		$this->assertTrue( Secrets_API_Loader::load_classes() );
 	}
 
 	/**
 	 * The store under test, with its availability stubbed (see {@see Stubbed_Secrets_Credentials_Store}).
 	 *
-	 * @param string $plugin_slug  The secret namespace.
-	 * @param string $accounts_cpt The accounts post type in the secret key.
-	 * @param bool   $available    What is_available() reports.
+	 * @param string                $plugin_slug  The secret namespace.
+	 * @param string                $accounts_cpt The accounts post type in the secret key.
+	 * @param bool                  $available    What is_available() reports.
+	 * @param ?\WP_Secrets_Provider $provider     A provider to use instead of the global functions.
 	 */
-	protected function make_sut( string $plugin_slug = 'test-plugin', string $accounts_cpt = 'test_accounts', bool $available = true ): Secrets_Credentials_Store {
+	protected function make_sut( string $plugin_slug = 'test-plugin', string $accounts_cpt = 'test_accounts', bool $available = true, ?\WP_Secrets_Provider $provider = null ): Stubbed_Secrets_Credentials_Store {
 		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$settings->allows( 'get_plugin_slug' )->andReturn( $plugin_slug );
 		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( $accounts_cpt );
 
-		$sut            = new Stubbed_Secrets_Credentials_Store( $settings, $this->logger );
-		$sut->available = $available;
+		$sut                = new Stubbed_Secrets_Credentials_Store( $settings, $this->logger, $provider );
+		$sut->available     = $available;
+		$sut->has_functions = is_null( $provider );
 
 		return $sut;
 	}
@@ -133,14 +140,12 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * A stand-in for WP_Secret: the store only calls reveal().
+	 * A real WP_Secret (the class is final, so it cannot be mocked) wrapping the plaintext.
 	 *
 	 * @param string $plaintext What reveal() returns.
 	 */
-	protected function make_secret( string $plaintext ): object {
-		$secret = Mockery::mock( 'WP_Secret' );
-		$secret->allows( 'reveal' )->andReturn( $plaintext );
-		return $secret;
+	protected function make_secret( string $plaintext ): \WP_Secret {
+		return new \WP_Secret( 'test-plugin/secret', $plaintext, 'fingerprint' );
 	}
 
 	/**
@@ -355,6 +360,75 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 		$this->assertInstanceOf( Google_API_Credentials_Interface::class, $loaded );
 		$this->assertSame( array( 'http://localhost' ), $loaded->get_project_credentials()->redirect_uris );
 		$this->assertSame( array(), $loaded->get_project_credentials()->javascript_origins );
+	}
+
+	/**
+	 * Without the global functions, reads go through the provider (current version, site scope).
+	 *
+	 * @covers ::read_secret
+	 * @covers ::get
+	 */
+	public function test_get_uses_the_provider_when_the_functions_are_absent(): void {
+		$account  = $this->make_account();
+		$provider = Mockery::mock( \WP_Secrets_Provider::class );
+		$sut      = $this->make_sut( provider: $provider );
+		$provider->expects( 'get' )
+			->with( $sut->get_secret_name( $account ), 'current' )
+			->once()
+			->andReturn( $this->make_secret( '{"type":"imap","server":"s","username":"u","password":"p","encryption":"TLS"}' ) );
+
+		$loaded = $sut->get( $account );
+
+		$this->assertInstanceOf( IMAP_Credentials_Interface::class, $loaded );
+		$this->assertSame( 'p', $loaded->get_email_account_password() );
+	}
+
+	/**
+	 * @covers ::write_secret
+	 * @covers ::delete_secret
+	 * @covers ::save
+	 * @covers ::delete
+	 */
+	public function test_save_and_delete_use_the_provider_when_the_functions_are_absent(): void {
+		$account  = $this->make_account();
+		$provider = Mockery::mock( \WP_Secrets_Provider::class );
+		$sut      = $this->make_sut( provider: $provider );
+		$name     = $sut->get_secret_name( $account );
+		$provider->expects( 'set' )
+			->withArgs( fn( string $set_name, string $value ): bool => $set_name === $name && 'imap' === json_decode( $value, true )['type'] )
+			->once()
+			->andReturn( true );
+		$provider->expects( 'delete' )->with( $name )->once()->andReturn( true );
+
+		$sut->save( $account, new Imap_Credentials( 's', 'u', 'p' ) );
+		$sut->delete( $account );
+	}
+
+	/**
+	 * A provider error surfaces the same way a function error does.
+	 *
+	 * @covers ::save
+	 */
+	public function test_provider_wp_error_on_save_throws(): void {
+		$provider = Mockery::mock( \WP_Secrets_Provider::class );
+		$provider->allows( 'set' )->andReturn( new WP_Error( 'secret_key_unavailable', 'No site key.' ) );
+
+		$this->expectException( RuntimeException::class );
+		$this->expectExceptionMessage( 'No site key.' );
+		$this->make_sut( provider: $provider )->save( $this->make_account(), new Imap_Credentials( 's', 'u', 'p' ) );
+	}
+
+	/**
+	 * The default provider is libsodium encryption over the options store, keyed from wp-config.
+	 *
+	 * @covers ::get_provider
+	 */
+	public function test_default_provider_is_libsodium_over_the_options_store(): void {
+		$sut                = $this->make_sut();
+		$sut->has_functions = false;
+
+		$this->assertInstanceOf( \WP_Secrets_Libsodium_Provider::class, $sut->provider() );
+		$this->assertSame( $sut->provider(), $sut->provider(), 'Built once.' );
 	}
 
 	/**
