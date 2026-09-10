@@ -156,4 +156,27 @@ class Imap_Credentials_Env_Unit_Test extends Unit_Testcase {
 
 		$this->assertSame( '', $sut->get_encryption() );
 	}
+
+	/**
+	 * The stored representation captures the values read from the environment, not the variable names.
+	 *
+	 * @covers ::jsonSerialize
+	 */
+	public function test_json_serialize_captures_values(): void {
+		$_ENV['IMAP_SERVER']     = 'imap.example.com';
+		$_ENV['IMAP_USERNAME']   = 'user@example.com';
+		$_ENV['IMAP_PASSWORD']   = 'secret';
+		$_ENV['IMAP_ENCRYPTION'] = 'STARTTLS';
+
+		$this->assertSame(
+			array(
+				'type'       => 'imap',
+				'server'     => 'imap.example.com',
+				'username'   => 'user@example.com',
+				'password'   => 'secret',
+				'encryption' => 'STARTTLS',
+			),
+			( new Imap_Credentials_Env() )->jsonSerialize()
+		);
+	}
 }

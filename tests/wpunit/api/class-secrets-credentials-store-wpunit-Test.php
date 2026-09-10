@@ -139,9 +139,11 @@ class Secrets_Credentials_Store_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers ::save
 	 */
 	public function test_unknown_credentials_type_is_refused(): void {
-		$sut = $this->make_sut();
+		$sut         = $this->make_sut();
+		$credentials = Mockery::mock( \BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface::class );
+		$credentials->allows( 'jsonSerialize' )->andReturn( array( 'type' => 'pop3' ) );
 
 		$this->expectException( InvalidArgumentException::class );
-		$sut->save( $this->make_account( 'inbox@example.com' ), Mockery::mock( \BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface::class ) );
+		$sut->save( $this->make_account( 'inbox@example.com' ), $credentials );
 	}
 }

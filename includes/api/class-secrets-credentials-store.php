@@ -8,9 +8,10 @@
  * library never has to define the global functions itself.
  *
  * One secret per account, named `{plugin-slug}/{accounts-post-type}-{hash of the email address}`, holding
- * a JSON document with a `type` key (`imap` or `gmail`) and the credential fields. The Secrets API
- * encrypts the value at rest; the name is derived, not stored, so listing a plugin's secrets shows
- * which accounts have credentials without revealing addresses.
+ * the credentials' own JSON representation ({@see Account_Credentials_Interface::jsonSerialize()}): a
+ * `type` key (`imap` or `gmail`) plus the credential fields, rebuilt by the matching class's
+ * `from_array()`. The Secrets API encrypts the value at rest; the name is derived, not stored, so
+ * listing a plugin's secrets shows which accounts have credentials without revealing addresses.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -23,11 +24,7 @@ use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Credentials;
-use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token;
-use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\OAuth_Client_Credentials;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials;
-use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface;
 use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -41,14 +38,21 @@ use WP_Secrets_Option_Store;
 use WP_Secrets_Provider;
 
 /**
- * Serialises IMAP and Gmail credentials to JSON and keeps them in the Secrets API.
+ * Keeps credentials' JSON in the Secrets API.
  */
 class Secrets_Credentials_Store implements Credentials_Store_Interface {
 
 	use LoggerAwareTrait;
 
-	const TYPE_IMAP  = 'imap';
-	const TYPE_GMAIL = 'gmail';
+	/**
+	 * The classes that rebuild stored credentials, keyed by their `type`.
+	 *
+	 * @var array<string, class-string>
+	 */
+	const TYPES = array(
+		Imap_Credentials::TYPE  => Imap_Credentials::class,
+		Gmail_Credentials::TYPE => Gmail_Credentials::class,
+	);
 
 	/**
 	 * The provider used when the API's functions are absent; built lazily.
@@ -202,17 +206,23 @@ class Secrets_Credentials_Store implements Credentials_Store_Interface {
 	 * @param BH_Email_Account              $account     The account.
 	 * @param Account_Credentials_Interface $credentials IMAP or Gmail credentials.
 	 *
-	 * @throws InvalidArgumentException When the credentials are neither IMAP nor Gmail.
+	 * @throws InvalidArgumentException When the credentials serialise to a type the store cannot rebuild.
 	 * @throws RuntimeException When the Secrets API is unavailable or the write fails.
 	 */
 	public function save( BH_Email_Account $account, Account_Credentials_Interface $credentials ): void {
-		$data = $this->to_array( $credentials );
+		$data = $credentials->jsonSerialize();
+		$type = $data['type'] ?? null;
+
+		if ( ! is_string( $type ) || ! array_key_exists( $type, self::TYPES ) ) {
+			throw new InvalidArgumentException(
+				'Only ' . esc_html( implode( ', ', array_keys( self::TYPES ) ) ) . ' credentials can be stored; ' . esc_html( get_class( $credentials ) ) . ' serialised as ' . esc_html( is_string( $type ) ? $type : gettype( $type ) ) . '.'
+			);
+		}
 
 		if ( ! $this->is_available() ) {
 			throw new RuntimeException( 'The Secrets API is not available; credentials cannot be saved.' );
 		}
 
-		$type   = $data['type'];
 		$result = $this->write_secret( $this->get_secret_name( $account ), (string) wp_json_encode( $data ) );
 
 		if ( $result instanceof WP_Error ) {
@@ -250,41 +260,7 @@ class Secrets_Credentials_Store implements Credentials_Store_Interface {
 	}
 
 	/**
-	 * The JSON-ready representation of the credentials.
-	 *
-	 * Reads through the interfaces, so file- or env-backed implementations are captured by value.
-	 *
-	 * @param Account_Credentials_Interface $credentials The credentials.
-	 *
-	 * @return array{type: string, server?: string, username?: string, password?: string, encryption?: string, client?: array<mixed>, access_token?: ?array<mixed>}
-	 * @throws InvalidArgumentException When the credentials are neither IMAP nor Gmail.
-	 */
-	protected function to_array( Account_Credentials_Interface $credentials ): array {
-		if ( $credentials instanceof IMAP_Credentials_Interface ) {
-			return array(
-				'type'       => self::TYPE_IMAP,
-				'server'     => $credentials->get_email_imap_server(),
-				'username'   => $credentials->get_email_account_username(),
-				'password'   => $credentials->get_email_account_password(),
-				'encryption' => $credentials->get_encryption(),
-			);
-		}
-
-		if ( $credentials instanceof Google_API_Credentials_Interface ) {
-			$access_token = $credentials->get_access_token();
-
-			return array(
-				'type'         => self::TYPE_GMAIL,
-				'client'       => get_object_vars( $credentials->get_project_credentials() ),
-				'access_token' => is_null( $access_token ) ? null : get_object_vars( $access_token ),
-			);
-		}
-
-		throw new InvalidArgumentException( 'Only IMAP and Gmail credentials can be stored; got ' . esc_html( get_class( $credentials ) ) . '.' );
-	}
-
-	/**
-	 * Rebuild the credentials object from the stored representation.
+	 * Rebuild the credentials object from the stored representation, via the class registered for its `type`.
 	 *
 	 * @param array<mixed> $data The decoded JSON.
 	 *
@@ -293,62 +269,11 @@ class Secrets_Credentials_Store implements Credentials_Store_Interface {
 	protected function from_array( array $data ): Account_Credentials_Interface {
 		$type = $data['type'] ?? '';
 
-		if ( self::TYPE_IMAP === $type ) {
-			return new Imap_Credentials(
-				$this->string_at( $data, 'server' ),
-				$this->string_at( $data, 'username' ),
-				$this->string_at( $data, 'password' ),
-				array_key_exists( 'encryption', $data ) ? $this->string_at( $data, 'encryption' ) : 'TLS',
-			);
+		if ( ! is_string( $type ) || ! array_key_exists( $type, self::TYPES ) ) {
+			throw new InvalidArgumentException( 'Unknown credentials type: ' . esc_html( is_string( $type ) ? $type : gettype( $type ) ) . '.' );
 		}
 
-		if ( self::TYPE_GMAIL === $type ) {
-			$client = $data['client'] ?? null;
-			if ( ! is_array( $client ) ) {
-				throw new InvalidArgumentException( 'Gmail credentials are missing the OAuth client.' );
-			}
-			$access_token = $data['access_token'] ?? null;
-
-			return new Gmail_Credentials(
-				new OAuth_Client_Credentials(
-					$this->string_at( $client, 'client_id' ),
-					$this->string_at( $client, 'project_id' ),
-					$this->string_at( $client, 'auth_uri' ),
-					$this->string_at( $client, 'token_uri' ),
-					$this->string_at( $client, 'auth_provider_x509_cert_url' ),
-					$this->string_at( $client, 'client_secret' ),
-					$this->strings_at( $client, 'redirect_uris' ),
-					$this->strings_at( $client, 'javascript_origins' ),
-				),
-				is_array( $access_token ) ? Access_Token::from_json( (object) $access_token ) : null,
-			);
-		}
-
-		throw new InvalidArgumentException( 'Unknown credentials type: ' . esc_html( is_string( $type ) ? $type : gettype( $type ) ) . '.' );
-	}
-
-	/**
-	 * A string field from the stored representation, or empty string.
-	 *
-	 * @param array<mixed> $data The decoded JSON (or a nested object).
-	 * @param string       $key  The field.
-	 */
-	protected function string_at( array $data, string $key ): string {
-		return is_string( $data[ $key ] ?? null ) ? $data[ $key ] : '';
-	}
-
-	/**
-	 * A list of strings from the stored representation, dropping anything else.
-	 *
-	 * @param array<mixed> $data The decoded JSON (or a nested object).
-	 * @param string       $key  The field.
-	 *
-	 * @return string[]
-	 */
-	protected function strings_at( array $data, string $key ): array {
-		$value = $data[ $key ] ?? null;
-
-		return is_array( $value ) ? array_values( array_filter( $value, 'is_string' ) ) : array();
+		return self::TYPES[ $type ]::from_array( $data );
 	}
 
 	/**

@@ -15,6 +15,8 @@ use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\OAuth_Client_Credentia
  */
 class Google_API_Credentials implements Google_API_Credentials_Interface {
 
+	use Google_API_Credentials_Json_Trait;
+
 	/**
 	 * Constructor.
 	 *

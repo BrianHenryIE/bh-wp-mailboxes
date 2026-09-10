@@ -19,6 +19,7 @@ use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\OAuth_Client_Credentials;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Json_Trait;
 use BrianHenryIE\WP_Mailboxes\Secrets_API_Loader;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use InvalidArgumentException;
@@ -254,7 +255,6 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * encryption string ("none") survives, and only a record with no encryption key at all defaults to TLS.
 	 *
 	 * @covers ::save
-	 * @covers ::to_array
 	 * @covers ::get
 	 * @covers ::from_array
 	 */
@@ -293,28 +293,48 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * Any IMAP_Credentials_Interface implementation (e.g. env-backed) is captured by value.
+	 * Whatever the implementation, its own jsonSerialize() is what is written (e.g. an env-backed one
+	 * using the trait captures its values).
 	 *
-	 * @covers ::to_array
+	 * @covers ::save
 	 */
-	public function test_save_reads_imap_credentials_through_the_interface(): void {
+	public function test_save_writes_the_credentials_own_json(): void {
 		$this->mock_secrets_api();
-		$credentials = Mockery::mock( IMAP_Credentials_Interface::class );
-		$credentials->allows( 'get_email_imap_server' )->andReturn( 'env.example.com' );
-		$credentials->allows( 'get_email_account_username' )->andReturn( 'env-user' );
-		$credentials->allows( 'get_email_account_password' )->andReturn( 'env-pass' );
-		$credentials->allows( 'get_encryption' )->andReturn( 'STARTTLS' );
-		$sut     = $this->make_sut();
-		$account = $this->make_account();
+		$credentials = new class() implements IMAP_Credentials_Interface {
+			use IMAP_Credentials_Json_Trait;
+
+			public function get_email_imap_server(): string {
+				return 'env.example.com';
+			}
+			public function get_email_account_username(): string {
+				return 'env-user';
+			}
+			public function get_email_account_password(): string {
+				return 'env-pass';
+			}
+			public function get_encryption(): string {
+				return 'STARTTLS';
+			}
+		};
+		$sut         = $this->make_sut();
+		$account     = $this->make_account();
 
 		$sut->save( $account, $credentials );
 
-		$this->assertSame( 'env.example.com', json_decode( $this->written[ $sut->get_secret_name( $account ) ], true )['server'] );
+		$this->assertSame(
+			array(
+				'type'       => 'imap',
+				'server'     => 'env.example.com',
+				'username'   => 'env-user',
+				'password'   => 'env-pass',
+				'encryption' => 'STARTTLS',
+			),
+			json_decode( $this->written[ $sut->get_secret_name( $account ) ], true )
+		);
 	}
 
 	/**
 	 * @covers ::save
-	 * @covers ::to_array
 	 * @covers ::get
 	 * @covers ::from_array
 	 */
@@ -350,7 +370,6 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	 * Non-string entries in the client's URI lists are dropped rather than breaking the value object.
 	 *
 	 * @covers ::from_array
-	 * @covers ::strings_at
 	 */
 	public function test_gmail_client_uri_lists_keep_only_strings(): void {
 		$this->mock_secrets_api( '{"type":"gmail","client":{"client_id":"id","project_id":"p","auth_uri":"a","token_uri":"t","auth_provider_x509_cert_url":"c","client_secret":"s","redirect_uris":["http://localhost",5,null],"javascript_origins":"not-a-list"}}' );
@@ -432,15 +451,30 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * Unsupported credentials are refused before the Secrets API is touched.
+	 * Credentials whose `type` the store cannot rebuild are refused before the Secrets API is touched.
 	 *
 	 * @covers ::save
-	 * @covers ::to_array
 	 */
 	public function test_save_refuses_unknown_credentials_types(): void {
+		$credentials = Mockery::mock( Account_Credentials_Interface::class );
+		$credentials->allows( 'jsonSerialize' )->andReturn( array( 'type' => 'pop3' ) );
+
+		$this->expectException( InvalidArgumentException::class );
+		$this->expectExceptionMessage( 'serialised as pop3' );
+
+		$this->make_sut()->save( $this->make_account(), $credentials );
+	}
+
+	/**
+	 * @covers ::save
+	 */
+	public function test_save_refuses_credentials_without_a_type(): void {
+		$credentials = Mockery::mock( Account_Credentials_Interface::class );
+		$credentials->allows( 'jsonSerialize' )->andReturn( array( 'server' => 's' ) );
+
 		$this->expectException( InvalidArgumentException::class );
 
-		$this->make_sut()->save( $this->make_account(), Mockery::mock( Account_Credentials_Interface::class ) );
+		$this->make_sut()->save( $this->make_account(), $credentials );
 	}
 
 	/**

@@ -17,6 +17,8 @@ namespace BrianHenryIE\WP_Mailboxes\Connections\Imap;
  */
 class Imap_Credentials_Env implements IMAP_Credentials_Interface {
 
+	use IMAP_Credentials_Json_Trait;
+
 	/**
 	 * Maps field names ('server', 'username', …) to the env-var key names they were loaded from.
 	 *
