@@ -201,7 +201,8 @@ test.describe( 'Status_View — Since (clock) button', () => {
 	test( 'newly-fetched email rows are briefly highlighted after a check', async ( { admin, page, request } ) => {
 		const email  = `highlight-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
-		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
+		// Filtered to this account so its new rows are on the first page whatever other specs have fetched.
+		await admin.visitAdminPage( 'edit.php', `post_type=e2e_email&bh_email_account=${ postId }` );
 
 		// A fresh account's first check fetches the fixture emails as new.
 		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );

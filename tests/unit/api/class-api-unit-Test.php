@@ -18,6 +18,7 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Email_Connection;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
@@ -157,9 +158,16 @@ class API_Unit_Test extends Unit_Testcase {
 
 		WP_Mock::userFunction( 'wp_doing_cron' )->andReturnTrue();
 
-		$sut->check_email();
+		$result = $sut->check_email();
 
 		$this->assertTrue( $this->logger->hasInfoThatContains( 'Too soon after failed login' ) );
+
+		// Rate-limiting is a deliberate skip, not a failure: the overall check still succeeds.
+		$this->assertTrue( $result->success );
+		$this->assertCount( 1, $result->get_skipped() );
+		$this->assertSame( array(), $result->get_failures() );
+		$this->assertTrue( $result->account_results[0]->skipped );
+		$this->assertStringContainsString( 'less than four hours ago', (string) $result->account_results[0]->message );
 	}
 
 	/**
@@ -225,6 +233,10 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$this->assertTrue( $this->logger->hasDebugThatContains( 'Skipping inactive email account' ) );
 		$this->assertSame( array(), $result->get_emails() );
+
+		$this->assertTrue( $result->success );
+		$this->assertCount( 1, $result->get_skipped() );
+		$this->assertSame( 'The account is disabled.', $result->account_results[0]->message );
 	}
 
 	/**
@@ -241,10 +253,16 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$this->store_credentials( null );
 
-		$sut = $this->get_api( email_account_repository: $email_account_repository );
-		$sut->check_email();
+		$sut    = $this->get_api( email_account_repository: $email_account_repository );
+		$result = $sut->check_email();
 
 		$this->assertTrue( $this->logger->hasWarningThatContains( 'No credentials found' ) );
+
+		// Missing credentials on an account that should be fetched is a failure the user must fix.
+		$this->assertFalse( $result->success );
+		$this->assertCount( 1, $result->get_failures() );
+		$this->assertTrue( $result->account_results[0]->is_failure() );
+		$this->assertSame( 'No credentials are saved for this account.', $result->account_results[0]->message );
 	}
 
 	/**
@@ -268,10 +286,14 @@ class API_Unit_Test extends Unit_Testcase {
 				->with( null, 'test-plugin', 'test_emails', $email_account )
 				->reply( null );
 
-		$sut = $this->get_api( email_account_repository: $email_account_repository );
-		$sut->check_email();
+		$sut    = $this->get_api( email_account_repository: $email_account_repository );
+		$result = $sut->check_email();
 
 		$this->assertTrue( $this->logger->hasWarningThatContains( 'No fetcher found' ) );
+
+		$this->assertFalse( $result->success );
+		$this->assertCount( 1, $result->get_failures() );
+		$this->assertSame( 'No connection is available for this account type (Unknown\\Connection\\Class).', $result->account_results[0]->message );
 	}
 
 	/**
@@ -344,10 +366,120 @@ class API_Unit_Test extends Unit_Testcase {
 				->with( null, 'test-plugin', 'test_emails', $email_account )
 				->reply( $connection );
 
-		$sut = $this->get_api( settings: $settings, email_account_repository: $email_account_repository );
-		$sut->check_email();
+		$sut    = $this->get_api( settings: $settings, email_account_repository: $email_account_repository );
+		$result = $sut->check_email();
 
 		$this->assertTrue( $this->logger->hasErrorThatContains( 'Error fetching emails' ) );
+
+		// The connection's own message is surfaced so the user can tell a bad password from a bad hostname.
+		$this->assertFalse( $result->success );
+		$this->assertCount( 1, $result->get_failures() );
+		$this->assertFalse( $result->account_results[0]->skipped );
+		$this->assertSame( 'Could not fetch emails: Connection refused', $result->account_results[0]->message );
+	}
+
+	/**
+	 * One failing account must mark the whole check as failed without hiding the other accounts' results.
+	 *
+	 * @covers ::check_email
+	 * @covers ::check_email_for_account
+	 */
+	public function test_check_email_reports_one_failure_among_several_accounts(): void {
+
+		$good_account = BH_Email_Account_Fixture::make( email_address: 'good@example.com', display_name: 'Good' );
+		$bad_account  = BH_Email_Account_Fixture::make( email_address: 'bad@example.com', display_name: 'Bad' );
+		$credentials  = Mockery::mock( Account_Credentials_Interface::class );
+		$settings     = Mockery::mock(
+			BH_WP_Mailboxes_Settings_Interface::class,
+			array(
+				'get_plugin_slug'               => 'test-plugin',
+				'get_emails_cpt_underscored_20' => 'test_emails',
+			)
+		)->shouldIgnoreMissing();
+
+		$good_connection = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$good_connection->expects( 'retrieve_emails' )->andReturn( new Collection() );
+		$bad_connection = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$bad_connection->expects( 'retrieve_emails' )->andThrow( new \Exception( 'AUTHENTICATIONFAILED' ) );
+
+		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
+		$email_repository->expects( 'save_all' )->andReturn( array() );
+
+		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
+		$email_account_repository->expects( 'get_all' )->andReturn( array( $good_account, $bad_account ) );
+		$email_account_repository->allows( 'update' )->andReturnArg( 0 );
+
+		$this->store_credentials( $credentials );
+
+		WP_Mock::onFilter( 'bh_wp_mailboxes_connection_for_account' )
+				->with( null, 'test-plugin', 'test_emails', $good_account )
+				->reply( $good_connection );
+		WP_Mock::onFilter( 'bh_wp_mailboxes_connection_for_account' )
+				->with( null, 'test-plugin', 'test_emails', $bad_account )
+				->reply( $bad_connection );
+
+		$sut    = $this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository );
+		$result = $sut->check_email();
+
+		$this->assertFalse( $result->success );
+		$this->assertCount( 2, $result->account_results );
+		$this->assertTrue( $result->account_results[0]->success );
+		$this->assertNull( $result->account_results[0]->message );
+		$this->assertCount( 1, $result->get_failures() );
+		$this->assertSame( $bad_account, $result->get_failures()[0]->bh_account );
+		$this->assertSame( 'Could not fetch emails: AUTHENTICATIONFAILED', $result->get_failures()[0]->message );
+	}
+
+	/**
+	 * A post-download action that fails does not fail the check (the emails are already saved), but the
+	 * problem is reported as a warning on the result.
+	 *
+	 * @covers ::fetch_for_account
+	 */
+	public function test_check_email_reports_failed_post_download_action_as_warning(): void {
+
+		$email_account = BH_Email_Account_Fixture::make( after_download_remote_email_action: 'mark_read' );
+		$credentials   = Mockery::mock( Account_Credentials_Interface::class );
+		$connection    = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$settings      = Mockery::mock(
+			BH_WP_Mailboxes_Settings_Interface::class,
+			array(
+				'get_plugin_slug'               => 'test-plugin',
+				'get_emails_cpt_underscored_20' => 'test_emails',
+			)
+		)->shouldIgnoreMissing();
+
+		$connection->expects( 'retrieve_emails' )->andReturn( new Collection() );
+
+		$saved_bh_email = BH_Email_Fixture::new( post_id: 42, post_type: 'test_emails', email_account_local_id: 2, imessage: Mockery::mock( \ZBateson\MailMimeParser\IMessage::class ), message_id: 'm@example.org', subject: 'Hi', from_email: 'a@example.org' );
+
+		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
+		$email_repository->expects( 'save_all' )->andReturn( array( $saved_bh_email ) );
+
+		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
+		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
+		$email_account_repository->allows( 'update' )->andReturnArg( 0 );
+
+		$this->store_credentials( $credentials );
+
+		WP_Mock::onFilter( 'bh_wp_mailboxes_connection_for_account' )
+				->with( null, 'test-plugin', 'test_emails', $email_account )
+				->reply( $connection );
+
+		// mark_email_read() needs the email's account; the repository failing to find it makes the action throw.
+		$email_account_repository->allows( 'find_by_post_id' )->andThrow( new \Exception( 'Post not found.' ) );
+		WP_Mock::passthruFunction( 'esc_html' );
+
+		$sut = $this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository );
+
+		$result = $sut->check_email();
+
+		$this->assertTrue( $result->success );
+		$this->assertTrue( $this->logger->hasWarningThatContains( 'Post-download action "mark_read" failed' ) );
+		$this->assertSame(
+			array( 'Post-download action "mark_read" failed for email 42: failed to get BH_Email_Account for email test_emails' ),
+			$result->account_results[0]->warnings
+		);
 	}
 
 	/**
@@ -384,6 +516,8 @@ class API_Unit_Test extends Unit_Testcase {
 		$this->assertTrue( $result->success );
 		$this->assertSame( array(), $result->get_emails() );
 		$this->assertTrue( $this->logger->hasDebugThatContains( 'does not support fetching' ) );
+		$this->assertCount( 1, $result->get_skipped() );
+		$this->assertStringContainsString( 'nothing to fetch', (string) $result->account_results[0]->message );
 	}
 
 	/**
