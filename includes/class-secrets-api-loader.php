@@ -49,6 +49,13 @@ class Secrets_API_Loader {
 	 * Locate `secrets-api.php`: ask Composer's runtime API, then look in the vendor directories above this file.
 	 */
 	protected static function find_plugin_file(): ?string {
+		return self::find_via_composer() ?? self::find_in_parent_directories( __DIR__ );
+	}
+
+	/**
+	 * The package's main file as reported by Composer's runtime API, when the package is in the current autoloader.
+	 */
+	protected static function find_via_composer(): ?string {
 		try {
 			if ( class_exists( InstalledVersions::class ) && InstalledVersions::isInstalled( self::PACKAGE_NAME ) ) {
 				$install_path = InstalledVersions::getInstallPath( self::PACKAGE_NAME );
@@ -60,9 +67,18 @@ class Secrets_API_Loader {
 			// InstalledVersions throws when asked about a package outside the current autoloader; search instead.
 		}
 
-		// This file is `includes/class-secrets-api-loader.php`; walk up through the library's own root,
-		// its vendor directory when installed as a dependency, and the consuming plugin's vendor directory.
-		$directory = __DIR__;
+		return null;
+	}
+
+	/**
+	 * Search `{dir}/vendor/wordpress/secrets-api/secrets-api.php` in a directory and up to five of its ancestors.
+	 *
+	 * From `includes/class-secrets-api-loader.php` that covers the library's own root, its vendor directory
+	 * when installed as a dependency, and the consuming plugin's vendor directory.
+	 *
+	 * @param string $directory Where to start.
+	 */
+	protected static function find_in_parent_directories( string $directory ): ?string {
 		for ( $level = 0; $level < 6; $level++ ) {
 			$candidate = $directory . '/vendor/' . self::PACKAGE_NAME . '/secrets-api.php';
 			if ( file_exists( $candidate ) ) {
