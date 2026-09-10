@@ -95,6 +95,12 @@ class BH_WP_Mailboxes extends API {
 		self::validate_settings( $settings );
 		$logger ??= new NullLogger();
 
+		// Accounts' credentials are kept in the library's own copy of the WordPress Secrets API, loaded
+		// from Composer's vendor directory (consumers prefix its names at build time).
+		if ( ! Secrets_API_Loader::load() ) {
+			$logger->error( 'The WordPress Secrets API is not available (wordpress/secrets-api is not installed); email account credentials cannot be saved or read.' );
+		}
+
 		$emails_post_type = $settings->get_emails_cpt_underscored_20();
 		$bh_email_factory = new BH_Email_Factory( $logger );
 		$email_repository = new Email_WP_Post_Repository(

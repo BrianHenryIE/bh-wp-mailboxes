@@ -66,6 +66,52 @@ readonly class OAuth_Client_Credentials {
 	}
 
 	/**
+	 * Rebuild from the flat, stored representation (the object's own properties, as written by
+	 * {@see \BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Json_Trait}),
+	 * as opposed to Google's downloaded JSON with its `web`/`installed` wrapper ({@see from_json()}).
+	 *
+	 * @param array<mixed> $data The decoded JSON.
+	 */
+	public static function from_array( array $data ): OAuth_Client_Credentials {
+		return new OAuth_Client_Credentials(
+			self::string_at( $data, 'client_id' ),
+			self::string_at( $data, 'project_id' ),
+			self::string_at( $data, 'auth_uri' ),
+			self::string_at( $data, 'token_uri' ),
+			self::string_at( $data, 'auth_provider_x509_cert_url' ),
+			self::string_at( $data, 'client_secret' ),
+			self::strings_at( $data, 'redirect_uris' ),
+			self::strings_at( $data, 'javascript_origins' ),
+		);
+	}
+
+	/**
+	 * A string field from the stored representation, or empty string.
+	 *
+	 * @param array<mixed> $data The decoded JSON.
+	 * @param string       $key  The field.
+	 */
+	private static function string_at( array $data, string $key ): string {
+		$value = $data[ $key ] ?? null;
+
+		return is_string( $value ) ? $value : '';
+	}
+
+	/**
+	 * A list of strings from the stored representation, dropping anything else.
+	 *
+	 * @param array<mixed> $data The decoded JSON.
+	 * @param string       $key  The field.
+	 *
+	 * @return string[]
+	 */
+	private static function strings_at( array $data, string $key ): array {
+		$value = $data[ $key ] ?? null;
+
+		return is_array( $value ) ? array_values( array_filter( $value, 'is_string' ) ) : array();
+	}
+
+	/**
 	 * Creates an instance from a decoded JSON object.
 	 *
 	 * Google labels the client config `web` for Web-application clients and `installed` for Desktop-app

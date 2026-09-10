@@ -11,7 +11,7 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
-use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Credentials;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Defaults_Trait;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 
@@ -84,12 +84,12 @@ class Gmail_API {
 	}
 
 	/**
-	 * Returns the Google API credentials, loaded from the test-credentials directory.
+	 * The Google API credentials read from the test-credentials directory (token absent until authorised).
 	 */
 	public function get_credentials(): Account_Credentials_Interface {
-		return new Google_API_Credentials(
-			directory_path: self::CREDENTIALS_DIRECTORY,
-			credentials_filename: 'google_desktop_client_secret.json',
+		return Gmail_Credentials::from_files(
+			directory: self::CREDENTIALS_DIRECTORY,
+			client_secret_file: 'google_desktop_client_secret.json',
 		);
 	}
 }

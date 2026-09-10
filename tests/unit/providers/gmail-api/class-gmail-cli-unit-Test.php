@@ -15,6 +15,7 @@ use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\OAuth_Client_Credentials;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use Mockery;
 
@@ -52,9 +53,14 @@ class Gmail_CLI_Unit_Test extends Unit_Testcase {
 	 *
 	 * @param BH_Email_Account[] $accounts The accounts the API returns.
 	 */
-	private function make_api( array $accounts ): API_Interface {
+	/**
+	 * @param BH_Email_Account[] $accounts    The accounts the API reports.
+	 * @param mixed              $credentials What the API returns as the saved credentials for any account.
+	 */
+	private function make_api( array $accounts, mixed $credentials = null ): API_Interface {
 		$api = Mockery::mock( API_Interface::class );
 		$api->allows( 'get_email_accounts' )->andReturn( $accounts );
+		$api->allows( 'get_account_credentials' )->andReturn( $credentials );
 		return $api;
 	}
 
@@ -73,8 +79,12 @@ class Gmail_CLI_Unit_Test extends Unit_Testcase {
 	 *
 	 * @param BH_Email_Account[] $accounts The accounts the API returns.
 	 */
-	private function make_sut( array $accounts ): Gmail_CLI {
-		return new Gmail_CLI( $this->make_api( $accounts ), $this->make_settings(), $this->logger );
+	/**
+	 * @param BH_Email_Account[] $accounts    The accounts the API reports.
+	 * @param mixed              $credentials What the API returns as the saved credentials for any account.
+	 */
+	private function make_sut( array $accounts, mixed $credentials = null ): Gmail_CLI {
+		return new Gmail_CLI( $this->make_api( $accounts, $credentials ), $this->make_settings(), $this->logger );
 	}
 
 	/**
@@ -120,27 +130,34 @@ class Gmail_CLI_Unit_Test extends Unit_Testcase {
 
 		$account = $this->make_account( 'you@example.com', Google_API_Credentials_Interface::class );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )->withAnyArgs()->reply( null );
-
 		$this->expectException( \WP_CLI\ExitException::class );
-		$this->make_sut( array( $account ) )->refresh_access_token( array(), array( 'account' => 'you@example.com' ) );
+		$this->make_sut( array( $account ), null )->refresh_access_token( array(), array( 'account' => 'you@example.com' ) );
 	}
 
 	/**
-	 * The happy path prints the token JSON and fires the refreshed action.
+	 * The happy path saves the refreshed token, with the existing OAuth client, to the account's credentials.
 	 *
 	 * @covers ::refresh_access_token
 	 */
-	public function test_refresh_fires_action(): void {
+	public function test_refresh_saves_the_new_token(): void {
 
 		$account = $this->make_account( 'you@example.com', Google_API_Credentials_Interface::class );
 		$token   = $this->make_token();
+		$client  = new OAuth_Client_Credentials( 'id', 'project', 'https://auth', 'https://token', 'https://certs', 'secret' );
 
 		$credentials = Mockery::mock( Google_API_Credentials_Interface::class );
+		$credentials->allows( 'get_project_credentials' )->andReturn( $client );
 
-		\WP_Mock::onFilter( 'bh_wp_mailboxes_credentials' )->withAnyArgs()->reply( $credentials );
-		\WP_Mock::userFunction( 'wp_json_encode' )->andReturn( '{"access_token":"fresh-access-token"}' );
-		\WP_Mock::expectAction( 'bh_wp_mailboxes_gmail_access_token_refreshed', 'test-plugin', $token, 'you@example.com' );
+		$api = $this->make_api( array( $account ), $credentials );
+		$api->expects( 'save_account_credentials' )
+			->once()
+			->withArgs(
+				function ( BH_Email_Account $saved_account, Gmail_Credentials $saved ) use ( $account, $client, $token ): bool {
+					return $saved_account === $account
+						&& $saved->get_project_credentials() === $client
+						&& $saved->get_access_token() === $token;
+				}
+			);
 
 		$connection = Mockery::mock( Gmail_Email_Connection::class );
 		$connection->expects( 'set_credentials' )->with( $credentials )->once();
@@ -148,7 +165,7 @@ class Gmail_CLI_Unit_Test extends Unit_Testcase {
 
 		$sut = Mockery::mock(
 			Gmail_CLI::class,
-			array( $this->make_api( array( $account ) ), $this->make_settings(), $this->logger )
+			array( $api, $this->make_settings(), $this->logger )
 		)
 			->makePartial()
 			->shouldAllowMockingProtectedMethods();

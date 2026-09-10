@@ -7,6 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes;
 
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Credentials;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Email_Connection;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Interface;
 use Exception;
@@ -53,7 +54,7 @@ class Gmail_CLI {
 	 *
 	 * Adds the email account (the "connection") to the chosen mailbox, then — if no access token exists
 	 * yet — runs the interactive authorization flow against /var/www/test-credentials/client_secret.json
-	 * and saves the resulting token to /var/www/test-credentials/access_token.json.
+	 * and saves the client secret and resulting token to the account's credentials (the Secrets API).
 	 *
 	 * ## OPTIONS
 	 *
@@ -112,15 +113,22 @@ class Gmail_CLI {
 		);
 		WP_CLI::log( "Configured Gmail account {$email} in {$mailbox_slug}." );
 
-		// 2. Obtain the first auth token, unless one already exists.
-		$credentials = $this->gmail_api->get_credentials();
-		if ( ! ( $credentials instanceof Google_API_Credentials_Interface ) ) {
-			WP_CLI::error( 'Gmail credentials are not the expected type.' );
+		$account = $api->get_email_accounts()[ $email ] ?? null;
+		if ( is_null( $account ) ) {
+			WP_CLI::error( 'The account was not found after configuring it.' );
 			return;
 		}
 
-		if ( ! is_null( $credentials->get_access_token() ) ) {
+		// 2. Obtain the first auth token, unless the account is already authorised.
+		$saved = $api->get_account_credentials( $account );
+		if ( $saved instanceof Google_API_Credentials_Interface && ! is_null( $saved->get_access_token() ) ) {
 			WP_CLI::success( "Gmail connection for {$email} is already authorized." );
+			return;
+		}
+
+		$credentials = $this->gmail_api->get_credentials();
+		if ( ! ( $credentials instanceof Google_API_Credentials_Interface ) ) {
+			WP_CLI::error( 'Gmail credentials are not the expected type.' );
 			return;
 		}
 
@@ -135,7 +143,6 @@ class Gmail_CLI {
 
 		WP_CLI::log( 'Open this URL in your browser and grant access:' );
 		WP_CLI::log( $connection->get_authorization_url() );
-
 		print 'Enter the verification code (or paste the whole redirect URL): ';
 		$auth_code = $this->parse_auth_code_from_url( trim( (string) fgets( STDIN ) ) );
 
@@ -146,46 +153,16 @@ class Gmail_CLI {
 
 		try {
 			$access_token = $connection->fetch_access_token_with_auth_code( $auth_code );
+			// 3. Save the client secret and the new token to the account's credentials (the Secrets API).
+			$api->save_account_credentials( $account, new Gmail_Credentials( $credentials->get_project_credentials(), $access_token ) );
 		} catch ( Throwable $t ) {
 			WP_CLI::error( $t->getMessage() );
 			return;
 		}
 
-		$token_path = Gmail_API::CREDENTIALS_DIRECTORY . '/access_token.json';
-		$this->save_token( $token_path, (string) wp_json_encode( $access_token, JSON_PRETTY_PRINT ) );
-
-		WP_CLI::success( "Saved Gmail access token to {$token_path}." );
+		WP_CLI::success( "Saved the Gmail credentials for {$email} to the {$mailbox_slug} mailbox." );
 	}
 
-	/**
-	 * Write the token JSON to disk via WP_Filesystem.
-	 *
-	 * @param string $token_path Absolute path to the token file.
-	 * @param string $contents   JSON-encoded access token.
-	 */
-	protected function save_token( string $token_path, string $contents ): void {
-
-		if ( ! function_exists( 'WP_Filesystem' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/file.php';
-		}
-		WP_Filesystem();
-
-		/**
-		 * The WordPress filesystem abstraction.
-		 *
-		 * @var \WP_Filesystem_Base|null $wp_filesystem
-		 */
-		global $wp_filesystem;
-
-		if ( ! $wp_filesystem instanceof \WP_Filesystem_Base ) {
-			WP_CLI::error( 'Could not initialise WP_Filesystem to save the Gmail access token.' );
-			return;
-		}
-
-		if ( ! $wp_filesystem->put_contents( $token_path, $contents, 0600 ) ) {
-			WP_CLI::error( 'Failed to write the Gmail access token to ' . $token_path . '.' );
-		}
-	}
 
 	/**
 	 * Extract the OAuth `code` from a pasted redirect URL, or return the input unchanged.

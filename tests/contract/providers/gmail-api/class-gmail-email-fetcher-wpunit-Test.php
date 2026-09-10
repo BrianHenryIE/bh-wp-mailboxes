@@ -46,9 +46,7 @@ class Gmail_Email_Fetcher_Contract_Test extends Unit_Testcase {
 	public function test_one(): void {
 
 		$logger      = new ColorLogger();
-		$credentials = new Google_API_Credentials(
-			codecept_root_dir( '/test-credentials/' ),
-		);
+		$credentials = Gmail_Credentials::from_files( codecept_root_dir( '/test-credentials' ) );
 
 		$mailbox_settings = $this->mailbox_settings;
 

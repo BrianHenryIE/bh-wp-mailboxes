@@ -4,7 +4,8 @@
  *
  * Lets a Playground/test user configure the two empty demo mailboxes ("Mailbox One" / "Mailbox Two"):
  * enable REST per mailbox, create an IMAP account from `.env.secret` or from typed-in credentials,
- * create a Gmail account from the test-credentials files or from pasted JSON stored in wp_options.
+ * create a Gmail account from the test-credentials files or from pasted JSON. Credentials are saved by
+ * the library into the WordPress Secrets API.
  * Also runs the fetch cron on demand and inspects the registered custom post types and their statuses.
  *
  * @package brianhenryie/bh-wp-mailboxes-development-plugin
@@ -13,16 +14,24 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin;
 
 use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Modal;
+use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Credentials;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Google_API_Credentials_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\Access_Token;
+use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Model\OAuth_Client_Credentials;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials_Env;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Dev_Mailboxes;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_API;
-use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_Credentials_Options;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
-use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap_Credentials_Settings;
 use Exception;
+use RuntimeException;
 use stdClass;
+use Throwable;
 
 /**
  * Renders and handles the development plugin's settings page.
@@ -38,14 +47,16 @@ class Settings {
 	public const SAVE_GMAIL_ACTION      = 'bh_wp_mailboxes_dev_save_gmail';
 
 	/**
-	 * Which mailbox the typed-in IMAP credentials are configured for ('' when none).
+	 * Which mailbox the typed-in IMAP credentials are configured for ('' when none), and the account's address.
 	 */
 	public const OPTION_IMAP_MAILBOX = 'bh_wp_mailboxes_dev_imap_mailbox';
+	public const OPTION_IMAP_EMAIL   = 'bh_wp_mailboxes_dev_imap_email';
 
 	/**
-	 * Which mailbox the pasted Gmail credentials are configured for ('' when none).
+	 * Which mailbox the pasted Gmail credentials are configured for ('' when none), and the account's address.
 	 */
 	public const OPTION_GMAIL_MAILBOX = 'bh_wp_mailboxes_dev_gmail_mailbox';
+	public const OPTION_GMAIL_EMAIL   = 'bh_wp_mailboxes_dev_gmail_email';
 
 	/**
 	 * Success notices, keyed by the `bh_notice` query arg set by the form handlers' redirects.
@@ -53,13 +64,11 @@ class Settings {
 	 * @var array<string,string>
 	 */
 	private const NOTICES = array(
-		'saved'                          => 'IMAP credentials saved.',
-		'saved_account_configured'       => 'IMAP credentials saved and account configured in the mailbox.',
+		'saved_account_configured'       => 'IMAP account configured in the mailbox and its credentials saved.',
 		'rest_saved'                     => 'REST settings saved. Changes take effect on the next page load.',
 		'env_account_configured'         => 'Account from .env.secret configured in the mailbox.',
 		'gmail_files_account_configured' => 'Gmail account (file credentials) configured in the mailbox.',
-		'gmail_saved'                    => 'Gmail credentials saved.',
-		'gmail_saved_account_configured' => 'Gmail credentials saved and account configured in the mailbox.',
+		'gmail_saved_account_configured' => 'Gmail account configured in the mailbox and its credentials saved.',
 	);
 
 	/**
@@ -68,10 +77,13 @@ class Settings {
 	 * @var array<string,string>
 	 */
 	private const ERRORS = array(
-		'mailbox_not_found'  => 'The selected mailbox is not registered.',
-		'no_mailbox'         => 'Please choose a mailbox.',
-		'env_missing'        => '.env.secret not found, or it does not set IMAP_USERNAME.',
-		'gmail_invalid_json' => 'The pasted Gmail client secret is not valid JSON.',
+		'mailbox_not_found'     => 'The selected mailbox is not registered.',
+		'no_mailbox'            => 'Please choose a mailbox.',
+		'env_missing'           => '.env.secret not found, or it does not set IMAP_USERNAME.',
+		'imap_incomplete'       => 'The IMAP server, username and password are all required.',
+		'gmail_invalid_json'    => 'The pasted Gmail client secret or access token is not valid JSON.',
+		'gmail_incomplete'      => 'The Gmail email address and client secret JSON are required.',
+		'credentials_not_saved' => 'The credentials could not be saved (is the Secrets API available?). See the log.',
 	);
 
 	/**
@@ -204,22 +216,31 @@ class Settings {
 	}
 
 	/**
-	 * Create or update an email account in the given mailbox.
+	 * The API for a submitted mailbox slug, or redirect with an error.
 	 *
-	 * @param string $mailbox_slug          The mailbox to configure the account in.
-	 * @param string $email_address         The account's email address.
-	 * @param string $connection_type_class The connection class for fetching.
-	 *
-	 * @return string Notice key: account_configured|mailbox_not_found.
+	 * @param string $field The POST field holding the mailbox slug.
 	 */
-	private function configure_account_in_mailbox( string $mailbox_slug, string $email_address, string $connection_type_class ): string {
-
+	private function get_posted_mailbox_api( string $field ): API_Interface {
+		$mailbox_slug = $this->get_posted_mailbox( $field );
+		if ( '' === $mailbox_slug ) {
+			$this->redirect_with_notice( 'bh_error', 'no_mailbox' );
+		}
 		$api = Dev_Mailboxes::get_api( $mailbox_slug );
 		if ( is_null( $api ) ) {
-			return 'mailbox_not_found';
+			$this->redirect_with_notice( 'bh_error', 'mailbox_not_found' );
 		}
+		return $api;
+	}
 
-		$api->configure_email_account(
+	/**
+	 * Create or update an email account in a mailbox and return it.
+	 *
+	 * @param API_Interface $api                   The mailbox.
+	 * @param string        $email_address         The account's email address.
+	 * @param string        $connection_type_class The connection class for fetching.
+	 */
+	private function configure_account( API_Interface $api, string $email_address, string $connection_type_class ): BH_Email_Account {
+		return $api->configure_email_account(
 			email_address: $email_address,
 			display_name: $email_address,
 			connection_type_class: $connection_type_class,
@@ -228,8 +249,37 @@ class Settings {
 			after_download_remote_email_action: null,
 			delete_local_emails_after_n_days: 1,
 		);
+	}
 
-		return 'account_configured';
+	/**
+	 * Save an account's credentials, or redirect with an error.
+	 *
+	 * @param API_Interface                 $api         The mailbox.
+	 * @param BH_Email_Account              $account     The account.
+	 * @param Account_Credentials_Interface $credentials The credentials to save.
+	 */
+	private function save_credentials_or_redirect( API_Interface $api, BH_Email_Account $account, Account_Credentials_Interface $credentials ): void {
+		try {
+			$api->save_account_credentials( $account, $credentials );
+		} catch ( Throwable $throwable ) {
+			$this->redirect_with_notice( 'bh_error', 'credentials_not_saved' );
+		}
+	}
+
+	/**
+	 * A posted text field, or the environment variable of the same meaning when it is set (the form
+	 * disables the input then, so nothing is posted for it).
+	 *
+	 * @param string $field   The POST field.
+	 * @param string $env_key The environment variable.
+	 */
+	private function posted_or_env( string $field, string $env_key ): string {
+		if ( $this->is_env_set( $env_key ) ) {
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- loaded from dotenv, used verbatim.
+			return is_string( $_ENV[ $env_key ] ) ? $_ENV[ $env_key ] : '';
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce checked by the calling handler.
+		return isset( $_POST[ $field ] ) && is_string( $_POST[ $field ] ) ? sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) : '';
 	}
 
 	/**
@@ -260,7 +310,8 @@ class Settings {
 	}
 
 	/**
-	 * Save the submitted IMAP credentials to transients, and create the account in the chosen mailbox.
+	 * Create the IMAP account in the chosen mailbox from the submitted form, and save its credentials
+	 * to the Secrets API via the library. A blank password keeps the saved one.
 	 */
 	public function save_imap_credentials(): void {
 
@@ -269,9 +320,9 @@ class Settings {
 		}
 		check_admin_referer( self::SAVE_ACTION );
 
-		$server     = isset( $_POST['imap_server'] ) && is_string( $_POST['imap_server'] ) ? sanitize_text_field( wp_unslash( $_POST['imap_server'] ) ) : '';
-		$username   = isset( $_POST['imap_username'] ) && is_string( $_POST['imap_username'] ) ? sanitize_text_field( wp_unslash( $_POST['imap_username'] ) ) : '';
-		$encryption = isset( $_POST['imap_encryption'] ) && is_string( $_POST['imap_encryption'] ) ? sanitize_text_field( wp_unslash( $_POST['imap_encryption'] ) ) : '';
+		$server     = $this->posted_or_env( 'imap_server', 'IMAP_SERVER' );
+		$username   = $this->posted_or_env( 'imap_username', 'IMAP_USERNAME' );
+		$encryption = $this->posted_or_env( 'imap_encryption', 'IMAP_ENCRYPTION' );
 		if ( ! in_array( $encryption, array( '', 'TLS', 'STARTTLS' ), true ) ) {
 			$encryption = '';
 		}
@@ -280,36 +331,38 @@ class Settings {
 		// validates the request.
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 		$password = isset( $_POST['imap_password'] ) && is_string( $_POST['imap_password'] ) ? wp_unslash( $_POST['imap_password'] ) : '';
+		if ( $this->is_env_set( 'IMAP_PASSWORD' ) ) {
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- loaded from dotenv, used verbatim.
+			$password = is_string( $_ENV['IMAP_PASSWORD'] ) ? $_ENV['IMAP_PASSWORD'] : '';
+		}
+
+		$api = $this->get_posted_mailbox_api( 'imap_mailbox' );
+
+		if ( '' === $server || '' === $username ) {
+			$this->redirect_with_notice( 'bh_error', 'imap_incomplete' );
+		}
+
+		$account = $this->configure_account( $api, $username, ImapEngine_Imap_Email_Connection::class );
+
 		if ( '' === $password ) {
-			// Empty submission leaves the stored password unchanged.
-			$existing = get_transient( Imap_Credentials_Settings::TRANSIENT_PASSWORD );
-			$password = is_string( $existing ) ? $existing : '';
+			// Empty submission keeps the saved password.
+			$saved    = $api->get_account_credentials( $account );
+			$password = $saved instanceof IMAP_Credentials_Interface ? $saved->get_email_account_password() : '';
+		}
+		if ( '' === $password ) {
+			$this->redirect_with_notice( 'bh_error', 'imap_incomplete' );
 		}
 
-		Imap_Credentials_Settings::save( $server, $username, $password, $encryption );
+		$this->save_credentials_or_redirect( $api, $account, new Imap_Credentials( $server, $username, $password, $encryption ) );
 
-		$mailbox_slug = $this->get_posted_mailbox( 'imap_mailbox' );
-		update_option( self::OPTION_IMAP_MAILBOX, $mailbox_slug );
+		update_option( self::OPTION_IMAP_MAILBOX, $this->get_posted_mailbox( 'imap_mailbox' ) );
+		update_option( self::OPTION_IMAP_EMAIL, $username );
 
-		$credentials = new Imap_Credentials_Settings();
-		if ( '' === $mailbox_slug || ! $credentials->is_complete() ) {
-			$this->redirect_with_notice( 'bh_notice', 'saved' );
-		}
-
-		$result = $this->configure_account_in_mailbox(
-			$mailbox_slug,
-			$credentials->get_email_account_username(),
-			ImapEngine_Imap_Email_Connection::class
-		);
-
-		match ( $result ) {
-			'account_configured' => $this->redirect_with_notice( 'bh_notice', 'saved_account_configured' ),
-			default              => $this->redirect_with_notice( 'bh_error', 'mailbox_not_found' ),
-		};
+		$this->redirect_with_notice( 'bh_notice', 'saved_account_configured' );
 	}
 
 	/**
-	 * Create an IMAP account from `.env.secret` in the chosen mailbox.
+	 * Create an IMAP account from `.env.secret` in the chosen mailbox, saving the env credentials to the Secrets API.
 	 */
 	public function add_env_imap_account(): void {
 
@@ -324,25 +377,18 @@ class Settings {
 			$this->redirect_with_notice( 'bh_error', 'env_missing' );
 		}
 
-		$mailbox_slug = $this->get_posted_mailbox( 'env_imap_mailbox' );
-		if ( '' === $mailbox_slug ) {
-			$this->redirect_with_notice( 'bh_error', 'no_mailbox' );
-		}
+		$api = $this->get_posted_mailbox_api( 'env_imap_mailbox' );
 
-		$result = $this->configure_account_in_mailbox(
-			$mailbox_slug,
-			$env_settings->get_account_email_address(),
-			ImapEngine_Imap_Email_Connection::class
-		);
+		$account = $this->configure_account( $api, $env_settings->get_account_email_address(), ImapEngine_Imap_Email_Connection::class );
 
-		match ( $result ) {
-			'account_configured' => $this->redirect_with_notice( 'bh_notice', 'env_account_configured' ),
-			default              => $this->redirect_with_notice( 'bh_error', 'mailbox_not_found' ),
-		};
+		$this->save_credentials_or_redirect( $api, $account, new Imap_Credentials_Env() );
+
+		$this->redirect_with_notice( 'bh_notice', 'env_account_configured' );
 	}
 
 	/**
-	 * Create a Gmail account using the test-credentials files, in the chosen mailbox.
+	 * Create a Gmail account using the test-credentials files, in the chosen mailbox, saving the file
+	 * contents to the Secrets API.
 	 */
 	public function use_gmail_file_credentials(): void {
 
@@ -356,25 +402,18 @@ class Settings {
 			$this->redirect_with_notice( 'bh_error', 'env_missing' );
 		}
 
-		$mailbox_slug = $this->get_posted_mailbox( 'gmail_files_mailbox' );
-		if ( '' === $mailbox_slug ) {
-			$this->redirect_with_notice( 'bh_error', 'no_mailbox' );
-		}
+		$api = $this->get_posted_mailbox_api( 'gmail_files_mailbox' );
 
-		$result = $this->configure_account_in_mailbox(
-			$mailbox_slug,
-			$gmail_api->get_account_email_address(),
-			Google_API_Credentials_Interface::class
-		);
+		$account = $this->configure_account( $api, $gmail_api->get_account_email_address(), Google_API_Credentials_Interface::class );
 
-		match ( $result ) {
-			'account_configured' => $this->redirect_with_notice( 'bh_notice', 'gmail_files_account_configured' ),
-			default              => $this->redirect_with_notice( 'bh_error', 'mailbox_not_found' ),
-		};
+		$this->save_credentials_or_redirect( $api, $account, $gmail_api->get_credentials() );
+
+		$this->redirect_with_notice( 'bh_notice', 'gmail_files_account_configured' );
 	}
 
 	/**
-	 * Save the pasted Gmail credentials to wp_options, and create the account in the chosen mailbox.
+	 * Create a Gmail account in the chosen mailbox from the pasted client secret and access token JSON,
+	 * saving them to the Secrets API. Blank JSON keeps the saved value.
 	 */
 	public function save_gmail_credentials(): void {
 
@@ -386,7 +425,7 @@ class Settings {
 		$email_address = isset( $_POST['gmail_email_address'] ) && is_string( $_POST['gmail_email_address'] ) ? sanitize_email( wp_unslash( $_POST['gmail_email_address'] ) ) : '';
 
 		// The pasted JSON is stored verbatim — sanitizing would corrupt it. It is validated as JSON
-		// below and only ever output escaped. The nonce above validates the request.
+		// below and never output. The nonce above validates the request.
 		// phpcs:disable WordPress.Security.ValidatedSanitizedInput
 		$client_secret_json = isset( $_POST['gmail_client_secret_json'] ) && is_string( $_POST['gmail_client_secret_json'] )
 			? trim( (string) wp_unslash( $_POST['gmail_client_secret_json'] ) )
@@ -396,33 +435,73 @@ class Settings {
 			: '';
 		// phpcs:enable WordPress.Security.ValidatedSanitizedInput
 
-		if ( '' !== $client_secret_json && ! ( json_decode( $client_secret_json ) instanceof stdClass ) ) {
+		$api = $this->get_posted_mailbox_api( 'gmail_mailbox' );
+
+		if ( '' === $email_address ) {
+			$this->redirect_with_notice( 'bh_error', 'gmail_incomplete' );
+		}
+
+		$account = $this->configure_account( $api, $email_address, Google_API_Credentials_Interface::class );
+		$saved   = $api->get_account_credentials( $account );
+		$saved   = $saved instanceof Google_API_Credentials_Interface ? $saved : null;
+
+		try {
+			$client = '' === $client_secret_json
+				? $saved?->get_project_credentials()
+				: OAuth_Client_Credentials::from_json( $this->decode_json( $client_secret_json ) );
+			$token  = '' === $access_token_json
+				? $saved?->get_access_token()
+				: Access_Token::from_json( $this->decode_json( $access_token_json ) );
+		} catch ( Throwable $throwable ) {
 			$this->redirect_with_notice( 'bh_error', 'gmail_invalid_json' );
 		}
-		if ( '' !== $access_token_json && ! ( json_decode( $access_token_json ) instanceof stdClass ) ) {
-			$this->redirect_with_notice( 'bh_error', 'gmail_invalid_json' );
+
+		if ( is_null( $client ) ) {
+			$this->redirect_with_notice( 'bh_error', 'gmail_incomplete' );
 		}
 
-		Gmail_Credentials_Options::save( $email_address, $client_secret_json, $access_token_json );
+		$this->save_credentials_or_redirect( $api, $account, new Gmail_Credentials( $client, $token ) );
 
-		$mailbox_slug = $this->get_posted_mailbox( 'gmail_mailbox' );
-		update_option( self::OPTION_GMAIL_MAILBOX, $mailbox_slug );
+		update_option( self::OPTION_GMAIL_MAILBOX, $this->get_posted_mailbox( 'gmail_mailbox' ) );
+		update_option( self::OPTION_GMAIL_EMAIL, $email_address );
 
-		$credentials = new Gmail_Credentials_Options();
-		if ( '' === $mailbox_slug || ! $credentials->is_complete() ) {
-			$this->redirect_with_notice( 'bh_notice', 'gmail_saved' );
+		$this->redirect_with_notice( 'bh_notice', 'gmail_saved_account_configured' );
+	}
+
+	/**
+	 * Decode pasted JSON to an object, or throw.
+	 *
+	 * @param string $json The pasted JSON.
+	 *
+	 * @throws RuntimeException When it is not a JSON object.
+	 */
+	private function decode_json( string $json ): stdClass {
+		$decoded = json_decode( $json );
+		if ( ! $decoded instanceof stdClass ) {
+			throw new RuntimeException( 'Not a JSON object.' );
 		}
+		return $decoded;
+	}
 
-		$result = $this->configure_account_in_mailbox(
-			$mailbox_slug,
-			$credentials->get_email_address(),
-			Google_API_Credentials_Interface::class
-		);
+	/**
+	 * The credentials saved for the account last configured from a form on this page, if any.
+	 *
+	 * @param string $mailbox_option The option holding the mailbox slug.
+	 * @param string $email_option   The option holding the account's email address.
+	 */
+	private function get_configured_credentials( string $mailbox_option, string $email_option ): ?Account_Credentials_Interface {
+		$mailbox_slug = get_option( $mailbox_option, '' );
+		$email        = get_option( $email_option, '' );
+		if ( ! is_string( $mailbox_slug ) || ! is_string( $email ) || '' === $mailbox_slug || '' === $email ) {
+			return null;
+		}
+		$api = Dev_Mailboxes::get_api( $mailbox_slug );
+		if ( is_null( $api ) ) {
+			return null;
+		}
+		$account = $api->get_email_accounts()[ $email ] ?? null;
 
-		match ( $result ) {
-			'account_configured' => $this->redirect_with_notice( 'bh_notice', 'gmail_saved_account_configured' ),
-			default              => $this->redirect_with_notice( 'bh_error', 'mailbox_not_found' ),
-		};
+		return is_null( $account ) ? null : $api->get_account_credentials( $account );
 	}
 
 	/**
@@ -556,29 +635,31 @@ class Settings {
 	}
 
 	/**
-	 * Render the IMAP credentials form with its configured-for-mailbox dropdown.
+	 * Render the IMAP credentials form with its configured-for-mailbox dropdown, pre-filled from the
+	 * environment or the saved credentials (never the password).
 	 */
 	private function render_imap_section(): void {
 
-		$credentials = new Imap_Credentials_Settings();
+		$saved = $this->get_configured_credentials( self::OPTION_IMAP_MAILBOX, self::OPTION_IMAP_EMAIL );
+		$saved = $saved instanceof IMAP_Credentials_Interface ? $saved : null;
 
 		echo '<h2>IMAP setup</h2>';
-		echo '<p>Type IMAP credentials for a mailbox account (e.g. in WordPress Playground). Environment variables, when present, take precedence over these values.</p>';
+		echo '<p>Type IMAP credentials for a mailbox account (e.g. in WordPress Playground). They are saved, encrypted, in the WordPress Secrets API via <code>API::save_account_credentials()</code>. Environment variables, when present, take precedence over these values.</p>';
 
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::SAVE_ACTION ) . '" />';
 		wp_nonce_field( self::SAVE_ACTION );
 		echo '<table class="form-table" role="presentation"><tbody>';
 
-		$this->render_text_field( 'imap_server', 'Server', 'IMAP_SERVER', $credentials->get_email_imap_server() );
-		$this->render_text_field( 'imap_username', 'Username', 'IMAP_USERNAME', $credentials->get_email_account_username() );
-		$this->render_password_field( $credentials );
-		$this->render_encryption_field( $credentials->get_encryption() );
+		$this->render_text_field( 'imap_server', 'Server', 'IMAP_SERVER', $saved?->get_email_imap_server() ?? '' );
+		$this->render_text_field( 'imap_username', 'Username', 'IMAP_USERNAME', $saved?->get_email_account_username() ?? '' );
+		$this->render_password_field( ! is_null( $saved ) );
+		$this->render_encryption_field( $saved?->get_encryption() ?? '' );
 
 		$imap_mailbox = get_option( self::OPTION_IMAP_MAILBOX, '' );
 		echo '<tr><th scope="row"><label for="imap_mailbox">Mailbox</label></th><td>';
 		$this->render_mailbox_select( 'imap_mailbox', is_string( $imap_mailbox ) ? $imap_mailbox : '', true );
-		echo '<p class="description">Which mailbox this account is configured for. Saving with complete credentials creates the account.</p>';
+		echo '<p class="description">Which mailbox this account is configured for. Saving creates the account and saves its credentials.</p>';
 		echo '</td></tr>';
 
 		echo '</tbody></table>';
@@ -600,7 +681,7 @@ class Settings {
 		echo '<p>The library\'s add/edit account modal, reused outside the emails list screen (the README\'s "Managing accounts from your own screen"). ';
 		echo 'The modal\'s AJAX actions are bound to one mailbox, so this one adds accounts to <strong>' . esc_html( $mailbox_name ) . '</strong>; ';
 		echo 'the account then appears in <a href="' . esc_url( $list_url ) . '">its emails list\'s accounts table</a>, where it can be edited, disabled and deleted. ';
-		echo 'The credentials are stored by <code>Imap_Credentials_Options</code> via <code>bh_wp_mailboxes_save_account_credentials</code>.</p>';
+		echo 'The credentials are saved, encrypted, in the WordPress Secrets API.</p>';
 		$this->get_modal()->print_add_button();
 		echo '</div>';
 	}
@@ -618,7 +699,7 @@ class Settings {
 		if ( $gmail_api->is_client_secret_present() ) {
 			echo '<p>Found the OAuth client secret in <code>' . esc_html( Gmail_API::CREDENTIALS_DIRECTORY ) . '</code>';
 			echo $gmail_api->is_credentials_present() ? ' (access token present).' : ' (no access token yet — authorize via <code>wp development-plugin gmail connect</code>).';
-			echo ' Use these for <code>' . esc_html( $gmail_api->get_account_email_address() ) . '</code> in a mailbox:</p>';
+			echo ' Use these for <code>' . esc_html( $gmail_api->get_account_email_address() ) . '</code> in a mailbox (they are copied into the Secrets API):</p>';
 
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::USE_GMAIL_FILES_ACTION ) . '" />';
@@ -631,10 +712,12 @@ class Settings {
 			echo '<p>No Gmail client secret file found in <code>' . esc_html( Gmail_API::CREDENTIALS_DIRECTORY ) . '</code>.</p>';
 		}
 
-		$pasted = new Gmail_Credentials_Options();
+		$saved       = $this->get_configured_credentials( self::OPTION_GMAIL_MAILBOX, self::OPTION_GMAIL_EMAIL );
+		$saved       = $saved instanceof Google_API_Credentials_Interface ? $saved : null;
+		$gmail_email = get_option( self::OPTION_GMAIL_EMAIL, '' );
 
 		echo '<h3>Pasted credentials</h3>';
-		echo '<p>Paste the OAuth client secret JSON and access token JSON; they are stored as wp_options.</p>';
+		echo '<p>Paste the OAuth client secret JSON and access token JSON; they are saved, encrypted, in the WordPress Secrets API and are not displayed again.</p>';
 
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::SAVE_GMAIL_ACTION ) . '" />';
@@ -642,21 +725,21 @@ class Settings {
 		echo '<table class="form-table" role="presentation"><tbody>';
 
 		echo '<tr><th scope="row"><label for="gmail_email_address">Email address</label></th><td>';
-		echo '<input type="email" class="regular-text" id="gmail_email_address" name="gmail_email_address" value="' . esc_attr( $pasted->get_email_address() ) . '" />';
+		echo '<input type="email" class="regular-text" id="gmail_email_address" name="gmail_email_address" value="' . esc_attr( is_string( $gmail_email ) ? $gmail_email : '' ) . '" />';
 		echo '</td></tr>';
 
 		echo '<tr><th scope="row"><label for="gmail_client_secret_json">Client secret JSON</label></th><td>';
-		echo '<textarea class="large-text code" rows="6" id="gmail_client_secret_json" name="gmail_client_secret_json">' . esc_textarea( $pasted->get_client_secret_json() ) . '</textarea>';
+		echo '<textarea class="large-text code" rows="6" id="gmail_client_secret_json" name="gmail_client_secret_json" placeholder="' . esc_attr( is_null( $saved ) ? '' : '(saved; leave blank to keep)' ) . '"></textarea>';
 		echo '</td></tr>';
 
 		echo '<tr><th scope="row"><label for="gmail_access_token_json">Access token JSON</label></th><td>';
-		echo '<textarea class="large-text code" rows="6" id="gmail_access_token_json" name="gmail_access_token_json">' . esc_textarea( $pasted->get_access_token_json() ) . '</textarea>';
+		echo '<textarea class="large-text code" rows="6" id="gmail_access_token_json" name="gmail_access_token_json" placeholder="' . esc_attr( is_null( $saved?->get_access_token() ) ? '' : '(saved; leave blank to keep)' ) . '"></textarea>';
 		echo '</td></tr>';
 
 		$gmail_mailbox = get_option( self::OPTION_GMAIL_MAILBOX, '' );
 		echo '<tr><th scope="row"><label for="gmail_mailbox">Mailbox</label></th><td>';
 		$this->render_mailbox_select( 'gmail_mailbox', is_string( $gmail_mailbox ) ? $gmail_mailbox : '', true );
-		echo '<p class="description">Which mailbox this account is configured for. Saving with a valid client secret creates the account.</p>';
+		echo '<p class="description">Which mailbox this account is configured for. Saving creates the account and saves its credentials.</p>';
 		echo '</td></tr>';
 
 		echo '</tbody></table>';
@@ -706,13 +789,10 @@ class Settings {
 	/**
 	 * Render the password row (kept blank; only updated when a value is entered).
 	 *
-	 * @param Imap_Credentials_Settings $credentials The current credentials.
+	 * @param bool $has_value Whether a password is already saved.
 	 */
-	private function render_password_field( Imap_Credentials_Settings $credentials ): void {
-
-		$from_env  = $this->is_env_set( 'IMAP_PASSWORD' );
-		$has_value = '' !== $credentials->get_email_account_password();
-
+	private function render_password_field( bool $has_value ): void {
+		$from_env = $this->is_env_set( 'IMAP_PASSWORD' );
 		echo '<tr><th scope="row"><label for="imap_password">Password</label></th><td>';
 		echo '<input type="password" class="regular-text" id="imap_password" name="imap_password" value="" autocomplete="new-password" placeholder="' . esc_attr( $has_value ? '(unchanged)' : '' ) . '"' . ( $from_env ? ' disabled' : '' ) . ' />';
 		if ( $from_env ) {

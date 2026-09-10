@@ -11,6 +11,7 @@ use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
+use BrianHenryIE\WP_Mailboxes\API\Refreshes_Credentials;
 use BrianHenryIE\WP_Mailboxes\API\Requires_Credentials;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
@@ -32,7 +33,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Fetches emails from Gmail using the Google PHP SDK.
  */
-class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Credentials, Supports_Fetching {
+class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Credentials, Refreshes_Credentials, Supports_Fetching {
 	use LoggerAwareTrait;
 
 	/**
@@ -72,7 +73,22 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 		if ( ! ( $credentials instanceof Google_API_Credentials_Interface ) ) {
 			throw new InvalidArgumentException( 'Credentials must implement Google_API_Credentials_Interface' );
 		}
-		$this->credentials = $credentials;
+		$this->credentials           = $credentials;
+		$this->refreshed_credentials = null;
+	}
+
+	/**
+	 * Credentials carrying an access token refreshed during this request, for the API to save.
+	 *
+	 * @var ?Google_API_Credentials_Interface
+	 */
+	protected ?Google_API_Credentials_Interface $refreshed_credentials = null;
+
+	/**
+	 * The credentials with the access token refreshed in {@see getClient()}, or null when it was not refreshed.
+	 */
+	public function get_refreshed_credentials(): ?Account_Credentials_Interface {
+		return $this->refreshed_credentials;
 	}
 
 	/**
@@ -92,8 +108,6 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 	 * @return ?Google_Client the authorized client object.
 	 * @see https://developers.google.com/gmail/api/quickstart/php
 	 * @throws Exception When authorization fails.
-	 *
-	 * @uses Email_Account_Settings_Interface::get_credentials
 	 */
 	public function getClient(): ?Google_Client {
 
@@ -120,38 +134,43 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 		$client->setAccessType( 'offline' );
 		$client->setPrompt( 'select_account consent' );
 
-		// Load previously authorized token from a file, if it exists.
-		// The file token.json stores the user's access and refresh tokens, and is
-		// created automatically when the authorization flow completes for the first time.
-
 		$access_token = $saved_credentials->get_access_token();
 		$client->setAccessToken( (array) $access_token );
 
-		// If there is no previous token or it's expired.
+		// An expired token is refreshed with the refresh token, and the result is exposed via
+		// get_refreshed_credentials() for the API to save. There is no interactive authorisation here:
+		// that is a one-off operator flow (see fetch_access_token_with_auth_code()).
 		if ( $client->isAccessTokenExpired() ) {
+			$refresh_token = $client->getRefreshToken();
 
-			// Refresh the token if possible, else fetch a new one.
-			if ( $client->getRefreshToken() ) {
-				$client->fetchAccessTokenWithRefreshToken( $client->getRefreshToken() );
-			} else {
-				// Request authorization from the user.
-				$auth_url = $client->createAuthUrl();
-				printf( "Open the following link in your browser:\n%s\n", esc_html( $auth_url ) );
-				print 'Enter verification code: ';
-				$auth_code = trim( (string) fgets( STDIN ) );
-
-				// Exchange authorization code for an access token.
-				$access_token = $client->fetchAccessTokenWithAuthCode( $auth_code );
-				$client->setAccessToken( $access_token );
-
-				// Check to see if there was an error.
-				if ( array_key_exists( 'error', $access_token ) ) {
-					throw new Exception( join( ', ', array_map( 'esc_html', $access_token ) ) );
-				}
+			if ( ! is_string( $refresh_token ) || '' === $refresh_token ) {
+				throw new Exception( 'The Gmail access token has expired and there is no refresh token; re-authorise the account.' );
 			}
 
-			$this->save_access_token( __DIR__ . '/token.json', (string) wp_json_encode( $client->getAccessToken() ) );
+			$new_token = $client->fetchAccessTokenWithRefreshToken( $refresh_token );
+
+			if ( isset( $new_token['error'] ) ) {
+				throw new Exception(
+					'Failed to refresh Gmail access token: ' . esc_html( implode( ', ', array_map( 'strval', $new_token ) ) )
+				);
+			}
+
+			$this->refreshed_credentials = new Gmail_Credentials(
+				$saved_credentials->get_project_credentials(),
+				Access_Token::from_json(
+					(object) array(
+						'access_token'  => $new_token['access_token'],
+						'expires_in'    => $new_token['expires_in'] ?? $access_token->expires_in,
+						'scope'         => $new_token['scope'] ?? $access_token->scope,
+						'token_type'    => $new_token['token_type'] ?? $access_token->token_type,
+						'created'       => $new_token['created'] ?? time(),
+						'refresh_token' => $new_token['refresh_token'] ?? $refresh_token,
+					)
+				)
+			);
+			$this->credentials           = $this->refreshed_credentials;
 		}
+
 		return $client;
 	}
 
@@ -291,45 +310,6 @@ class Gmail_Email_Connection implements Email_Connection_Interface, Requires_Cre
 		$client->setPrompt( 'consent' );
 
 		return $client;
-	}
-
-	/**
-	 * Persist the OAuth access/refresh token to a file via WP_Filesystem.
-	 *
-	 * The token is a secret, so the containing directory and file are created with restrictive
-	 * permissions. Failure to write is logged but not fatal — the token is a cache and will be
-	 * re-fetched on the next run.
-	 *
-	 * @param string $token_path Absolute path to the token file.
-	 * @param string $contents   JSON-encoded access token.
-	 */
-	protected function save_access_token( string $token_path, string $contents ): void {
-
-		if ( ! function_exists( 'WP_Filesystem' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/file.php';
-		}
-		WP_Filesystem();
-
-		/**
-		 * The WordPress filesystem abstraction.
-		 *
-		 * @var \WP_Filesystem_Base|null $wp_filesystem
-		 */
-		global $wp_filesystem;
-
-		if ( ! $wp_filesystem instanceof \WP_Filesystem_Base ) {
-			$this->logger->warning( 'Could not initialise WP_Filesystem to save the Gmail access token.' );
-			return;
-		}
-
-		$token_dir = dirname( $token_path );
-		if ( ! $wp_filesystem->is_dir( $token_dir ) ) {
-			$wp_filesystem->mkdir( $token_dir, 0700 );
-		}
-
-		if ( ! $wp_filesystem->put_contents( $token_path, $contents, 0600 ) ) {
-			$this->logger->warning( 'Failed to save the Gmail access token to disk.', array( 'path' => $token_path ) );
-		}
 	}
 
 	/**
