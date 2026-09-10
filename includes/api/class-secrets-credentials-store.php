@@ -8,11 +8,11 @@
  * copy resolves its provider the way the API does: libsodium encryption over the options store by
  * default, or whatever a `secrets.php` drop-in installs.
  *
- * One secret per account, named `{plugin-slug}/{accounts-post-type}-{hash of the email address}`, holding
- * the credentials' own JSON representation ({@see Account_Credentials_Interface::jsonSerialize()}): a
- * `type` key (`imap` or `gmail`) plus the credential fields, rebuilt by the matching class's
- * `from_array()`. The Secrets API encrypts the value at rest; the name is derived, not stored, so
- * listing a plugin's secrets shows which accounts have credentials without revealing addresses.
+ * One secret per account, named `{plugin-slug}/{accounts-post-type}-{email address}` (e.g.
+ * `my-plugin/my_plugin_accounts-inbox-at-example-com`), holding the credentials' own JSON representation
+ * ({@see Account_Credentials_Interface::jsonSerialize()}): a `type` key (`imap` or `gmail`) plus the
+ * credential fields, rebuilt by the matching class's `from_array()`. The Secrets API encrypts the value
+ * at rest; the name is readable, so listing a plugin's secrets shows which accounts have credentials.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -71,17 +71,20 @@ class Secrets_Credentials_Store implements Credentials_Store_Interface {
 
 
 	/**
-	 * The secret's name for an account: `{plugin-slug}/{accounts-post-type}-{sha256 of the lowercased address}`.
+	 * The secret's name for an account: `{plugin-slug}/{accounts-post-type}-{email address}`.
 	 *
 	 * Secret names allow only lowercase alphanumerics, hyphens and underscores in each of the two
-	 * segments, so the plugin slug is normalised and the address is hashed.
+	 * segments, so every part is lowercased and normalised, with the address's `@` written as `-at-`
+	 * (`Inbox@Example.com` becomes `inbox-at-example-com`). Addresses that differ only in characters
+	 * outside that set (e.g. `a.b@` and `a-b@`) would share a name; the Secrets API rejects names over
+	 * 172 characters, which the store reports as a failed save.
 	 *
 	 * @param BH_Email_Account $account The account.
 	 */
 	public function get_secret_name( BH_Email_Account $account ): string {
 		$namespace = $this->normalise_segment( $this->settings->get_plugin_slug() );
 		$key       = $this->normalise_segment( $this->settings->get_email_accounts_cpt_underscored_20() )
-			. '-' . substr( hash( 'sha256', strtolower( trim( $account->email_address ) ) ), 0, 32 );
+			. '-' . $this->normalise_segment( str_replace( '@', '-at-', trim( $account->email_address ) ) );
 
 		return $namespace . '/' . $key;
 	}

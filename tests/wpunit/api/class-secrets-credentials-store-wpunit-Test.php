@@ -51,17 +51,16 @@ class Secrets_Credentials_Store_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * The secret name is namespaced by plugin slug and keyed by post type + hashed address, and passes the API's validation.
+	 * The secret name is namespaced by plugin slug and keyed by post type + address, and passes the API's validation.
 	 *
 	 * @covers ::get_secret_name
 	 */
-	public function test_secret_name_is_valid_and_hides_the_address(): void {
+	public function test_secret_name_is_valid_and_readable(): void {
 		$sut  = $this->make_sut( 'My Plugin!', 'my_accounts' );
 		$name = $sut->get_secret_name( $this->make_account( 'Inbox@Example.com' ) );
 
 		$this->assertTrue( wp_secrets_validate_name( $name ) );
-		$this->assertStringStartsWith( 'my-plugin/my_accounts-', $name );
-		$this->assertStringNotContainsString( 'example', $name );
+		$this->assertSame( 'my-plugin/my_accounts-inbox-at-example-com', $name );
 		$this->assertSame( $name, $sut->get_secret_name( $this->make_account( 'inbox@example.com' ) ), 'Addresses are matched case-insensitively.' );
 	}
 
