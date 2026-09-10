@@ -25,6 +25,7 @@ use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Credentials;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials;
+use BrianHenryIE\WP_Mailboxes\Secrets_API_Loader;
 use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -78,10 +79,10 @@ class Secrets_Credentials_Store implements Credentials_Store_Interface {
 	}
 
 	/**
-	 * A provider was injected, or the API's classes are loaded.
+	 * A provider was injected, or the API is loaded ({@see Secrets_API_Loader::load()}).
 	 */
 	public function is_available(): bool {
-		return ! is_null( $this->provider ) || class_exists( WP_Secrets_Libsodium_Provider::class, false );
+		return ! is_null( $this->provider ) || Secrets_API_Loader::is_loaded();
 	}
 
 	/**

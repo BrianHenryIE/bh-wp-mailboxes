@@ -1,6 +1,6 @@
 <?php
 /**
- * Makes the WordPress Secrets API's classes available from Composer's vendor directory.
+ * Makes the WordPress Secrets API available from Composer's vendor directory.
  *
  * The Secrets API is proposed for WordPress core and is currently the `wordpress/secrets-api`
  * feature plugin, which this library depends on via Composer and always uses as its own private
@@ -9,9 +9,11 @@
  * `wp_get_secret()` etc. ({@see \BrianHenryIE\WP_Mailboxes\API\Secrets_Credentials_Store} uses
  * `WP_Secrets_Libsodium_Provider` directly).
  *
- * Loaded from the package: `src/wp-includes/secrets.php` (the constants and helper functions the
- * classes need) and the class files. The plugin bootstrap (`secrets-api.php`, with its core-conflict
- * checks, hooks and drop-in loading) is never included.
+ * The package is located through Composer's runtime API (`composer-runtime-api` is a requirement).
+ * Its `src/wp-includes/secrets.php` (constants and helper functions) is included eagerly, and an
+ * autoloader is registered for the classes and interfaces declared in that directory. The plugin
+ * bootstrap (`secrets-api.php`, with its core-conflict checks, hooks and drop-in loading) is never
+ * included.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -21,125 +23,123 @@ declare(strict_types=1);
 namespace BrianHenryIE\WP_Mailboxes;
 
 use Composer\InstalledVersions;
-use Throwable;
 
 /**
- * Include the Secrets API classes.
+ * Include the Secrets API's functions and autoload its classes.
  */
 class Secrets_API_Loader {
 
 	const PACKAGE_NAME = 'wordpress/secrets-api';
 
 	/**
-	 * The files to include, in dependency order, relative to the package's `src/wp-includes` directory.
+	 * Whether {@see load()} has registered the autoloader in this request.
+	 *
+	 * @var bool
 	 */
-	const FILES = array(
-		'secrets.php',
-		'interface-wp-secrets-provider.php',
-		'interface-wp-secrets-keyring.php',
-		'interface-wp-secrets-store.php',
-		'class-wp-secret-version.php',
-		'class-wp-secret.php',
-		'class-wp-secrets-config-key-provider.php',
-		'class-wp-secrets-cipher.php',
-		'class-wp-secrets-key-manager.php',
-		'class-wp-secrets-option-store.php',
-		'class-wp-secrets-libsodium-provider.php',
-	);
+	protected static bool $registered = false;
 
 	/**
-	 * Ensure the Secrets API's provider classes are loaded. Idempotent.
+	 * Class/interface name => file, for the package's `src/wp-includes` directory; built on first use.
 	 *
-	 * @return bool True when the provider class exists afterwards.
+	 * @var ?array<string, string>
+	 */
+	protected static ?array $class_map = null;
+
+	/**
+	 * Ensure the Secrets API is usable: its functions included and its classes autoloadable. Idempotent.
+	 *
+	 * @return bool False when the package is not installed.
 	 */
 	public static function load(): bool {
-		if ( self::is_loaded() ) {
+		if ( self::$registered ) {
 			return true;
 		}
 
-		$includes_dir = self::find_includes_dir();
+		$includes_dir = self::get_includes_dir();
 
 		if ( is_null( $includes_dir ) ) {
 			return false;
 		}
 
-		foreach ( self::FILES as $file ) {
-			// `secrets.php` is skipped when its functions already exist (an unprefixed dev environment
-			// with the feature plugin active): the class files carry no such guard and are not redeclared.
-			if ( 'secrets.php' === $file && function_exists( 'wp_secrets_memzero' ) ) {
-				continue;
-			}
-			require_once $includes_dir . '/' . $file;
+		// Skipped when its functions already exist (an unprefixed dev environment with the feature
+		// plugin active); the class autoloader below is only consulted for classes not already declared.
+		if ( ! function_exists( 'wp_secrets_memzero' ) ) {
+			require_once $includes_dir . '/secrets.php';
 		}
 
-		return self::is_loaded();
+		spl_autoload_register( array( self::class, 'autoload' ) );
+		self::$registered = true;
+
+		return true;
 	}
 
 	/**
-	 * Whether the provider class is loaded.
+	 * Whether {@see load()} has succeeded in this request.
 	 */
 	public static function is_loaded(): bool {
-		return class_exists( 'WP_Secrets_Libsodium_Provider', false );
+		return self::$registered;
 	}
 
 	/**
-	 * Locate the package's `src/wp-includes` directory: ask Composer's runtime API, then look in the
-	 * vendor directories above this file.
+	 * Include the file declaring one of the package's classes or interfaces.
+	 *
+	 * @param string $class_name The fully qualified name being autoloaded.
 	 */
-	protected static function find_includes_dir(): ?string {
-		$package_dir = self::find_via_composer() ?? self::find_in_parent_directories( __DIR__ );
+	public static function autoload( string $class_name ): void {
+		$file = self::get_class_map()[ $class_name ] ?? null;
 
-		return is_null( $package_dir ) ? null : $package_dir . '/src/wp-includes';
+		if ( ! is_null( $file ) ) {
+			require_once $file;
+		}
 	}
 
 	/**
-	 * The package's directory as reported by Composer's runtime API, when the package is in the current autoloader.
+	 * The classes and interfaces declared in the package's `src/wp-includes` directory, keyed by name.
+	 *
+	 * Enumerated by reading each `class-*.php` / `interface-*.php` file's declaration rather than by
+	 * inferring the name from the file name (WordPress's convention loses the `WP` capitalisation).
+	 *
+	 * @return array<string, string> Class name => absolute file path.
 	 */
-	protected static function find_via_composer(): ?string {
-		try {
-			if ( class_exists( InstalledVersions::class ) && InstalledVersions::isInstalled( self::PACKAGE_NAME ) ) {
-				$install_path = InstalledVersions::getInstallPath( self::PACKAGE_NAME );
-				if ( is_string( $install_path ) && self::is_package_dir( $install_path ) ) {
-					return $install_path;
-				}
-			}
-		} catch ( Throwable $throwable ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch -- Fall through to the directory search.
-			// InstalledVersions throws when asked about a package outside the current autoloader; search instead.
+	public static function get_class_map(): array {
+		if ( ! is_null( self::$class_map ) ) {
+			return self::$class_map;
 		}
 
-		return null;
-	}
+		self::$class_map = array();
 
-	/**
-	 * Search `{dir}/vendor/wordpress/secrets-api` in a directory and up to five of its ancestors.
-	 *
-	 * From `includes/class-secrets-api-loader.php` that covers the library's own root, its vendor directory
-	 * when installed as a dependency, and the consuming plugin's vendor directory.
-	 *
-	 * @param string $directory Where to start.
-	 */
-	protected static function find_in_parent_directories( string $directory ): ?string {
-		for ( $level = 0; $level < 6; $level++ ) {
-			$candidate = $directory . '/vendor/' . self::PACKAGE_NAME;
-			if ( self::is_package_dir( $candidate ) ) {
-				return $candidate;
-			}
-			$parent = dirname( $directory );
-			if ( $parent === $directory ) {
-				break;
-			}
-			$directory = $parent;
+		$includes_dir = self::get_includes_dir();
+		if ( is_null( $includes_dir ) ) {
+			return self::$class_map;
 		}
 
-		return null;
+		foreach ( (array) glob( $includes_dir . '/{class,interface}-*.php', GLOB_BRACE ) as $file ) {
+			if ( ! is_string( $file ) ) {
+				continue;
+			}
+			$source = (string) file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local file in vendor.
+			if ( 1 === preg_match( '/^\s*(?:final\s+|abstract\s+)?(?:class|interface|trait)\s+(\w+)/m', $source, $matches ) ) {
+				self::$class_map[ $matches[1] ] = $file;
+			}
+		}
+
+		return self::$class_map;
 	}
 
 	/**
-	 * Whether a directory holds the package's class files.
-	 *
-	 * @param string $directory Candidate package directory.
+	 * The package's `src/wp-includes` directory, from Composer's runtime API, or null when not installed.
 	 */
-	protected static function is_package_dir( string $directory ): bool {
-		return file_exists( $directory . '/src/wp-includes/class-wp-secrets-libsodium-provider.php' );
+	protected static function get_includes_dir(): ?string {
+		if ( ! InstalledVersions::isInstalled( self::PACKAGE_NAME ) ) {
+			return null;
+		}
+
+		$install_path = InstalledVersions::getInstallPath( self::PACKAGE_NAME );
+
+		if ( ! is_string( $install_path ) || ! is_dir( $install_path . '/src/wp-includes' ) ) {
+			return null;
+		}
+
+		return $install_path . '/src/wp-includes';
 	}
 }

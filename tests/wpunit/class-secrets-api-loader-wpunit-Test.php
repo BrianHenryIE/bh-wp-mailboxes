@@ -7,7 +7,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes;
 
-// phpcs:disable WordPress.WP.AlternativeFunctions -- Tests build throwaway directory trees under the system temp dir.
+use Composer\InstalledVersions;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Secrets_API_Loader
@@ -15,197 +15,75 @@ namespace BrianHenryIE\WP_Mailboxes;
 class Secrets_API_Loader_WPUnit_Test extends WPUnit_Testcase {
 
 	/**
-	 * Temporary directory trees created by a test, removed in tearDown.
-	 *
-	 * @var string[]
-	 */
-	protected array $temp_dirs = array();
-
-	public function tearDown(): void {
-		foreach ( $this->temp_dirs as $dir ) {
-			$this->remove_dir( $dir );
-		}
-		$this->temp_dirs = array();
-		parent::tearDown();
-	}
-
-	/**
-	 * The API's `secrets.php` (constants and helpers) and its classes are loaded from the package; the
-	 * plugin bootstrap (`secrets-api.php`) is not.
+	 * The API's `secrets.php` (constants and helpers) is included, the classes autoload, and the plugin
+	 * bootstrap (`secrets-api.php`) is not included.
 	 *
 	 * @covers ::load
 	 * @covers ::is_loaded
-	 * @covers ::find_includes_dir
+	 * @covers ::autoload
+	 * @covers ::get_includes_dir
 	 */
-	public function test_load_makes_the_secrets_api_classes_available(): void {
+	public function test_load_makes_the_secrets_api_available(): void {
 		$this->assertTrue( Secrets_API_Loader::load() );
 		$this->assertTrue( Secrets_API_Loader::is_loaded() );
-
-		foreach ( array( 'WP_Secret', 'WP_Secret_Version', 'WP_Secrets_Cipher', 'WP_Secrets_Key_Manager', 'WP_Secrets_Config_Key_Provider', 'WP_Secrets_Option_Store', 'WP_Secrets_Libsodium_Provider' ) as $class_name ) {
-			$this->assertTrue( class_exists( $class_name, false ), $class_name );
-		}
-		foreach ( array( 'WP_Secrets_Provider', 'WP_Secrets_Keyring', 'WP_Secrets_Store' ) as $interface_name ) {
-			$this->assertTrue( interface_exists( $interface_name, false ), $interface_name );
-		}
 
 		$this->assertTrue( function_exists( 'wp_secrets_memzero' ) );
 		$this->assertTrue( function_exists( 'wp_secrets_validate_name' ) );
 		$this->assertTrue( defined( 'WP_SECRETS_ERROR_INVALID_NAME' ) );
 
+		foreach ( array( 'WP_Secret', 'WP_Secret_Version', 'WP_Secrets_Cipher', 'WP_Secrets_Key_Manager', 'WP_Secrets_Config_Key_Provider', 'WP_Secrets_Option_Store', 'WP_Secrets_Libsodium_Provider' ) as $class_name ) {
+			$this->assertTrue( class_exists( $class_name ), $class_name );
+		}
+		foreach ( array( 'WP_Secrets_Provider', 'WP_Secrets_Keyring', 'WP_Secrets_Store' ) as $interface_name ) {
+			$this->assertTrue( interface_exists( $interface_name ), $interface_name );
+		}
+
 		$this->assertFalse( function_exists( 'wp_secrets_api_bootstrap' ), 'The plugin bootstrap must not be included.' );
+		$this->assertContains( array( Secrets_API_Loader::class, 'autoload' ), spl_autoload_functions() );
 	}
 
 	/**
-	 * A second call is a no-op that still reports availability (the files are include_once'd).
+	 * A second call is a no-op that still reports availability.
 	 *
 	 * @covers ::load
 	 */
 	public function test_load_is_idempotent(): void {
 		$this->assertTrue( Secrets_API_Loader::load() );
 		$this->assertTrue( Secrets_API_Loader::load() );
+		$this->assertCount( 1, array_filter( spl_autoload_functions(), fn( $callback ) => array( Secrets_API_Loader::class, 'autoload' ) === $callback ), 'Registered once.' );
 	}
 
 	/**
-	 * The API's own name validation accepts what the store produces.
+	 * The class map is read from the files' declarations, so the `WP` capitalisation survives, and
+	 * covers every class and interface file in the package's includes directory.
 	 *
-	 * @coversNothing
+	 * @covers ::get_class_map
 	 */
-	public function test_validate_name(): void {
+	public function test_class_map_enumerates_the_packages_classes(): void {
+		$includes_dir = InstalledVersions::getInstallPath( 'wordpress/secrets-api' ) . '/src/wp-includes';
+		$map          = Secrets_API_Loader::get_class_map();
+
+		$this->assertSame( realpath( $includes_dir . '/class-wp-secrets-libsodium-provider.php' ), realpath( $map['WP_Secrets_Libsodium_Provider'] ) );
+		$this->assertSame( realpath( $includes_dir . '/interface-wp-secrets-provider.php' ), realpath( $map['WP_Secrets_Provider'] ) );
+		$this->assertArrayNotHasKey( 'Wp_Secret', $map );
+
+		$files = array_merge( (array) glob( $includes_dir . '/class-*.php' ), (array) glob( $includes_dir . '/interface-*.php' ) );
+		$this->assertCount( count( $files ), $map, 'One entry per class/interface file.' );
+		foreach ( array_keys( $map ) as $class_name ) {
+			$this->assertMatchesRegularExpression( '/^WP_Secret/', $class_name );
+		}
+	}
+
+	/**
+	 * Unknown classes are left to other autoloaders.
+	 *
+	 * @covers ::autoload
+	 */
+	public function test_autoload_ignores_other_classes(): void {
 		Secrets_API_Loader::load();
 
-		$this->assertTrue( wp_secrets_validate_name( 'my-plugin/my_accounts-0123abcd' ) );
-		foreach ( array( '', 'a/b/c', 'Upper/case', '-leading/key', 'ns/trailing_', str_repeat( 'a', 100 ) . '/' . str_repeat( 'b', 100 ) ) as $bad ) {
-			$this->assertInstanceOf( \WP_Error::class, wp_secrets_validate_name( $bad ), $bad );
-		}
-	}
+		Secrets_API_Loader::autoload( 'Some\\Other\\Class_Name' );
 
-	/**
-	 * In this project the package is in the root autoloader, so Composer's runtime API locates it.
-	 *
-	 * @covers ::find_via_composer
-	 */
-	public function test_find_via_composer_locates_the_vendored_package(): void {
-		$path = Testable_Secrets_API_Loader::via_composer();
-
-		$this->assertNotNull( $path );
-		$this->assertSame( realpath( dirname( __DIR__, 2 ) . '/vendor/wordpress/secrets-api' ), realpath( $path ) );
-	}
-
-	/**
-	 * The library's real location resolves through the directory walk too (the fallback when the
-	 * package is not in the current autoloader, e.g. the self-contained Playground build).
-	 *
-	 * @covers ::find_in_parent_directories
-	 */
-	public function test_directory_walk_from_the_library_finds_the_project_vendor_directory(): void {
-		$includes_dir = dirname( __DIR__, 2 ) . '/includes';
-
-		$path = Testable_Secrets_API_Loader::in_parent_directories( $includes_dir );
-
-		$this->assertSame( realpath( dirname( __DIR__, 2 ) . '/vendor/wordpress/secrets-api' ), realpath( (string) $path ) );
-	}
-
-	/**
-	 * Mirrors the nested layout: the library at `{plugin}/vendor/brianhenryie/bh-wp-mailboxes/includes`
-	 * and the package at `{plugin}/vendor/wordpress/secrets-api`, four levels up.
-	 *
-	 * @covers ::find_in_parent_directories
-	 */
-	public function test_directory_walk_finds_a_consuming_plugins_vendor_directory(): void {
-		$plugin_dir   = $this->make_temp_dir();
-		$includes_dir = $plugin_dir . '/vendor/brianhenryie/bh-wp-mailboxes/includes';
-		$package_dir  = $plugin_dir . '/vendor/wordpress/secrets-api';
-		mkdir( $includes_dir, 0777, true );
-		$this->make_package( $package_dir );
-
-		$this->assertSame( $package_dir, Testable_Secrets_API_Loader::in_parent_directories( $includes_dir ) );
-	}
-
-	/**
-	 * The nearest match wins when both the library's own vendor directory and the consumer's have the package.
-	 *
-	 * @covers ::find_in_parent_directories
-	 */
-	public function test_directory_walk_prefers_the_nearest_vendor_directory(): void {
-		$plugin_dir   = $this->make_temp_dir();
-		$library_dir  = $plugin_dir . '/vendor/brianhenryie/bh-wp-mailboxes';
-		$near_dir     = $library_dir . '/vendor/wordpress/secrets-api';
-		$far_dir      = $plugin_dir . '/vendor/wordpress/secrets-api';
-		$includes_dir = $library_dir . '/includes';
-		mkdir( $includes_dir, 0777, true );
-		$this->make_package( $near_dir );
-		$this->make_package( $far_dir );
-
-		$this->assertSame( $near_dir, Testable_Secrets_API_Loader::in_parent_directories( $includes_dir ) );
-	}
-
-	/**
-	 * @covers ::find_in_parent_directories
-	 */
-	public function test_directory_walk_returns_null_when_the_package_is_absent(): void {
-		$dir = $this->make_temp_dir() . '/a/b/c/includes';
-		mkdir( $dir, 0777, true );
-
-		$this->assertNull( Testable_Secrets_API_Loader::in_parent_directories( $dir ) );
-	}
-
-	/**
-	 * The walk stops after five ancestors: a package six levels up is not found.
-	 *
-	 * @covers ::find_in_parent_directories
-	 */
-	public function test_directory_walk_is_bounded(): void {
-		$root        = $this->make_temp_dir();
-		$package_dir = $root . '/vendor/wordpress/secrets-api';
-		$start       = $root . '/1/2/3/4/5/6';
-		$this->make_package( $package_dir );
-		mkdir( $start, 0777, true );
-
-		$this->assertNull( Testable_Secrets_API_Loader::in_parent_directories( $start ) );
-		$this->assertSame( $package_dir, Testable_Secrets_API_Loader::in_parent_directories( dirname( $start ) ), 'Five levels up is within reach.' );
-	}
-
-	/**
-	 * Create the marker file the loader looks for: the provider class inside `src/wp-includes`.
-	 *
-	 * @param string $package_dir The fake package directory.
-	 */
-	protected function make_package( string $package_dir ): void {
-		mkdir( $package_dir . '/src/wp-includes', 0777, true );
-		file_put_contents( $package_dir . '/src/wp-includes/class-wp-secrets-libsodium-provider.php', "<?php\n" );
-	}
-
-	/**
-	 * A fresh, empty directory under the system temp dir.
-	 */
-	protected function make_temp_dir(): string {
-		$dir = sys_get_temp_dir() . '/bh-wp-mailboxes-loader-' . uniqid();
-		mkdir( $dir, 0777, true );
-		$this->temp_dirs[] = $dir;
-
-		return $dir;
-	}
-
-	/**
-	 * Recursively delete a directory tree.
-	 *
-	 * @param string $dir The directory.
-	 */
-	protected function remove_dir( string $dir ): void {
-		if ( ! is_dir( $dir ) ) {
-			return;
-		}
-		foreach ( (array) scandir( $dir ) as $entry ) {
-			if ( '.' === $entry || '..' === $entry ) {
-				continue;
-			}
-			$path = $dir . '/' . $entry;
-			if ( is_dir( $path ) ) {
-				$this->remove_dir( $path );
-			} else {
-				unlink( $path );
-			}
-		}
-		rmdir( $dir );
+		$this->assertFalse( class_exists( 'Some\\Other\\Class_Name', false ) );
 	}
 }

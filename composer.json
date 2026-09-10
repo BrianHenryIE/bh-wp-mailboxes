@@ -73,6 +73,7 @@
     "require": {
         "php": ">=8.4",
         "ext-json": "*",
+        "composer-runtime-api": "^2.2",
         "directorytree/imapengine": "^1.25",
         "psr/log": "*",
         "wordpress/secrets-api": "dev-main#ffe647beff839024722eac1964d310125388c355",
