@@ -214,11 +214,23 @@ class Email_Accounts_Ajax {
 
 		$result = $this->api->check_email_for_account( $account, $since );
 
+		if ( ! $result->success ) {
+			wp_send_json_error(
+				array(
+					'message'    => $result->message ?? __( 'Check failed.', 'bh-wp-mailboxes' ),
+					'status'     => $result->skipped ? 'skipped' : 'failed',
+					// The re-rendered table shows the failure time and login-failure badge on the account's row.
+					'table_html' => $this->render_table(),
+				)
+			);
+		}
+
 		wp_send_json_success(
 			array(
 				'new_email_count' => count( $result->bh_emails ),
 				// Post IDs of the new emails, so the JS can highlight their rows in the list table.
 				'new_email_ids'   => array_map( fn( $email ) => $email->get_post_id(), $result->bh_emails ),
+				'warnings'        => $result->warnings,
 				/* translators: shown in the accounts table immediately after a manual check */
 				'last_fetched'    => __( 'Just now', 'bh-wp-mailboxes' ),
 			)

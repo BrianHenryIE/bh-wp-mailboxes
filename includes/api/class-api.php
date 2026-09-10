@@ -301,7 +301,10 @@ class API implements API_Interface {
 			$account_results[] = $this->check_email_for_account( $email_account, $since );
 		}
 
-		return new Check_Mailbox_Result( success: true, accounts: $email_accounts, account_results: $account_results );
+		// Skipped accounts (disabled, receive-only, rate-limited) are not failures.
+		$failed = array_filter( $account_results, fn( Check_Email_Account_Result $result ): bool => $result->is_failure() );
+
+		return new Check_Mailbox_Result( success: array() === $failed, accounts: $email_accounts, account_results: $account_results );
 	}
 
 	/**
@@ -316,14 +319,14 @@ class API implements API_Interface {
 		$now_time = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
 		$since    = $since ?? $account->last_successful_login_time ?? $now_time->sub( new DateInterval( 'P1W' ) );
 
-		$fetched = $this->fetch_for_account( $account, $since, $now_time );
+		$result = $this->fetch_for_account( $account, $since, $now_time );
 
 		$all_new_emails = array();
-		foreach ( $fetched as $new_bh_email ) {
+		foreach ( $result->bh_emails as $new_bh_email ) {
 			$all_new_emails[] = $this->alert_new_email( $account, $new_bh_email );
 		}
 
-		return new Check_Email_Account_Result( bh_account: $account, success: true, bh_emails: $fetched, new_emails: $all_new_emails );
+		return $result->with_new_emails( $all_new_emails );
 	}
 
 	/**
@@ -367,30 +370,35 @@ class API implements API_Interface {
 	 * @param DateTimeInterface $since_datetime  Fetch emails newer than this time.
 	 * @param DateTimeImmutable $now_time        Current time, used to update last-checked meta.
 	 *
-	 * @return BH_Email[] Newly saved emails for the account.
-	 *
-	 * @throws Exception When required credentials are not found.
+	 * @return Check_Email_Account_Result The outcome, without the consumer-facing `new_emails` wrappers.
 	 */
-	protected function fetch_for_account( BH_Email_Account $email_account, DateTimeInterface $since_datetime, DateTimeImmutable $now_time ): array {
+	protected function fetch_for_account( BH_Email_Account $email_account, DateTimeInterface $since_datetime, DateTimeImmutable $now_time ): Check_Email_Account_Result {
+
+		$skipped = fn( string $message ): Check_Email_Account_Result => new Check_Email_Account_Result( bh_account: $email_account, success: false, skipped: true, message: $message );
+		$failed  = fn( string $message ): Check_Email_Account_Result => new Check_Email_Account_Result( bh_account: $email_account, success: false, message: $message );
 
 		if ( ! $email_account->is_active() ) {
 			$this->logger->debug( 'Skipping inactive email account ' . $email_account->display_name );
-			return array();
+			return $skipped( __( 'The account is disabled.', 'bh-wp-mailboxes' ) );
 		}
-
-		$plugin_slug = $this->settings->get_plugin_slug();
 
 		$connection = $this->get_connection_for_email_account( $email_account );
 
 		if ( is_null( $connection ) ) {
 			$this->logger->warning( 'No fetcher found for ' . $email_account->display_name );
-			return array();
+			return $failed(
+				sprintf(
+					/* translators: %s: the account's connection class name */
+					__( 'No connection is available for this account type (%s).', 'bh-wp-mailboxes' ),
+					$email_account->connection_type_class
+				)
+			);
 		}
 
 		// Receive-only connections (e.g. webhook / AWS SNS) cannot be polled; there is nothing to fetch.
 		if ( ! ( $connection instanceof Supports_Fetching ) ) {
 			$this->logger->debug( $email_account->display_name . ' connection does not support fetching; skipping.' );
-			return array();
+			return $skipped( __( 'Emails are delivered to this account; there is nothing to fetch.', 'bh-wp-mailboxes' ) );
 		}
 
 		if ( $connection instanceof Requires_Credentials ) {
@@ -400,7 +408,7 @@ class API implements API_Interface {
 			if ( ! ( $credentials instanceof Account_Credentials_Interface ) ) {
 				$this->logger->warning( 'No credentials found for ' . $email_account->display_name );
 
-				return array();
+				return $failed( __( 'No credentials are saved for this account.', 'bh-wp-mailboxes' ) );
 			}
 
 			// Only rate limit cron jobs. Manual fetching should alway attempt.
@@ -411,7 +419,7 @@ class API implements API_Interface {
 						array( 'account_name' => $email_account->display_name )
 					);
 
-					return array();
+					return $skipped( __( 'Skipped: a login failed less than four hours ago. Check the credentials, or use "Check now" to try again immediately.', 'bh-wp-mailboxes' ) );
 				}
 			}
 			$connection->set_credentials( $credentials );
@@ -431,7 +439,13 @@ class API implements API_Interface {
 			// Record the failure time so the next four hours of cron runs skip this account.
 			$this->email_account_repository->update( $email_account, last_failed_login_time: $now_time );
 
-			return array();
+			return $failed(
+				sprintf(
+					/* translators: %s: the error message from the mail server or connection */
+					__( 'Could not fetch emails: %s', 'bh-wp-mailboxes' ),
+					$exception->getMessage()
+				)
+			);
 		}
 
 		// The fetch authenticated and completed, so record the successful login and check time.
@@ -441,7 +455,12 @@ class API implements API_Interface {
 			last_successful_login_time: $now_time,
 		);
 
-		$this->save_refreshed_credentials( $connection, $email_account );
+		$warnings = array();
+
+		$refresh_warning = $this->save_refreshed_credentials( $connection, $email_account );
+		if ( ! is_null( $refresh_warning ) ) {
+			$warnings[] = $refresh_warning;
+		}
 
 		// Drop any emails already saved locally (same account + Message-ID) so we never duplicate.
 		$all_new_account_emails = $all_new_account_emails->reject(
@@ -470,11 +489,18 @@ class API implements API_Interface {
 						'Post-download action "' . $after_download_action . '" failed: ' . $exception->getMessage(),
 						array( 'post_id' => $bh_email->get_post_id() )
 					);
+					$warnings[] = sprintf(
+						/* translators: 1: the action (mark_read or delete), 2: the email's post id, 3: the error message */
+						__( 'Post-download action "%1$s" failed for email %2$d: %3$s', 'bh-wp-mailboxes' ),
+						$after_download_action,
+						$bh_email->get_post_id(),
+						$exception->getMessage()
+					);
 				}
 			}
 		}
 
-		return $saved;
+		return new Check_Email_Account_Result( bh_account: $email_account, success: true, bh_emails: $saved, warnings: $warnings );
 	}
 
 	/**
@@ -638,16 +664,18 @@ class API implements API_Interface {
 	 *
 	 * @param Email_Connection_Interface $connection    The connection that was just used.
 	 * @param BH_Email_Account           $email_account Its account.
+	 *
+	 * @return ?string A user-facing warning when the refreshed credentials could not be saved; null otherwise.
 	 */
-	protected function save_refreshed_credentials( Email_Connection_Interface $connection, BH_Email_Account $email_account ): void {
+	protected function save_refreshed_credentials( Email_Connection_Interface $connection, BH_Email_Account $email_account ): ?string {
 		if ( ! ( $connection instanceof Refreshes_Credentials ) ) {
-			return;
+			return null;
 		}
 
 		$refreshed = $connection->get_refreshed_credentials();
 
 		if ( is_null( $refreshed ) ) {
-			return;
+			return null;
 		}
 
 		try {
@@ -657,7 +685,14 @@ class API implements API_Interface {
 				'Failed to save the refreshed credentials for ' . $email_account->display_name . ': ' . $throwable->getMessage(),
 				array( 'exception' => $throwable )
 			);
+			return sprintf(
+				/* translators: %s: the error message */
+				__( 'The refreshed credentials could not be saved (the next check will refresh them again): %s', 'bh-wp-mailboxes' ),
+				$throwable->getMessage()
+			);
 		}
+
+		return null;
 	}
 
 	/**

@@ -359,6 +359,10 @@ class API_Credentials_Unit_Test extends Unit_Testcase {
 
 		$this->assertTrue( $result->success );
 		$this->assertTrue( $this->logger->hasErrorThatContains( 'Failed to save the refreshed credentials for Payments inbox: Store down.' ) );
+		// The fetch itself succeeded, so this is reported as a warning rather than a failure.
+		$this->assertCount( 1, $result->warnings );
+		$this->assertStringContainsString( 'refreshed credentials could not be saved', $result->warnings[0] );
+		$this->assertStringContainsString( 'Store down.', $result->warnings[0] );
 	}
 
 	/**

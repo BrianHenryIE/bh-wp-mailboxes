@@ -19,7 +19,7 @@ readonly class Check_Mailbox_Result {
 	/**
 	 * Constructor.
 	 *
-	 * @param bool                         $success         Whether the check completed.
+	 * @param bool                         $success         Whether every attempted account check completed (skipped accounts do not count as failures).
 	 * @param BH_Email_Account[]           $accounts        The accounts that were checked.
 	 * @param Check_Email_Account_Result[] $account_results The per-account results.
 	 */
@@ -35,12 +35,29 @@ readonly class Check_Mailbox_Result {
 	 * @return New_Email_Interface[]
 	 */
 	public function get_emails(): array {
-
 		$emails = array_map(
 			fn( Check_Email_Account_Result $account_result ): array => $account_result->new_emails,
 			$this->account_results
 		);
 
 		return array_merge( ...$emails );
+	}
+
+	/**
+	 * The accounts whose fetch was attempted and did not complete.
+	 *
+	 * @return Check_Email_Account_Result[]
+	 */
+	public function get_failures(): array {
+		return array_values( array_filter( $this->account_results, fn( Check_Email_Account_Result $result ): bool => $result->is_failure() ) );
+	}
+
+	/**
+	 * The accounts that were deliberately not checked.
+	 *
+	 * @return Check_Email_Account_Result[]
+	 */
+	public function get_skipped(): array {
+		return array_values( array_filter( $this->account_results, fn( Check_Email_Account_Result $result ): bool => $result->skipped ) );
 	}
 }

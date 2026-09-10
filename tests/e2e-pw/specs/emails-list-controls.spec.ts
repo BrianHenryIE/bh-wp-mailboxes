@@ -94,8 +94,9 @@ test.describe( 'Emails list page — row actions', () => {
 		const emailId = checkBody.data.new_email_ids[ 0 ] as number;
 		expect( emailId ).toBeTruthy();
 
-		// Reload the list so the fetched email's row is present.
-		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
+		// Reload the list, filtered to this account so the row is on the first page whatever other
+		// specs (e.g. a "Check all") have fetched in the meantime.
+		await admin.visitAdminPage( 'edit.php', `post_type=e2e_email&bh_email_account=${ accountId }` );
 
 		const row = page.locator( `#post-${ emailId }` );
 		await expect( row ).toBeAttached();

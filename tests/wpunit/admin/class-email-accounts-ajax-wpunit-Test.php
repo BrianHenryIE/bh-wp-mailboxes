@@ -18,6 +18,7 @@ use BrianHenryIE\WP_Mailboxes\API\Factories\New_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Requires_Credentials;
+use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
@@ -86,9 +87,12 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->account_repository = new Email_Account_WP_Post_Repository( self::ACCOUNTS_CPT, new BH_Email_Account_Factory( $this->logger ), $this->logger );
 
+		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
+		$email_repository->allows( 'save_all' )->andReturn( array() );
+
 		$this->api = new API(
 			$settings,
-			Mockery::mock( Email_WP_Post_Repository::class ),
+			$email_repository,
 			$this->account_repository,
 			new New_Email_Factory(),
 			null,
@@ -96,6 +100,11 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		);
 
 		$status_view = Mockery::mock( Status_View::class );
+		$status_view->allows( 'render_table' )->andReturnUsing(
+			function () {
+				echo '<table class="wp-list-table"></table>';
+			}
+		);
 
 		return new Email_Accounts_Ajax( $this->api, $settings, $status_view, $this->logger );
 	}
@@ -285,6 +294,127 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertFalse( $response['success'] );
 		$this->assertStringContainsString( 'does not fetch email', $response['data']['message'] );
+	}
+
+	/**
+	 * "Check now" against a server that rejects the login (or is unreachable) reports the failure,
+	 * with the connection's message, and records the failed-login time on the account.
+	 *
+	 * @covers ::handle_check
+	 */
+	public function test_check_reports_a_connection_failure(): void {
+		remove_all_filters( 'bh_wp_mailboxes_connection_for_account' );
+		add_filter(
+			'bh_wp_mailboxes_connection_for_account',
+			function () {
+				$connection = Mockery::mock( Email_Connection_Interface::class, Requires_Credentials::class, Supports_Fetching::class );
+				$connection->allows( 'set_credentials' );
+				$connection->allows( 'test_connection' )->andReturn( true );
+				$connection->allows( 'retrieve_emails' )->andThrow( new \Exception( 'Can not authenticate to IMAP server: AUTHENTICATIONFAILED' ) );
+				return $connection;
+			}
+		);
+
+		$sut   = $this->make_sut();
+		$saved = $sut->save( 'inbox@example.com', 'Inbox', 'imap.example.com', '', 'wrong-password', 'TLS' );
+
+		$response = $this->run_handler( array( $sut, 'handle_check' ), array( 'account_post_id' => (string) $saved->account->get_post_id() ) );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'failed', $response['data']['status'] );
+		$this->assertSame( 'Could not fetch emails: Can not authenticate to IMAP server: AUTHENTICATIONFAILED', $response['data']['message'] );
+		$this->assertStringContainsString( '<table', $response['data']['table_html'] );
+
+		$account = $this->account_repository->find_by_post_id( $saved->account->get_post_id() );
+		$this->assertNotNull( $account->last_failed_login_time );
+		$this->assertNull( $account->last_successful_login_time );
+	}
+
+	/**
+	 * "Check now" on an account with no saved credentials fails with a message saying so.
+	 *
+	 * @covers ::handle_check
+	 */
+	public function test_check_reports_missing_credentials(): void {
+		remove_all_filters( 'bh_wp_mailboxes_connection_for_account' );
+		add_filter(
+			'bh_wp_mailboxes_connection_for_account',
+			function () {
+				$connection = Mockery::mock( Email_Connection_Interface::class, Requires_Credentials::class, Supports_Fetching::class );
+				$connection->shouldNotReceive( 'retrieve_emails' );
+				return $connection;
+			}
+		);
+
+		$sut     = $this->make_sut();
+		$account = $this->account_repository->save_new( 'nocreds@example.com', 'No creds', ImapEngine_Imap_Email_Connection::class, null, null, null, null );
+
+		$response = $this->run_handler( array( $sut, 'handle_check' ), array( 'account_post_id' => (string) $account->get_post_id() ) );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'failed', $response['data']['status'] );
+		$this->assertSame( 'No credentials are saved for this account.', $response['data']['message'] );
+	}
+
+	/**
+	 * "Check now" on a disabled account is reported as skipped, not as a failure.
+	 *
+	 * @covers ::handle_check
+	 */
+	public function test_check_reports_a_disabled_account_as_skipped(): void {
+		remove_all_filters( 'bh_wp_mailboxes_connection_for_account' );
+		add_filter(
+			'bh_wp_mailboxes_connection_for_account',
+			function () {
+				$connection = Mockery::mock( Email_Connection_Interface::class, Requires_Credentials::class, Supports_Fetching::class );
+				$connection->allows( 'set_credentials' );
+				$connection->allows( 'test_connection' )->andReturn( true );
+				$connection->shouldNotReceive( 'retrieve_emails' );
+				return $connection;
+			}
+		);
+
+		$sut   = $this->make_sut();
+		$saved = $sut->save( 'inbox@example.com', 'Inbox', 'imap.example.com', '', 'secret', 'TLS' );
+		$this->api->set_email_account_active( 'inbox@example.com', false );
+
+		$response = $this->run_handler( array( $sut, 'handle_check' ), array( 'account_post_id' => (string) $saved->account->get_post_id() ) );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'skipped', $response['data']['status'] );
+		$this->assertSame( 'The account is disabled.', $response['data']['message'] );
+	}
+
+	/**
+	 * A successful "Check now" reports the count and ids of the new emails.
+	 *
+	 * @covers ::handle_check
+	 */
+	public function test_check_reports_success_with_no_new_emails(): void {
+		remove_all_filters( 'bh_wp_mailboxes_connection_for_account' );
+		add_filter(
+			'bh_wp_mailboxes_connection_for_account',
+			function () {
+				$connection = Mockery::mock( Email_Connection_Interface::class, Requires_Credentials::class, Supports_Fetching::class );
+				$connection->allows( 'set_credentials' );
+				$connection->allows( 'test_connection' )->andReturn( true );
+				$connection->allows( 'retrieve_emails' )->andReturn( new \Illuminate\Support\Collection() );
+				return $connection;
+			}
+		);
+
+		$sut   = $this->make_sut();
+		$saved = $sut->save( 'inbox@example.com', 'Inbox', 'imap.example.com', '', 'secret', 'TLS' );
+
+		$response = $this->run_handler( array( $sut, 'handle_check' ), array( 'account_post_id' => (string) $saved->account->get_post_id() ) );
+
+		$this->assertTrue( $response['success'] );
+		$this->assertSame( 0, $response['data']['new_email_count'] );
+		$this->assertSame( array(), $response['data']['new_email_ids'] );
+		$this->assertSame( array(), $response['data']['warnings'] );
+
+		$account = $this->account_repository->find_by_post_id( $saved->account->get_post_id() );
+		$this->assertNotNull( $account->last_successful_login_time );
 	}
 
 	/**

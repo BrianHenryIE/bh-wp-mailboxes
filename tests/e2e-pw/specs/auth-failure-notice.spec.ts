@@ -85,6 +85,61 @@ test.describe( 'Auth failure admin notice', () => {
 		await expect( page.locator( noticeSelector( accountId ) ) ).toHaveCount( 0 );
 	} );
 
+	test( '"Check now" reports a connection failure in red with the connection\'s message, then reports the fix in green', async ( {
+		admin,
+		page,
+		request,
+	} ) => {
+		const email = uniqueEmail( 'check-now-fail' );
+		const accountId = await createAccount( request, email );
+		await setFixturesFail( request, email, true );
+
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
+		const row = () => page.locator( `.bh-mailboxes-account[data-account-id="${ accountId }"]` );
+		await row().hover();
+		await row().getByRole( 'link', { name: 'Check now', exact: true } ).click();
+
+		const notice = page.locator( `.bh-check-notice[data-account-id="${ accountId }"]` );
+		await expect( notice ).toContainText( `${ email }: Check failed. Could not fetch emails: Mock_Mailbox_Fixtures_Connection: simulated connection failure` );
+		await expect( notice ).toHaveCSS( 'border-left-color', 'rgb(214, 54, 56)' ); // #d63638
+
+		await expect( row().locator( '[data-field="last-failure"]' ) ).toHaveText( 'Just now' );
+		await expect( row().locator( '.bh-mailboxes-login-failure' ) ).toBeVisible();
+
+		// Fix the connection: the next "Check now" succeeds (green, 5 fixture emails) and the badge clears.
+		await setFixturesFail( request, email, false );
+		await row().hover();
+		await row().getByRole( 'link', { name: 'Check now', exact: true } ).click();
+
+		await expect( notice ).toContainText( `${ email }: Email checked successfully, 5 new emails found.` );
+		await expect( notice ).toHaveCSS( 'border-left-color', 'rgb(0, 163, 42)' ); // #00a32a
+		await expect( row().locator( '[data-field="last-fetched"]' ) ).toHaveText( 'Just now' );
+		await expect( row().locator( '.bh-mailboxes-login-failure' ) ).toHaveCount( 0 );
+	} );
+
+	test( '"Check all" names each account that could not be checked, in red, instead of reporting success', async ( {
+		admin,
+		page,
+		request,
+	} ) => {
+		const email = uniqueEmail( 'check-all-fail' );
+		await createAccount( request, email );
+		await setFixturesFail( request, email, true );
+
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
+		await page.locator( '#check-email' ).click();
+
+		const notice = page.locator( '.bh-check-notice[data-account-id="all"]' );
+		await expect( notice ).toBeVisible();
+		await expect( notice.locator( '.spinner' ) ).not.toBeAttached( { timeout: 60_000 } );
+
+		await expect( notice ).toContainText( 'accounts could not be checked.' );
+		await expect( notice ).toContainText( `${ email }: Could not fetch emails: Mock_Mailbox_Fixtures_Connection: simulated connection failure` );
+		await expect( notice ).toHaveCSS( 'border-left-color', 'rgb(214, 54, 56)' ); // #d63638
+
+		await setFixturesFail( request, email, false );
+	} );
+
 	test( 'each failure gets its own notice id, so a dismissal cannot suppress a later, different failure', async ( {
 		admin,
 		page,
