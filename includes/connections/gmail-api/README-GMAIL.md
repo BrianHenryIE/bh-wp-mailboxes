@@ -128,7 +128,7 @@ This step is **web UI only**.
    This is the right choice when you authorize from the command line and have **no callback URL** to host. A Desktop-app client uses Google's installed-app flow: after you consent, Google sends the authorization code to a loopback address (`http://localhost`) instead of a server you run, so you can simply copy the code out of the browser and paste it into the CLI (see step 6).
 
    (Choose **Web application** instead only if you actually host a redirect endpoint, e.g. `https://example.com/oauth2callback`. Both are supported — see below.)
-4. **Download JSON** and save it as `client_secret.json` in the account's credentials directory (see [`Google_API_Credentials`](class-google-api-credentials.php)).
+4. **Download JSON** and save it as `client_secret.json` alongside the access token file; [`Gmail_Credentials::from_files()`](class-gmail-credentials.php) reads both into the object the library saves to the credentials store.
 
 A Desktop-app client's JSON has a top-level **`installed`** key (a Web-application client uses `web`). [`OAuth_Client_Credentials::from_json()`](model/class-oauth-client-credentials.php) accepts either:
 
