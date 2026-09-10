@@ -11,9 +11,9 @@
  *
  * The package is located through Composer's runtime API (`composer-runtime-api` is a requirement).
  * Its `src/wp-includes/secrets.php` (constants and helper functions) is included eagerly, and an
- * autoloader is registered for the classes and interfaces declared in that directory. The plugin
- * bootstrap (`secrets-api.php`, with its core-conflict checks, hooks and drop-in loading) is never
- * included.
+ * autoloader is registered for the classes and interfaces in that directory ({@see self::CLASS_MAP}).
+ * The plugin bootstrap (`secrets-api.php`, with its core-conflict checks, hooks and drop-in loading)
+ * is never included.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -39,11 +39,36 @@ class Secrets_API_Loader {
 	protected static bool $registered = false;
 
 	/**
-	 * Class/interface name => file, for the package's `src/wp-includes` directory; built on first use.
+	 * The classes and interfaces declared in the package's `src/wp-includes` directory, keyed by name.
 	 *
-	 * @var ?array<string, string>
+	 * Listed explicitly (rather than derived from the file names, which lose the `WP` capitalisation,
+	 * or enumerated at runtime); regenerate when the package adds a class. The wpunit test compares
+	 * it against the vendored files.
+	 *
+	 * @var array<string, string> Class name => file name.
 	 */
-	protected static ?array $class_map = null;
+	const CLASS_MAP = array(
+		'WP_Secret'                      => 'class-wp-secret.php',
+		'WP_Secret_Version'              => 'class-wp-secret-version.php',
+		'WP_Secrets_Broken_Keyring'      => 'class-wp-secrets-broken-keyring.php',
+		'WP_Secrets_Broken_Provider'     => 'class-wp-secrets-broken-provider.php',
+		'WP_Secrets_Broken_Store'        => 'class-wp-secrets-broken-store.php',
+		'WP_Secrets_Cipher'              => 'class-wp-secrets-cipher.php',
+		'WP_Secrets_Config_Key_Provider' => 'class-wp-secrets-config-key-provider.php',
+		'WP_Secrets_Key_Manager'         => 'class-wp-secrets-key-manager.php',
+		'WP_Secrets_Keyring'             => 'interface-wp-secrets-keyring.php',
+		'WP_Secrets_Libsodium_Provider'  => 'class-wp-secrets-libsodium-provider.php',
+		'WP_Secrets_Option_Store'        => 'class-wp-secrets-option-store.php',
+		'WP_Secrets_Provider'            => 'interface-wp-secrets-provider.php',
+		'WP_Secrets_Store'               => 'interface-wp-secrets-store.php',
+	);
+
+	/**
+	 * The package's `src/wp-includes` directory, recorded by {@see load()} for {@see autoload()}.
+	 *
+	 * @var ?string
+	 */
+	protected static ?string $includes_dir = null;
 
 	/**
 	 * Ensure the Secrets API is usable: its functions included and its classes autoloadable. Idempotent.
@@ -67,6 +92,7 @@ class Secrets_API_Loader {
 			require_once $includes_dir . '/secrets.php';
 		}
 
+		self::$includes_dir = $includes_dir;
 		spl_autoload_register( array( self::class, 'autoload' ) );
 		self::$registered = true;
 
@@ -86,44 +112,11 @@ class Secrets_API_Loader {
 	 * @param string $class_name The fully qualified name being autoloaded.
 	 */
 	public static function autoload( string $class_name ): void {
-		$file = self::get_class_map()[ $class_name ] ?? null;
+		$file = self::CLASS_MAP[ $class_name ] ?? null;
 
-		if ( ! is_null( $file ) ) {
-			require_once $file;
+		if ( ! is_null( $file ) && ! is_null( self::$includes_dir ) ) {
+			require_once self::$includes_dir . '/' . $file;
 		}
-	}
-
-	/**
-	 * The classes and interfaces declared in the package's `src/wp-includes` directory, keyed by name.
-	 *
-	 * Enumerated by reading each `class-*.php` / `interface-*.php` file's declaration rather than by
-	 * inferring the name from the file name (WordPress's convention loses the `WP` capitalisation).
-	 *
-	 * @return array<string, string> Class name => absolute file path.
-	 */
-	public static function get_class_map(): array {
-		if ( ! is_null( self::$class_map ) ) {
-			return self::$class_map;
-		}
-
-		self::$class_map = array();
-
-		$includes_dir = self::get_includes_dir();
-		if ( is_null( $includes_dir ) ) {
-			return self::$class_map;
-		}
-
-		foreach ( (array) glob( $includes_dir . '/{class,interface}-*.php', GLOB_BRACE ) as $file ) {
-			if ( ! is_string( $file ) ) {
-				continue;
-			}
-			$source = (string) file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local file in vendor.
-			if ( 1 === preg_match( '/^\s*(?:final\s+|abstract\s+)?(?:class|interface|trait)\s+(\w+)/m', $source, $matches ) ) {
-				self::$class_map[ $matches[1] ] = $file;
-			}
-		}
-
-		return self::$class_map;
 	}
 
 	/**

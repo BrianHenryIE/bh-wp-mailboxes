@@ -54,24 +54,25 @@ class Secrets_API_Loader_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * The class map is read from the files' declarations, so the `WP` capitalisation survives, and
-	 * covers every class and interface file in the package's includes directory.
+	 * The static class map matches the vendored package: one entry per class/interface file, each
+	 * naming the class that file declares (with the `WP` capitalisation the file names lose).
 	 *
-	 * @covers ::get_class_map
+	 * @coversNothing
 	 */
-	public function test_class_map_enumerates_the_packages_classes(): void {
+	public function test_class_map_matches_the_vendored_package(): void {
 		$includes_dir = InstalledVersions::getInstallPath( 'wordpress/secrets-api' ) . '/src/wp-includes';
-		$map          = Secrets_API_Loader::get_class_map();
 
-		$this->assertSame( realpath( $includes_dir . '/class-wp-secrets-libsodium-provider.php' ), realpath( $map['WP_Secrets_Libsodium_Provider'] ) );
-		$this->assertSame( realpath( $includes_dir . '/interface-wp-secrets-provider.php' ), realpath( $map['WP_Secrets_Provider'] ) );
-		$this->assertArrayNotHasKey( 'Wp_Secret', $map );
-
-		$files = array_merge( (array) glob( $includes_dir . '/class-*.php' ), (array) glob( $includes_dir . '/interface-*.php' ) );
-		$this->assertCount( count( $files ), $map, 'One entry per class/interface file.' );
-		foreach ( array_keys( $map ) as $class_name ) {
-			$this->assertMatchesRegularExpression( '/^WP_Secret/', $class_name );
+		$declared = array();
+		foreach ( array_merge( (array) glob( $includes_dir . '/class-*.php' ), (array) glob( $includes_dir . '/interface-*.php' ) ) as $file ) {
+			$this->assertSame( 1, preg_match( '/^\s*(?:final\s+|abstract\s+)?(?:class|interface)\s+(\w+)/m', (string) file_get_contents( (string) $file ), $matches ), (string) $file );
+			$declared[ $matches[1] ] = basename( (string) $file );
 		}
+		ksort( $declared );
+
+		$map = Secrets_API_Loader::CLASS_MAP;
+		ksort( $map );
+
+		$this->assertSame( $declared, $map, 'Regenerate Secrets_API_Loader::CLASS_MAP from the package.' );
 	}
 
 	/**
