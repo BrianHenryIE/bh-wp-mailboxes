@@ -2,8 +2,7 @@
 /**
  * Test double for {@see Secrets_Credentials_Store} whose availability is set by the test.
  *
- * Whether the API's functions exist is process-wide state (WP_Mock cannot undefine a function once a
- * test has mocked it), so the check is stubbed here.
+ * Whether the API's classes are loaded is process-wide state, so the check is stubbed here.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -24,5 +23,12 @@ class Stubbed_Secrets_Credentials_Store extends Secrets_Credentials_Store {
 
 	public function is_available(): bool {
 		return $this->available;
+	}
+
+	/**
+	 * Expose the lazily built provider.
+	 */
+	public function provider(): \WP_Secrets_Provider {
+		return $this->get_provider();
 	}
 }
