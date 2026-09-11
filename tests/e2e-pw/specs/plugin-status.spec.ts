@@ -30,8 +30,9 @@ test.describe( 'bh-wp-mailboxes', () => {
 		} );
 		expect( create.status() ).toBe( 201 );
 
-		// Act (minimal UI): open the emails admin list.
-		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
+		// Act (minimal UI): open the emails admin list, searched for the subject so the row is on the
+		// first page whatever other specs (e.g. a "Check all") have fetched in the meantime.
+		await admin.visitAdminPage( 'edit.php', `post_type=e2e_email&s=${ encodeURIComponent( subject ) }` );
 
 		// Assert the fixture is visible in the list. Use row-title link to avoid strict-mode
 		// violations (the subject text appears in multiple spans in the WP list table row).

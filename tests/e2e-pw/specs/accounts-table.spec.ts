@@ -445,6 +445,8 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		// The notice is an error (red), says the check failed, and carries the connection's own message.
 		const notice = page.locator( `.bh-check-notice[data-account-id="${ await row.getAttribute( 'data-account-id' ) }"]` );
 		await expect( notice ).toContainText( 'Unreachable inbox: Check failed. Could not fetch emails:' );
+		// The failure names the server settings that were tried.
+		await expect( notice ).toContainText( 'Server: 127.0.0.1:1, encryption: none.' );
 		await expect( notice.locator( '.spinner' ) ).not.toBeAttached();
 		await expect( notice ).toHaveCSS( 'border-left-color', 'rgb(214, 54, 56)' ); // #d63638
 

@@ -43,6 +43,13 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 	protected Mailbox $mailbox;
 
 	/**
+	 * The server settings the mailbox was built with, for describing connection failures.
+	 *
+	 * @var ?array{host: string, port: int, encryption: string}
+	 */
+	protected ?array $server_settings = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Email_Account_Settings_Interface $settings    The account being connected (passed to the config filter).
@@ -144,16 +151,125 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 		$config = apply_filters( 'bh_wp_mailboxes_imap_mailbox_config', $config, $this->plugin_slug, $credentials, $this->settings );
 
 		$this->mailbox = Mailbox::make( $config );
+
+		$this->server_settings = array(
+			'host'       => $host,
+			'port'       => $port,
+			'encryption' => $encryption,
+		);
+	}
+
+	/**
+	 * Connect the mailbox, rethrowing a connection failure with enough detail to act on.
+	 *
+	 * ImapEngine opens the socket with `@stream_socket_client()` and reports only the (often empty)
+	 * `$errstr`, e.g. "Unable to connect to tls://host:993 ()". PHP still passes the suppressed warning
+	 * to a user error handler, so one is installed for the duration of the connect to recover the real
+	 * reason, which {@see self::describe_connection_failure()} appends along with the server settings
+	 * used, the error code, and, when PHP gives no reason at all, a hint that the environment may not
+	 * allow outbound connections.
+	 *
+	 * @throws ImapConnectionFailedException When the connection or login fails (same class as ImapEngine throws; the original is the previous exception).
+	 */
+	protected function connect(): void {
+		$php_warning = null;
+
+		set_error_handler( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- Temporary, to recover the warning ImapEngine suppresses; restored in `finally`.
+			function ( int $errno, string $errstr ) use ( &$php_warning ): bool {
+				$php_warning = $errstr;
+				return true;
+			},
+			E_WARNING | E_NOTICE | E_USER_WARNING | E_USER_NOTICE
+		);
+
+		try {
+			$this->mailbox->connect();
+		} catch ( ImapConnectionFailedException $exception ) {
+			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Shown as text (JSON → textContent, logger); escaping here would double-encode the quotes in PHP's warnings.
+			throw new ImapConnectionFailedException(
+				$this->describe_connection_failure( $exception, $php_warning ),
+				$exception->getCode(),
+				$exception
+			);
+			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
+		} finally {
+			restore_error_handler();
+		}
+	}
+
+	/**
+	 * A user-facing description of a connection failure: ImapEngine's message, the server settings
+	 * used, the PHP warning (if any) ImapEngine suppressed, the error code, and a hint when PHP gave
+	 * no reason at all.
+	 *
+	 * @param ImapConnectionFailedException $exception   The failure ImapEngine threw.
+	 * @param ?string                       $php_warning The warning PHP raised while connecting, if any.
+	 */
+	protected function describe_connection_failure( ImapConnectionFailedException $exception, ?string $php_warning ): string {
+		$parts = array( rtrim( $exception->getMessage(), '.' ) . '.' );
+
+		if ( ! is_null( $this->server_settings ) ) {
+			$parts[] = sprintf(
+				/* translators: 1: IMAP host, 2: port, 3: encryption, TLS or none */
+				__( 'Server: %1$s:%2$d, encryption: %3$s.', 'bh-wp-mailboxes' ),
+				$this->server_settings['host'],
+				$this->server_settings['port'],
+				'' === $this->server_settings['encryption'] ? __( 'none', 'bh-wp-mailboxes' ) : $this->server_settings['encryption']
+			);
+		}
+
+		if ( ! is_null( $php_warning ) && '' !== trim( $php_warning ) ) {
+			$parts[] = sprintf(
+				/* translators: %s: the warning message PHP raised, e.g. "Connection refused" */
+				__( 'PHP: %s.', 'bh-wp-mailboxes' ),
+				rtrim( (string) preg_replace( '/^[\w\\\\]+\(\): /', '', trim( $php_warning ) ), '.' )
+			);
+		}
+
+		if ( 0 !== $exception->getCode() ) {
+			$parts[] = sprintf(
+				/* translators: %d: the socket error number */
+				__( 'Error code %d.', 'bh-wp-mailboxes' ),
+				$exception->getCode()
+			);
+		}
+
+		// "Unable to connect to tls://host:993 ()" with no warning: PHP could not even try. Explain why that happens.
+		$no_reason_given = str_ends_with( trim( $exception->getMessage() ), '()' ) && ( is_null( $php_warning ) || '' === trim( $php_warning ) );
+		if ( $no_reason_given ) {
+			$wants_tls  = ! is_null( $this->server_settings ) && '' !== $this->server_settings['encryption'];
+			$transports = stream_get_transports();
+			if ( $wants_tls && ! in_array( 'tls', $transports, true ) && ! in_array( 'ssl', $transports, true ) ) {
+				$parts[] = __( 'The "tls" stream transport is not available in this PHP (the openssl extension is missing), so encrypted connections cannot be made.', 'bh-wp-mailboxes' );
+			} elseif ( self::is_php_wasm() ) {
+				$parts[] = __( 'PHP could not open a network socket. This is WordPress Playground (PHP running as WebAssembly), which cannot make IMAP or other TCP connections when it runs in the browser; test the account on a normal WordPress install instead.', 'bh-wp-mailboxes' );
+			} else {
+				$parts[] = __( 'PHP could not open a network socket and gave no reason. This environment may not allow outbound connections (for example WordPress Playground running in the browser cannot connect to IMAP servers), or a firewall may be blocking the port.', 'bh-wp-mailboxes' );
+			}
+		}
+
+		return implode( ' ', $parts );
+	}
+
+	/**
+	 * Whether PHP is running as WebAssembly (WordPress Playground), which has no network sockets.
+	 *
+	 * Playground reports itself in `SERVER_SOFTWARE` ("PHP.wasm").
+	 */
+	public static function is_php_wasm(): bool {
+		$server_software = isset( $_SERVER['SERVER_SOFTWARE'] ) && is_string( $_SERVER['SERVER_SOFTWARE'] ) ? $_SERVER['SERVER_SOFTWARE'] : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Compared, never output.
+
+		return false !== stripos( $server_software, 'wasm' );
 	}
 
 	/**
 	 * Connect to the IMAP server, surfacing authentication/connection failures.
 	 *
 	 * @return bool True when the connection and login succeed.
-	 * @throws ImapConnectionFailedException When the IMAP connection or authentication fails.
+	 * @throws ImapConnectionFailedException When the IMAP connection or authentication fails; the message names the server settings used and PHP's reason.
 	 */
 	public function test_connection(): bool {
-		$this->mailbox->connect();
+		$this->connect();
 		return true;
 	}
 
@@ -172,7 +288,7 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 
 		// TODO: validate we have had credentials set.
 
-		$this->mailbox->connect();
+		$this->connect();
 
 		$inbox  = $this->mailbox->inbox();
 		$folder = $inbox->path();
@@ -298,7 +414,7 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 	 */
 	public function set_is_marked_read( Remote_Email_Coordinates $coordinates, bool $is_read = true ): void {
 
-		$this->mailbox->connect();
+		$this->connect();
 
 		$message = $this->find_message_by_uid( $coordinates )
 			?? $this->find_message_by_message_id( $coordinates->message_id );
