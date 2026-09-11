@@ -881,7 +881,7 @@ class API implements API_Interface {
 		}
 
 		if ( ImapEngine_Imap_Email_Connection::class === $email_account->connection_type_class ) {
-			return new ImapEngine_Imap_Email_Connection( $email_account, $this->logger );
+			return new ImapEngine_Imap_Email_Connection( $email_account, $this->logger, $this->settings->get_plugin_slug() );
 		} elseif ( Google_API_Credentials_Interface::class === $email_account->connection_type_class ) {
 			return new Gmail_Email_Connection( $email_account, $this->logger );
 		} elseif ( REST_Ingress_Connection::class === $email_account->connection_type_class ) {

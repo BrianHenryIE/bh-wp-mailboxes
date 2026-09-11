@@ -99,6 +99,11 @@
 	margin: 16px 0 0;
 }
 
+/* "Test connection" sits apart from Cancel / Save. */
+.bh-mailboxes-account-form__test {
+	margin-right: auto;
+}
+
 .bh-mailboxes-account-form__actions .spinner {
 	float: none;
 	margin: 0;

@@ -42,23 +42,49 @@ class Imap_Credentials_Env_Unit_Test extends Unit_Testcase {
 		$this->assertSame( 'user@example.com', $sut->get_email_account_username() );
 		$this->assertSame( 'secret', $sut->get_email_account_password() );
 		$this->assertSame( 'TLS', $sut->get_encryption() );
+		$this->assertTrue( $sut->should_validate_cert(), 'Validates when IMAP_VALIDATE_CERT is unset.' );
+	}
+
+	/**
+	 * Only an explicit false-like value turns certificate validation off.
+	 *
+	 * @covers ::__construct
+	 * @covers ::should_validate_cert
+	 */
+	public function test_validate_cert_env_var(): void {
+		$_ENV['IMAP_SERVER']   = 'imap.example.com';
+		$_ENV['IMAP_USERNAME'] = 'user@example.com';
+		$_ENV['IMAP_PASSWORD'] = 'secret';
+
+		foreach ( array( 'false', '0', 'no', 'off', 'FALSE' ) as $off ) {
+			$_ENV['IMAP_VALIDATE_CERT'] = $off;
+			$this->assertFalse( ( new Imap_Credentials_Env() )->should_validate_cert(), "IMAP_VALIDATE_CERT={$off}" );
+		}
+		foreach ( array( 'true', '1', 'yes', 'on', '', 'anything' ) as $on ) {
+			$_ENV['IMAP_VALIDATE_CERT'] = $on;
+			$this->assertTrue( ( new Imap_Credentials_Env() )->should_validate_cert(), "IMAP_VALIDATE_CERT={$on}" );
+		}
+		unset( $_ENV['IMAP_VALIDATE_CERT'] );
 	}
 
 	/**
 	 * @covers ::__construct
 	 */
 	public function test_custom_env_var_key_names_read_correct_env_entries(): void {
-		$_ENV['MY_IMAP_HOST'] = 'mail.custom.org';
-		$_ENV['MY_IMAP_USER'] = 'custom_user';
-		$_ENV['MY_IMAP_PASS'] = 'custom_pass';
-		$_ENV['MY_IMAP_ENC']  = 'STARTTLS';
+		$_ENV['MY_IMAP_HOST']     = 'mail.custom.org';
+		$_ENV['MY_IMAP_USER']     = 'custom_user';
+		$_ENV['MY_IMAP_PASS']     = 'custom_pass';
+		$_ENV['MY_IMAP_ENC']      = 'STARTTLS';
+		$_ENV['MY_IMAP_VALIDATE'] = 'false';
 
-		$sut = new Imap_Credentials_Env( 'MY_IMAP_HOST', 'MY_IMAP_USER', 'MY_IMAP_PASS', 'MY_IMAP_ENC' );
+		$sut = new Imap_Credentials_Env( 'MY_IMAP_HOST', 'MY_IMAP_USER', 'MY_IMAP_PASS', 'MY_IMAP_ENC', 'MY_IMAP_VALIDATE' );
 
 		$this->assertSame( 'mail.custom.org', $sut->get_email_imap_server() );
 		$this->assertSame( 'custom_user', $sut->get_email_account_username() );
 		$this->assertSame( 'custom_pass', $sut->get_email_account_password() );
 		$this->assertSame( 'STARTTLS', $sut->get_encryption() );
+		$this->assertFalse( $sut->should_validate_cert() );
+		unset( $_ENV['MY_IMAP_VALIDATE'] );
 	}
 
 	/**
@@ -167,14 +193,16 @@ class Imap_Credentials_Env_Unit_Test extends Unit_Testcase {
 		$_ENV['IMAP_USERNAME']   = 'user@example.com';
 		$_ENV['IMAP_PASSWORD']   = 'secret';
 		$_ENV['IMAP_ENCRYPTION'] = 'STARTTLS';
+		unset( $_ENV['IMAP_VALIDATE_CERT'] );
 
 		$this->assertSame(
 			array(
-				'type'       => 'imap',
-				'server'     => 'imap.example.com',
-				'username'   => 'user@example.com',
-				'password'   => 'secret',
-				'encryption' => 'STARTTLS',
+				'type'          => 'imap',
+				'server'        => 'imap.example.com',
+				'username'      => 'user@example.com',
+				'password'      => 'secret',
+				'encryption'    => 'STARTTLS',
+				'validate_cert' => true,
 			),
 			( new Imap_Credentials_Env() )->jsonSerialize()
 		);

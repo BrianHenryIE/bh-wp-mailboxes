@@ -36,4 +36,10 @@ interface IMAP_Credentials_Interface extends Account_Credentials_Interface {
 	 * TLS, STARTTLS, '' empty string for none.
 	 */
 	public function get_encryption(): string;
+
+	/**
+	 * Whether to verify the server's TLS certificate. False only for a server with a self-signed or
+	 * otherwise untrusted certificate.
+	 */
+	public function should_validate_cert(): bool;
 }

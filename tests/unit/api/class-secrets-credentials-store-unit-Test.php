@@ -319,11 +319,12 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 		$this->assertArrayHasKey( $name, $this->written );
 		$this->assertSame(
 			array(
-				'type'       => 'imap',
-				'server'     => 'imap.example.com:993',
-				'username'   => 'user',
-				'password'   => 'p<a&ss"word',
-				'encryption' => '',
+				'type'          => 'imap',
+				'server'        => 'imap.example.com:993',
+				'username'      => 'user',
+				'password'      => 'p<a&ss"word',
+				'encryption'    => '',
+				'validate_cert' => true,
 			),
 			json_decode( $this->written[ $name ], true )
 		);
@@ -365,6 +366,9 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 			public function get_encryption(): string {
 				return 'STARTTLS';
 			}
+			public function should_validate_cert(): bool {
+				return false;
+			}
 		};
 		$sut         = $this->make_sut();
 		$account     = $this->make_account();
@@ -373,11 +377,12 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 
 		$this->assertSame(
 			array(
-				'type'       => 'imap',
-				'server'     => 'env.example.com',
-				'username'   => 'env-user',
-				'password'   => 'env-pass',
-				'encryption' => 'STARTTLS',
+				'type'          => 'imap',
+				'server'        => 'env.example.com',
+				'username'      => 'env-user',
+				'password'      => 'env-pass',
+				'encryption'    => 'STARTTLS',
+				'validate_cert' => false,
 			),
 			json_decode( $this->written[ $sut->get_secret_name( $account ) ], true )
 		);

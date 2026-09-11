@@ -253,7 +253,7 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 				'username'      => $credentials->get_email_account_username(),
 				'password'      => $credentials->get_email_account_password(),
 				'encryption'    => 'tls',
-				'validate_cert' => false,
+				'validate_cert' => $credentials->should_validate_cert(),
 			)
 		);
 	}

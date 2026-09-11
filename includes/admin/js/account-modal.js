@@ -92,7 +92,7 @@
     };
 
     // ── Add / edit account modal ───────────────────────────────────────────
-    var dialog, $form, $title, $submit, $cancel, $notice, $spinner;
+    var dialog, $form, $title, $submit, $test, $cancel, $notice, $spinner;
 
     function initDialog() {
         dialog = document.getElementById( 'bh-mailboxes-account-dialog' );
@@ -102,6 +102,7 @@
         $form    = $( dialog ).find( '.bh-mailboxes-account-form' );
         $title   = $( dialog ).find( '#bh-mailboxes-account-dialog-title' );
         $submit  = $form.find( '.bh-mailboxes-account-form__submit' );
+        $test    = $form.find( '.bh-mailboxes-account-form__test' );
         $cancel  = $form.find( '.bh-mailboxes-account-form__cancel' );
         $notice  = $form.find( '.bh-mailboxes-account-form__notice' );
         $spinner = $form.find( '.spinner' );
@@ -142,6 +143,7 @@
         $form.find( '[name="server"]' ).val( $row.data( 'server' ) || '' );
         $form.find( '[name="username"]' ).val( $row.data( 'username' ) || '' );
         $form.find( '[name="encryption"]' ).val( $row.data( 'encryption' ) === undefined ? 'TLS' : String( $row.data( 'encryption' ) ) );
+        $form.find( '[name="validate_cert"]' ).prop( 'checked', $row.data( 'validate-cert' ) === undefined || String( $row.data( 'validate-cert' ) ) === '1' );
         $form.find( '[name="password"]' ).val( '' ).prop( 'required', ! hasCredentials );
         $title.text( $title.data( 'edit-title' ) );
         $submit.text( $submit.data( 'edit-label' ) );
@@ -151,17 +153,50 @@
         $form.find( '[name="display_name"]' ).trigger( 'focus' );
     }
 
-    function submitAccount( event ) {
-        event.preventDefault();
-        $notice.prop( 'hidden', true );
-
+    function formData() {
         var data = {};
         $form.serializeArray().forEach( function( field ) {
             data[ field.name ] = field.value;
         } );
+        // An unticked checkbox is omitted by serializeArray(); post an explicit value either way.
+        data.validate_cert = $form.find( '[name="validate_cert"]' ).is( ':checked' ) ? '1' : '0';
+        return data;
+    }
+
+    // Try the entered details against the server without saving anything; the result stays in the form.
+    function testConnection() {
+        // Same required-field checks as submitting (email, server, and password when adding).
+        if ( ! $form[ 0 ].reportValidity() ) {
+            return;
+        }
+        $notice.prop( 'hidden', true );
+
+        var label = $test.text();
+        $test.prop( 'disabled', true ).text( 'Testing…' );
+        $submit.prop( 'disabled', true );
+        $spinner.addClass( 'is-active' );
+
+        postAccounts( bh_wp_mailboxes_ajax.test_connection_action, formData() ).done( function( response ) {
+            // A refused login / unreachable server comes back as HTTP 200 with success:false.
+            formNotice( response.data.message, response.success ? 'success' : 'error' );
+        } ).fail( function( xhr ) {
+            formNotice( failMessage( xhr, 'Connection test failed: server error.' ), 'error' );
+        } ).always( function() {
+            $test.prop( 'disabled', false ).text( label );
+            $submit.prop( 'disabled', false );
+            $spinner.removeClass( 'is-active' );
+        } );
+    }
+
+    function submitAccount( event ) {
+        event.preventDefault();
+        $notice.prop( 'hidden', true );
+
+        var data = formData();
 
         var label = $submit.text();
         $submit.prop( 'disabled', true ).text( 'Saving…' );
+        $test.prop( 'disabled', true );
         $spinner.addClass( 'is-active' );
 
         postAccounts( bh_wp_mailboxes_ajax.save_account_action, data ).done( function( response ) {
@@ -177,6 +212,7 @@
             formNotice( failMessage( xhr, 'The account could not be saved.' ), 'error' );
         } ).always( function() {
             $submit.prop( 'disabled', false ).text( label );
+            $test.prop( 'disabled', false );
             $spinner.removeClass( 'is-active' );
         } );
     }
@@ -216,6 +252,7 @@
             openEditDialog( accountRow( $( this ).data( 'account-id' ) ) );
         } );
         $form.on( 'submit', submitAccount );
+        $test.on( 'click', testConnection );
         $cancel.add( $( dialog ).find( '.bh-mailboxes-account-dialog__close' ) ).on( 'click', function() {
             dialog.close();
         } );

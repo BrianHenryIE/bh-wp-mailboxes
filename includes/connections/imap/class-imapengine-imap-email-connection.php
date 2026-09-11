@@ -52,12 +52,14 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 	/**
 	 * Constructor.
 	 *
-	 * @param Email_Account_Settings_Interface $settings TODO: unused.
-	 * @param LoggerInterface                  $logger Logger.
+	 * @param Email_Account_Settings_Interface $settings    The account being connected (passed to the config filter).
+	 * @param LoggerInterface                  $logger      Logger.
+	 * @param string                           $plugin_slug The consumer plugin's slug, so a filter can target one library instance.
 	 */
 	public function __construct(
 		protected Email_Account_Settings_Interface $settings,
-		LoggerInterface $logger
+		LoggerInterface $logger,
+		protected string $plugin_slug = '',
 	) {
 		$this->setLogger( $logger );
 	}
@@ -118,20 +120,37 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 		}
 
 		/**
-		 * Instantiate the mailbox with the IMAP connection options.
+		 * The IMAP connection options.
 		 *
 		 * @see Mailbox::$config
 		 */
-		$this->mailbox = Mailbox::make(
-			array(
-				'host'          => $host,
-				'port'          => $port,
-				'username'      => $credentials->get_email_account_username(),
-				'password'      => $credentials->get_email_account_password(),
-				'encryption'    => $encryption,
-				'validate_cert' => false, // TODO: This was for my own use. Need a convention for controlling it.
-			)
+		$config = array(
+			'host'          => $host,
+			'port'          => $port,
+			'username'      => $credentials->get_email_account_username(),
+			'password'      => $credentials->get_email_account_password(),
+			'encryption'    => $encryption,
+			'validate_cert' => $credentials->should_validate_cert(),
 		);
+
+		/**
+		 * Filters the ImapEngine mailbox configuration before the connection is created.
+		 *
+		 * The keys are ImapEngine's (`host`, `port`, `username`, `password`, `encryption`, `validate_cert`);
+		 * any other it supports may be added, e.g. `'debug' => true` to echo the IMAP conversation,
+		 * `'debug' => '/path/to/imap.log'` to write it to a file, `'timeout' => 10`, `'proxy' => array( ... )`
+		 * or `'authentication' => 'oauth'`. The password is present in the array.
+		 *
+		 * @see Mailbox::$config
+		 *
+		 * @param array<string,mixed>              $config      The configuration about to be passed to Mailbox::make().
+		 * @param string                           $plugin_slug The consumer plugin's slug, to target one library instance.
+		 * @param IMAP_Credentials_Interface       $credentials The account's credentials.
+		 * @param Email_Account_Settings_Interface $account     The account being connected.
+		 */
+		$config = apply_filters( 'bh_wp_mailboxes_imap_mailbox_config', $config, $this->plugin_slug, $credentials, $this->settings );
+
+		$this->mailbox = Mailbox::make( $config );
 
 		$this->server_settings = array(
 			'host'       => $host,

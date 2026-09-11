@@ -244,6 +244,7 @@ class BH_WP_Mailboxes_Hooks {
 
 		add_action( "wp_ajax_bh_wp_mailboxes_check_account_{$accounts_cpt}", $accounts_ajax->handle_check( ... ) );
 		add_action( "wp_ajax_bh_wp_mailboxes_save_account_{$accounts_cpt}", $accounts_ajax->handle_save( ... ) );
+		add_action( "wp_ajax_bh_wp_mailboxes_test_account_connection_{$accounts_cpt}", $accounts_ajax->handle_test_connection( ... ) );
 		add_action( "wp_ajax_bh_wp_mailboxes_set_account_active_{$accounts_cpt}", $accounts_ajax->handle_set_active( ... ) );
 		add_action( "wp_ajax_bh_wp_mailboxes_delete_account_{$accounts_cpt}", $accounts_ajax->handle_delete( ... ) );
 	}

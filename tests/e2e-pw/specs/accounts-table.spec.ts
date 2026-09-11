@@ -222,6 +222,7 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		await expect( dialog.getByRole( 'heading', { name: 'Add IMAP account' } ) ).toBeVisible();
 		await expect( dialog.getByRole( 'button', { name: 'Add account' } ) ).toBeVisible();
 		await expect( dialog.getByLabel( 'Encryption' ) ).toHaveValue( 'TLS' );
+		await expect( dialog.getByLabel( "Validate the server's certificate" ) ).toBeChecked();
 		await expect( dialog.getByLabel( 'Email address' ) ).not.toHaveAttribute( 'readonly', '' );
 		await expect( dialog.getByLabel( 'Account name' ) ).toBeFocused();
 		await expect( dialog.locator( '.bh-mailboxes-account-form__edit-only' ) ).toHaveCount( 2 );
@@ -269,7 +270,7 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		await expect( dialog.getByRole( 'button', { name: 'Add account' } ) ).toBeEnabled();
 	} );
 
-	test( 'an explicit username and "no encryption" round-trip to the edit form', async ( { admin, page } ) => {
+	test( 'an explicit username, "no encryption" and an unticked certificate check round-trip to the edit form', async ( { admin, page } ) => {
 		const emailAddress = `modal-username-${ Date.now() }@example.com`;
 		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
 
@@ -279,6 +280,7 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		await dialog.getByLabel( 'Username' ).fill( 'login-name' );
 		await dialog.getByLabel( 'Password' ).fill( 'not-a-real-password' );
 		await dialog.getByLabel( 'Encryption' ).selectOption( '' );
+		await dialog.getByLabel( "Validate the server's certificate" ).uncheck();
 		await dialog.getByRole( 'button', { name: 'Add account' } ).click();
 		await expect( dialog ).toBeHidden();
 
@@ -286,10 +288,12 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		await expect( row ).toBeVisible();
 		// The display name defaults to the address.
 		await expect( row ).toContainText( emailAddress );
+		await expect( row ).toHaveAttribute( 'data-validate-cert', '0' );
 
 		await clickRowAction( row, 'Edit' );
 		await expect( dialog.getByLabel( 'Username' ) ).toHaveValue( 'login-name' );
 		await expect( dialog.getByLabel( 'Encryption' ) ).toHaveValue( '' );
+		await expect( dialog.getByLabel( "Validate the server's certificate" ) ).not.toBeChecked();
 		await expect( dialog.getByText( 'The email address identifies the account and cannot be changed.' ) ).toBeVisible();
 		await dialog.getByRole( 'button', { name: 'Cancel' } ).click();
 		await expect( dialog ).toBeHidden();
@@ -341,6 +345,90 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		await expect( dialog.getByLabel( 'Username' ) ).toHaveValue( '' );
 		await expect( dialog.getByLabel( 'Encryption' ) ).toHaveValue( 'TLS' );
 		await expect( dialog.locator( '[name="account_post_id"]' ) ).toHaveValue( '' );
+	} );
+
+	test( '"Test connection" reports the server\'s error in the form without saving the account', async ( {
+		admin,
+		page,
+	} ) => {
+		const emailAddress = `modal-test-fail-${ Date.now() }@example.com`;
+		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
+		const dialog = await openAddDialog( page );
+		await dialog.getByLabel( 'Email address' ).fill( emailAddress );
+		await dialog.getByLabel( 'IMAP server' ).fill( '127.0.0.1:1' );
+		await dialog.getByLabel( 'Password' ).fill( 'not-a-real-password' );
+		await dialog.getByLabel( 'Encryption' ).selectOption( '' );
+
+		await dialog.getByRole( 'button', { name: 'Test connection' } ).click();
+
+		const notice = dialog.locator( '.bh-mailboxes-account-form__notice' );
+		await expect( notice ).toBeVisible();
+		await expect( notice ).toHaveClass( /notice-error/ );
+		await expect( notice ).not.toHaveText( '' );
+		// The dialog stays open with the entered values, and nothing was saved.
+		await expect( dialog ).toBeVisible();
+		await expect( dialog.getByLabel( 'IMAP server' ) ).toHaveValue( '127.0.0.1:1' );
+		await expect( accountRow( page, emailAddress ) ).toHaveCount( 0 );
+
+		await dialog.getByRole( 'button', { name: 'Cancel' } ).click();
+		await expect( dialog ).toBeHidden();
+	} );
+
+	test( '"Test connection" requires the same fields as saving, and shows a busy state', async ( { admin, page } ) => {
+		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
+		await page.route( '**/admin-ajax.php', async ( route ) => {
+			if ( route.request().postData()?.includes( 'test_account_connection' ) ) {
+				await new Promise( ( resolve ) => setTimeout( resolve, 800 ) );
+			}
+			await route.continue();
+		} );
+
+		const dialog = await openAddDialog( page );
+		// By class, not by name: the label changes to "Testing…" while the request is in flight.
+		const testButton = dialog.locator( '.bh-mailboxes-account-form__test' );
+
+		// Nothing entered: the browser's required-field validation stops the request.
+		await testButton.click();
+		expect( await dialog.getByLabel( 'Email address' ).evaluate( ( el: HTMLInputElement ) => el.validity.valueMissing ) ).toBe( true );
+		await expect( dialog.locator( '.bh-mailboxes-account-form__notice' ) ).toBeHidden();
+
+		await dialog.getByLabel( 'Email address' ).fill( `modal-test-busy-${ Date.now() }@example.com` );
+		await dialog.getByLabel( 'IMAP server' ).fill( '127.0.0.1:1' );
+		await dialog.getByLabel( 'Password' ).fill( 'not-a-real-password' );
+		await testButton.click();
+
+		await expect( testButton ).toBeDisabled();
+		await expect( testButton ).toHaveText( 'Testing…' );
+		await expect( dialog.locator( '.bh-mailboxes-account-form__submit' ) ).toBeDisabled();
+		await expect( dialog.locator( '.spinner.is-active' ) ).toBeVisible();
+
+		await expect( dialog.locator( '.bh-mailboxes-account-form__notice' ) ).toBeVisible();
+		await expect( testButton ).toBeEnabled();
+		await expect( testButton ).toHaveText( 'Test connection' );
+		await expect( dialog.locator( '.bh-mailboxes-account-form__submit' ) ).toBeEnabled();
+	} );
+
+	test( '"Test connection" in the edit dialog works with a blank password (the saved one is used)', async ( {
+		admin,
+		page,
+	} ) => {
+		const emailAddress = `modal-test-edit-${ Date.now() }@example.com`;
+		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
+		const row = await addImapAccount( page, emailAddress, 'Test on edit' );
+
+		const dialog = page.locator( '#bh-mailboxes-account-dialog' );
+		await clickRowAction( row, 'Edit' );
+		await expect( dialog.getByLabel( 'Password' ) ).toHaveValue( '' );
+
+		await dialog.getByRole( 'button', { name: 'Test connection' } ).click();
+
+		// The saved (unreachable) server is tested, so the result is an error rather than a validation refusal.
+		const notice = dialog.locator( '.bh-mailboxes-account-form__notice' );
+		await expect( notice ).toBeVisible();
+		await expect( notice ).toHaveClass( /notice-error/ );
+		await expect( notice ).not.toContainText( 'password is required' );
+		await expect( dialog ).toBeVisible();
+		await dialog.getByRole( 'button', { name: 'Cancel' } ).click();
 	} );
 
 	test( '"Check now" against an unreachable IMAP server shows a red failure notice with the server error and records the failure', async ( {

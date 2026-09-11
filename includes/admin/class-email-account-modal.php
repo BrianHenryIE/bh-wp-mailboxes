@@ -11,7 +11,8 @@
  *     $modal->print_add_button(); // Wherever the button should appear.
  *
  * Saving posts to {@see Email_Accounts_Ajax}, which stores the account and its credentials (encrypted,
- * via the WordPress Secrets API). Where an accounts table
+ * via the WordPress Secrets API); "Test connection" posts the entered details there too, and reports
+ * the result in the form without saving anything. Where an accounts table
  * (`.bh-mailboxes-status__table`) is on the page the JS refreshes it from the response; otherwise the
  * result is only reported in a notice.
  *
@@ -79,6 +80,7 @@ class Email_Account_Modal {
 				'check_email_action'        => 'bh_wp_mailboxes_check_email_' . $emails_cpt,
 				'check_account_action'      => 'bh_wp_mailboxes_check_account_' . $accounts_cpt,
 				'save_account_action'       => 'bh_wp_mailboxes_save_account_' . $accounts_cpt,
+				'test_connection_action'    => 'bh_wp_mailboxes_test_account_connection_' . $accounts_cpt,
 				'set_account_active_action' => 'bh_wp_mailboxes_set_account_active_' . $accounts_cpt,
 				'delete_account_action'     => 'bh_wp_mailboxes_delete_account_' . $accounts_cpt,
 				'delete_on_server_action'   => 'bh_wp_mailboxes_delete_on_server_' . $emails_cpt,
@@ -173,8 +175,19 @@ class Email_Account_Modal {
 							</select>
 						</td>
 					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Certificate', 'bh-wp-mailboxes' ); ?></th>
+						<td>
+							<label for="bh-mailboxes-account-validate-cert">
+								<input type="checkbox" id="bh-mailboxes-account-validate-cert" name="validate_cert" value="1" checked />
+								<?php esc_html_e( 'Validate the server\'s certificate', 'bh-wp-mailboxes' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'Untick only for a server with a self-signed or otherwise untrusted certificate.', 'bh-wp-mailboxes' ); ?></p>
+						</td>
+					</tr>
 				</table>
 				<p class="bh-mailboxes-account-form__actions">
+					<button type="button" class="button bh-mailboxes-account-form__test"><?php esc_html_e( 'Test connection', 'bh-wp-mailboxes' ); ?></button>
 					<button type="button" class="button bh-mailboxes-account-form__cancel"><?php esc_html_e( 'Cancel', 'bh-wp-mailboxes' ); ?></button>
 					<button type="submit" class="button button-primary bh-mailboxes-account-form__submit" data-add-label="<?php esc_attr_e( 'Add account', 'bh-wp-mailboxes' ); ?>" data-edit-label="<?php esc_attr_e( 'Save account', 'bh-wp-mailboxes' ); ?>"><?php esc_html_e( 'Add account', 'bh-wp-mailboxes' ); ?></button>
 					<span class="spinner"></span>
