@@ -31,13 +31,15 @@ readonly class Imap_Credentials implements IMAP_Credentials_Interface {
 	 * @param string $server     IMAP server hostname or IP, with optional `:port`.
 	 * @param string $username   Login username, usually the email address.
 	 * @param string $password   Login password.
-	 * @param string $encryption `TLS`, `STARTTLS`, or empty string for none.
+	 * @param string $encryption    `TLS`, `STARTTLS`, or empty string for none.
+	 * @param bool   $validate_cert Whether to verify the server's TLS certificate; false only for self-signed/untrusted certificates.
 	 */
 	public function __construct(
 		public string $server,
 		public string $username,
 		public string $password,
 		public string $encryption = 'TLS',
+		public bool $validate_cert = true,
 	) {
 	}
 
@@ -45,7 +47,7 @@ readonly class Imap_Credentials implements IMAP_Credentials_Interface {
 	 * Rebuild from the stored representation ({@see IMAP_Credentials_Json_Trait::jsonSerialize()}).
 	 *
 	 * An empty `encryption` string means "none" and is kept; only a record with no `encryption` key
-	 * at all gets the TLS default.
+	 * at all gets the TLS default. Likewise a record with no `validate_cert` key validates.
 	 *
 	 * @param array<mixed> $data The decoded JSON.
 	 *
@@ -63,6 +65,7 @@ readonly class Imap_Credentials implements IMAP_Credentials_Interface {
 			$string( 'username' ),
 			$string( 'password' ),
 			array_key_exists( 'encryption', $data ) ? $string( 'encryption' ) : 'TLS',
+			array_key_exists( 'validate_cert', $data ) ? (bool) $data['validate_cert'] : true,
 		);
 	}
 
@@ -92,5 +95,12 @@ readonly class Imap_Credentials implements IMAP_Credentials_Interface {
 	 */
 	public function get_encryption(): string {
 		return $this->encryption;
+	}
+
+	/**
+	 * Whether to verify the server's TLS certificate.
+	 */
+	public function should_validate_cert(): bool {
+		return $this->validate_cert;
 	}
 }

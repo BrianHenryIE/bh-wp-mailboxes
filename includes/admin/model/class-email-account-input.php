@@ -27,6 +27,7 @@ readonly class Email_Account_Input {
 	 * @param string            $username      Login username.
 	 * @param string            $password      Login password.
 	 * @param string            $encryption    TLS, STARTTLS or empty for none.
+	 * @param bool              $validate_cert Whether to verify the server's TLS certificate.
 	 * @param ?BH_Email_Account $existing      The account already saved for the address, if any.
 	 */
 	public function __construct(
@@ -36,6 +37,7 @@ readonly class Email_Account_Input {
 		public string $username,
 		public string $password,
 		public string $encryption,
+		public bool $validate_cert,
 		public ?BH_Email_Account $existing,
 	) {
 	}

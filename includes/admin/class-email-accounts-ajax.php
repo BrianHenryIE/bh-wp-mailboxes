@@ -77,6 +77,7 @@ class Email_Accounts_Ajax {
 				username: $this->post_string( 'username' ),
 				password: $this->post_string( 'password' ),
 				encryption: $this->post_string( 'encryption' ),
+				validate_cert: $this->post_bool( 'validate_cert', true ),
 			);
 		} catch ( InvalidArgumentException $exception ) {
 			wp_send_json_error( array( 'message' => $exception->getMessage() ), 400 );
@@ -111,6 +112,7 @@ class Email_Accounts_Ajax {
 	 * @param string $username      Login username; defaults to the address.
 	 * @param string $password      Login password (used verbatim).
 	 * @param string $encryption    TLS, STARTTLS or empty for none.
+	 * @param bool   $validate_cert Whether to verify the server's TLS certificate.
 	 *
 	 * @throws InvalidArgumentException When a required value is missing or invalid.
 	 * @throws \Exception When WordPress fails to save the account post, or the credentials cannot be saved.
@@ -122,9 +124,10 @@ class Email_Accounts_Ajax {
 		string $username = '',
 		string $password = '',
 		string $encryption = 'TLS',
+		bool $validate_cert = true,
 	): Save_Email_Account_Result {
 
-		$input    = $this->validate( $email_address, $display_name, $server, $username, $password, $encryption );
+		$input    = $this->validate( $email_address, $display_name, $server, $username, $password, $encryption, $validate_cert );
 		$existing = $input->existing;
 
 		$account = $this->api->configure_email_account(
@@ -133,7 +136,7 @@ class Email_Accounts_Ajax {
 			ImapEngine_Imap_Email_Connection::class
 		);
 
-		$credentials = new Imap_Credentials( $input->server, $input->username, $input->password, $input->encryption );
+		$credentials = new Imap_Credentials( $input->server, $input->username, $input->password, $input->encryption, $input->validate_cert );
 
 		$this->api->save_account_credentials( $account, $credentials );
 
@@ -162,6 +165,7 @@ class Email_Accounts_Ajax {
 				username: $this->post_string( 'username' ),
 				password: $this->post_string( 'password' ),
 				encryption: $this->post_string( 'encryption' ),
+				validate_cert: $this->post_bool( 'validate_cert', true ),
 			);
 		} catch ( InvalidArgumentException $exception ) {
 			wp_send_json_error( array( 'message' => $exception->getMessage() ), 400 );
@@ -188,6 +192,7 @@ class Email_Accounts_Ajax {
 	 * @param string $username      Login username; defaults to the address.
 	 * @param string $password      Login password (used verbatim).
 	 * @param string $encryption    TLS, STARTTLS or empty for none.
+	 * @param bool   $validate_cert Whether to verify the server's TLS certificate.
 	 *
 	 * @throws InvalidArgumentException When a required value is missing or invalid.
 	 */
@@ -198,10 +203,11 @@ class Email_Accounts_Ajax {
 		string $username = '',
 		string $password = '',
 		string $encryption = 'TLS',
+		bool $validate_cert = true,
 	): Test_Connection_Result {
 
-		$input       = $this->validate( $email_address, $display_name, $server, $username, $password, $encryption );
-		$credentials = new Imap_Credentials( $input->server, $input->username, $input->password, $input->encryption );
+		$input       = $this->validate( $email_address, $display_name, $server, $username, $password, $encryption, $validate_cert );
+		$credentials = new Imap_Credentials( $input->server, $input->username, $input->password, $input->encryption, $input->validate_cert );
 
 		$account = $input->existing ?? new BH_Email_Account(
 			post_id: 0,
@@ -373,10 +379,11 @@ class Email_Accounts_Ajax {
 	 * @param string $username      Login username.
 	 * @param string $password      Login password.
 	 * @param string $encryption    TLS, STARTTLS or empty for none.
+	 * @param bool   $validate_cert Whether to verify the server's TLS certificate.
 	 *
 	 * @throws InvalidArgumentException When a required value is missing or invalid, or the address belongs to a non-IMAP account.
 	 */
-	protected function validate( string $email_address, string $display_name, string $server, string $username, string $password, string $encryption ): Email_Account_Input {
+	protected function validate( string $email_address, string $display_name, string $server, string $username, string $password, string $encryption, bool $validate_cert = true ): Email_Account_Input {
 
 		$email_address = sanitize_email( trim( $email_address ) );
 		$display_name  = sanitize_text_field( $display_name );
@@ -433,6 +440,7 @@ class Email_Accounts_Ajax {
 			username: '' === $username ? $email_address : $username,
 			password: $password,
 			encryption: $encryption,
+			validate_cert: $validate_cert,
 			existing: $existing,
 		);
 	}
@@ -461,6 +469,22 @@ class Email_Accounts_Ajax {
 		$credentials = $this->api->get_account_credentials( $account );
 
 		return $credentials instanceof IMAP_Credentials_Interface ? $credentials : null;
+	}
+
+	/**
+	 * A POSTed boolean: `1`/`true` is true, any other value false; the default when the key is absent
+	 * (e.g. a caller that does not know the field).
+	 *
+	 * @param string $key      The POST key.
+	 * @param bool   $fallback The value when the key is not posted.
+	 */
+	protected function post_bool( string $key, bool $fallback ): bool {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by the caller.
+		if ( ! isset( $_POST[ $key ] ) ) {
+			return $fallback;
+		}
+
+		return in_array( $this->post_string( $key ), array( '1', 'true' ), true );
 	}
 
 	/**

@@ -283,6 +283,18 @@ class Settings {
 	}
 
 	/**
+	 * A boolean environment variable: only `false`, `0`, `no` or `off` is false.
+	 *
+	 * @param string $env_key The environment variable.
+	 */
+	private function env_bool( string $env_key ): bool {
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- loaded from dotenv, compared only.
+		$value = isset( $_ENV[ $env_key ] ) && is_string( $_ENV[ $env_key ] ) ? trim( $_ENV[ $env_key ] ) : '';
+
+		return '' === $value || false !== filter_var( $value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
+	}
+
+	/**
 	 * Save the per-mailbox REST-enabled checkboxes to wp_options.
 	 */
 	public function save_rest_settings(): void {
@@ -353,7 +365,12 @@ class Settings {
 			$this->redirect_with_notice( 'bh_error', 'imap_incomplete' );
 		}
 
-		$this->save_credentials_or_redirect( $api, $account, new Imap_Credentials( $server, $username, $password, $encryption ) );
+		$validate_cert = $this->is_env_set( 'IMAP_VALIDATE_CERT' )
+			? $this->env_bool( 'IMAP_VALIDATE_CERT' )
+			// The form always posts the checkbox row, so an absent value is an unticked box.
+			: isset( $_POST['imap_validate_cert'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce checked above.
+
+		$this->save_credentials_or_redirect( $api, $account, new Imap_Credentials( $server, $username, $password, $encryption, $validate_cert ) );
 
 		update_option( self::OPTION_IMAP_MAILBOX, $this->get_posted_mailbox( 'imap_mailbox' ) );
 		update_option( self::OPTION_IMAP_EMAIL, $username );
@@ -655,6 +672,7 @@ class Settings {
 		$this->render_text_field( 'imap_username', 'Username', 'IMAP_USERNAME', $saved?->get_email_account_username() ?? '' );
 		$this->render_password_field( ! is_null( $saved ) );
 		$this->render_encryption_field( $saved?->get_encryption() ?? '' );
+		$this->render_validate_cert_field( $saved?->should_validate_cert() ?? true );
 
 		$imap_mailbox = get_option( self::OPTION_IMAP_MAILBOX, '' );
 		echo '<tr><th scope="row"><label for="imap_mailbox">Mailbox</label></th><td>';
@@ -822,6 +840,28 @@ class Settings {
 		echo '</select>';
 		if ( $from_env ) {
 			echo '<p class="description">Set via environment variable <code>IMAP_ENCRYPTION</code>.</p>';
+		}
+		echo '</td></tr>';
+	}
+
+	/**
+	 * Render the validate-certificate checkbox row.
+	 *
+	 * @param bool $value Whether the saved credentials validate the certificate.
+	 */
+	private function render_validate_cert_field( bool $value ): void {
+
+		$from_env = $this->is_env_set( 'IMAP_VALIDATE_CERT' );
+		if ( $from_env ) {
+			$value = $this->env_bool( 'IMAP_VALIDATE_CERT' );
+		}
+
+		echo '<tr><th scope="row">Certificate</th><td>';
+		echo '<label for="imap_validate_cert"><input type="checkbox" id="imap_validate_cert" name="imap_validate_cert" value="1"' . checked( $value, true, false ) . ( $from_env ? ' disabled' : '' ) . ' /> Validate the server\'s certificate</label>';
+		if ( $from_env ) {
+			echo '<p class="description">Set via environment variable <code>IMAP_VALIDATE_CERT</code>.</p>';
+		} else {
+			echo '<p class="description">Untick only for a server with a self-signed or otherwise untrusted certificate.</p>';
 		}
 		echo '</td></tr>';
 	}

@@ -222,6 +222,7 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		await expect( dialog.getByRole( 'heading', { name: 'Add IMAP account' } ) ).toBeVisible();
 		await expect( dialog.getByRole( 'button', { name: 'Add account' } ) ).toBeVisible();
 		await expect( dialog.getByLabel( 'Encryption' ) ).toHaveValue( 'TLS' );
+		await expect( dialog.getByLabel( "Validate the server's certificate" ) ).toBeChecked();
 		await expect( dialog.getByLabel( 'Email address' ) ).not.toHaveAttribute( 'readonly', '' );
 		await expect( dialog.getByLabel( 'Account name' ) ).toBeFocused();
 		await expect( dialog.locator( '.bh-mailboxes-account-form__edit-only' ) ).toHaveCount( 2 );
@@ -269,7 +270,7 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		await expect( dialog.getByRole( 'button', { name: 'Add account' } ) ).toBeEnabled();
 	} );
 
-	test( 'an explicit username and "no encryption" round-trip to the edit form', async ( { admin, page } ) => {
+	test( 'an explicit username, "no encryption" and an unticked certificate check round-trip to the edit form', async ( { admin, page } ) => {
 		const emailAddress = `modal-username-${ Date.now() }@example.com`;
 		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
 
@@ -279,6 +280,7 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		await dialog.getByLabel( 'Username' ).fill( 'login-name' );
 		await dialog.getByLabel( 'Password' ).fill( 'not-a-real-password' );
 		await dialog.getByLabel( 'Encryption' ).selectOption( '' );
+		await dialog.getByLabel( "Validate the server's certificate" ).uncheck();
 		await dialog.getByRole( 'button', { name: 'Add account' } ).click();
 		await expect( dialog ).toBeHidden();
 
@@ -286,10 +288,12 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		await expect( row ).toBeVisible();
 		// The display name defaults to the address.
 		await expect( row ).toContainText( emailAddress );
+		await expect( row ).toHaveAttribute( 'data-validate-cert', '0' );
 
 		await clickRowAction( row, 'Edit' );
 		await expect( dialog.getByLabel( 'Username' ) ).toHaveValue( 'login-name' );
 		await expect( dialog.getByLabel( 'Encryption' ) ).toHaveValue( '' );
+		await expect( dialog.getByLabel( "Validate the server's certificate" ) ).not.toBeChecked();
 		await expect( dialog.getByText( 'The email address identifies the account and cannot be changed.' ) ).toBeVisible();
 		await dialog.getByRole( 'button', { name: 'Cancel' } ).click();
 		await expect( dialog ).toBeHidden();

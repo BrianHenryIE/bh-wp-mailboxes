@@ -132,6 +132,49 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( 'inbox@example.com', $credentials->get_email_account_username(), 'Username defaults to the email address.' );
 		$this->assertSame( 'p<a&ss"word', $credentials->get_email_account_password(), 'The password is passed verbatim.' );
 		$this->assertSame( 'STARTTLS', $credentials->get_encryption() );
+		$this->assertTrue( $credentials->should_validate_cert(), 'Certificates are validated unless told otherwise.' );
+	}
+
+	/**
+	 * The validate-certificate choice is saved with the credentials: explicitly off via the API, and
+	 * from the modal's POST as `validate_cert=0`; an old caller that does not post it gets the default.
+	 *
+	 * @covers ::save
+	 * @covers ::handle_save
+	 * @covers ::post_bool
+	 */
+	public function test_save_persists_validate_cert(): void {
+		$sut = $this->make_sut();
+
+		$result = $sut->save( 'selfsigned@example.com', 'Self-signed', 'imap.internal', '', 'secret', 'TLS', false );
+		$this->assertFalse( $this->api->get_account_credentials( $result->account )?->should_validate_cert() );
+
+		$response = $this->run_handler(
+			array( $sut, 'handle_save' ),
+			array(
+				'email_address' => 'posted-off@example.com',
+				'server'        => 'imap.internal',
+				'password'      => 'secret',
+				'encryption'    => 'TLS',
+				'validate_cert' => '0',
+			)
+		);
+		$this->assertTrue( $response['success'] );
+		$account = $this->account_repository->find_by_email_address( 'posted-off@example.com' );
+		$this->assertFalse( $this->api->get_account_credentials( $account )?->should_validate_cert() );
+
+		$response = $this->run_handler(
+			array( $sut, 'handle_save' ),
+			array(
+				'email_address' => 'not-posted@example.com',
+				'server'        => 'imap.example.com',
+				'password'      => 'secret',
+				'encryption'    => 'TLS',
+			)
+		);
+		$this->assertTrue( $response['success'] );
+		$account = $this->account_repository->find_by_email_address( 'not-posted@example.com' );
+		$this->assertTrue( $this->api->get_account_credentials( $account )?->should_validate_cert(), 'Absent from the POST means the default.' );
 	}
 
 	/**
@@ -362,6 +405,7 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 				'username'      => 'user',
 				'password'      => 'wrong',
 				'encryption'    => 'STARTTLS',
+				'validate_cert' => '0',
 			)
 		);
 
@@ -373,6 +417,7 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( 'user', $credentials_seen->get_email_account_username() );
 		$this->assertSame( 'wrong', $credentials_seen->get_email_account_password() );
 		$this->assertSame( 'STARTTLS', $credentials_seen->get_encryption() );
+		$this->assertFalse( $credentials_seen->should_validate_cert(), 'The test uses the posted certificate choice.' );
 	}
 
 	/**

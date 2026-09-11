@@ -156,6 +156,7 @@ class Email_Accounts_List_Table extends WP_List_Table {
 			'data-server'            => $credentials?->get_email_imap_server() ?? '',
 			'data-username'          => $credentials?->get_email_account_username() ?? '',
 			'data-encryption'        => $credentials?->get_encryption() ?? 'TLS',
+			'data-validate-cert'     => ( $credentials?->should_validate_cert() ?? true ) ? '1' : '0',
 			'data-has-credentials'   => is_null( $credentials ) ? '0' : '1',
 		);
 

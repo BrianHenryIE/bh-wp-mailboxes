@@ -103,6 +103,8 @@ test.describe( 'Development plugin settings page', () => {
 		await expect( page.locator( '#imap_username' ) ).toBeVisible();
 		await expect( page.locator( '#imap_password' ) ).toBeVisible();
 		await expect( page.locator( '#imap_encryption' ) ).toBeVisible();
+		await expect( page.locator( '#imap_validate_cert' ) ).toBeVisible();
+		await expect( page.locator( '#imap_validate_cert' ) ).toBeChecked();
 
 		const mailboxSelect = page.locator( '#imap_mailbox' );
 		await expect( mailboxSelect ).toBeVisible();

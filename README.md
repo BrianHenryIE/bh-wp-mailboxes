@@ -55,8 +55,8 @@ Use the methods on `New_Email_Interface` to read the email, log any action taken
 
 ### IMAP
 
-`IMAP_Credentials_Interface` requires the server, username, password, and encryption type. Port defaults to 143 or 993 depending on encryption and can be overridden by specifying it with the server name. 
-An `Imap_Credentials_Env` class exists that reads from environmental variables `IMAP_SERVER`, `IMAP_USERNAME`, `IMAP_PASSWORD`, `IMAP_ENCRYPTION`, and those env variable names can be specified in the constructor.  
+`IMAP_Credentials_Interface` requires the server, username, password, encryption type, and whether to validate the server's TLS certificate (`should_validate_cert()`, true unless the server uses a self-signed or otherwise untrusted certificate). Port defaults to 143 or 993 depending on encryption and can be overridden by specifying it with the server name. 
+An `Imap_Credentials_Env` class exists that reads from environmental variables `IMAP_SERVER`, `IMAP_USERNAME`, `IMAP_PASSWORD`, `IMAP_ENCRYPTION`, `IMAP_VALIDATE_CERT` (only `false`, `0`, `no` or `off` turns validation off), and those env variable names can be specified in the constructor.  
 
 ### Cloudflare Email Routing
 
@@ -107,7 +107,8 @@ The default setting is to delete emails after 7 days. NB: if you're using a shar
 ## Managing accounts from your own screen
 
 The emails list screen has an accounts table with an "Add account" button that opens the add/edit
-IMAP account modal. The modal is reusable: print it on any admin screen (e.g. a WooCommerce payment
+IMAP account modal (name, address, server, username, password, encryption, and a "Validate the
+server's certificate" checkbox, with a "Test connection" button). The modal is reusable: print it on any admin screen (e.g. a WooCommerce payment
 gateway settings page) together with an "Add account" button, and enqueue its assets there.
 
 ```php
@@ -130,9 +131,23 @@ from its own forms with `API::save_account_credentials()`.
 ## Extensibility
 
 <!-- filters -->
-// TODO: implement and document filters.
+### Filters
 
-// TODO: find a tool that documents filters and actions in the codebase. Then create a github action that updates the README with that output.
+* `bh_wp_mailboxes_imap_mailbox_config` – `( array $config, string $plugin_slug, IMAP_Credentials_Interface $credentials, Email_Account_Settings_Interface $account )`: the [ImapEngine](https://github.com/DirectoryTree/ImapEngine) mailbox configuration (`host`, `port`, `username`, `password`, `encryption`, `validate_cert`) just before the IMAP connection is created. Add any other key ImapEngine supports, e.g. to log the IMAP conversation while debugging:
+
+  ```php
+  add_filter( 'bh_wp_mailboxes_imap_mailbox_config', function ( array $config, string $plugin_slug ): array {
+      if ( 'my-plugin' === $plugin_slug ) {
+          $config['debug'] = WP_CONTENT_DIR . '/imap.log'; // Or `true` to echo it.
+      }
+      return $config;
+  }, 10, 2 );
+  ```
+* `bh_wp_mailboxes_connection_for_account` – `( ?Email_Connection_Interface $connection, string $plugin_slug, string $emails_cpt, BH_Email_Account $account )`: supply a custom connection for an account.
+* `bh_wp_mailboxes_max_message_size_bytes` – `( int $bytes, string $plugin_slug, BH_WP_Mailboxes_Settings_Interface $settings )`: the largest raw email the REST ingress accepts (defaults to PHP's `post_max_size`).
+* `bh_wp_mailboxes_registered_mailboxes` – `( API_Interface[] $mailboxes, string $plugin_slug )`: every library instance registers its API here, so tooling (WP-CLI, the development plugin) can find them.
+
+<!-- TODO: find a tool that documents filters and actions in the codebase. Then create a github action that updates the README with that output. -->
 <!-- /filters -->
 
 ## Contributing
