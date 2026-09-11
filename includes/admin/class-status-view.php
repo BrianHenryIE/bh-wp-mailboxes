@@ -138,8 +138,8 @@ class Status_View {
 	}
 
 	/**
-	 * The saved IMAP credentials for an account (never displayed: only the server/username/encryption
-	 * are used, to pre-fill the edit form).
+	 * The saved IMAP credentials for an account (never displayed: only the server/username/encryption/
+	 * validate-certificate values are used, to pre-fill the edit form).
 	 *
 	 * @param BH_Email_Account $account The account.
 	 */

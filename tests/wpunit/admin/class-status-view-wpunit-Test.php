@@ -8,7 +8,10 @@
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials;
 use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Requires_Credentials;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
@@ -80,6 +83,13 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	private function fetching_connection(): Supports_Fetching {
 		return Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+	}
+
+	/**
+	 * An editable IMAP-style connection (fetches and requires credentials), so the row carries the edit-form data.
+	 */
+	private function imap_connection(): Supports_Fetching {
+		return Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class, Requires_Credentials::class );
 	}
 
 	private function capture_display( Status_View $sut ): string {
@@ -169,6 +179,31 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertStringContainsString( 'inbox@example.com', $html );
 		$this->assertStringContainsString( 'class="bh-mailboxes-account"', $html );
 		$this->assertStringContainsString( 'data-email-address="inbox@example.com"', $html );
+	}
+
+	/**
+	 * The row carries the saved certificate-validation choice for the edit form to pre-fill; an
+	 * account without credentials reads as validating (the form's default).
+	 *
+	 * @covers ::display
+	 */
+	public function test_display_row_carries_validate_cert(): void {
+		$account = BH_Email_Account_Fixture::make( email_address: 'inbox@example.com', connection_type_class: ImapEngine_Imap_Email_Connection::class );
+
+		/** @var API_Interface $api */
+		$api = Mockery::mock( API_Interface::class );
+		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->imap_connection() );
+		$api->allows( 'get_account_credentials' )->andReturn( new Imap_Credentials( 'imap.internal', 'user', 'pw', 'TLS', false ) );
+
+		$this->assertStringContainsString( 'data-validate-cert="0"', $this->capture_display( $this->make_sut( $api ) ) );
+
+		$api = Mockery::mock( API_Interface::class );
+		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->imap_connection() );
+		$api->allows( 'get_account_credentials' )->andReturn( null );
+
+		$this->assertStringContainsString( 'data-validate-cert="1"', $this->capture_display( $this->make_sut( $api ) ) );
 	}
 
 	/**
@@ -364,7 +399,8 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertStringContainsString( 'class="wp-list-table widefat striped bh-mailboxes-accounts"', $html );
 		$this->assertStringContainsString( "class='manage-column column-account", $html );
-		$this->assertStringNotContainsString( 'type="checkbox"', $html );
+		// No bulk-select column (the modal printed alongside the table has its own checkbox).
+		$this->assertStringNotContainsString( 'check-column', $html );
 		$this->assertStringNotContainsString( 'bulkactions', $html );
 		$this->assertStringNotContainsString( 'class="tablenav', $html );
 		$this->assertStringNotContainsString( 'id="the-list"', $html );

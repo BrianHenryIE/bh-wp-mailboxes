@@ -143,6 +143,7 @@
         $form.find( '[name="server"]' ).val( $row.data( 'server' ) || '' );
         $form.find( '[name="username"]' ).val( $row.data( 'username' ) || '' );
         $form.find( '[name="encryption"]' ).val( $row.data( 'encryption' ) === undefined ? 'TLS' : String( $row.data( 'encryption' ) ) );
+        $form.find( '[name="validate_cert"]' ).prop( 'checked', $row.data( 'validate-cert' ) === undefined || String( $row.data( 'validate-cert' ) ) === '1' );
         $form.find( '[name="password"]' ).val( '' ).prop( 'required', ! hasCredentials );
         $title.text( $title.data( 'edit-title' ) );
         $submit.text( $submit.data( 'edit-label' ) );
@@ -157,6 +158,8 @@
         $form.serializeArray().forEach( function( field ) {
             data[ field.name ] = field.value;
         } );
+        // An unticked checkbox is omitted by serializeArray(); post an explicit value either way.
+        data.validate_cert = $form.find( '[name="validate_cert"]' ).is( ':checked' ) ? '1' : '0';
         return data;
     }
 

@@ -175,6 +175,16 @@ class Email_Account_Modal {
 							</select>
 						</td>
 					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Certificate', 'bh-wp-mailboxes' ); ?></th>
+						<td>
+							<label for="bh-mailboxes-account-validate-cert">
+								<input type="checkbox" id="bh-mailboxes-account-validate-cert" name="validate_cert" value="1" checked />
+								<?php esc_html_e( 'Validate the server\'s certificate', 'bh-wp-mailboxes' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'Untick only for a server with a self-signed or otherwise untrusted certificate.', 'bh-wp-mailboxes' ); ?></p>
+						</td>
+					</tr>
 				</table>
 				<p class="bh-mailboxes-account-form__actions">
 					<button type="button" class="button bh-mailboxes-account-form__test"><?php esc_html_e( 'Test connection', 'bh-wp-mailboxes' ); ?></button>
