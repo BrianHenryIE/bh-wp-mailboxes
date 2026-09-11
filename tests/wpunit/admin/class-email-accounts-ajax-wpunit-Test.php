@@ -138,6 +138,7 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 * Saving an existing address updates the account in place; an empty password keeps the saved one.
 	 *
 	 * @covers ::save
+	 * @covers ::validate
 	 */
 	public function test_save_updates_existing_account_and_keeps_password_when_blank(): void {
 		$sut = $this->make_sut();
@@ -163,6 +164,7 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 * Invalid input throws before anything is saved or announced.
 	 *
 	 * @covers ::save
+	 * @covers ::validate
 	 */
 	public function test_save_validates_input(): void {
 		$sut = $this->make_sut();
@@ -191,6 +193,7 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 * must not be HTML-escaped.
 	 *
 	 * @covers ::save
+	 * @covers ::validate
 	 */
 	public function test_save_validation_message_is_not_html_escaped(): void {
 		$sut = $this->make_sut();
@@ -209,6 +212,7 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 * (e.g. the REST ingress) must be refused rather than converting it into an IMAP account.
 	 *
 	 * @covers ::save
+	 * @covers ::validate
 	 */
 	public function test_save_refuses_to_convert_non_imap_account(): void {
 		$sut = $this->make_sut();
@@ -294,6 +298,156 @@ class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertFalse( $response['success'] );
 		$this->assertStringContainsString( 'does not fetch email', $response['data']['message'] );
+	}
+
+	/**
+	 * "Test connection" tries the entered details against the server without creating the account or
+	 * saving the credentials.
+	 *
+	 * @covers ::test_connection
+	 * @covers ::handle_test_connection
+	 * @covers ::validate
+	 */
+	public function test_test_connection_reports_success_without_saving(): void {
+		$sut = $this->make_sut();
+
+		$response = $this->run_handler(
+			array( $sut, 'handle_test_connection' ),
+			array(
+				'email_address' => 'new@example.com',
+				'display_name'  => 'New',
+				'server'        => 'imap.example.com',
+				'password'      => 'secret',
+				'encryption'    => 'TLS',
+			)
+		);
+
+		$this->assertTrue( $response['success'] );
+		$this->assertSame( 'Connected successfully.', $response['data']['message'] );
+
+		$this->assertNull( $this->account_repository->find_by_email_address( 'new@example.com' ), 'Testing must not create the account.' );
+	}
+
+	/**
+	 * A refused login is reported as a failed test (HTTP 200, success false, the server's message),
+	 * so the form can show it without treating it as a request error.
+	 *
+	 * @covers ::test_connection
+	 * @covers ::handle_test_connection
+	 */
+	public function test_test_connection_reports_the_servers_error(): void {
+		remove_all_filters( 'bh_wp_mailboxes_connection_for_account' );
+		$credentials_seen = null;
+		add_filter(
+			'bh_wp_mailboxes_connection_for_account',
+			function () use ( &$credentials_seen ) {
+				$connection = Mockery::mock( Email_Connection_Interface::class, Requires_Credentials::class );
+				$connection->allows( 'set_credentials' )->andReturnUsing(
+					function ( $credentials ) use ( &$credentials_seen ) {
+						$credentials_seen = $credentials;
+					}
+				);
+				$connection->allows( 'test_connection' )->andThrow( new \Exception( 'AUTHENTICATIONFAILED' ) );
+				return $connection;
+			}
+		);
+
+		$sut = $this->make_sut();
+
+		$response = $this->run_handler(
+			array( $sut, 'handle_test_connection' ),
+			array(
+				'email_address' => 'new@example.com',
+				'server'        => 'imap.example.com:993',
+				'username'      => 'user',
+				'password'      => 'wrong',
+				'encryption'    => 'STARTTLS',
+			)
+		);
+
+		$this->assertFalse( $response['success'] );
+		$this->assertSame( 'AUTHENTICATIONFAILED', $response['data']['message'] );
+
+		$this->assertInstanceOf( IMAP_Credentials_Interface::class, $credentials_seen );
+		$this->assertSame( 'imap.example.com:993', $credentials_seen->get_email_imap_server() );
+		$this->assertSame( 'user', $credentials_seen->get_email_account_username() );
+		$this->assertSame( 'wrong', $credentials_seen->get_email_account_password() );
+		$this->assertSame( 'STARTTLS', $credentials_seen->get_encryption() );
+	}
+
+	/**
+	 * When editing, a blank password tests with the saved one, and the saved credentials are left as they were.
+	 *
+	 * @covers ::test_connection
+	 */
+	public function test_test_connection_uses_the_saved_password_when_editing_with_a_blank_one(): void {
+		$sut   = $this->make_sut();
+		$saved = $sut->save( 'inbox@example.com', 'Inbox', 'imap.example.com', '', 'original-password' );
+
+		$credentials_seen = null;
+		remove_all_filters( 'bh_wp_mailboxes_connection_for_account' );
+		add_filter(
+			'bh_wp_mailboxes_connection_for_account',
+			function () use ( &$credentials_seen ) {
+				$connection = Mockery::mock( Email_Connection_Interface::class, Requires_Credentials::class );
+				$connection->allows( 'set_credentials' )->andReturnUsing(
+					function ( $credentials ) use ( &$credentials_seen ) {
+						$credentials_seen = $credentials;
+					}
+				);
+				$connection->allows( 'test_connection' )->andReturn( true );
+				return $connection;
+			}
+		);
+
+		$result = $sut->test_connection( 'inbox@example.com', 'Inbox', 'imap.other.com', 'other-user', '', 'TLS' );
+
+		$this->assertTrue( $result->success );
+		$this->assertSame( 'imap.other.com', $credentials_seen->get_email_imap_server() );
+		$this->assertSame( 'original-password', $credentials_seen->get_email_account_password() );
+
+		$still_saved = $this->api->get_account_credentials( $saved->account );
+		$this->assertSame( 'imap.example.com', $still_saved->get_email_imap_server(), 'Testing must not overwrite the saved credentials.' );
+	}
+
+	/**
+	 * Editing an account that has no saved credentials cannot fall back to a saved password, so a
+	 * blank one is refused.
+	 *
+	 * @covers ::test_connection
+	 * @covers ::validate
+	 */
+	public function test_test_connection_requires_a_password_when_editing_an_account_without_credentials(): void {
+		$sut = $this->make_sut();
+		$this->account_repository->save_new( 'nocreds@example.com', 'No creds', ImapEngine_Imap_Email_Connection::class, null, null, null, null );
+
+		$this->expectException( InvalidArgumentException::class );
+		$this->expectExceptionMessage( 'The password is required.' );
+
+		$sut->test_connection( 'nocreds@example.com', 'No creds', 'imap.example.com', '', '', 'TLS' );
+	}
+
+	/**
+	 * Invalid input is refused with the same validation as saving.
+	 *
+	 * @covers ::handle_test_connection
+	 * @covers ::validate
+	 */
+	public function test_test_connection_validates_input(): void {
+		$sut = $this->make_sut();
+
+		$response = $this->run_handler(
+			array( $sut, 'handle_test_connection' ),
+			array(
+				'email_address' => 'not-an-email',
+				'server'        => '',
+			)
+		);
+
+		$this->assertFalse( $response['success'] );
+		$this->assertStringContainsString( 'A valid email address is required.', $response['data']['message'] );
+		$this->assertStringContainsString( 'The IMAP server is required.', $response['data']['message'] );
+		$this->assertStringContainsString( 'The password is required.', $response['data']['message'] );
 	}
 
 	/**
