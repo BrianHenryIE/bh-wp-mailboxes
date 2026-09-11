@@ -97,7 +97,8 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 	 * Configure the mailbox connection. This is a pure setter — no network I/O happens here; the
 	 * connection is established lazily on the first query, or eagerly via test_connection().
 	 *
-	 * Port is determined from the encryption value, or overridden by server:port.
+	 * Port is determined from the encryption value (993 for TLS; 143 for STARTTLS or none), or overridden
+	 * by server:port.
 	 *
 	 * @param Account_Credentials_Interface|IMAP_Credentials_Interface $credentials The connection settings.
 	 *
@@ -109,10 +110,16 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 			throw new InvalidArgumentException();
 		}
 
-		$server     = $credentials->get_email_imap_server();
-		$host       = $server;
-		$port       = $credentials->get_encryption() === '' ? 143 : 993;
-		$encryption = $credentials->get_encryption() === '' ? '' : 'TLS';
+		$server = $credentials->get_email_imap_server();
+		$host   = $server;
+
+		// Implicit TLS is on 993; a plain connection, upgraded with STARTTLS or not, is on 143.
+		$encryption = match ( strtoupper( $credentials->get_encryption() ) ) {
+			'' => '',
+			'STARTTLS' => 'starttls',
+			default => 'TLS',
+		};
+		$port = 'TLS' === $encryption ? 993 : 143;
 
 		if ( str_contains( $server, ':' ) ) {
 			[ $host, $port_str ] = explode( ':', $server, 2 );
