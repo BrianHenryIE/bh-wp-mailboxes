@@ -55,7 +55,7 @@ Use the methods on `New_Email_Interface` to read the email, log any action taken
 
 ### IMAP
 
-`IMAP_Credentials_Interface` requires the server, username, password, encryption type, and whether to validate the server's TLS certificate (`should_validate_cert()`, true unless the server uses a self-signed or otherwise untrusted certificate). Port defaults to 143 or 993 depending on encryption and can be overridden by specifying it with the server name. 
+`IMAP_Credentials_Interface` requires the server, username, password, encryption type, and whether to validate the server's TLS certificate (`should_validate_cert()`, true unless the server uses a self-signed or otherwise untrusted certificate). Port defaults to 993 for TLS and 143 for STARTTLS or none, and can be overridden by specifying it with the server name. 
 An `Imap_Credentials_Env` class exists that reads from environmental variables `IMAP_SERVER`, `IMAP_USERNAME`, `IMAP_PASSWORD`, `IMAP_ENCRYPTION`, `IMAP_VALIDATE_CERT` (only `false`, `0`, `no` or `off` turns validation off), and those env variable names can be specified in the constructor.  
 
 ### Cloudflare Email Routing

@@ -114,6 +114,38 @@ class ImapEngine_Imap_Email_Connection_Config_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
+	 * STARTTLS is a plain connection on 143 upgraded after connecting, not implicit TLS on 993.
+	 *
+	 * @see https://github.com/BrianHenryIE/bh-wp-mailboxes/issues/104
+	 *
+	 * @covers ::set_credentials
+	 */
+	public function test_config_starttls_is_passed_through_on_port_143(): void {
+		$account     = Mockery::mock( Email_Account_Settings_Interface::class );
+		$credentials = new Imap_Credentials( 'imap.example.com', 'user', 'pw', 'STARTTLS' );
+		$this->expect_config_filter(
+			array(
+				'host'          => 'imap.example.com',
+				'port'          => 143,
+				'username'      => 'user',
+				'password'      => 'pw',
+				'encryption'    => 'starttls',
+				'validate_cert' => true,
+			),
+			'',
+			$credentials,
+			$account
+		);
+
+		$sut = new ImapEngine_Imap_Email_Connection( $account, $this->logger );
+		$sut->set_credentials( $credentials );
+
+		$config = $this->mailbox_config( $sut );
+		$this->assertSame( 'starttls', $config['encryption'] );
+		$this->assertSame( 143, $config['port'] );
+	}
+
+	/**
 	 * The filter receives the full configuration, the consumer's plugin slug, the credentials and the
 	 * account, and its return value is what the mailbox is built with (e.g. adding `debug`).
 	 *
