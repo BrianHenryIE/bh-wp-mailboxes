@@ -7,8 +7,7 @@
  * the page, saving/deleting swaps in the refreshed table returned by the server; otherwise the result
  * is only reported in a notice.
  *
- * Relies on `bh_wp_mailboxes_ajax` (localised action names) and `#_wpnonce_account_actions` (printed
- * with the modal markup).
+ * Relies on `bh_wp_mailboxes_ajax.rest` (the mailbox's REST root, route bases and cookie-auth nonce).
  */
 (function( $ ) {
     'use strict';
@@ -60,10 +59,6 @@
 
     function accountRow( accountId ) {
         return $( '.bh-mailboxes-account[data-account-id="' + accountId + '"]' );
-    }
-
-    function accountsNonce() {
-        return $( '#_wpnonce_account_actions' ).val();
     }
 
     // Replace the accounts table (when there is one on the page) with the server-rendered copy carried by an AJAX response.

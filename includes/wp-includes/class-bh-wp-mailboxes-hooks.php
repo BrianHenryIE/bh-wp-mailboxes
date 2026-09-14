@@ -9,11 +9,8 @@ namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
 use BrianHenryIE\WP_Mailboxes\Admin\Admin_Notices;
 use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Modal;
-use BrianHenryIE\WP_Mailboxes\Admin\Email_Accounts_Ajax;
-use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Table_Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Emails_List_Page;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
-use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View_Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Status_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Post_Deletion_Handler;
@@ -91,7 +88,6 @@ class BH_WP_Mailboxes_Hooks {
 
 		$this->define_admin_ui_hooks();
 		$this->define_single_email_view_hooks();
-		$this->define_ajax_hooks();
 		$this->define_cli_hooks();
 	}
 
@@ -254,44 +250,5 @@ class BH_WP_Mailboxes_Hooks {
 
 		add_action( "add_meta_boxes_{$post_type}", $view->add_meta_boxes( ... ) );
 		add_action( 'admin_enqueue_scripts', $view->enqueue_scripts( ... ) );
-
-		$ajax = new Single_Email_View_Ajax( $this->settings, $this->api, $this->email_wp_post_repository, $this->logger );
-
-		// Scope the AJAX actions to this instance's emails CPT. Otherwise, with more than one library
-		// instance registered, every instance's handler runs for the shared action name and the first
-		// non-matching one calls wp_send_json_*() and terminates the request before the right one runs.
-		add_action( "wp_ajax_bh_wp_mailboxes_mark_read_{$post_type}", $ajax->ajax_mark_read( ... ) );
-		add_action( "wp_ajax_bh_wp_mailboxes_mark_unread_{$post_type}", $ajax->ajax_mark_unread( ... ) );
-		add_action( "wp_ajax_bh_wp_mailboxes_delete_on_server_{$post_type}", $ajax->ajax_delete_on_server( ... ) );
-		add_action( "wp_ajax_bh_wp_mailboxes_get_remote_status_{$post_type}", $ajax->ajax_get_remote_status( ... ) );
-		add_action( "wp_ajax_bh_wp_mailboxes_update_status_{$post_type}", $ajax->ajax_update_status( ... ) );
-	}
-
-	/**
-	 * Hooks for handling the JavaScript functions.
-	 * i.e. the "check for emails now" button! on the list table view, but which could be placed
-	 * on any view, e.g. settings page.
-	 */
-	protected function define_ajax_hooks(): void {
-
-		$ajax = new Emails_List_Table_Ajax( $this->api, $this->settings, $this->logger );
-
-		// Scope the AJAX actions to this instance's post types. Otherwise, with more than one library
-		// instance registered, every instance's handler runs for the shared action name and the first
-		// non-matching one calls wp_send_json_*() and terminates the request before the right one runs.
-		$emails_cpt   = $this->settings->get_emails_cpt_underscored_20();
-		$accounts_cpt = $this->settings->get_email_accounts_cpt_underscored_20();
-
-		add_action( "wp_ajax_bh_wp_mailboxes_check_email_{$emails_cpt}", $ajax->check_email( ... ) );
-
-		// Accounts table: check now (with optional since date), add/edit (modal), enable/disable, delete.
-		$status_view   = new Status_View( $this->api, $this->settings, $this->email_wp_post_repository, $this->logger );
-		$accounts_ajax = new Email_Accounts_Ajax( $this->api, $this->settings, $status_view, $this->logger );
-
-		add_action( "wp_ajax_bh_wp_mailboxes_check_account_{$accounts_cpt}", $accounts_ajax->handle_check( ... ) );
-		add_action( "wp_ajax_bh_wp_mailboxes_save_account_{$accounts_cpt}", $accounts_ajax->handle_save( ... ) );
-		add_action( "wp_ajax_bh_wp_mailboxes_test_account_connection_{$accounts_cpt}", $accounts_ajax->handle_test_connection( ... ) );
-		add_action( "wp_ajax_bh_wp_mailboxes_set_account_active_{$accounts_cpt}", $accounts_ajax->handle_set_active( ... ) );
-		add_action( "wp_ajax_bh_wp_mailboxes_delete_account_{$accounts_cpt}", $accounts_ajax->handle_delete( ... ) );
 	}
 }
