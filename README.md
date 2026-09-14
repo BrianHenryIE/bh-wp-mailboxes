@@ -128,6 +128,25 @@ The result is reported in an admin notice inserted after your page's `<hr class=
 (`development-plugin/admin/class-settings.php`) is a working example, including saving credentials
 from its own forms with `API::save_account_credentials()`.
 
+## REST API
+
+The admin screens (accounts table, account modal, "Check now"/"Check all", the single-email remote actions and
+local status) call the library's own REST routes rather than admin-ajax. They live under
+`{rest_namespace}/v2` (the namespace the ingress route uses; the plugin slug when no REST namespace is
+configured), with the mailbox's dashed post types as route bases:
+
+| Route | Capability |
+|---|---|
+| `GET /{emails}`, `GET /{emails}/{id}`, `GET /{emails}/{id}/remote-status` | read (list / per email) |
+| `POST /{emails}/{id}/mark-read`, `…/mark-unread`, `…/delete-on-server`, `…/status` | edit (per email) |
+| `DELETE /{emails}/{id}` (`force=true` deletes instead of trashing) | delete (per email) |
+| `POST /{emails}/check`, `POST /{accounts}`, `POST /{accounts}/test-connection`, `POST /{accounts}/{id}/check`, `POST /{accounts}/{id}/active`, `DELETE /{accounts}/{id}` | manage accounts |
+
+Every route has a permission callback backed by the capability model above (reads included); an id
+belonging to another post type is a 404. Cookie authentication needs the `wp_rest` nonce in `X-WP-Nonce`;
+application passwords work too. A remote action the mail server refuses answers 502 (the error is also
+recorded in the email's log).
+
 ## Extensibility
 
 ### Capabilities

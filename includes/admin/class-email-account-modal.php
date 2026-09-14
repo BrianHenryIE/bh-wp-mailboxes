@@ -28,6 +28,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\REST\REST_Namespace;
 
 /**
  * Prints the modal markup and enqueues the script/style it needs.
@@ -85,6 +86,13 @@ class Email_Account_Modal {
 				'delete_account_action'     => 'bh_wp_mailboxes_delete_account_' . $accounts_cpt,
 				'delete_on_server_action'   => 'bh_wp_mailboxes_delete_on_server_' . $emails_cpt,
 				'remote_action_nonce'       => wp_create_nonce( 'bh-wp-mailboxes-remote-action' ),
+				// The REST routes the scripts call (see REST\Emails_REST_Controller / Email_Accounts_REST_Controller).
+				'rest'                      => array(
+					'root'     => REST_Namespace::url( $this->settings ),
+					'nonce'    => wp_create_nonce( 'wp_rest' ),
+					'emails'   => $this->settings->get_emails_cpt_dashed(),
+					'accounts' => $this->settings->get_email_accounts_cpt_dashed(),
+				),
 			)
 		);
 

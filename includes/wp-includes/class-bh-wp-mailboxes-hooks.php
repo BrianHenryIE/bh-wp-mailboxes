@@ -17,6 +17,9 @@ use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View_Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Status_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Post_Deletion_Handler;
+use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Manager;
+use BrianHenryIE\WP_Mailboxes\REST\Email_Accounts_REST_Controller;
+use BrianHenryIE\WP_Mailboxes\REST\Emails_REST_Controller;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
@@ -169,6 +172,26 @@ class BH_WP_Mailboxes_Hooks {
 
 		add_action( 'rest_api_init', $rest_ingress_connection->rest_init( ... ) );
 		add_filter( 'rest_index', $rest_ingress_connection->add_email_ingress_endpoint_to_index( ... ) );
+
+		// The admin screens' routes (replacing admin-ajax), always registered: they need a logged-in user
+		// with the mailbox's capabilities, not a REST namespace setting. Built inside the hook, since
+		// WP_REST_Controller is only loaded on REST requests.
+		add_action( 'rest_api_init', $this->register_rest_controllers( ... ) );
+	}
+
+	/**
+	 * Construct and register the emails and accounts REST controllers.
+	 *
+	 * @hooked rest_api_init
+	 */
+	protected function register_rest_controllers(): void {
+		$capabilities = new Mailbox_Capabilities( $this->settings );
+		$modal        = new Email_Account_Modal( $this->settings );
+		$status_view  = new Status_View( $this->api, $this->settings, $this->email_wp_post_repository, $this->logger, $modal );
+		$manager      = new Email_Account_Manager( $this->api, $this->settings, $this->logger );
+
+		( new Emails_REST_Controller( $this->api, $this->email_wp_post_repository, $this->settings, $capabilities, $this->logger ) )->register_routes();
+		( new Email_Accounts_REST_Controller( $this->api, $manager, $status_view, $this->settings, $capabilities, $this->logger ) )->register_routes();
 	}
 
 	/**
