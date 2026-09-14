@@ -9,7 +9,7 @@ namespace BrianHenryIE\WP_Mailboxes\API\Model\Result;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
-use BrianHenryIE\WP_Mailboxes\API\New_Email_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Email_Controller_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 
 /**
@@ -25,13 +25,13 @@ readonly class Check_Email_Account_Result {
 	/**
 	 * Constructor.
 	 *
-	 * @param BH_Email_Account      $bh_account The account just checked.
-	 * @param bool                  $success    Whether the fetch completed.
-	 * @param BH_Email[]            $bh_emails  The emails newly saved during this check.
-	 * @param New_Email_Interface[] $new_emails The newly saved emails wrapped for consumers.
-	 * @param bool                  $skipped    Whether the account was deliberately not checked (disabled, receive-only, rate-limited).
-	 * @param ?string               $message    Why the check was skipped or failed; null on success.
-	 * @param string[]              $warnings   Problems after a successful fetch (e.g. a post-download action or a credentials refresh that could not be saved).
+	 * @param BH_Email_Account             $bh_account The account just checked.
+	 * @param bool                         $success    Whether the fetch completed.
+	 * @param BH_Email[]                   $bh_emails  The emails newly saved during this check.
+	 * @param Email_Controller_Interface[] $new_emails The newly saved emails wrapped for consumers.
+	 * @param bool                         $skipped    Whether the account was deliberately not checked (disabled, receive-only, rate-limited).
+	 * @param ?string                      $message    Why the check was skipped or failed; null on success.
+	 * @param string[]                     $warnings   Problems after a successful fetch (e.g. a post-download action or a credentials refresh that could not be saved).
 	 */
 	public function __construct(
 		public BH_Email_Account $bh_account,
@@ -53,7 +53,7 @@ readonly class Check_Email_Account_Result {
 	/**
 	 * A copy with the consumer-facing wrappers for the saved emails filled in.
 	 *
-	 * @param New_Email_Interface[] $new_emails The wrapped emails.
+	 * @param Email_Controller_Interface[] $new_emails The wrapped emails.
 	 */
 	public function with_new_emails( array $new_emails ): self {
 		return new self( $this->bh_account, $this->success, $this->bh_emails, $new_emails, $this->skipped, $this->message, $this->warnings );

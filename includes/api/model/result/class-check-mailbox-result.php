@@ -8,7 +8,7 @@
 namespace BrianHenryIE\WP_Mailboxes\API\Model\Result;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
-use BrianHenryIE\WP_Mailboxes\API\New_Email_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Email_Controller_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 
 /**
@@ -32,7 +32,7 @@ readonly class Check_Mailbox_Result {
 	/**
 	 * Flatten the per-account results into a single list of newly saved emails.
 	 *
-	 * @return New_Email_Interface[]
+	 * @return Email_Controller_Interface[]
 	 */
 	public function get_emails(): array {
 		$emails = array_map(

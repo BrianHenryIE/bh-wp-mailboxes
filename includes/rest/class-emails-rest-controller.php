@@ -17,7 +17,11 @@ namespace BrianHenryIE\WP_Mailboxes\REST;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Account_Result;
-use BrianHenryIE\WP_Mailboxes\API\New_Email_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Email_Controller_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Email_Controller_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Local_Email_Controller;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Remote_Email_Controller_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Exceptions\Invalid_Email_State_Exception;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
@@ -56,8 +60,16 @@ class Emails_REST_Controller extends Mailbox_REST_Controller {
 		LoggerInterface $logger,
 	) {
 		parent::__construct( $settings, $capabilities, $logger );
-		$this->rest_base = $settings->get_emails_cpt_dashed();
+		$this->rest_base          = $settings->get_emails_cpt_dashed();
+		$this->controller_factory = new Email_Controller_Factory();
 	}
+
+	/**
+	 * Builds the controller the command routes act through.
+	 *
+	 * @var Email_Controller_Factory
+	 */
+	protected Email_Controller_Factory $controller_factory;
 
 	/**
 	 * Register the routes.
@@ -286,37 +298,48 @@ class Emails_REST_Controller extends Mailbox_REST_Controller {
 	 * @param WP_REST_Request $request The request.
 	 */
 	public function get_remote_status( $request ): WP_REST_Response {
-		$email = $this->load_email( $request );
+		$email      = $this->load_email( $request );
+		$controller = $this->load_controller( $email );
 
 		return new WP_REST_Response(
 			array(
-				'is_read'           => $this->api->get_remote_read_status( $email ),
+				'is_read'           => $controller instanceof Remote_Email_Controller_Interface ? $controller->get_remote_read_status() : null,
 				'is_remote_deleted' => $email->is_remote_deleted,
 			)
 		);
 	}
 
 	/**
-	 * Mark read / mark unread / delete on the mail server. A failure on the server is a 502, not a
-	 * success with a quiet log note.
+	 * Mark read / mark unread / delete on the mail server, through the email's controller. An operation
+	 * that contradicts the email's state (already read, already deleted) is a 409; a failure on the
+	 * server is a 502, not a success with a quiet log note.
 	 *
 	 * @param string          $action  One of mark-read, mark-unread, delete-on-server.
 	 * @param WP_REST_Request $request The request.
 	 */
 	public function remote_action( string $action, WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$email = $this->load_email( $request );
+		$email      = $this->load_email( $request );
+		$controller = $this->load_controller( $email );
+
+		if ( ! ( $controller instanceof Remote_Email_Controller_Interface ) ) {
+			return new WP_Error( 'bh_wp_mailboxes_not_remote', __( 'This email\'s account cannot act on the mail server.', 'bh-wp-mailboxes' ), array( 'status' => 400 ) );
+		}
 
 		try {
-			$email = match ( $action ) {
-				'mark-read'        => $this->api->mark_email_read( $email ),
-				'mark-unread'      => $this->api->mark_email_unread( $email ),
-				'delete-on-server' => $this->api->delete_email_on_server( $email ),
+			$controller = match ( $action ) {
+				'mark-read'        => $controller->mark_read_on_server(),
+				'mark-unread'      => $controller->mark_unread_on_server(),
+				'delete-on-server' => $controller->delete_on_server(),
 			};
+		} catch ( Invalid_Email_State_Exception $exception ) {
+			return new WP_Error( 'bh_wp_mailboxes_invalid_state', $exception->getMessage(), array( 'status' => 409 ) );
 		} catch ( Throwable $throwable ) {
 			$this->logger->error( "Remote action '{$action}' failed: " . $throwable->getMessage(), array( 'post_id' => $email->get_post_id() ) );
 
 			return new WP_Error( 'bh_wp_mailboxes_remote_action_failed', $throwable->getMessage(), array( 'status' => 502 ) );
 		}
+
+		$email = $controller->get_email();
 
 		return new WP_REST_Response(
 			array(
@@ -324,6 +347,20 @@ class Emails_REST_Controller extends Mailbox_REST_Controller {
 				'is_remote_deleted' => $email->is_remote_deleted,
 			)
 		);
+	}
+
+	/**
+	 * The email's controller (remote-capable when its account's connection can act on the server), or
+	 * a local one when the account cannot be resolved.
+	 *
+	 * @param BH_Email $email The email.
+	 */
+	protected function load_controller( BH_Email $email ): Email_Controller_Interface {
+		$account = $this->api->get_email_account_for_email( $email );
+
+		return is_null( $account )
+			? new Local_Email_Controller( $email, $this->api )
+			: $this->controller_factory->make( $this->api, $account, $email );
 	}
 
 	/**
@@ -376,7 +413,7 @@ class Emails_REST_Controller extends Mailbox_REST_Controller {
 		$payload = array(
 			'success'         => $result->success,
 			'new_email_count' => count( $result->get_emails() ),
-			'new_email_ids'   => array_map( fn( New_Email_Interface $email ): int => $email->get_email()->get_post_id(), $result->get_emails() ),
+			'new_email_ids'   => array_map( fn( Email_Controller_Interface $email ): int => $email->get_email()->get_post_id(), $result->get_emails() ),
 			'accounts'        => array_map(
 				fn( Check_Email_Account_Result $account_result ): array => array(
 					'account_post_id' => $account_result->bh_account->get_post_id(),

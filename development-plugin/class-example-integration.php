@@ -5,14 +5,14 @@
  * This is the snippet the README points to — the minimal shape of a plugin consuming the library.
  * It hooks `bh_wp_mailboxes_new_email` (fired once per saved email by {@see API::check_email()}),
  * logs the subject via the configured bh-wp-logger, and records a note on the email's own log to
- * demonstrate the {@see New_Email_Interface} wrapper.
+ * demonstrate the {@see Email_Controller_Interface} wrapper.
  *
  * @package brianhenryie/bh-wp-mailboxes-development-plugin
  */
 
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin;
 
-use BrianHenryIE\WP_Mailboxes\API\New_Email_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Email_Controller_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use Psr\Log\LoggerInterface;
 
@@ -43,12 +43,12 @@ class Example_Integration {
 	 *
 	 * @hooked bh_wp_mailboxes_new_email
 	 *
-	 * @param string              $plugin_slug      The slug of the plugin instance that downloaded the email.
-	 * @param string              $emails_post_type The emails post type key, identifying which mailbox instance fired the action.
-	 * @param BH_Email_Account    $account          The account the email was downloaded from.
-	 * @param New_Email_Interface $new_email        The newly saved email, wrapped for the consumer.
+	 * @param string                     $plugin_slug      The slug of the plugin instance that downloaded the email.
+	 * @param string                     $emails_post_type The emails post type key, identifying which mailbox instance fired the action.
+	 * @param BH_Email_Account           $account          The account the email was downloaded from.
+	 * @param Email_Controller_Interface $new_email        The newly saved email, wrapped for the consumer.
 	 */
-	public function log_new_email( string $plugin_slug, string $emails_post_type, BH_Email_Account $account, New_Email_Interface $new_email ): void {
+	public function log_new_email( string $plugin_slug, string $emails_post_type, BH_Email_Account $account, Email_Controller_Interface $new_email ): void {
 
 		$email = $new_email->get_email();
 
@@ -63,7 +63,7 @@ class Example_Integration {
 		);
 
 		// Record a note on the email's log so it is visible in the single-email view — the primary
-		// reason the library wraps emails in New_Email_Interface.
+		// reason the library wraps emails in Email_Controller_Interface.
 		$new_email->add_local_note( 'Example integration saw this email.', 'info' );
 	}
 }
