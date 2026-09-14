@@ -14,6 +14,7 @@ use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface as Settings;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\BH_WP_Mailboxes_Settings_Fixture;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Mockery;
 
@@ -224,7 +225,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_ajax_mark_read_returns_is_read_true_in_response(): void {
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
@@ -257,7 +258,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_ajax_mark_unread_returns_is_read_false_in_response(): void {
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
@@ -292,7 +293,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_ajax_delete_on_server_returns_is_remote_deleted_true(): void {
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
@@ -323,7 +324,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_handle_remote_action_returns_error_when_api_throws(): void {
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );
@@ -349,7 +350,7 @@ class Single_Email_View_Ajax_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_handle_remote_action_returns_null_values_when_meta_is_absent(): void {
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		$_POST['_wpnonce'] = wp_create_nonce( 'bh-wp-mailboxes-remote-action' );

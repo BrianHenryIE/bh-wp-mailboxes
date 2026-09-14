@@ -13,7 +13,7 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
-use BrianHenryIE\WP_Mailboxes\API\Factories\New_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Email_Controller_Factory;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_WP_Mailboxes_Hooks;
 use BrianHenryIE\WP_Private_Uploads\BH_WP_Private_Uploads_Hooks;
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Interface;
@@ -117,7 +117,7 @@ class BH_WP_Mailboxes extends API {
 			$settings,
 			$email_repository,
 			$email_account_repository,
-			new New_Email_Factory(),
+			new Email_Controller_Factory(),
 			$private_uploads,
 			$logger
 		);

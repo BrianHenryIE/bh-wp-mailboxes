@@ -235,6 +235,8 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	protected function allow_all_api_calls( string $name, BH_Email $email ): void {
 		$api = $this->mailboxes[ $name ]['api'];
+		// The remote routes act through Remote_Email_Controller, which needs the email's account (an IMAP one).
+		$api->allows( 'get_email_account_for_email' )->andReturn( BH_Email_Account_Fixture::make( post_type: "mb_{$name}_accounts" ) );
 		$api->allows( 'get_downloaded_emails' )->andReturn( array( $email ) );
 		$api->allows( 'get_remote_read_status' )->andReturn( true );
 		$api->allows( 'mark_email_read' )->andReturn( $email );
@@ -452,6 +454,7 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 	 */
 	public function test_remote_action_failure_is_502(): void {
 		$email = $this->make_email( 'a' );
+		$this->mailboxes['a']['api']->allows( 'get_email_account_for_email' )->andReturn( BH_Email_Account_Fixture::make( post_type: 'mb_a_accounts' ) );
 		$this->mailboxes['a']['api']->allows( 'mark_email_read' )->andThrow( new RuntimeException( 'IMAP said no.' ) );
 		$this->login_as( 'administrator' );
 
@@ -459,6 +462,24 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertSame( 502, $response->get_status() );
 		$this->assertSame( 'IMAP said no.', $response->get_data()['message'] );
+	}
+
+	/**
+	 * An operation that contradicts the email's recorded state is a 409, and the server is not called.
+	 *
+	 * @covers ::remote_action
+	 */
+	public function test_remote_action_on_wrong_state_is_409(): void {
+		$email = $this->make_email( 'a' );
+		update_post_meta( $email->get_post_id(), 'is_remote_read', 'yes' );
+		$api = $this->mailboxes['a']['api'];
+		$api->allows( 'get_email_account_for_email' )->andReturn( BH_Email_Account_Fixture::make( post_type: 'mb_a_accounts' ) );
+		$api->expects( 'mark_email_read' )->never();
+		$this->login_as( 'administrator' );
+
+		$response = $this->request( 'POST', "/mb-a/v2/mb-a-emails/{$email->get_post_id()}/mark-read" );
+
+		$this->assertSame( 409, $response->get_status() );
 	}
 
 	/**

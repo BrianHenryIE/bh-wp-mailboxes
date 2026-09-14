@@ -9,7 +9,9 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
-use BrianHenryIE\WP_Mailboxes\API\Factories\New_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Email_Controller_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Email_Controller_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Remote_Email_Controller_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
 use BrianHenryIE\WP_Mailboxes\Connections\Gmail_API\Gmail_Email_Connection;
@@ -32,6 +34,7 @@ use DateTimeInterface;
 use DateTimeZone;
 use DirectoryTree\ImapEngine\Exceptions\ImapConnectionClosedException;
 use Exception;
+use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -50,7 +53,7 @@ class API implements API_Interface {
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings                 Plugin settings.
 	 * @param Email_Repository_Interface         $email_repository         Repository for saved emails.
 	 * @param Email_Account_WP_Post_Repository   $email_account_repository Repository for email accounts.
-	 * @param New_Email_Factory                  $new_email_factory        Wraps fetched emails for consumers.
+	 * @param Email_Controller_Factory           $new_email_factory        Wraps emails in their controllers for consumers.
 	 * @param ?Private_Uploads                   $private_uploads          Private uploads API, or null to skip attachment saving.
 	 * @param ?LoggerInterface                   $logger                   PSR-3 logger.
 	 * @param ?Credentials_Store_Interface       $credentials_store        Where accounts' credentials are kept; defaults to the Secrets API.
@@ -59,7 +62,7 @@ class API implements API_Interface {
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		protected Email_Repository_Interface $email_repository,
 		protected Email_Account_WP_Post_Repository $email_account_repository,
-		protected New_Email_Factory $new_email_factory,
+		protected Email_Controller_Factory $new_email_factory,
 		protected ?Private_Uploads $private_uploads,
 		?LoggerInterface $logger = null,
 		?Credentials_Store_Interface $credentials_store = null,
@@ -338,7 +341,7 @@ class API implements API_Interface {
 	 * @param BH_Email_Account $account The account the email was filed under.
 	 * @param BH_Email         $email   The newly saved email.
 	 */
-	public function alert_new_email( BH_Email_Account $account, BH_Email $email ): New_Email_Interface {
+	public function alert_new_email( BH_Email_Account $account, BH_Email $email ): Email_Controller_Interface {
 		// Create an object wrapping this API and the email with convenient methods for the consumer.
 		$new_email = $this->new_email_factory->make( api: $this, account: $account, email: $email );
 
@@ -348,7 +351,7 @@ class API implements API_Interface {
 		 * @param string $plugin_slug Plugin the library is firing from.
 		 * @param string $emails_post_type The emails post type key, identifying which mailbox instance fired the action.
 		 * @param BH_Email_Account $account The account the email was filed under (immutable data object).
-		 * @param New_Email_Interface|New_Email_Remote_Interface $new_email Object with methods to manipulate the email; ::get_email() to get immutable data object.
+		 * @param Email_Controller_Interface|Remote_Email_Controller_Interface $new_email The email's controller: methods to act on the email; ::get_email() for the immutable data object.
 		 */
 		do_action(
 			'bh_wp_mailboxes_new_email',
@@ -775,15 +778,29 @@ class API implements API_Interface {
 	/**
 	 * Insert a WooCommerce-style log note (wp comment) on the email post.
 	 *
-	 * @param int    $post_id The email CPT post ID.
-	 * @param string $message The note text.
-	 * @param string $level   Log level: `info`, `notice`, `warning`, or `error`.
+	 * @param int                 $post_id The email CPT post ID.
+	 * @param string              $message The note text.
+	 * @param string              $level   Log level: `info`, `notice`, `warning`, or `error`.
+	 * @param array<string,mixed> $context Arbitrary serializable data stored with the note.
 	 */
-	public function insert_email_log_note( int $post_id, string $message, string $level = 'info' ): void {
+	public function insert_email_log_note( int $post_id, string $message, string $level = 'info', array $context = array() ): void {
 
 		$email = $this->email_repository->find_by_post_id( $post_id );
 
-		$this->email_repository->log( $email, $message, false, array(), $level );
+		$this->email_repository->log( $email, $message, false, $context, $level );
+	}
+
+	/**
+	 * A stored email by post id, or null when there is no such email in this mailbox.
+	 *
+	 * @param int $post_id The email post id.
+	 */
+	public function get_email( int $post_id ): ?BH_Email {
+		try {
+			return $this->email_repository->find_by_post_id( $post_id );
+		} catch ( InvalidArgumentException ) {
+			return null;
+		}
 	}
 
 	/**
