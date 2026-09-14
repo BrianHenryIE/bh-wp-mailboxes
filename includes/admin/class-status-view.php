@@ -23,6 +23,7 @@ use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use DateInterval;
 use DateTimeImmutable;
 use Psr\Log\LoggerAwareTrait;
@@ -43,6 +44,13 @@ class Status_View {
 	protected Email_Account_Modal $modal;
 
 	/**
+	 * Decides whether the current user sees the table at all.
+	 *
+	 * @var Mailbox_Capabilities
+	 */
+	protected Mailbox_Capabilities $capabilities;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param API_Interface                      $api                     Main API instance.
@@ -50,6 +58,7 @@ class Status_View {
 	 * @param Email_Repository_Interface         $email_wp_post_repository Email repository (for counts).
 	 * @param LoggerInterface                    $logger                  PSR-3 logger.
 	 * @param ?Email_Account_Modal               $modal                   The add/edit modal printed with the table; built from settings when omitted.
+	 * @param ?Mailbox_Capabilities              $capabilities            This mailbox's capability checks; built from settings when omitted.
 	 */
 	public function __construct(
 		protected API_Interface $api,
@@ -57,13 +66,19 @@ class Status_View {
 		protected Email_Repository_Interface $email_wp_post_repository,
 		LoggerInterface $logger,
 		?Email_Account_Modal $modal = null,
+		?Mailbox_Capabilities $capabilities = null,
 	) {
 		$this->setLogger( $logger );
-		$this->modal = $modal ?? new Email_Account_Modal( $settings );
+		$this->capabilities = $capabilities ?? new Mailbox_Capabilities( $settings );
+		$this->modal        = $modal ?? new Email_Account_Modal( $settings, $this->capabilities );
 	}
 
 	/**
 	 * Renders the accounts table and modal in the admin notices area of the emails list screen.
+	 *
+	 * The table is all-or-nothing: it lists each account's server and username (in the rows' `data-*`
+	 * attributes, to pre-fill the edit form) and every control on it is an account action, so it is
+	 * printed only for users who may manage the mailbox's accounts.
 	 *
 	 * @hooked admin_notices
 	 */
@@ -73,6 +88,10 @@ class Status_View {
 		$post_type = $this->settings->get_emails_cpt_underscored_20();
 
 		if ( null === $screen || $screen->post_type !== $post_type || 'edit' !== $screen->base ) {
+			return;
+		}
+
+		if ( ! $this->capabilities->current_user_can_manage_email_accounts() ) {
 			return;
 		}
 

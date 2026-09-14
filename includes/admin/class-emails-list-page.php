@@ -19,6 +19,7 @@ use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use Exception;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -47,6 +48,14 @@ class Emails_List_Page {
 	protected Email_Account_Modal $modal;
 
 	/**
+	 * Decides which controls the current user sees; the REST routes' permission callbacks remain the
+	 * security boundary.
+	 *
+	 * @var Mailbox_Capabilities
+	 */
+	protected Mailbox_Capabilities $capabilities;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Email_Repository_Interface         $email_wp_post_repository Repository for email CPT posts.
@@ -54,6 +63,7 @@ class Emails_List_Page {
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings                 Plugin settings.
 	 * @param LoggerInterface                    $logger                   PSR-3 logger.
 	 * @param ?Email_Account_Modal               $modal                    Owns the shared admin script/style; built from settings when omitted.
+	 * @param ?Mailbox_Capabilities              $capabilities             This mailbox's capability checks; built from settings when omitted.
 	 */
 	public function __construct(
 		protected Email_Repository_Interface $email_wp_post_repository,
@@ -61,13 +71,16 @@ class Emails_List_Page {
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		LoggerInterface $logger,
 		?Email_Account_Modal $modal = null,
+		?Mailbox_Capabilities $capabilities = null,
 	) {
 		$this->setLogger( $logger );
-		$this->modal = $modal ?? new Email_Account_Modal( $settings );
+		$this->capabilities = $capabilities ?? new Mailbox_Capabilities( $settings );
+		$this->modal        = $modal ?? new Email_Account_Modal( $settings, $this->capabilities );
 	}
 
 	/**
-	 * Prints extra table nav controls at the top of the list table.
+	 * Prints extra table nav controls at the top of the list table: the "Check now" / "Check all" button,
+	 * for users who may manage the mailbox's accounts (checking an account is an account action).
 	 *
 	 * @hooked manage_posts_extra_tablenav
 	 * @param string $which The location of the extra table nav markup: 'top' or 'bottom'.
@@ -82,6 +95,10 @@ class Emails_List_Page {
 		}
 
 		if ( 'top' !== $which ) {
+			return;
+		}
+
+		if ( ! $this->capabilities->current_user_can_manage_email_accounts() ) {
 			return;
 		}
 
@@ -162,8 +179,10 @@ class Emails_List_Page {
 	 * Customise the row actions for email posts.
 	 *
 	 * Renames "Trash" to "Trash locally" (it only removes the locally-saved copy), and adds a "Delete on
-	 * server" action — gated on the email's connection supporting it ({@see Supports_Fetching::can_delete_on_server()})
-	 * and the email not already being deleted on the server. The action is handled by JS with a confirmation.
+	 * server" action — gated on the user being allowed to act on the email, the email's connection supporting
+	 * it ({@see Supports_Fetching::can_delete_on_server()}) and the email not already being deleted on the
+	 * server. The action is handled by JS with a confirmation. (Core only offers "Trash" to users with the
+	 * mailbox's delete capability, so there is nothing to gate there.)
 	 *
 	 * @hooked post_row_actions
 	 *
@@ -196,7 +215,9 @@ class Emails_List_Page {
 			return $actions;
 		}
 
-		if ( ! $email->is_remote_deleted && $this->connection_can_delete_on_server( $email ) ) {
+		if ( ! $email->is_remote_deleted
+			&& $this->capabilities->current_user_can_edit_email( $post->ID )
+			&& $this->connection_can_delete_on_server( $email ) ) {
 			$actions['bh_delete_on_server'] = sprintf(
 				'<a href="#" class="bh-email-delete-on-server submitdelete" data-post-id="%d">%s</a>',
 				(int) $post->ID,
@@ -242,6 +263,10 @@ class Emails_List_Page {
 		$screen    = get_current_screen();
 		$post_type = $this->settings->get_emails_cpt_underscored_20();
 		if ( null === $screen || $screen->post_type !== $post_type ) {
+			return;
+		}
+
+		if ( ! $this->capabilities->current_user_can_list_emails() ) {
 			return;
 		}
 
