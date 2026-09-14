@@ -130,8 +130,30 @@ from its own forms with `API::save_account_credentials()`.
 
 ## Extensibility
 
+### Capabilities
+
+Each mailbox has its own capability set, derived from its post types (`edit_{emails_cpt}`, `delete_{emails_cpt}`,
+`manage_{accounts_cpt}`, …), so a user granted one plugin's mailbox gets nothing on another's. Nothing is written
+to roles: every mailbox capability maps to a base capability, `manage_options` by default, through the
+`bh_wp_mailboxes_required_capability` filter. To let shop managers read and act on your plugin's emails (but not
+manage its accounts):
+
+```php
+add_filter( 'bh_wp_mailboxes_required_capability', function ( string $required, string $capability, string $post_type ): string {
+    if ( 'my_plugin_emails' === $post_type ) {
+        return 'manage_woocommerce';
+    }
+    return $required;
+}, 10, 3 );
+```
+
+The REST ingress requires the mailbox's create capability, so the Cloudflare worker's application password
+belongs to a user with `manage_options` (or whatever the filter maps it to).
+
 <!-- filters -->
 ### Filters
+
+* `bh_wp_mailboxes_required_capability` – `( string $required, string $capability, string $post_type, ?int $post_id )`: the base capability a mailbox capability requires (see Capabilities above).
 
 * `bh_wp_mailboxes_imap_mailbox_config` – `( array $config, string $plugin_slug, IMAP_Credentials_Interface $credentials, Email_Account_Settings_Interface $account )`: the [ImapEngine](https://github.com/DirectoryTree/ImapEngine) mailbox configuration (`host`, `port`, `username`, `password`, `encryption`, `validate_cert`) just before the IMAP connection is created. Add any other key ImapEngine supports, e.g. to log the IMAP conversation while debugging:
 

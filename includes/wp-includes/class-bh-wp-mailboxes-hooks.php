@@ -113,6 +113,11 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function define_cpt_hooks(): void {
 
+		// Maps this mailbox's post type capabilities to the consumer's base capability (default manage_options).
+		$capabilities = new Mailbox_Capabilities( $this->settings );
+
+		add_filter( 'map_meta_cap', $capabilities->map_meta_cap( ... ), 10, 4 );
+
 		$account_cpt = new BH_Email_Account_CPT( $this->settings, $this->logger );
 
 		add_action( 'init', $account_cpt->register_cpt( ... ) );
