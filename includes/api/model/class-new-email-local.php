@@ -72,15 +72,29 @@ readonly class New_Email_Local implements New_Email_Interface {
 	}
 
 	/**
-	 * Trash the local email immediately.
+	 * Move the local email post to the trash. Its attachments and log notes are kept, so it can be restored.
 	 *
 	 * Antithetical to logging the emails, but available to the consumers.
+	 */
+	public function trash_local_email_post(): void {
+		wp_trash_post( $this->email->post_id );
+	}
+
+	/**
+	 * Permanently delete the local email post. Its attachments (posts and files) and log notes go with it
+	 * ({@see \BrianHenryIE\WP_Mailboxes\API\Email_Post_Deletion_Handler}).
+	 */
+	public function delete_local_email_post(): void {
+		wp_delete_post( $this->email->post_id, true );
+	}
+
+	/**
+	 * Trash the local email.
 	 *
-	 * TODO: make sure comments and attachments get deleted too.
-	 * TODO: also don't use wp_delete_post here.
+	 * @deprecated Use {@see self::trash_local_email_post()} (or `delete_local_email_post()` to delete permanently).
 	 */
 	public function trash_locally(): self {
-		wp_delete_post( $this->email->post_id );
+		$this->trash_local_email_post();
 
 		return new self(
 			email: $this->email,
