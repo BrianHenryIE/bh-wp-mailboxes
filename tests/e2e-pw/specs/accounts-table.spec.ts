@@ -126,8 +126,8 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		await expect( row ).toBeVisible();
 
 		// While the delete request is in flight the confirm button is disabled (no double submit).
-		await page.route( '**/admin-ajax.php', async ( route ) => {
-			if ( route.request().postData()?.includes( 'delete_account' ) ) {
+		await page.route( '**/e2e-accounts/*', async ( route ) => {
+			if ( route.request().method() === 'DELETE' ) {
 				await new Promise( ( resolve ) => setTimeout( resolve, 800 ) );
 			}
 			await route.continue();
@@ -302,8 +302,8 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 	test( 'saving shows a busy state until the response arrives', async ( { admin, page } ) => {
 		const emailAddress = `modal-busy-${ Date.now() }@example.com`;
 		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
-		await page.route( '**/admin-ajax.php', async ( route ) => {
-			if ( route.request().postData()?.includes( 'save_account' ) ) {
+		await page.route( '**/e2e-accounts', async ( route ) => {
+			if ( route.request().method() === 'POST' ) {
 				await new Promise( ( resolve ) => setTimeout( resolve, 800 ) );
 			}
 			await route.continue();
@@ -376,10 +376,8 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 
 	test( '"Test connection" requires the same fields as saving, and shows a busy state', async ( { admin, page } ) => {
 		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
-		await page.route( '**/admin-ajax.php', async ( route ) => {
-			if ( route.request().postData()?.includes( 'test_account_connection' ) ) {
-				await new Promise( ( resolve ) => setTimeout( resolve, 800 ) );
-			}
+		await page.route( '**/e2e-accounts/test-connection', async ( route ) => {
+			await new Promise( ( resolve ) => setTimeout( resolve, 800 ) );
 			await route.continue();
 		} );
 

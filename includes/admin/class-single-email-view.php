@@ -10,6 +10,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\REST\REST_Namespace;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use Psr\Log\LoggerAwareTrait;
@@ -191,18 +192,14 @@ class Single_Email_View {
 			'after'
 		);
 
-		// The AJAX actions are scoped to this instance's emails CPT (see BH_WP_Mailboxes_Hooks::define_single_email_view_hooks()),
-		// so the JS must post the matching, suffixed action names.
+		// The REST routes are scoped to this instance's emails CPT (see REST\Emails_REST_Controller), so the JS
+		// must call the matching base.
 		$js_settings = wp_json_encode(
 			array(
-				'postId'                => (int) get_the_ID(),
-				'nonce'                 => wp_create_nonce( 'bh-wp-mailboxes-remote-action' ),
-				'ajaxUrl'               => admin_url( 'admin-ajax.php' ),
-				'markReadAction'        => 'bh_wp_mailboxes_mark_read_' . $this->post_type,
-				'markUnreadAction'      => 'bh_wp_mailboxes_mark_unread_' . $this->post_type,
-				'deleteOnServerAction'  => 'bh_wp_mailboxes_delete_on_server_' . $this->post_type,
-				'getRemoteStatusAction' => 'bh_wp_mailboxes_get_remote_status_' . $this->post_type,
-				'updateStatusAction'    => 'bh_wp_mailboxes_update_status_' . $this->post_type,
+				'postId'     => (int) get_the_ID(),
+				'restRoot'   => REST_Namespace::url( $this->settings ),
+				'restNonce'  => wp_create_nonce( 'wp_rest' ),
+				'emailsBase' => $this->settings->get_emails_cpt_dashed(),
 			)
 		);
 		if ( is_string( $js_settings ) ) {

@@ -14,7 +14,8 @@
     var showTableNotice = modal.showTableNotice;
     var accountRow      = modal.accountRow;
     var replaceTable    = modal.replaceTable;
-    var postAccounts    = modal.postAccounts;
+    var restRequest     = modal.restRequest;
+    var rest            = modal.rest;
     var failMessage     = modal.failMessage;
 
     var COLOR = { success: '#00a32a', info: '#72aee6', warning: '#dba617', error: '#d63638' };
@@ -133,7 +134,7 @@
             var emailAddress = accountRow( accountId ).data( 'email-address' );
             $btn.attr( 'aria-disabled', 'true' ).addClass( 'disabled' );
 
-            postAccounts( bh_wp_mailboxes_ajax.set_account_active_action, { account_post_id: accountId, active: active ? '1' : '0' } ).done( function( response ) {
+            restRequest( 'POST', rest.accounts + '/' + accountId + '/active', { active: active } ).done( function( response ) {
                 replaceTable( response.data.table_html );
                 showTableNotice( emailAddress + ( active ? ' enabled.' : ' disabled.' ), 'success' );
             } ).fail( function( xhr ) {
@@ -152,8 +153,6 @@
         // ── Global check-all button ────────────────────────────────────────────
         $( '#check-email' ).on( 'click', function( event ) {
             event.preventDefault();
-            var urlParams = new URLSearchParams( window.location.search );
-
             // Name the account(s) being checked, taken from the accounts table.
             var names = $( '.bh-mailboxes-account' ).map( function() {
                 return $( this ).data( 'account-name' );
@@ -162,14 +161,10 @@
 
             var $notice = makeCheckNotice( 'all', label );
 
-            $.post( ajaxurl, {
-                action:        bh_wp_mailboxes_ajax.check_email_action,
-                mailboxes_cpt: urlParams.get( 'post_type' ),
-                _wpnonce:      $( '#_wpnonce_checknow' ).val(),
-            } ).done( function( response ) {
+            restRequest( 'POST', rest.emails + '/check' ).done( function( response ) {
                 handleCheckAllResponse( response, label, $notice );
-            } ).fail( function() {
-                finishNotice( $notice, label + ': Check failed: server error.', '#d63638' );
+            } ).fail( function( xhr ) {
+                finishNotice( $notice, label + ': ' + failMessage( xhr, 'Check failed: server error.' ), '#d63638' );
             } );
         } );
 
@@ -185,7 +180,7 @@
 
             var $notice = makeCheckNotice( accountId, accountName );
 
-            postAccounts( bh_wp_mailboxes_ajax.check_account_action, { account_post_id: accountId } ).done( function( response ) {
+            restRequest( 'POST', rest.accounts + '/' + accountId + '/check' ).done( function( response ) {
                 $btn.removeAttr( 'aria-disabled' ).removeClass( 'disabled' ).text( origLabel );
                 handleCheckResponse( response, $row, $notice );
             } ).fail( function( xhr ) {
@@ -207,22 +202,12 @@
             var origLabel = $link.text();
             $link.text( 'Deleting…' );
 
-            $.post( ajaxurl, {
-                action:   bh_wp_mailboxes_ajax.delete_on_server_action,
-                post_id:  postId,
-                _wpnonce: bh_wp_mailboxes_ajax.remote_action_nonce,
-            } ).done( function( response ) {
-                if ( response.success ) {
-                    // The email is now deleted on the server; reload the table so the row reflects it
-                    // (and no longer offers "Delete on server").
-                    refreshTable( [] );
-                } else {
-                    var msg = ( response.data && response.data.message ) ? response.data.message : 'Delete on server failed.';
-                    window.alert( msg );
-                    $link.text( origLabel );
-                }
-            } ).fail( function() {
-                window.alert( 'Delete on server failed: server error.' );
+            restRequest( 'POST', rest.emails + '/' + postId + '/delete-on-server' ).done( function() {
+                // The email is now deleted on the server; reload the table so the row reflects it
+                // (and no longer offers "Delete on server").
+                refreshTable( [] );
+            } ).fail( function( xhr ) {
+                window.alert( failMessage( xhr, 'Delete on server failed: server error.' ) );
                 $link.text( origLabel );
             } );
         } );
@@ -255,7 +240,7 @@
 
             var $notice = makeCheckNotice( accountId, accountName );
 
-            postAccounts( bh_wp_mailboxes_ajax.check_account_action, { account_post_id: accountId, since_date: sinceDate } ).done( function( response ) {
+            restRequest( 'POST', rest.accounts + '/' + accountId + '/check', { since_date: sinceDate } ).done( function( response ) {
                 handleCheckResponse( response, $row, $notice );
             } ).fail( function( xhr ) {
                 finishNotice( $notice, failMessage( xhr, 'Check failed: server error.' ), '#d63638' );

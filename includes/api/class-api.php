@@ -706,6 +706,7 @@ class API implements API_Interface {
 	 * @param BH_Email $email  The email to act on.
 	 *
 	 * @throws Exception When expected email account / connection / remote coordinates are not found.
+	 * @throws Throwable When the connection fails to perform the action (after an error note is recorded on the email).
 	 */
 	protected function perform_remote_email_action( string $action, BH_Email $email ): void {
 
@@ -741,8 +742,9 @@ class API implements API_Interface {
 					$this->email_repository->update( $email, is_remote_read: true );
 					// Reversible change → info.
 					$this->insert_email_log_note( $post_id, 'Marked as read on server', 'info' );
-				} catch ( Throwable ) {
+				} catch ( Throwable $throwable ) {
 					$this->insert_email_log_note( $post_id, 'Failed to mark as read on server.', 'error' );
+					throw $throwable;
 				}
 				break;
 			case 'mark_unread':
@@ -751,8 +753,9 @@ class API implements API_Interface {
 					$this->email_repository->update( $email, is_remote_read: false );
 					// Reversible change → info.
 					$this->insert_email_log_note( $post_id, 'Marked as unread on server', 'info' );
-				} catch ( Throwable ) {
+				} catch ( Throwable $throwable ) {
 					$this->insert_email_log_note( $post_id, 'Failed to mark as unread on server.', 'error' );
+					throw $throwable;
 				}
 				break;
 			case 'delete_on_server':
@@ -761,8 +764,9 @@ class API implements API_Interface {
 					$this->email_repository->update( $email, is_remote_deleted: true );
 					// Intentional irreversible change → notice.
 					$this->insert_email_log_note( $post_id, 'Deleted on server', 'notice' );
-				} catch ( Throwable ) {
+				} catch ( Throwable $throwable ) {
 					$this->insert_email_log_note( $post_id, 'Failed to delete email on server.', 'error' );
+					throw $throwable;
 				}
 				break;
 		}
