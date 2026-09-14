@@ -121,7 +121,8 @@ $modal->print_add_button(); // Where the button should appear.
 ```
 
 The library saves the account and its credentials (encrypted, in the WordPress Secrets API): there is
-nothing for you to persist.
+nothing for you to persist. The button and the modal are printed only for users who may manage the
+mailbox's accounts (see Capabilities below), so your screen needs no check of its own.
 
 The result is reported in an admin notice inserted after your page's `<hr class="wp-header-end">`
 (or after its first heading when there is none). The development plugin's settings page
@@ -168,6 +169,24 @@ add_filter( 'bh_wp_mailboxes_required_capability', function ( string $required, 
 
 The REST ingress requires the mailbox's create capability, so the Cloudflare worker's application password
 belongs to a user with `manage_options` (or whatever the filter maps it to).
+
+The admin screens follow the same capabilities: a user sees only the controls they may use. Without the
+manage-accounts capability (`manage_{accounts_cpt}`) the emails list has no "Check now" button, no accounts
+table and no "Add account" button (the reusable modal prints nothing on your own screen either); a user who
+may read but not act on an email gets its status and remote state read-only. The filter receives the
+capability being checked, so it can grant reading and acting on emails while keeping account management
+for administrators:
+
+```php
+add_filter( 'bh_wp_mailboxes_required_capability', function ( string $required, string $capability, string $post_type ): string {
+    if ( 'my_plugin_emails' === $post_type ) {
+        return 'manage_woocommerce'; // Emails: shop managers.
+    }
+    return $required; // Accounts (`manage_my_plugin_accounts`, …): administrators.
+}, 10, 3 );
+```
+
+Hiding a control is a courtesy, not the security boundary: every REST route checks the capability itself.
 
 <!-- filters -->
 ### Filters

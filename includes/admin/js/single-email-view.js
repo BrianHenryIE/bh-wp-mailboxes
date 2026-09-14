@@ -4,6 +4,12 @@
 	$(function () {
 		var settings = window.bhWpMailboxesSingleEmail || {};
 
+		// The server lists the routes this user may call (`actions`); bind nothing else. Its permission
+		// callbacks remain the security boundary: this only avoids requests that would be refused.
+		function allowed( action ) {
+			return ! settings.actions || settings.actions.indexOf( action ) !== -1;
+		}
+
 		/**
 		 * Build the same badge markup that PHP's get_remote_status_html() would produce.
 		 *
@@ -88,6 +94,9 @@
 		}
 
 		function remoteAction( action, $btn ) {
+			if ( ! allowed( action ) ) {
+				return;
+			}
 			$btn.prop( 'disabled', true );
 
 			restRequest( 'POST', action ).done( function ( body ) {
@@ -123,6 +132,9 @@
 		// email's log) rather than the native post save, then reload to show the new status and log entry.
 		$( '#bh-email-status-box #save' ).on( 'click', function ( e ) {
 			e.preventDefault();
+			if ( ! allowed( 'status' ) ) {
+				return;
+			}
 			var $btn = $( this ).prop( 'disabled', true );
 			restRequest( 'POST', 'status', { status: $( 'input[name="post_status"]:checked' ).val() } ).done( function () {
 				window.location.reload();
@@ -133,7 +145,7 @@
 
 		// On load, fetch the live remote status and update the highlighted radio (or the badge fallback).
 		var $remoteStatus = $( '.bh-email-remote-status.is-loading, #bh-email-read-status-options.is-loading' );
-		if ( $remoteStatus.length && settings.restRoot ) {
+		if ( $remoteStatus.length && settings.restRoot && allowed( 'remote-status' ) ) {
 			restRequest( 'GET', 'remote-status' ).done( function ( body ) {
 				updateRemoteUi( body.is_read, body.is_remote_deleted );
 			} ).fail( function () {

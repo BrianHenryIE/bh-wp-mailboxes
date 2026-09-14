@@ -18,6 +18,7 @@ use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -70,11 +71,17 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( $this->post_type . '_accounts' );
 		$settings->allows( 'get_plugin_slug' )->andReturn( 'test-plugin' );
 
+		// These tests cover the rendering; the capability gate has its own tests (Capability_Aware_UI_WPUnit_Test).
+		$capabilities = Mockery::mock( Mailbox_Capabilities::class );
+		$capabilities->allows( 'current_user_can_manage_email_accounts' )->andReturn( true );
+
 		return new Status_View(
 			$api,
 			$settings,
 			$repo ?? $this->make_repository(),
 			$this->logger,
+			new Email_Account_Modal( $settings, $capabilities ),
+			$capabilities,
 		);
 	}
 

@@ -19,6 +19,7 @@ use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use BrianHenryIE\WP_Mailboxes\Models\BH_WP_Mailboxes_Settings_Fixture;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 
 /**
@@ -76,6 +77,16 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$api_mock->allows( 'get_connection_for_email_account' )->andReturn( $connection_mock );
 
 		return $api_mock;
+	}
+
+	/**
+	 * A user who may do everything: these tests cover the rendering, the capability gate has its own tests
+	 * (Capability_Aware_UI_WPUnit_Test).
+	 */
+	private function all_capabilities(): Mailbox_Capabilities {
+		/** @var Mailbox_Capabilities $capabilities */
+		$capabilities = \Mockery::mock( Mailbox_Capabilities::class )->shouldIgnoreMissing( true );
+		return $capabilities;
 	}
 
 	/** @return Email_WP_Post_Repository */
@@ -158,7 +169,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$post = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		global $wp_meta_boxes;
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting before assertion is intentional in tests.
@@ -196,7 +207,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$post_id  = $bh_email->post_id;
 		$post     = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 		$sut->add_meta_boxes( $post );
 
 		global $wp_meta_boxes;
@@ -229,7 +240,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$post_id_with_html = $bh_email->post_id;
 		$post_with_html    = get_post( $post_id_with_html );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		// Test without HTML.
 		global $wp_meta_boxes;
@@ -277,7 +288,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		$incoming_data = array(
 			'post_type'    => $this->post_type,
@@ -311,7 +322,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$this->factory()->attachment->create( array( 'post_parent' => $post_id ) );
 		$post = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		global $wp_meta_boxes;
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting before assertion is intentional in tests.
@@ -340,7 +351,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
 		$post    = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		global $wp_meta_boxes;
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting before assertion is intentional in tests.
@@ -377,7 +388,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		update_post_meta( $post_id, 'Date', 'Wed, 30 Jul 2025 03:38:07 +0000' );
 		$post = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_local_status_metabox( $post );
@@ -403,7 +414,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$post_id  = $bh_email->post_id;
 		$post     = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_local_status_metabox( $post );
@@ -430,7 +441,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		update_post_meta( $post_id, 'is_remote_read', 'yes' );
 		$post = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
@@ -461,7 +472,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		update_post_meta( $post_id, 'is_remote_read', 'no' );
 		$post = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
@@ -497,7 +508,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$connection_mock->expects( 'can_read_status' )->andReturnFalse();
 
 		$api_mock = $this->make_api( connection_mock: $connection_mock );
-		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
+		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
@@ -544,7 +555,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
@@ -584,7 +595,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$connection_mock->allows( 'can_read_status' )->andReturnTrue();
 
 		$api_mock = $this->make_api( connection_mock: $connection_mock );
-		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
+		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
@@ -614,7 +625,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$post = get_post( $post_id );
 
 		$api_mock = $this->make_api( can_return_email_account: false );
-		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
+		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
@@ -660,7 +671,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );

@@ -96,6 +96,10 @@ $e2e_mailboxes_settings = new Mailbox_Settings( 'development-plugin', 'E2E Email
 // Custom REST endpoints for arranging/asserting e2e tests.
 new Mailboxes( $e2e_mailboxes_settings )->register_hooks();
 
+// Lets editors into the e2e mailbox at the level chosen on the settings page (the Playwright "editor"
+// project proves the screens show only the controls a user may use).
+new Editor_Access( Mock_Mailbox_E2E_Connection::EMAILS_CPT, Mock_Mailbox_E2E_Connection::ACCOUNTS_CPT )->register_hooks();
+
 $development_settings_page = new Settings();
 $development_settings_page->register_hooks();
 new Menu( $development_settings_page )->register_hooks();
