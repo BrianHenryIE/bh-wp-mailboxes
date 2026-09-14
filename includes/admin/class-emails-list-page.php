@@ -90,8 +90,6 @@ class Emails_List_Page {
 			? __( 'Check all', 'bh-wp-mailboxes' )
 			: __( 'Check now', 'bh-wp-mailboxes' );
 
-		wp_nonce_field( 'bh-wp-mailboxes-check-email', '_wpnonce_checknow' );
-
 		// Rendered hidden here; the JS moves it into the page title, replacing the "Add New" button.
 		printf(
 			'<button type="button" id="check-email" class="page-title-action" style="display:none;">%s</button>',

@@ -5,7 +5,7 @@
  * Lists each account with its status, email count, last fetched/failure times, a "Check now"
  * button (with the set-fetch-since date utility) and enable/disable, edit and delete actions, plus
  * an "Add account" button. Adding and editing happen in the {@see Email_Account_Modal} (reusable on
- * other screens); the library saves the account and its credentials (see {@see Email_Accounts_Ajax}).
+ * other screens); the library saves the account and its credentials (see {@see \BrianHenryIE\WP_Mailboxes\REST\Email_Accounts_REST_Controller}).
  *
  * @package brianhenryie/bh-wp-mailboxes
  */

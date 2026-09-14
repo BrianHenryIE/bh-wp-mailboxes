@@ -8,6 +8,10 @@
  */
 import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 
+// "saves the per-mailbox REST setting" changes Mailbox One's REST namespace, moving the routes the
+// account modal test (same mailbox) posts to. Run this file's tests one at a time so they cannot race.
+test.describe.configure( { mode: 'default' } );
+
 test.describe( 'Development plugin settings page', () => {
 	test.beforeEach( async ( { admin } ) => {
 		await admin.visitAdminPage(
