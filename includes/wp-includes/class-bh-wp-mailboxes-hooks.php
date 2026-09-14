@@ -182,8 +182,8 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function register_rest_controllers(): void {
 		$capabilities = new Mailbox_Capabilities( $this->settings );
-		$modal        = new Email_Account_Modal( $this->settings );
-		$status_view  = new Status_View( $this->api, $this->settings, $this->email_wp_post_repository, $this->logger, $modal );
+		$modal        = new Email_Account_Modal( $this->settings, $capabilities );
+		$status_view  = new Status_View( $this->api, $this->settings, $this->email_wp_post_repository, $this->logger, $modal, $capabilities );
 		$manager      = new Email_Account_Manager( $this->api, $this->settings, $this->logger );
 
 		( new Emails_REST_Controller( $this->api, $this->email_wp_post_repository, $this->settings, $capabilities, $this->logger ) )->register_routes();
@@ -211,20 +211,23 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function define_admin_ui_hooks(): void {
 
-		// The add/edit account modal, printed with the accounts table; it also owns the shared admin script/style.
-		$modal = new Email_Account_Modal( $this->settings );
+		// Every render site asks this which controls the current user sees.
+		$capabilities = new Mailbox_Capabilities( $this->settings );
 
-		$status_view = new Status_View( $this->api, $this->settings, $this->email_wp_post_repository, $this->logger, $modal );
+		// The add/edit account modal, printed with the accounts table; it also owns the shared admin script/style.
+		$modal = new Email_Account_Modal( $this->settings, $capabilities );
+
+		$status_view = new Status_View( $this->api, $this->settings, $this->email_wp_post_repository, $this->logger, $modal, $capabilities );
 		add_action( 'admin_notices', $status_view->display( ... ) );
 
-		$admin_notices = new Admin_Notices( $this->api, $this->settings, $this->logger );
+		$admin_notices = new Admin_Notices( $this->api, $this->settings, $this->logger, capabilities: $capabilities );
 		// current_screen: render on the emails list screen (fires before admin_enqueue_scripts, so wptrt can
 		// enqueue its dismiss script). wp_loaded: re-register on the dismiss AJAX request (admin-ajax.php),
 		// which current_screen/admin_init do not reach, so the library's dismiss handler can match the id.
 		add_action( 'current_screen', $admin_notices->render_on_emails_screen( ... ) );
 		add_action( 'wp_loaded', $admin_notices->register_dismiss_handler( ... ) );
 
-		$mailbox_list_page = new Emails_List_Page( $this->email_wp_post_repository, $this->api, $this->settings, $this->logger, $modal );
+		$mailbox_list_page = new Emails_List_Page( $this->email_wp_post_repository, $this->api, $this->settings, $this->logger, $modal, $capabilities );
 
 		$post_type = $this->settings->get_emails_cpt_underscored_20();
 
@@ -245,7 +248,7 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function define_single_email_view_hooks(): void {
 
-		$view      = new Single_Email_View( $this->settings, $this->api, $this->email_wp_post_repository, $this->logger );
+		$view      = new Single_Email_View( $this->settings, $this->api, $this->email_wp_post_repository, $this->logger, new Mailbox_Capabilities( $this->settings ) );
 		$post_type = $this->settings->get_emails_cpt_underscored_20();
 
 		add_action( "add_meta_boxes_{$post_type}", $view->add_meta_boxes( ... ) );

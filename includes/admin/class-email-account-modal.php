@@ -19,6 +19,11 @@
  * Owns its own script (`js/account-modal.js`) and stylesheet (`css/account-modal.css`), so printing it
  * on a consumer's screen enqueues nothing else; the accounts table's script depends on the modal's.
  *
+ * The button and the modal are printed only for users who may manage the mailbox's accounts (see
+ * {@see Mailbox_Capabilities::current_user_can_manage_email_accounts()}), so a consumer's screen is gated
+ * without checking anything itself. The assets are enqueued regardless: the script also carries the REST
+ * helpers the emails list's own script depends on, and it holds nothing a user could not already obtain.
+ *
  * @package brianhenryie/bh-wp-mailboxes
  */
 
@@ -29,6 +34,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\REST\REST_Namespace;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 
 /**
  * Prints the modal markup and enqueues the script/style it needs.
@@ -36,13 +42,23 @@ use BrianHenryIE\WP_Mailboxes\REST\REST_Namespace;
 class Email_Account_Modal {
 
 	/**
+	 * Decides whether the current user sees the button and the modal.
+	 *
+	 * @var Mailbox_Capabilities
+	 */
+	protected Mailbox_Capabilities $capabilities;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param BH_WP_Mailboxes_Settings_Interface $settings Provides the post type keys the AJAX actions are suffixed with.
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings     Provides the post type keys the REST routes are scoped by.
+	 * @param ?Mailbox_Capabilities              $capabilities This mailbox's capability checks; built from settings when omitted.
 	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
+		?Mailbox_Capabilities $capabilities = null,
 	) {
+		$this->capabilities = $capabilities ?? new Mailbox_Capabilities( $settings );
 	}
 
 	/**
@@ -89,11 +105,15 @@ class Email_Account_Modal {
 	}
 
 	/**
-	 * Print an "Add account" button that opens the modal.
+	 * Print an "Add account" button that opens the modal. Prints nothing for a user who may not manage
+	 * the mailbox's accounts.
 	 *
 	 * @param string $classes Extra CSS classes for the button.
 	 */
 	public function print_add_button( string $classes = 'button' ): void {
+		if ( ! $this->capabilities->current_user_can_manage_email_accounts() ) {
+			return;
+		}
 		echo '<button type="button" class="' . esc_attr( trim( $classes . ' bh-account-add' ) ) . '">' . esc_html__( 'Add account', 'bh-wp-mailboxes' ) . '</button>';
 	}
 
@@ -105,12 +125,17 @@ class Email_Account_Modal {
 	/**
 	 * Print the add/edit modal (IMAP fields only) and the delete
 	 * confirmation dialog. Printed once per page: by {@see Status_View::display()} on the emails list
-	 * screen, or by a consumer on `admin_footer` on their own screen; a second call is a no-op.
+	 * screen, or by a consumer on `admin_footer` on their own screen; a second call is a no-op, as is any
+	 * call for a user who may not manage the mailbox's accounts.
 	 *
 	 * @hooked admin_footer
 	 */
 	public function print_modal(): void {
 		if ( did_action( self::PRINTED_ACTION ) > 0 ) {
+			return;
+		}
+
+		if ( ! $this->capabilities->current_user_can_manage_email_accounts() ) {
 			return;
 		}
 

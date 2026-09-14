@@ -15,6 +15,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WPTRT\AdminNotices\Notices;
@@ -41,17 +42,27 @@ class Admin_Notices {
 	 *
 	 * @param API_Interface                      $api      Main API instance (to enumerate accounts).
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings Plugin settings (emails CPT / screen scoping).
-	 * @param LoggerInterface                    $logger   PSR-3 logger.
-	 * @param Notices                            $notices  The wptrt notices registry (injectable for tests).
+	 * @param LoggerInterface                    $logger       PSR-3 logger.
+	 * @param Notices                            $notices      The wptrt notices registry (injectable for tests).
+	 * @param ?Mailbox_Capabilities              $capabilities This mailbox's capability checks; built from settings when omitted.
 	 */
 	public function __construct(
 		protected API_Interface $api,
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
 		LoggerInterface $logger,
 		protected Notices $notices = new Notices(),
+		?Mailbox_Capabilities $capabilities = null,
 	) {
 		$this->setLogger( $logger );
+		$this->capabilities = $capabilities ?? new Mailbox_Capabilities( $settings );
 	}
+
+	/**
+	 * Decides who sees the notice: whoever may list the mailbox's emails.
+	 *
+	 * @var Mailbox_Capabilities
+	 */
+	protected Mailbox_Capabilities $capabilities;
 
 	/**
 	 * Register the failure notices for rendering on the emails list screen.
@@ -148,7 +159,8 @@ class Admin_Notices {
 				array(
 					'type'          => 'error',
 					'scope'         => 'user',
-					'capability'    => 'edit_posts',
+					// Whoever may list this mailbox's emails; fail closed when the post type is unknown.
+					'capability'    => $this->capabilities->get_list_emails_capability() ?? 'do_not_allow',
 					'option_prefix' => self::DISMISS_OPTION_PREFIX,
 					'screens'       => array( $screen_id ),
 				)
