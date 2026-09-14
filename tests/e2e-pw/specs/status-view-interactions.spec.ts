@@ -19,15 +19,17 @@ async function createAccount(
 	return ( await res.json() ).post_id as number;
 }
 
-/** Waits for the check_account AJAX response for the given account post ID. */
+/** Waits for the account's REST check response (`POST …/{accounts}/{id}/check`). */
 function waitForCheckResponse( page: Page, accountId: number ) {
-	return page.waitForResponse(
-		( res ) =>
-			res.url().includes( 'admin-ajax.php' ) &&
-			( res.request().postData() ?? '' ).includes(
-				`account_post_id=${ accountId }`
-			)
-	);
+	return page.waitForResponse( ( res ) => res.url().includes( `/${ accountId }/check` ) );
+}
+
+/** Delays the account's REST check request so the in-progress UI state can be asserted. */
+async function delayCheckRequest( page: Page, accountId: number, ms: number ) {
+	await page.route( `**/${ accountId }/check`, async ( route ) => {
+		await new Promise( ( r ) => setTimeout( r, ms ) );
+		await route.continue();
+	} );
 }
 
 test.describe( 'Status_View — Check now button', () => {
@@ -35,13 +37,8 @@ test.describe( 'Status_View — Check now button', () => {
 		const email = `check-spinner-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
 
-		// Delay AJAX for this account so we can assert the in-progress state.
-		await page.route( '**/admin-ajax.php', async ( route ) => {
-			if ( ( route.request().postData() ?? '' ).includes( `account_post_id=${ postId }` ) ) {
-				await new Promise( ( r ) => setTimeout( r, 800 ) );
-			}
-			await route.continue();
-		} );
+		// Delay the request for this account so we can assert the in-progress state.
+		await delayCheckRequest( page, postId, 800 );
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
@@ -85,12 +82,7 @@ test.describe( 'Status_View — Check now button', () => {
 		const email = `dismiss-grey-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
 
-		await page.route( '**/admin-ajax.php', async ( route ) => {
-			if ( ( route.request().postData() ?? '' ).includes( `account_post_id=${ postId }` ) ) {
-				await new Promise( ( r ) => setTimeout( r, 3000 ) );
-			}
-			await route.continue();
-		} );
+		await delayCheckRequest( page, postId, 3000 );
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
@@ -172,12 +164,7 @@ test.describe( 'Status_View — Since (clock) button', () => {
 		const email = `since-change-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
 
-		await page.route( '**/admin-ajax.php', async ( route ) => {
-			if ( ( route.request().postData() ?? '' ).includes( `account_post_id=${ postId }` ) ) {
-				await new Promise( ( r ) => setTimeout( r, 600 ) );
-			}
-			await route.continue();
-		} );
+		await delayCheckRequest( page, postId, 600 );
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 

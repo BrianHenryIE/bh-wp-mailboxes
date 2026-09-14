@@ -80,18 +80,12 @@ test.describe( 'Emails list page — row actions', () => {
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		const checkResponse = page.waitForResponse(
-			( res ) =>
-				res.url().includes( 'admin-ajax.php' ) &&
-				( res.request().postData() ?? '' ).includes(
-					`account_post_id=${ accountId }`
-				)
-		);
+		const checkResponse = page.waitForResponse( ( res ) => res.url().includes( `/${ accountId }/check` ) );
 		await page
 			.locator( `.bh-check-account[data-account-id="${ accountId }"]` )
 			.click( { force: true } );
 		const checkBody = await ( await checkResponse ).json();
-		const emailId = checkBody.data.new_email_ids[ 0 ] as number;
+		const emailId = checkBody.new_email_ids[ 0 ] as number;
 		expect( emailId ).toBeTruthy();
 
 		// Reload the list, filtered to this account so the row is on the first page whatever other
@@ -113,11 +107,7 @@ test.describe( 'Emails list page — row actions', () => {
 		// actions are hidden off-screen until hover, so dispatch the click directly to the delegated
 		// handler rather than relying on a viewport-positioned click.
 		page.once( 'dialog', ( dialog ) => dialog.accept() );
-		const deleteResponse = page.waitForResponse(
-			( res ) =>
-				res.url().includes( 'admin-ajax.php' ) &&
-				( res.request().postData() ?? '' ).includes( `post_id=${ emailId }` )
-		);
+		const deleteResponse = page.waitForResponse( ( res ) => res.url().includes( `/${ emailId }/delete-on-server` ) );
 		await deleteOnServer.dispatchEvent( 'click' );
 		await deleteResponse;
 

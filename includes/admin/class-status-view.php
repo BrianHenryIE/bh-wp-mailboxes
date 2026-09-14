@@ -97,6 +97,15 @@ class Status_View {
 	 */
 	public function render_table(): void {
 
+		// WP_List_Table (and the screen functions it uses) are only loaded on admin screens; the REST routes
+		// re-render this table for their responses too.
+		if ( ! class_exists( 'WP_List_Table' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/class-wp-screen.php';
+			require_once ABSPATH . 'wp-admin/includes/screen.php';
+			require_once ABSPATH . 'wp-admin/includes/template.php';
+			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
+		}
+
 		$accounts = $this->api->get_email_accounts();
 
 		echo '<div class="bh-mailboxes-status__toolbar">';

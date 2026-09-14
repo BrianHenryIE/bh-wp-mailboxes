@@ -477,11 +477,7 @@ test.describe( 'Single email view', () => {
 		await page.locator( 'input[name="post_status"][value="bh_email_processed"]' ).check();
 
 		// Save goes through the API (AJAX) rather than the native post save.
-		const updateResponse = page.waitForResponse(
-			( res ) =>
-				res.url().includes( 'admin-ajax.php' ) &&
-				( res.request().postData() ?? '' ).includes( 'bh_wp_mailboxes_update_status' )
-		);
+		const updateResponse = page.waitForResponse( ( res ) => res.url().includes( `/${ postId }/status` ) );
 		await page.locator( '#bh-email-status-box #save' ).click();
 		await updateResponse;
 
@@ -501,14 +497,10 @@ test.describe( 'Single email view', () => {
 		const accountId = ( await accountRes.json() ).post_id as number;
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
-		const checkResponse = page.waitForResponse(
-			( res ) =>
-				res.url().includes( 'admin-ajax.php' ) &&
-				( res.request().postData() ?? '' ).includes( `account_post_id=${ accountId }` )
-		);
+		const checkResponse = page.waitForResponse( ( res ) => res.url().includes( `/${ accountId }/check` ) );
 		await page.locator( `.bh-check-account[data-account-id="${ accountId }"]` ).click( { force: true } );
 		const checkBody = await ( await checkResponse ).json();
-		const emailId = checkBody.data.new_email_ids[ 0 ] as number;
+		const emailId = checkBody.new_email_ids[ 0 ] as number;
 		expect( emailId ).toBeTruthy();
 
 		// Open the fetched email and wait for the on-load remote-status refresh to settle.
@@ -524,11 +516,7 @@ test.describe( 'Single email view', () => {
 		const updateAndReload = async ( value: 'read' | 'unread', actionFragment: string ) => {
 			await openEmail();
 			await page.locator( `input[name="bh_email_remote_read"][value="${ value }"]` ).check( { force: true } );
-			const markResponse = page.waitForResponse(
-				( res ) =>
-					res.url().includes( 'admin-ajax.php' ) &&
-					( res.request().postData() ?? '' ).includes( actionFragment )
-			);
+			const markResponse = page.waitForResponse( ( res ) => res.url().includes( `/${ actionFragment }` ) );
 			await page.locator( '#bh-email-remote-save' ).click( { force: true } );
 			await markResponse;
 
@@ -536,9 +524,9 @@ test.describe( 'Single email view', () => {
 			await expect( page.locator( `input[name="bh_email_remote_read"][value="${ value }"]` ) ).toBeChecked();
 		};
 
-		// "mark_unread" contains "mark_", but only the read action contains "mark_read".
-		await updateAndReload( 'read', 'mark_read' );
-		await updateAndReload( 'unread', 'mark_unread' );
+		// The REST route names: `…/{id}/mark-read` and `…/{id}/mark-unread`.
+		await updateAndReload( 'read', 'mark-read' );
+		await updateAndReload( 'unread', 'mark-unread' );
 	} );
 
 	test( 'a remote action updates the Email Log immediately, without a page reload', async ( { admin, page, request } ) => {
@@ -549,13 +537,9 @@ test.describe( 'Single email view', () => {
 		const accountId = ( await accountRes.json() ).post_id as number;
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
-		const checkResponse = page.waitForResponse(
-			( res ) =>
-				res.url().includes( 'admin-ajax.php' ) &&
-				( res.request().postData() ?? '' ).includes( `account_post_id=${ accountId }` )
-		);
+		const checkResponse = page.waitForResponse( ( res ) => res.url().includes( `/${ accountId }/check` ) );
 		await page.locator( `.bh-check-account[data-account-id="${ accountId }"]` ).click( { force: true } );
-		const emailId = ( await ( await checkResponse ).json() ).data.new_email_ids[ 0 ] as number;
+		const emailId = ( await ( await checkResponse ).json() ).new_email_ids[ 0 ] as number;
 		expect( emailId ).toBeTruthy();
 
 		await admin.visitAdminPage( 'post.php', `post=${ emailId }&action=edit` );

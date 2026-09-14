@@ -96,6 +96,8 @@ class Emails_List_Page_Unit_Test extends Unit_Testcase {
 
 		// The scoped AJAX action names + remote-action nonce are localised for the JS (see Email_Account_Modal::enqueue_assets()).
 		\WP_Mock::userFunction( 'wp_create_nonce', array( 'return' => 'test-nonce' ) );
+		\WP_Mock::userFunction( 'rest_url', array( 'return' => 'https://example.org/wp-json/test-plugin/v2' ) );
+		\WP_Mock::passthruFunction( 'esc_url_raw' );
 		\WP_Mock::userFunction( 'wp_localize_script' );
 		\WP_Mock::userFunction( 'wp_script_is', array( 'return' => false ) );
 		\WP_Mock::userFunction( 'wp_enqueue_style', array( 'times' => 2 ) );
@@ -118,6 +120,10 @@ class Emails_List_Page_Unit_Test extends Unit_Testcase {
 		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $emails_cpt_underscored );
 		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( 'test_accounts_cpt' );
 		$settings->allows( 'get_email_accounts_cpt_dashed' )->andReturn( 'test-accounts-cpt' );
+		// The REST routes' namespace and bases are localised for the JS.
+		$settings->allows( 'get_emails_cpt_dashed' )->andReturn( 'test-cpt' );
+		$settings->allows( 'get_rest_namespace' )->andReturn( null );
+		$settings->allows( 'get_plugin_slug' )->andReturn( 'test-plugin' );
 
 		$sut = $this->get_sut( settings: $settings );
 
