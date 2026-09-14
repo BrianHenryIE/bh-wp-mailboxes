@@ -9,6 +9,7 @@ namespace BrianHenryIE\WP_Mailboxes\API;
 
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Email_Controller_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Account_Result;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Mailbox_Result;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result;
@@ -58,9 +59,9 @@ interface API_Interface {
 	 * @param BH_Email_Account $account The account the email was filed under.
 	 * @param BH_Email         $email   The newly saved email.
 	 *
-	 * @return New_Email_Interface The wrapper object the action was fired with.
+	 * @return Email_Controller_Interface The controller the action was fired with.
 	 */
-	public function alert_new_email( BH_Email_Account $account, BH_Email $email ): New_Email_Interface;
+	public function alert_new_email( BH_Email_Account $account, BH_Email $email ): Email_Controller_Interface;
 
 	/**
 	 * Mark the email as read on its remote server and update local post meta.
@@ -96,11 +97,19 @@ interface API_Interface {
 	 *
 	 * TODO: abstract post_id and return BH_Email with BH_Email::$notes array.
 	 *
-	 * @param int    $post_id The email CPT post ID.
-	 * @param string $message The note text.
-	 * @param string $level   Log level: `info`, `notice`, `warning`, or `error`.
+	 * @param int                 $post_id The email CPT post ID.
+	 * @param string              $message The note text.
+	 * @param string              $level   Log level: `info`, `notice`, `warning`, or `error`.
+	 * @param array<string,mixed> $context Arbitrary serializable data stored with the note.
 	 */
-	public function insert_email_log_note( int $post_id, string $message, string $level = 'info' ): void;
+	public function insert_email_log_note( int $post_id, string $message, string $level = 'info', array $context = array() ): void;
+
+	/**
+	 * A stored email by post id, or null when there is no such email in this mailbox.
+	 *
+	 * @param int $post_id The email post id.
+	 */
+	public function get_email( int $post_id ): ?BH_Email;
 
 	/**
 	 * Return the email account for an email post, or null if the post/parent was deleted.

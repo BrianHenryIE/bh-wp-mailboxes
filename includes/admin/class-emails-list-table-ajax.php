@@ -9,7 +9,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Account_Result;
-use BrianHenryIE\WP_Mailboxes\API\New_Email_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Controller\Email_Controller_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -63,7 +63,7 @@ class Emails_List_Table_Ajax {
 		$payload = array(
 			'new_email_count' => count( $result->get_emails() ),
 			// Post IDs of the new emails, so the JS can highlight their rows in the list table.
-			'new_email_ids'   => array_map( fn( New_Email_Interface $email ): int => $email->get_email()->get_post_id(), $result->get_emails() ),
+			'new_email_ids'   => array_map( fn( Email_Controller_Interface $email ): int => $email->get_email()->get_post_id(), $result->get_emails() ),
 			'accounts'        => array_map(
 				fn( Check_Email_Account_Result $account_result ): array => array(
 					'account_post_id' => $account_result->bh_account->get_post_id(),

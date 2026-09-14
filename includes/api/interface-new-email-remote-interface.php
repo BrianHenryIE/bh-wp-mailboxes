@@ -1,26 +1,20 @@
 <?php
 /**
- * Remote (server-side) actions for a downloaded email: delete, mark read, mark unread.
+ * Former name of {@see Remote_Email_Controller_Interface}, kept so consumers' type hints keep working.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes\API;
 
-interface New_Email_Remote_Interface {
+use BrianHenryIE\WP_Mailboxes\API\Controller\Remote_Email_Controller_Interface;
 
-	/**
-	 * Delete the email on the server via a remote IMAP/API call.
-	 */
-	public function delete_on_server(): self;
-
-	/**
-	 * Mark the email read on the server via a remote IMAP/API call.
-	 */
-	public function mark_read_on_server(): self;
-
-	/**
-	 * Mark the email as unread on the server via a remote IMAP/API call.
-	 */
-	public function mark_unread_on_server(): self;
+/**
+ * The remote email controller interface under its former name.
+ *
+ * @deprecated Use {@see Remote_Email_Controller_Interface}.
+ */
+interface New_Email_Remote_Interface extends New_Email_Interface, Remote_Email_Controller_Interface {
 }

@@ -49,7 +49,7 @@ Credentials are saved by the library, encrypted, using the [WordPress Secrets AP
 The Secrets API derives its encryption key from `LOGGED_IN_KEY`/`LOGGED_IN_SALT`, or from a `WP_SECRETS_KEY` constant (base64-encoded 32 bytes) when defined; a site whose `wp-config.php` still has the sample placeholders (e.g. WordPress Playground) must define `WP_SECRETS_KEY` or saving fails with a logged error.
 
 Saved mailboxes are checked on a cron job for new emails. When a new email is downloaded, the library fires `bh_wp_mailboxes_new_email` for you to listen for.  
-Use the methods on `New_Email_Interface` to read the email, log any action taken, and maybe mark it to be saved 
+Use the methods on `Email_Controller_Interface` (a `Remote_Email_Controller_Interface` when the account's connection can act on the server) to read the email, log any action taken, and maybe mark it to be saved 
 
 ## Connection Types
 

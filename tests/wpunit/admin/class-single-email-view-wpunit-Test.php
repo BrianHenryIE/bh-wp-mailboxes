@@ -153,7 +153,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		);
 
 		$filepath = codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
-		$bh_email = BH_Email_Fixture::make_from_file( $filepath );
+		$bh_email = BH_Email_Fixture::make_from_file( $filepath, BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		$post = get_post( $post_id );
@@ -192,7 +192,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		$post     = get_post( $post_id );
 
@@ -219,13 +219,13 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		// Post from plain-text-only fixture (non-multipart, no HTML part).
 
 		$filepath        = codecept_root_dir( 'tests/_data/wpunit/non-multipart.eml' );
-		$bh_email        = BH_Email_Fixture::make_from_file( $filepath );
+		$bh_email        = BH_Email_Fixture::make_from_file( $filepath, BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id_no_html = $bh_email->post_id;
 		$post_no_html    = get_post( $post_id_no_html );
 
 		// Post from HTML+plain-text fixture (has an HTML part).
 		$filepath          = codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
-		$bh_email          = BH_Email_Fixture::make_from_file( $filepath );
+		$bh_email          = BH_Email_Fixture::make_from_file( $filepath, BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id_with_html = $bh_email->post_id;
 		$post_with_html    = get_post( $post_id_with_html );
 
@@ -371,7 +371,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		update_post_meta( $post_id, 'Date', 'Wed, 30 Jul 2025 03:38:07 +0000' );
@@ -399,7 +399,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		$post     = get_post( $post_id );
 
@@ -425,7 +425,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		update_post_meta( $post_id, 'is_remote_read', 'yes' );
 		$post = get_post( $post_id );
@@ -456,7 +456,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		update_post_meta( $post_id, 'is_remote_read', 'no' );
 		$post = get_post( $post_id );
@@ -487,7 +487,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		$post     = get_post( $post_id );
 
@@ -519,7 +519,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		update_post_meta( $post_id, 'bh_email_is_read', '0' );
@@ -573,7 +573,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		update_post_meta( $post_id, 'is_remote_deleted', 'yes' );
 		$post = get_post( $post_id );
@@ -608,7 +608,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		$post = get_post( $post_id );
@@ -637,7 +637,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		$post     = get_post( $post_id );
 

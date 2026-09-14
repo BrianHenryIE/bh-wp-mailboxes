@@ -15,6 +15,7 @@ use BrianHenryIE\WP_Mailboxes\API\Factories\New_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\BH_WP_Mailboxes_Settings_Fixture;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads;
 
@@ -72,7 +73,7 @@ class API_WPUnit_Test extends WPUnit_Testcase {
 			$this->logger,
 		);
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		$api = $this->get_api( email_repository: $repository );
