@@ -1,7 +1,6 @@
 <?php
 /**
- * Saves and tests IMAP accounts from the add/edit form's fields: the logic behind the REST account routes
- * (and, until they are removed, the admin-ajax handlers).
+ * Saves and tests IMAP accounts from the add/edit form's fields: the logic behind the REST account routes.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */

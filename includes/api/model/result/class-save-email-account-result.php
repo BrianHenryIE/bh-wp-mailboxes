@@ -12,7 +12,7 @@ namespace BrianHenryIE\WP_Mailboxes\API\Model\Result;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 
 /**
- * Returned by {@see \BrianHenryIE\WP_Mailboxes\Admin\Email_Accounts_Ajax::save()}.
+ * Returned by {@see \BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Manager::save()}.
  */
 readonly class Save_Email_Account_Result {
 
