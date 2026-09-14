@@ -130,6 +130,24 @@ class BH_Email_CPT {
 	}
 
 	/**
+	 * Restore a trashed email to the status it had before trashing (new / processed / saved), not WordPress's
+	 * default `draft`, which the emails list does not show.
+	 *
+	 * @hooked wp_untrash_post_status
+	 *
+	 * @param string $new_status      The status WordPress would restore to (`draft`).
+	 * @param int    $post_id         The post being restored.
+	 * @param string $previous_status Its status before it was trashed.
+	 */
+	public function restore_status_on_untrash( string $new_status, int $post_id, string $previous_status ): string {
+		if ( get_post_type( $post_id ) !== $this->settings->get_emails_cpt_underscored_20() ) {
+			return $new_status;
+		}
+
+		return in_array( $previous_status, array( 'bh_email_new', 'bh_email_processed', 'bh_email_saved' ), true ) ? $previous_status : $new_status;
+	}
+
+	/**
 	 * Register custom post statuses for emails.
 	 *
 	 * - bh_email_new:       Freshly downloaded, not yet acted on.
