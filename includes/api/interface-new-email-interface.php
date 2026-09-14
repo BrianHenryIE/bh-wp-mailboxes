@@ -39,12 +39,21 @@ interface New_Email_Interface {
 	public function add_local_note( string $message, string $level = 'notice', array $context = array() ): self;
 
 	/**
-	 * Trash the local email immediately.
+	 * Move the local email post to the trash. Its attachments and log notes are kept, so it can be restored.
 	 *
 	 * Antithetical to logging the emails, but available to the consumers.
+	 */
+	public function trash_local_email_post(): void;
+
+	/**
+	 * Permanently delete the local email post, with its attachments (posts and files) and log notes.
+	 */
+	public function delete_local_email_post(): void;
+
+	/**
+	 * Trash the local email.
 	 *
-	 * TODO: make sure comments and attachments get deleted too.
-	 * TODO: also don't use wp_delete_post here.
+	 * @deprecated Use {@see self::trash_local_email_post()} (or `delete_local_email_post()` to delete permanently).
 	 */
 	public function trash_locally(): self;
 }
