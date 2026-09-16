@@ -17,6 +17,7 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\BH_WP_Mailboxes_Settings_Fixture;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 
@@ -666,5 +667,75 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'bh-email-delete-on-server', $html );
+	}
+
+	/**
+	 * On the email's edit screen the inline config the script reads carries the post id, the mailbox's REST
+	 * root and route base, and a cookie-auth nonce.
+	 *
+	 * @covers ::enqueue_scripts
+	 * @covers \BrianHenryIE\WP_Mailboxes\REST\REST_Namespace::url
+	 */
+	public function test_enqueue_scripts_adds_the_rest_config_on_the_edit_screen(): void {
+		$this->register_cpt();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
+
+		$settings = $this->makeEmpty(
+			BH_WP_Mailboxes_Settings_Interface::class,
+			array(
+				'get_emails_cpt_underscored_20' => fn() => $this->post_type,
+				'get_emails_cpt_dashed'         => fn() => 'test-mailbox-emails',
+				'get_plugin_slug'               => fn() => 'test-plugin',
+				'get_rest_namespace'            => fn() => null,
+			)
+		);
+		$sut      = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger );
+
+		// The inline config is attached to core's `post` script; another test may have replaced the scripts registry.
+		if ( ! wp_script_is( 'post', 'registered' ) ) {
+			wp_register_script( 'post', admin_url( 'js/post.js' ), array(), '1', true );
+		}
+
+		// The single-post edit screen for this CPT, with the email as the current post.
+		set_current_screen( $this->post_type );
+		$GLOBALS['post'] = get_post( $bh_email->post_id );
+		setup_postdata( $GLOBALS['post'] );
+		try {
+			$sut->enqueue_scripts();
+			$after = wp_scripts()->get_data( 'post', 'after' );
+		} finally {
+			wp_reset_postdata();
+			unset( $GLOBALS['post'] );
+			set_current_screen( 'front' );
+		}
+
+		$this->assertIsArray( $after );
+		$config = array_values( array_filter( $after, fn( $script ) => is_string( $script ) && str_starts_with( $script, 'var bhWpMailboxesSingleEmail = ' ) ) );
+		$this->assertCount( 1, $config );
+		$decoded = json_decode( substr( $config[0], strlen( 'var bhWpMailboxesSingleEmail = ' ), -1 ), true );
+		$this->assertSame( $bh_email->post_id, $decoded['postId'] );
+		$this->assertSame( rest_url( 'test-plugin/v2' ), $decoded['restRoot'] );
+		$this->assertSame( 'test-mailbox-emails', $decoded['emailsBase'] );
+		$this->assertSame( 1, wp_verify_nonce( $decoded['restNonce'], 'wp_rest' ) );
+	}
+
+	/**
+	 * Nothing is enqueued away from the email edit screen.
+	 *
+	 * @covers ::enqueue_scripts
+	 */
+	public function test_enqueue_scripts_does_nothing_on_other_screens(): void {
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+
+		// Scripts persist across tests in the process, so compare before and after.
+		$before = wp_scripts()->get_data( 'post', 'after' );
+		set_current_screen( 'edit-post' );
+		try {
+			$sut->enqueue_scripts();
+		} finally {
+			set_current_screen( 'front' );
+		}
+
+		$this->assertSame( $before, wp_scripts()->get_data( 'post', 'after' ), 'Nothing added on the list screen.' );
 	}
 }

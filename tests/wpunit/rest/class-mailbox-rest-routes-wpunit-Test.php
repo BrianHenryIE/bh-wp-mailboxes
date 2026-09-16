@@ -36,7 +36,14 @@ use WP_REST_Request;
 use WP_REST_Response;
 
 /**
- * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\REST\Emails_REST_Controller
+ * Requests are dispatched through the REST server, so every line the routes execute in the controllers,
+ * their base class and the account manager is credited to these tests (class-level `@covers`).
+ *
+ * @covers \BrianHenryIE\WP_Mailboxes\REST\Emails_REST_Controller
+ * @covers \BrianHenryIE\WP_Mailboxes\REST\Email_Accounts_REST_Controller
+ * @covers \BrianHenryIE\WP_Mailboxes\REST\Mailbox_REST_Controller
+ * @covers \BrianHenryIE\WP_Mailboxes\REST\REST_Namespace
+ * @covers \BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Manager
  */
 class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 
@@ -155,8 +162,8 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 		$account = BH_Email_Account_Fixture::make( post_id: $post_id, post_type: "mb_{$name}_accounts", email_address: "inbox-{$name}@example.com" );
 
 		$api = $this->mailboxes[ $name ]['api'];
-		$api->allows( 'get_email_accounts' )->andReturn( array( $account ) );
-		$api->allows( 'get_connection_for_email_account' )->andReturn( Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class ) );
+		$api->allows( 'get_email_accounts' )->andReturn( array( $account ) )->byDefault();
+		$api->allows( 'get_connection_for_email_account' )->andReturn( Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class ) )->byDefault();
 
 		return $post_id;
 	}
@@ -254,8 +261,6 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * The invariant behind "capability checks on every read and every action": no route in either
 	 * namespace is registered with `__return_true` or without a permission callback.
-	 *
-	 * @coversNothing
 	 */
 	public function test_every_route_has_a_real_permission_callback(): void {
 		$routes = rest_get_server()->get_routes();
@@ -282,8 +287,6 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 
 	/**
 	 * Anonymous requests are 401 on every route.
-	 *
-	 * @coversNothing
 	 */
 	public function test_anonymous_is_401_everywhere(): void {
 		$email      = $this->make_email( 'a' );
@@ -309,8 +312,6 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 
 	/**
 	 * A subscriber is 403 on every route.
-	 *
-	 * @coversNothing
 	 */
 	public function test_subscriber_is_403_everywhere(): void {
 		$email      = $this->make_email( 'a' );
@@ -336,8 +337,6 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 
 	/**
 	 * An administrator is 2xx on every route.
-	 *
-	 * @coversNothing
 	 */
 	public function test_administrator_is_2xx_everywhere(): void {
 		$email      = $this->make_email( 'a' );
@@ -363,8 +362,6 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * The one that proves "mailbox-scoped" is real: a user granted mailbox A's capabilities through the
 	 * filter is 200 on A's routes and 403 on B's, for the same user.
-	 *
-	 * @coversNothing
 	 */
 	public function test_grant_on_one_mailbox_gives_nothing_on_the_other(): void {
 		$email_a = $this->make_email( 'a' );
@@ -387,8 +384,6 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * A valid-looking id of another post type (another mailbox's email, a page) is 404 on a per-id route,
 	 * even for an administrator: the route never acts on someone else's post.
-	 *
-	 * @covers ::item_permissions_check
 	 */
 	public function test_ids_of_other_post_types_are_404(): void {
 		$email_b = $this->make_email( 'b' );
@@ -404,12 +399,6 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 
 	/**
 	 * Characterization of the response shapes the admin JavaScript reads.
-	 *
-	 * @covers ::get_item
-	 * @covers ::get_remote_status
-	 * @covers ::remote_action
-	 * @covers ::update_status
-	 * @covers ::check
 	 */
 	public function test_response_shapes(): void {
 		$email = $this->make_email( 'a' );
@@ -447,8 +436,6 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 
 	/**
 	 * A remote-action failure is a 502, not a success with a quiet log note.
-	 *
-	 * @covers ::remote_action
 	 */
 	public function test_remote_action_failure_is_502(): void {
 		$email = $this->make_email( 'a' );
@@ -464,8 +451,6 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Account route shapes: the failed connection test and the failed check are reported in the body,
 	 * not as HTTP errors; save answers 201 for a new account with the connection result and table.
-	 *
-	 * @coversNothing
 	 */
 	public function test_account_response_shapes(): void {
 		$account_id = $this->make_account( 'a' );
@@ -516,5 +501,259 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( array( 'account_post_id', 'created', 'connection', 'table_html' ), array_keys( $save->get_data() ) );
 
 		$this->assertSame( 400, $this->request( 'POST', '/mb-a/v2/mb-a-accounts', array( 'email_address' => 'not-an-email' ) )->get_status(), 'Validation failures are 400.' );
+	}
+
+	/**
+	 * DELETE trashes by default and deletes permanently with `force`; a refused trash is a 500.
+	 */
+	public function test_delete_trashes_or_force_deletes(): void {
+		$this->login_as( 'administrator' );
+
+		$trashed  = $this->make_email( 'a' );
+		$response = $this->request( 'DELETE', "/mb-a/v2/mb-a-emails/{$trashed->get_post_id()}" );
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame(
+			array(
+				'deleted' => true,
+				'trashed' => true,
+				'id'      => $trashed->get_post_id(),
+			),
+			$response->get_data()
+		);
+		$this->assertSame( 'trash', get_post_status( $trashed->get_post_id() ) );
+
+		$deleted  = $this->make_email( 'a' );
+		$response = $this->request( 'DELETE', "/mb-a/v2/mb-a-emails/{$deleted->get_post_id()}", array( 'force' => true ) );
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertFalse( $response->get_data()['trashed'] );
+		$this->assertNull( get_post( $deleted->get_post_id() ) );
+
+		$refused = $this->make_email( 'a' );
+		add_filter( 'pre_trash_post', '__return_false' );
+		try {
+			$response = $this->request( 'DELETE', "/mb-a/v2/mb-a-emails/{$refused->get_post_id()}" );
+		} finally {
+			remove_filter( 'pre_trash_post', '__return_false' );
+		}
+		$this->assertSame( 500, $response->get_status() );
+		$this->assertSame( 'bh_wp_mailboxes_delete_failed', $response->get_data()['code'] );
+	}
+
+	/**
+	 * "Check all" reports a failed account in the body with a summary message, still as a 200.
+	 */
+	public function test_check_reports_failures_in_the_body(): void {
+		$this->login_as( 'administrator' );
+		$account = BH_Email_Account_Fixture::make( post_id: 7, display_name: 'Broken' );
+		$this->mailboxes['a']['api']->allows( 'check_email' )->andReturn(
+			new Check_Mailbox_Result(
+				success: false,
+				accounts: array( $account ),
+				account_results: array(
+					new Check_Email_Account_Result( bh_account: $account, success: false, message: 'Login failed' ),
+					new Check_Email_Account_Result( bh_account: $account, success: false, skipped: true, message: 'Disabled' ),
+				)
+			)
+		);
+
+		$data = $this->request( 'POST', '/mb-a/v2/mb-a-emails/check' )->get_data();
+
+		$this->assertFalse( $data['success'] );
+		$this->assertSame( 0, $data['new_email_count'] );
+		$this->assertSame( array( 'failed', 'skipped' ), array_column( $data['accounts'], 'status' ) );
+		$this->assertSame( 'Login failed', $data['accounts'][0]['message'] );
+		$this->assertSame( '1 of 2 accounts could not be checked.', $data['message'] );
+	}
+
+	/**
+	 * `per_page` bounds the list.
+	 */
+	public function test_list_passes_per_page_to_the_api(): void {
+		$email = $this->make_email( 'a' );
+		$this->mailboxes['a']['api']->expects( 'get_downloaded_emails' )->with( 5 )->once()->andReturn( array( $email ) );
+		$this->login_as( 'administrator' );
+
+		$request = new WP_REST_Request( 'GET', '/mb-a/v2/mb-a-emails' );
+		$request->set_query_params( array( 'per_page' => 5 ) );
+		$data = rest_do_request( $request )->get_data();
+
+		$this->assertCount( 1, $data );
+		$this->assertSame( $email->get_post_id(), $data[0]['id'] );
+	}
+
+	/**
+	 * Account save: an unexpected failure while saving is a 500 (validation failures are 400, tested above).
+	 */
+	public function test_save_unexpected_failure_is_500(): void {
+		$api = $this->mailboxes['a']['api'];
+		$api->allows( 'get_account_credentials' )->andReturn( null );
+		$api->allows( 'configure_email_account' )->andThrow( new RuntimeException( 'wp_insert_post failed' ) );
+		$this->login_as( 'administrator' );
+
+		$response = $this->request(
+			'POST',
+			'/mb-a/v2/mb-a-accounts',
+			array(
+				'email_address' => 'new@example.com',
+				'server'        => 'imap.example.com',
+				'password'      => 'pw',
+			)
+		);
+
+		$this->assertSame( 500, $response->get_status() );
+		$this->assertSame( 'bh_wp_mailboxes_save_failed', $response->get_data()['code'] );
+		$this->assertTrue( $this->logger->hasErrorThatContains( 'wp_insert_post failed' ) );
+	}
+
+	/**
+	 * Account save: the form's encryption choice reaches the saved credentials, including "none" (an
+	 * explicit empty value), while an omitted field defaults to TLS.
+	 */
+	public function test_save_passes_the_encryption_choice_through(): void {
+		$api = $this->mailboxes['a']['api'];
+		$api->allows( 'get_account_credentials' )->andReturn( null );
+		$api->allows( 'configure_email_account' )->andReturnUsing( fn() => BH_Email_Account_Fixture::make() );
+		$api->allows( 'test_connection' )->andReturn( new Test_Connection_Result( success: true, message: 'ok' ) );
+		$encryptions = array();
+		$api->allows( 'save_account_credentials' )->andReturnUsing(
+			function ( $account, $credentials ) use ( &$encryptions ): void {
+				$encryptions[] = $credentials->get_encryption();
+			}
+		);
+		$this->login_as( 'administrator' );
+
+		$fields = array(
+			'email_address' => 'new@example.com',
+			'server'        => 'imap.example.com',
+			'password'      => 'pw',
+		);
+		$this->assertSame( 201, $this->request( 'POST', '/mb-a/v2/mb-a-accounts', $fields )->get_status() );
+		$this->assertSame( 201, $this->request( 'POST', '/mb-a/v2/mb-a-accounts', $fields + array( 'encryption' => '' ) )->get_status() );
+		$this->assertSame( 201, $this->request( 'POST', '/mb-a/v2/mb-a-accounts', $fields + array( 'encryption' => 'STARTTLS' ) )->get_status() );
+
+		$this->assertSame( array( 'TLS', '', 'STARTTLS' ), $encryptions );
+	}
+
+	/**
+	 * Test connection: invalid input is a 400.
+	 */
+	public function test_test_connection_validation_failure_is_400(): void {
+		$this->mailboxes['a']['api']->allows( 'get_account_credentials' )->andReturn( null );
+		$this->login_as( 'administrator' );
+
+		$response = $this->request( 'POST', '/mb-a/v2/mb-a-accounts/test-connection', array( 'email_address' => 'not-an-email' ) );
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertStringContainsString( 'valid email address', $response->get_data()['message'] );
+	}
+
+	/**
+	 * Check one account: a valid `since_date` reaches the API, and the success body lists the new email ids.
+	 */
+	public function test_check_account_since_date_and_success_shape(): void {
+		$account_id = $this->make_account( 'a' );
+		$email      = $this->make_email( 'a' );
+		$since_seen = null;
+		$this->mailboxes['a']['api']->allows( 'check_email_for_account' )->andReturnUsing(
+			function ( $account, $since ) use ( &$since_seen, $email ) {
+				$since_seen = $since;
+				return new Check_Email_Account_Result( bh_account: $account, success: true, bh_emails: array( $email ), warnings: array( 'a warning' ) );
+			}
+		);
+		$this->login_as( 'administrator' );
+
+		$response = $this->request( 'POST', "/mb-a/v2/mb-a-accounts/{$account_id}/check", array( 'since_date' => '2026-01-31' ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertInstanceOf( \DateTimeImmutable::class, $since_seen );
+		$this->assertSame( '2026-01-31', $since_seen->format( 'Y-m-d' ) );
+		$this->assertSame( array( 'success', 'new_email_count', 'new_email_ids', 'warnings', 'last_fetched' ), array_keys( $response->get_data() ) );
+		$this->assertSame( array( $email->get_post_id() ), $response->get_data()['new_email_ids'] );
+		$this->assertSame( array( 'a warning' ), $response->get_data()['warnings'] );
+	}
+
+	/**
+	 * A receive-only account (no {@see Supports_Fetching}) can be neither checked nor deleted: 400.
+	 */
+	public function test_receive_only_account_cannot_be_checked_or_deleted(): void {
+		$account_id = $this->make_account( 'a' );
+		$this->mailboxes['a']['api']->allows( 'get_connection_for_email_account' )->andReturn( Mockery::mock( Email_Connection_Interface::class ) );
+		$this->login_as( 'administrator' );
+
+		$check = $this->request( 'POST', "/mb-a/v2/mb-a-accounts/{$account_id}/check" );
+		$this->assertSame( 400, $check->get_status() );
+		$this->assertSame( 'bh_wp_mailboxes_receive_only', $check->get_data()['code'] );
+
+		$delete = $this->request( 'DELETE', "/mb-a/v2/mb-a-accounts/{$account_id}" );
+		$this->assertSame( 400, $delete->get_status() );
+		$this->assertSame( 'bh_wp_mailboxes_receive_only', $delete->get_data()['code'] );
+	}
+
+	/**
+	 * Enable/disable: the success body carries the new state and the table; an API failure is a 500; an
+	 * account the API no longer finds is a 404.
+	 */
+	public function test_set_active_outcomes(): void {
+		$account_id = $this->make_account( 'a' );
+		$api        = $this->mailboxes['a']['api'];
+		$this->login_as( 'administrator' );
+
+		$api->allows( 'set_email_account_active' )->andReturnUsing( fn() => BH_Email_Account_Fixture::make() )->byDefault();
+		$ok = $this->request( 'POST', "/mb-a/v2/mb-a-accounts/{$account_id}/active", array( 'active' => false ) );
+		$this->assertSame( 200, $ok->get_status() );
+		$this->assertFalse( $ok->get_data()['active'] );
+		$this->assertArrayHasKey( 'table_html', $ok->get_data() );
+
+		$api->allows( 'set_email_account_active' )->andReturn( null )->byDefault();
+		$this->assertSame( 404, $this->request( 'POST', "/mb-a/v2/mb-a-accounts/{$account_id}/active", array( 'active' => true ) )->get_status() );
+
+		$api->allows( 'set_email_account_active' )->andThrow( new RuntimeException( 'db gone' ) )->byDefault();
+		$failed = $this->request( 'POST', "/mb-a/v2/mb-a-accounts/{$account_id}/active", array( 'active' => true ) );
+		$this->assertSame( 500, $failed->get_status() );
+		$this->assertSame( 'bh_wp_mailboxes_status_failed', $failed->get_data()['code'] );
+	}
+
+	/**
+	 * Delete account: success carries the table; a refused delete is a 500.
+	 */
+	public function test_delete_account_outcomes(): void {
+		$account_id = $this->make_account( 'a' );
+		$api        = $this->mailboxes['a']['api'];
+		$this->login_as( 'administrator' );
+
+		$api->allows( 'delete_email_account' )->andReturn( false )->byDefault();
+		$refused = $this->request( 'DELETE', "/mb-a/v2/mb-a-accounts/{$account_id}" );
+		$this->assertSame( 500, $refused->get_status() );
+		$this->assertSame( 'bh_wp_mailboxes_delete_failed', $refused->get_data()['code'] );
+
+		$api->allows( 'delete_email_account' )->andReturn( true )->byDefault();
+		$deleted = $this->request( 'DELETE', "/mb-a/v2/mb-a-accounts/{$account_id}" );
+		$this->assertSame( 200, $deleted->get_status() );
+		$this->assertTrue( $deleted->get_data()['deleted'] );
+		$this->assertArrayHasKey( 'table_html', $deleted->get_data() );
+	}
+
+	/**
+	 * An account that vanishes between the permission check and the callback is an exception, not a
+	 * silent no-op.
+	 */
+	public function test_account_vanishing_before_the_callback_throws(): void {
+		$settings = $this->mailboxes['a']['settings'];
+		$manager  = Mockery::mock( Email_Account_Manager::class );
+		$manager->allows( 'find_account_by_post_id' )->andReturn( null );
+
+		$controller = new Email_Accounts_REST_Controller(
+			$this->mailboxes['a']['api'],
+			$manager,
+			new Status_View( $this->mailboxes['a']['api'], $settings, $this->mailboxes['a']['repository'], $this->logger ),
+			$settings,
+			new Mailbox_Capabilities( $settings ),
+			$this->logger
+		);
+		$request    = new WP_REST_Request( 'POST', '/mb-a/v2/mb-a-accounts/123/check' );
+		$request->set_param( 'id', 123 );
+
+		$this->expectException( \InvalidArgumentException::class );
+		$controller->check( $request );
 	}
 }

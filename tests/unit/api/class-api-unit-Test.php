@@ -1056,4 +1056,65 @@ class API_Unit_Test extends Unit_Testcase {
 		$this->assertTrue( $result->success );
 		$this->assertSame( $email_account, $this->credentials_requested_for );
 	}
+
+	/**
+	 * A remote action that fails on the mail server records an error note on the email and rethrows, so a
+	 * caller (the REST route) reports the failure instead of a quiet success.
+	 *
+	 * @covers ::perform_remote_email_action
+	 * @covers ::mark_email_read
+	 * @covers ::mark_email_unread
+	 * @covers ::delete_email_on_server
+	 *
+	 * @dataProvider remote_action_failures
+	 *
+	 * @param string $method            The API method.
+	 * @param string $connection_method The connection method that fails.
+	 * @param string $note              The error note recorded.
+	 */
+	public function test_failed_remote_action_records_a_note_and_rethrows( string $method, string $connection_method, string $note ): void {
+		$email_account = BH_Email_Account_Fixture::make();
+		$email         = BH_Email_Fixture::new(
+			post_id: 42,
+			post_type: 'test_emails',
+			email_account_local_id: $email_account->get_post_id(),
+			imessage: Mockery::mock( \ZBateson\MailMimeParser\IMessage::class ),
+			message_id: 'm@example.org',
+			subject: 'Hi',
+			from_email: 'a@example.org',
+			remote_coordinates: new Remote_Email_Coordinates( message_id: 'm@example.org', remote_uid: '7' ),
+		);
+
+		$connection = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$connection->expects( $connection_method )->once()->andThrow( new \RuntimeException( 'IMAP said no.' ) );
+		WP_Mock::onFilter( 'bh_wp_mailboxes_connection_for_account' )
+				->with( null, 'test-plugin', 'test_emails', $email_account )
+				->reply( $connection );
+
+		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
+		$email_account_repository->allows( 'find_by_post_id' )->andReturn( $email_account );
+
+		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
+		$email_repository->allows( 'find_by_post_id' )->with( 42 )->andReturn( $email );
+		$email_repository->expects( 'update' )->never();
+		$email_repository->expects( 'log' )->with( $email, $note, false, array(), 'error' )->once();
+
+		$sut = $this->get_api( email_repository: $email_repository, email_account_repository: $email_account_repository );
+
+		$this->expectException( \RuntimeException::class );
+		$this->expectExceptionMessage( 'IMAP said no.' );
+
+		$sut->$method( $email );
+	}
+
+	/**
+	 * @return array<string, array{0: string, 1: string, 2: string}>
+	 */
+	public function remote_action_failures(): array {
+		return array(
+			'mark read'        => array( 'mark_email_read', 'set_is_marked_read', 'Failed to mark as read on server.' ),
+			'mark unread'      => array( 'mark_email_unread', 'set_is_marked_read', 'Failed to mark as unread on server.' ),
+			'delete on server' => array( 'delete_email_on_server', 'do_delete_on_server', 'Failed to delete email on server.' ),
+		);
+	}
 }

@@ -31,6 +31,7 @@ use Mockery;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Admin\Email_Accounts_Ajax
+ * @covers \BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Manager
  */
 class Email_Accounts_Ajax_WPUnit_Test extends WPUnit_Testcase {
 
