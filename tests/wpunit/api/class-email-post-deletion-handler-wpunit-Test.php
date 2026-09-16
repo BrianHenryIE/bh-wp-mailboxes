@@ -82,9 +82,39 @@ class Email_Post_Deletion_Handler_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->repository = new Email_WP_Post_Repository( self::POST_TYPE, new BH_Email_Factory( $this->logger ), $this->logger );
 
-		$this->callback = ( new Email_Post_Deletion_Handler( $this->settings, $this->logger ) )->delete_attachments( ... );
+		$handler        = new Email_Post_Deletion_Handler( $this->settings, $this->logger );
+		$this->callback = $handler->delete_attachments( ... );
 		add_action( 'before_delete_post', $this->callback, 10, 2 );
+
+		// The trash/restore cascade, as the hooks class wires it.
+		$this->trash_callback           = $handler->trash_attachments( ... );
+		$this->untrash_callback         = $handler->untrash_attachments( ... );
+		$this->attachment_status_filter = $handler->restore_attachment_status_on_untrash( ... );
+		add_action( 'trashed_post', $this->trash_callback );
+		add_action( 'untrashed_post', $this->untrash_callback );
+		add_filter( 'wp_untrash_post_status', $this->attachment_status_filter, 10, 3 );
 	}
+
+	/**
+	 * The trash cascade callback, removed in tearDown.
+	 *
+	 * @var callable
+	 */
+	protected $trash_callback;
+
+	/**
+	 * The restore cascade callback, removed in tearDown.
+	 *
+	 * @var callable
+	 */
+	protected $untrash_callback;
+
+	/**
+	 * The attachment untrash-status filter, removed in tearDown.
+	 *
+	 * @var callable
+	 */
+	protected $attachment_status_filter;
 
 	/**
 	 * The untrash-status filter, removed in tearDown.
@@ -96,6 +126,9 @@ class Email_Post_Deletion_Handler_WPUnit_Test extends WPUnit_Testcase {
 	protected function tearDown(): void {
 		remove_action( 'before_delete_post', $this->callback, 10 );
 		remove_filter( 'wp_untrash_post_status', $this->untrash_filter, 10 );
+		remove_action( 'trashed_post', $this->trash_callback );
+		remove_action( 'untrashed_post', $this->untrash_callback );
+		remove_filter( 'wp_untrash_post_status', $this->attachment_status_filter, 10 );
 		foreach ( $this->files as $file ) {
 			if ( file_exists( $file ) ) {
 				wp_delete_file( $file );
@@ -203,18 +236,22 @@ class Email_Post_Deletion_Handler_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * Trashing keeps attachments, files and notes, so the email can be restored intact.
+	 * Trashing trashes the attachment posts with the email (files and notes are kept), and restoring the
+	 * email restores them all.
 	 *
-	 * @covers ::delete_attachments
+	 * @covers ::trash_attachments
+	 * @covers ::untrash_attachments
+	 * @covers ::restore_attachment_status_on_untrash
 	 * @covers \BrianHenryIE\WP_Mailboxes\API\Model\New_Email_Local::trash_local_email_post
 	 */
-	public function test_trash_keeps_attachments_and_restore_works(): void {
+	public function test_trash_cascades_to_attachments_and_restore_works(): void {
 		[ 'email' => $email, 'attachment_id' => $attachment_id, 'file' => $file ] = $this->make_email_with_attachment();
+		$this->assertSame( 'inherit', get_post_status( $attachment_id ) );
 
 		( new New_Email_Local( $email, Mockery::mock( API_Interface::class ) ) )->trash_local_email_post();
 
 		$this->assertSame( 'trash', get_post_status( $email->get_post_id() ) );
-		$this->assertInstanceOf( WP_Post::class, get_post( $attachment_id ), 'A trashed email keeps its attachment post.' );
+		$this->assertSame( 'trash', get_post_status( $attachment_id ), 'The attachment post is trashed with the email.' );
 		$this->assertFileExists( $file, 'A trashed email keeps its attachment file.' );
 		// WordPress moves a trashed post's comments to the `post-trashed` status and restores them on untrash.
 		$this->assertGreaterThanOrEqual(
@@ -232,9 +269,26 @@ class Email_Post_Deletion_Handler_WPUnit_Test extends WPUnit_Testcase {
 		wp_untrash_post( $email->get_post_id() );
 
 		$this->assertSame( 'bh_email_new', get_post_status( $email->get_post_id() ), 'Restoring returns the email to its status.' );
-		$this->assertInstanceOf( WP_Post::class, get_post( $attachment_id ) );
+		$this->assertSame( 'inherit', get_post_status( $attachment_id ), 'The attachment post is restored to its previous status, not draft.' );
 		$this->assertFileExists( $file );
 		$this->assertGreaterThanOrEqual( 2, count( get_comments( array( 'post_id' => $email->get_post_id() ) ) ), 'Log notes are restored with the email.' );
+	}
+
+	/**
+	 * Emptying the trash (permanently deleting a trashed email) still removes the trashed attachments and files.
+	 *
+	 * @covers ::delete_attachments
+	 */
+	public function test_deleting_a_trashed_email_removes_its_trashed_attachments(): void {
+		[ 'email' => $email, 'attachment_id' => $attachment_id, 'file' => $file ] = $this->make_email_with_attachment();
+
+		wp_trash_post( $email->get_post_id() );
+		$this->assertSame( 'trash', get_post_status( $attachment_id ) );
+
+		wp_delete_post( $email->get_post_id(), true );
+
+		$this->assertNull( get_post( $attachment_id ) );
+		$this->assertFileDoesNotExist( $file );
 	}
 
 	/**

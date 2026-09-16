@@ -137,13 +137,16 @@ class BH_WP_Mailboxes_Hooks {
 	}
 
 	/**
-	 * Cascade an email's permanent deletion to its attachments, whichever path deletes it
-	 * (the library, cron, wp-admin, WP-CLI, another plugin).
+	 * Cascade an email's trash, restore and permanent deletion to its attachments, whichever path
+	 * does it (the library, cron, wp-admin, WP-CLI, another plugin).
 	 */
 	protected function define_deletion_hooks(): void {
 
 		$deletion_handler = new Email_Post_Deletion_Handler( $this->settings, $this->logger );
 
+		add_action( 'trashed_post', $deletion_handler->trash_attachments( ... ) );
+		add_action( 'untrashed_post', $deletion_handler->untrash_attachments( ... ) );
+		add_filter( 'wp_untrash_post_status', $deletion_handler->restore_attachment_status_on_untrash( ... ), 10, 3 );
 		add_action( 'before_delete_post', $deletion_handler->delete_attachments( ... ), 10, 2 );
 	}
 

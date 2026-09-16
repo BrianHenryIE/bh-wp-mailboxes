@@ -1,18 +1,20 @@
 <?php
 /**
- * Removes an email's attachments (posts and files) when the email post is permanently deleted.
+ * Cascades an email post's trash, restore and permanent deletion to its attachments.
  *
- * Hooked into WordPress's own deletion lifecycle rather than into the library's delete command, so every
- * deletion path behaves identically: the library's `delete_local_email_post()`, the cron purge, wp-admin's
- * "Delete permanently", WP-CLI, or another plugin calling `wp_delete_post()`.
+ * Hooked into WordPress's own post lifecycle rather than into the library's commands, so every path
+ * behaves identically: the library's `trash_local_email_post()` / `delete_local_email_post()`, the cron
+ * purge, wp-admin's row actions and "Empty Trash", WP-CLI, or another plugin calling `wp_trash_post()` /
+ * `wp_delete_post()`.
  *
- * Trash policy: `before_delete_post` does not fire on trashing, only on permanent deletion. A trashed
- * email keeps its attachments so that restoring it restores everything; cleanup happens when the trash
- * is emptied (or the post is force-deleted).
+ * - Trashing an email trashes its attachment posts, so they drop out of the private-uploads listing
+ *   with it (files stay on disk); restoring the email restores them to their previous status.
+ * - Permanent deletion (`before_delete_post`, which does not fire on trashing) deletes the attachment
+ *   posts, trashed or not, and their files.
  *
  * Attachments are posts of the private-uploads post type parented to the email (not core `attachment`
  * posts), so core's own child-attachment cleanup does not apply to them; the file is deleted here
- * explicitly. Comments (the email log notes) and post meta are already deleted by `wp_delete_post()`.
+ * explicitly. Comments (the email log notes) and post meta are handled by core on both trash and delete.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -27,7 +29,7 @@ use Psr\Log\LoggerInterface;
 use WP_Post;
 
 /**
- * Cascades the permanent deletion of an email post to its attachment posts and files.
+ * Cascades an email post's trash, restore and permanent deletion to its attachment posts (and files).
  */
 class Email_Post_Deletion_Handler {
 
@@ -47,6 +49,69 @@ class Email_Post_Deletion_Handler {
 	}
 
 	/**
+	 * Trash the attachment posts of an email that has just been trashed.
+	 *
+	 * @hooked trashed_post
+	 *
+	 * @param int $post_id The post that was trashed.
+	 */
+	public function trash_attachments( int $post_id ): void {
+		if ( ! $this->is_email( $post_id ) ) {
+			return;
+		}
+
+		foreach ( $this->get_attachment_ids( $post_id ) as $attachment_id ) {
+			if ( 'trash' === get_post_status( $attachment_id ) ) {
+				continue;
+			}
+			if ( false === wp_trash_post( $attachment_id ) ) {
+				$this->logger->warning( "Failed to trash attachment post {$attachment_id} of email {$post_id}." );
+			}
+		}
+	}
+
+	/**
+	 * Restore the attachment posts of an email that has just been restored from the trash.
+	 *
+	 * @hooked untrashed_post
+	 *
+	 * @param int $post_id The post that was restored.
+	 */
+	public function untrash_attachments( int $post_id ): void {
+		if ( ! $this->is_email( $post_id ) ) {
+			return;
+		}
+
+		foreach ( $this->get_attachment_ids( $post_id ) as $attachment_id ) {
+			if ( 'trash' !== get_post_status( $attachment_id ) ) {
+				continue;
+			}
+			if ( false === wp_untrash_post( $attachment_id ) ) {
+				$this->logger->warning( "Failed to restore attachment post {$attachment_id} of email {$post_id}." );
+			}
+		}
+	}
+
+	/**
+	 * Restore an attachment post to the status it had before it was trashed (`inherit`), not WordPress's
+	 * default `draft` for non-`attachment` post types.
+	 *
+	 * @hooked wp_untrash_post_status
+	 *
+	 * @param string $new_status      The status WordPress is about to set.
+	 * @param int    $post_id         The post being restored.
+	 * @param string $previous_status Its status before it was trashed.
+	 */
+	public function restore_attachment_status_on_untrash( string $new_status, int $post_id, string $previous_status ): string {
+		$post = get_post( $post_id );
+		if ( ! ( $post instanceof WP_Post ) || 0 === $post->post_parent || ! $this->is_email( $post->post_parent ) ) {
+			return $new_status;
+		}
+
+		return $previous_status;
+	}
+
+	/**
 	 * Delete the attachment posts and files of an email that is about to be permanently deleted.
 	 *
 	 * @hooked before_delete_post
@@ -55,9 +120,7 @@ class Email_Post_Deletion_Handler {
 	 * @param ?WP_Post $post    The post object (WordPress 5.5+ passes it; looked up otherwise).
 	 */
 	public function delete_attachments( int $post_id, ?WP_Post $post = null ): void {
-		$post ??= get_post( $post_id );
-
-		if ( ! ( $post instanceof WP_Post ) || $post->post_type !== $this->settings->get_emails_cpt_underscored_20() ) {
+		if ( ! $this->is_email( $post_id, $post ) ) {
 			return;
 		}
 
@@ -80,6 +143,18 @@ class Email_Post_Deletion_Handler {
 		if ( count( $attachment_ids ) > 0 ) {
 			$this->logger->debug( sprintf( 'Deleted %d attachment(s) of email %d.', count( $attachment_ids ), $post_id ) );
 		}
+	}
+
+	/**
+	 * Whether the post is one of this mailbox's emails.
+	 *
+	 * @param int      $post_id The post.
+	 * @param ?WP_Post $post    The post object when the caller already has it.
+	 */
+	protected function is_email( int $post_id, ?WP_Post $post = null ): bool {
+		$post ??= get_post( $post_id );
+
+		return $post instanceof WP_Post && $post->post_type === $this->settings->get_emails_cpt_underscored_20();
 	}
 
 	/**
