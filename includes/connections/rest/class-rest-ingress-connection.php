@@ -25,6 +25,7 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Private_Uploads\API_Interface as Private_Uploads_API_Interface;
 use Exception;
 use Psr\Log\LoggerInterface;
@@ -60,6 +61,7 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 	 * @param Email_Account_WP_Post_Repository   $email_account_repository Persists the auto-created ingress account.
 	 * @param ?Private_Uploads_API_Interface     $private_uploads          Private uploads API, or null to skip attachment saving.
 	 * @param LoggerInterface                    $logger                   PSR-3 logger.
+	 * @param Mailbox_Capabilities               $capabilities             Decides who may create emails in this mailbox.
 	 */
 	public function __construct(
 		protected API_Interface $api,
@@ -68,6 +70,7 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 		protected Email_Account_WP_Post_Repository $email_account_repository,
 		protected ?Private_Uploads_API_Interface $private_uploads,
 		protected LoggerInterface $logger,
+		protected Mailbox_Capabilities $capabilities,
 	) {
 	}
 
@@ -104,20 +107,15 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 	}
 
 	/**
-	 * Require the emails CPT's create capability (`edit_posts` until granular capabilities are added).
+	 * Require this mailbox's create-email capability ({@see Mailbox_Capabilities}).
 	 *
-	 * The Cloudflare worker authenticates with an application password over Basic auth.
+	 * The Cloudflare worker authenticates with an application password over Basic auth; its user needs the
+	 * mailbox capability (`manage_options` unless the consumer lowers it with `bh_wp_mailboxes_required_capability`).
 	 *
 	 * @return bool|WP_Error True when allowed; WP_Error 401 (unauthenticated) or 403 (forbidden) otherwise.
 	 */
 	public function create_new_email_permission_callback() {
-		$post_type_object        = get_post_type_object( $this->mailboxes_settings->get_emails_cpt_underscored_20() );
-		$create_posts_capability = $post_type_object->cap->create_posts ?? 'edit_posts';
-		if ( ! is_string( $create_posts_capability ) ) {
-			$create_posts_capability = 'edit_posts';
-		}
-
-		if ( current_user_can( $create_posts_capability ) ) {
+		if ( $this->capabilities->current_user_can_create_email() ) {
 			return true;
 		}
 

@@ -34,6 +34,8 @@ use ZBateson\MailMimeParser\MailMimeParser;
  * `POST   /wp-json/bh-wp-mailboxes-dev/v2/accounts` — create a fixture email account.
  * `POST   /wp-json/bh-wp-mailboxes-dev/v2/emails`   — create a fixture email post for assertions.
  * `DELETE /wp-json/bh-wp-mailboxes-dev/v2/emails`   — delete every fixture email post (reset).
+ * `GET    /wp-json/bh-wp-mailboxes-dev/v2/emails/{id}/attachments` — an email's status and its attachment posts and files.
+ * `GET    /wp-json/bh-wp-mailboxes-dev/v2/attachments/{id}?file=` — whether an attachment post, and its file, still exist.
  * `POST   /wp-json/bh-wp-mailboxes-dev/v2/fetch`    — run the fetch for the registered mailboxes.
  *
  * Fixtures are stored through the library's own repositories (the same code the production fetch and
@@ -204,6 +206,32 @@ class Mailboxes {
 				'methods'             => 'DELETE',
 				'callback'            => $this->delete_emails( ... ),
 				'permission_callback' => '__return_true',
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/emails/(?P<id>\d+)/attachments',
+			array(
+				'methods'             => 'GET',
+				'callback'            => $this->get_email_attachments( ... ),
+				'permission_callback' => '__return_true',
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/attachments/(?P<id>\d+)',
+			array(
+				'methods'             => 'GET',
+				'callback'            => $this->get_attachment_exists( ... ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'file' => array(
+						'type'     => 'string',
+						'required' => false,
+					),
+				),
 			)
 		);
 
@@ -542,6 +570,83 @@ class Mailboxes {
 		}
 
 		return new WP_REST_Response( array( 'deleted' => $deleted ), 200 );
+	}
+
+	/**
+	 * Report an email post's status and each of its attachment posts (status, file path, whether the file
+	 * exists), so a test can assert the trash / restore / delete cascade without reading the database.
+	 *
+	 * Reads the raw post rows: the email may be trashed or already deleted, and the attachment posts have
+	 * the internal `inherit` status. Returns { post_status: ?string, attachments: [ { post_id, post_status,
+	 * file, file_exists } ] } with HTTP 200, or 404 when the email post no longer exists.
+	 *
+	 * @param WP_REST_Request $request The REST request object.
+	 */
+	public function get_email_attachments( WP_REST_Request $request ): WP_REST_Response {
+
+		$id      = $request->get_param( 'id' );
+		$post_id = is_numeric( $id ) ? (int) $id : 0;
+		$post    = get_post( $post_id );
+
+		if ( null === $post || self::EMAIL_POST_TYPE !== $post->post_type ) {
+			return new WP_REST_Response( array( 'error' => "No email post {$post_id}." ), 404 );
+		}
+
+		$attachments = array();
+		$raw_ids     = get_post_meta( $post_id, 'attachment_ids', true );
+		$ids         = is_string( $raw_ids ) && '' !== $raw_ids ? (array) json_decode( $raw_ids ) : array();
+		foreach ( $ids as $attachment_id ) {
+			if ( ! is_int( $attachment_id ) ) {
+				continue;
+			}
+			$file          = get_attached_file( $attachment_id );
+			$attachments[] = array(
+				'post_id'     => $attachment_id,
+				'post_status' => get_post_status( $attachment_id ),
+				'file'        => is_string( $file ) ? $file : null,
+				'file_exists' => is_string( $file ) && '' !== $file && file_exists( $file ),
+			);
+		}
+
+		return new WP_REST_Response(
+			array(
+				'post_status' => $post->post_status,
+				'attachments' => $attachments,
+			),
+			200
+		);
+	}
+
+	/**
+	 * Whether an attachment post still exists, and whether a file (a path previously reported by
+	 * {@see self::get_email_attachments()}, so it can be checked after the post is gone) still exists.
+	 * Only paths inside the uploads directory are checked. Returns { post_exists: bool, file_exists: ?bool }.
+	 *
+	 * @param WP_REST_Request $request The REST request object.
+	 */
+	public function get_attachment_exists( WP_REST_Request $request ): WP_REST_Response {
+
+		$id      = $request->get_param( 'id' );
+		$post_id = is_numeric( $id ) ? (int) $id : 0;
+		$file    = $request->get_param( 'file' );
+
+		$file_exists = null;
+		if ( is_string( $file ) && '' !== $file ) {
+			$basedir = wp_normalize_path( (string) wp_upload_dir()['basedir'] );
+			$file    = wp_normalize_path( $file );
+			// A path outside uploads is not answered (null), whatever the reason.
+			$file_exists = str_starts_with( $file, $basedir . '/' ) && ! str_contains( $file, '..' )
+				? file_exists( $file )
+				: null;
+		}
+
+		return new WP_REST_Response(
+			array(
+				'post_exists' => null !== get_post( $post_id ),
+				'file_exists' => $file_exists,
+			),
+			200
+		);
 	}
 
 	/**

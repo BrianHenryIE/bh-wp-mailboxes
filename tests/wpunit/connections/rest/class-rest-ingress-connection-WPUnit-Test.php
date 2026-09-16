@@ -25,6 +25,7 @@ use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads_API;
 use BrianHenryIE\WP_Private_Uploads\API_Interface as Private_Uploads_API_Interface;
@@ -68,6 +69,10 @@ class REST_Ingress_Connection_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->settings = $this->make_settings( 'test-ns' );
 
+		// As BH_WP_Mailboxes_Hooks does: map the mailbox capabilities to manage_options so the administrator may post.
+		$this->capabilities_filter = ( new Mailbox_Capabilities( $this->settings ) )->map_meta_cap( ... );
+		add_filter( 'map_meta_cap', $this->capabilities_filter, 10, 4 );
+
 		$email_cpt = new BH_Email_CPT( $this->settings, $this->logger );
 		$email_cpt->register_cpt();
 		$email_cpt->register_post_statuses();
@@ -83,8 +88,16 @@ class REST_Ingress_Connection_WPUnit_Test extends WPUnit_Testcase {
 	protected function tearDown(): void {
 		global $wp_rest_server;
 		$wp_rest_server = null;
+		remove_filter( 'map_meta_cap', $this->capabilities_filter, 10 );
 		parent::tearDown();
 	}
+
+	/**
+	 * The capability mapping registered in setUp(), removed in tearDown().
+	 *
+	 * @var callable
+	 */
+	protected $capabilities_filter;
 
 	/**
 	 * Mocked settings; the REST namespace is parameterized so tests can disable REST.
@@ -123,6 +136,7 @@ class REST_Ingress_Connection_WPUnit_Test extends WPUnit_Testcase {
 			$this->email_account_repository,
 			$private_uploads,
 			$this->logger,
+			new Mailbox_Capabilities( $settings ?? $this->settings ),
 		);
 	}
 
@@ -487,10 +501,11 @@ class REST_Ingress_Connection_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * `show_in_rest` on the CPTs must not leak stored emails or account configuration to
-	 * unauthenticated requests: emails use custom (non-public) post statuses.
+	 * Configuring a REST namespace must not expose the post types through WordPress's core posts
+	 * controller: stored emails and account configuration are reachable only through the library's own
+	 * routes, for anyone. (`show_in_rest` is always false; the ingress registers itself.)
 	 */
-	public function test_cpt_rest_routes_leak_nothing_to_unauthenticated_requests(): void {
+	public function test_cpts_are_not_exposed_through_the_core_posts_controller(): void {
 
 		$this->boot_rest( $this->make_sut() );
 		$this->login_as_admin();
@@ -499,23 +514,18 @@ class REST_Ingress_Connection_WPUnit_Test extends WPUnit_Testcase {
 		$response = $this->dispatch_raw_mime( (string) file_get_contents( codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' ) ) );
 		self::assertSame( 201, $response->get_status() );
 
-		wp_set_current_user( 0 );
-
 		foreach ( array( 'test_email', 'test_email_account' ) as $rest_base ) {
+			foreach ( array( "/test-ns/v2/{$rest_base}", "/wp/v2/{$rest_base}" ) as $route ) {
+				self::assertSame( 404, rest_do_request( new WP_REST_Request( 'GET', $route ) )->get_status(), "{$route} must not exist, even for an administrator." );
 
-			$list_response = rest_do_request( new WP_REST_Request( 'GET', "/test-ns/v2/{$rest_base}" ) );
-			self::assertSame( 200, $list_response->get_status() );
-			self::assertSame( array(), $list_response->get_data(), "Unauthenticated GET /{$rest_base} must return an empty list." );
-
-			$status_request = new WP_REST_Request( 'GET', "/test-ns/v2/{$rest_base}" );
-			$status_request->set_param( 'status', 'test_email' === $rest_base ? 'bh_email_new' : 'bh_email_ac_active' );
-			$status_response = rest_do_request( $status_request );
-			self::assertContains(
-				$status_response->get_status(),
-				array( 400, 401, 403 ),
-				"Unauthenticated status query on /{$rest_base} must be rejected."
-			);
+				wp_set_current_user( 0 );
+				self::assertSame( 404, rest_do_request( new WP_REST_Request( 'GET', $route ) )->get_status(), "{$route} must not exist for anonymous requests." );
+				$this->login_as_admin();
+			}
 		}
+
+		self::assertFalse( get_post_type_object( 'test_email' )->show_in_rest );
+		self::assertFalse( get_post_type_object( 'test_email_account' )->show_in_rest );
 	}
 
 	/**

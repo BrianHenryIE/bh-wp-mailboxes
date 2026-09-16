@@ -47,6 +47,7 @@ class BH_Email_CPT_Unit_Test extends Unit_Testcase {
 
 		\WP_Mock::userFunction( '__' )->andReturnArg( 0 );
 		\WP_Mock::userFunction( 'sanitize_title' )->andReturnArg( 0 );
+		\WP_Mock::userFunction( 'post_type_exists' )->andReturn( false );
 		\WP_Mock::userFunction( 'is_wp_error' )->andReturn( false );
 		$post_type_stub = Mockery::mock( \WP_Post_Type::class );
 
@@ -77,6 +78,7 @@ class BH_Email_CPT_Unit_Test extends Unit_Testcase {
 
 		\WP_Mock::userFunction( '__' )->andReturnArg( 0 );
 		\WP_Mock::userFunction( 'sanitize_title' )->andReturnArg( 0 );
+		\WP_Mock::userFunction( 'post_type_exists' )->andReturn( false );
 		\WP_Mock::userFunction( 'register_post_type' )->andReturn( $wp_error );
 		\WP_Mock::userFunction( 'is_wp_error' )->andReturn( true );
 

@@ -94,28 +94,21 @@ class BH_Email_CPT {
 			),
 			'public'              => false, // This is required to have the edit.php page.
 			'show_ui'             => true,
-			// TODO: implement capabilities so access to mailboxes can be granular.
-			// phpcs:disable Squiz.PHP.CommentedOutCode.Found
-			// 'capabilities'        => array(
-			// 'publish_posts'       => 'update_core',
-			// 'edit_others_posts'   => 'update_core',
-			// 'delete_posts'        => 'update_core',
-			// 'delete_others_posts' => 'update_core',
-			// 'read_private_posts'  => 'update_core',
-			// 'edit_post'           => 'edit_posts',
-			// 'delete_post'         => 'update_core',
-			// 'read_post'           => 'edit_posts',
-			// ),
 			'menu_position'       => 25,
 			'show_in_menu'        => false,
 			'exclude_from_search' => true,
+			// Never exposed through core's posts controller: the REST ingress and the library's own routes register themselves.
 			'show_in_rest'        => false,
+			// Mailbox-scoped capabilities (`edit_{cpt}`, `edit_others_{cpt}s`, … and per-post meta caps), mapped to a base
+			// capability by Mailbox_Capabilities::map_meta_cap(); two mailboxes get two disjoint capability sets.
+			'capability_type'     => $post_type,
+			'map_meta_cap'        => true,
 		);
 
-		$rest_namespace = $this->settings->get_rest_namespace();
-		if ( ! empty( $rest_namespace ) ) {
-			$args['show_in_rest']   = true;
-			$args['rest_namespace'] = $rest_namespace . '/v2';
+		if ( post_type_exists( $post_type ) ) {
+			// Post type names are the friendly name truncated to 20 characters, so two mailboxes can collide — and would
+			// then share one capability set. Registering again replaces the earlier registration.
+			$this->logger->error( "Post type {$post_type} is already registered; two mailboxes cannot share a post type." );
 		}
 
 		/**
@@ -134,6 +127,24 @@ class BH_Email_CPT {
 			 */
 			$this->logger->error( $registered_post_type->get_error_message() );
 		}
+	}
+
+	/**
+	 * Restore a trashed email to the status it had before trashing (new / processed / saved), not WordPress's
+	 * default `draft`, which the emails list does not show.
+	 *
+	 * @hooked wp_untrash_post_status
+	 *
+	 * @param string $new_status      The status WordPress would restore to (`draft`).
+	 * @param int    $post_id         The post being restored.
+	 * @param string $previous_status Its status before it was trashed.
+	 */
+	public function restore_status_on_untrash( string $new_status, int $post_id, string $previous_status ): string {
+		if ( get_post_type( $post_id ) !== $this->settings->get_emails_cpt_underscored_20() ) {
+			return $new_status;
+		}
+
+		return in_array( $previous_status, array( 'bh_email_new', 'bh_email_processed', 'bh_email_saved' ), true ) ? $previous_status : $new_status;
 	}
 
 	/**

@@ -68,7 +68,7 @@ jobs:
         if: ${{ matrix.php == '8.4' && github.event_name != 'pull_request' }}
         with:
           file_pattern: ".github/phpstan.svg"
-          before_commit_hook: "git pull"
+          before_commit_hook: "git pull --rebase --autostash"
           commit_message: "🤖 PhpStan"
 
       # This outputs `steps.pr_diff.outputs.diff_filename` and `steps.pr_diff.outputs.diff_contents`.
@@ -76,10 +76,12 @@ jobs:
         id: pr_diff
         if: ${{ github.event_name == 'pull_request' }}
         run: |
-          FILENAME="${{ env.TARGET_BRANCH_REF_NAME }}-${{ github.event.pull_request.head.sha }}.diff"
-          git fetch origin ${{ env.TARGET_BRANCH_REF_NAME }}:refs/remotes/origin/${{ env.TARGET_BRANCH_REF_NAME }}
-          git diff origin/${{ env.TARGET_BRANCH_REF_NAME }} > tmp.diff
-          mv tmp.diff $FILENAME
+          # The base branch name may contain slashes (e.g. a stacked PR based on `feature/step-1`), which
+          # would make the filename a path into a directory that does not exist.
+          FILENAME="$(echo "${{ env.TARGET_BRANCH_REF_NAME }}" | tr '/' '-')-${{ github.event.pull_request.head.sha }}.diff"
+          git fetch origin "${{ env.TARGET_BRANCH_REF_NAME }}:refs/remotes/origin/${{ env.TARGET_BRANCH_REF_NAME }}"
+          git diff "origin/${{ env.TARGET_BRANCH_REF_NAME }}" > tmp.diff
+          mv tmp.diff "$FILENAME"
           echo "diff_filename=$FILENAME" >> $GITHUB_OUTPUT
           EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
           echo "diff_contents<<$EOF" >> $GITHUB_OUTPUT

@@ -92,13 +92,15 @@ class BH_Email_Account_CPT {
 			'menu_position'       => 25,
 			'show_in_menu'        => false,
 			'exclude_from_search' => true,
+			// Never exposed through core's posts controller.
 			'show_in_rest'        => false,
+			// Mailbox-scoped capabilities, mapped by Mailbox_Capabilities::map_meta_cap() (see BH_Email_CPT).
+			'capability_type'     => $post_type,
+			'map_meta_cap'        => true,
 		);
 
-		$rest_namespace = $this->settings->get_rest_namespace();
-		if ( ! empty( $rest_namespace ) ) {
-			$args['show_in_rest']   = true;
-			$args['rest_namespace'] = $rest_namespace . '/v2';
+		if ( post_type_exists( $post_type ) ) {
+			$this->logger->error( "Post type {$post_type} is already registered; two mailboxes cannot share a post type." );
 		}
 
 		$registered_post_type = register_post_type( $post_type, $args );

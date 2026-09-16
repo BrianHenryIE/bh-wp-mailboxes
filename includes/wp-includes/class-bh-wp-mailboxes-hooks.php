@@ -16,6 +16,7 @@ use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View_Ajax;
 use BrianHenryIE\WP_Mailboxes\Admin\Status_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Post_Deletion_Handler;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
@@ -81,6 +82,7 @@ class BH_WP_Mailboxes_Hooks {
 		$this->email_account_wp_post_repository = new Email_Account_WP_Post_Repository( $this->settings->get_email_accounts_cpt_underscored_20(), $this->bh_email_account_factory, $this->logger );
 
 		$this->define_cpt_hooks();
+		$this->define_deletion_hooks();
 		$this->define_rest_hooks();
 		$this->define_cron_hooks();
 
@@ -113,6 +115,11 @@ class BH_WP_Mailboxes_Hooks {
 	 */
 	protected function define_cpt_hooks(): void {
 
+		// Maps this mailbox's post type capabilities to the consumer's base capability (default manage_options).
+		$capabilities = new Mailbox_Capabilities( $this->settings );
+
+		add_filter( 'map_meta_cap', $capabilities->map_meta_cap( ... ), 10, 4 );
+
 		$account_cpt = new BH_Email_Account_CPT( $this->settings, $this->logger );
 
 		add_action( 'init', $account_cpt->register_cpt( ... ) );
@@ -124,8 +131,23 @@ class BH_WP_Mailboxes_Hooks {
 		add_action( 'init', $email_cpt->register_post_statuses( ... ) );
 
 		add_filter( 'wp_insert_post_data', $email_cpt->prevent_content_edits( ... ), 10, 2 );
+		add_filter( 'wp_untrash_post_status', $email_cpt->restore_status_on_untrash( ... ), 10, 3 );
 
 		add_action( 'admin_enqueue_scripts', $email_cpt->disable_autosave( ... ) );
+	}
+
+	/**
+	 * Cascade an email's trash, restore and permanent deletion to its attachments, whichever path
+	 * does it (the library, cron, wp-admin, WP-CLI, another plugin).
+	 */
+	protected function define_deletion_hooks(): void {
+
+		$deletion_handler = new Email_Post_Deletion_Handler( $this->settings, $this->logger );
+
+		add_action( 'trashed_post', $deletion_handler->trash_attachments( ... ) );
+		add_action( 'untrashed_post', $deletion_handler->untrash_attachments( ... ) );
+		add_filter( 'wp_untrash_post_status', $deletion_handler->restore_attachment_status_on_untrash( ... ), 10, 3 );
+		add_action( 'before_delete_post', $deletion_handler->delete_attachments( ... ), 10, 2 );
 	}
 
 	/**
@@ -141,7 +163,8 @@ class BH_WP_Mailboxes_Hooks {
 			$this->email_wp_post_repository,
 			$this->email_account_wp_post_repository,
 			$this->private_uploads,
-			$this->logger
+			$this->logger,
+			new Mailbox_Capabilities( $this->settings ),
 		);
 
 		add_action( 'rest_api_init', $rest_ingress_connection->rest_init( ... ) );
