@@ -5,19 +5,24 @@
  * The emails list screen prints it beside the accounts table; a consumer can print it elsewhere,
  * e.g. on a WooCommerce payment gateway settings screen, with an "Add account" button:
  *
- *     $modal = new Email_Account_Modal( $settings );
+ *     $modal = new Email_Account_Modal( $settings, new Mailbox_Capabilities( $settings ) );
  *     add_action( 'admin_enqueue_scripts', fn() => $modal->enqueue_assets() ); // On the relevant screen.
  *     add_action( 'admin_footer', fn() => $modal->print_modal() );
  *     $modal->print_add_button(); // Wherever the button should appear.
  *
- * Saving posts to {@see Email_Accounts_Ajax}, which stores the account and its credentials (encrypted,
- * via the WordPress Secrets API); "Test connection" posts the entered details there too, and reports
- * the result in the form without saving anything. Where an accounts table
+ * Saving posts to the accounts REST route ({@see \BrianHenryIE\WP_Mailboxes\REST\Email_Accounts_REST_Controller}),
+ * which stores the account and its credentials (encrypted, via the WordPress Secrets API); "Test
+ * connection" posts the entered details there too, and reports the result in the form without saving anything. Where an accounts table
  * (`.bh-mailboxes-status__table`) is on the page the JS refreshes it from the response; otherwise the
  * result is only reported in a notice.
  *
  * Owns its own script (`js/account-modal.js`) and stylesheet (`css/account-modal.css`), so printing it
  * on a consumer's screen enqueues nothing else; the accounts table's script depends on the modal's.
+ *
+ * The button and the modal are printed only for users who may manage the mailbox's accounts (see
+ * {@see Mailbox_Capabilities::current_user_can_manage_email_accounts()}), so a consumer's screen is gated
+ * without checking anything itself. The assets are enqueued regardless: the script also carries the REST
+ * helpers the emails list's own script depends on, and it holds nothing a user could not already obtain.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -28,6 +33,8 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\REST\REST_Namespace;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 
 /**
  * Prints the modal markup and enqueues the script/style it needs.
@@ -37,10 +44,12 @@ class Email_Account_Modal {
 	/**
 	 * Constructor.
 	 *
-	 * @param BH_WP_Mailboxes_Settings_Interface $settings Provides the post type keys the AJAX actions are suffixed with.
+	 * @param BH_WP_Mailboxes_Settings_Interface $settings     Provides the post type keys the REST routes are scoped by.
+	 * @param Mailbox_Capabilities               $capabilities Decides whether the current user sees the button and the modal.
 	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
+		protected Mailbox_Capabilities $capabilities,
 	) {
 	}
 
@@ -69,22 +78,18 @@ class Email_Account_Modal {
 
 		wp_enqueue_script( $handle, plugin_dir_url( __FILE__ ) . 'js/account-modal.js', array( 'jquery' ), $version, true );
 
-		// The AJAX actions are scoped to this instance's post types (see BH_WP_Mailboxes_Hooks::define_ajax_hooks()),
-		// so the JS must post the matching, suffixed action names.
-		$emails_cpt   = $this->settings->get_emails_cpt_underscored_20();
-		$accounts_cpt = $this->settings->get_email_accounts_cpt_underscored_20();
+		// The REST routes the scripts call (see REST\Emails_REST_Controller / Email_Accounts_REST_Controller), scoped
+		// to this instance's post types, and the cookie-auth nonce.
 		wp_localize_script(
 			$handle,
 			'bh_wp_mailboxes_ajax',
 			array(
-				'check_email_action'        => 'bh_wp_mailboxes_check_email_' . $emails_cpt,
-				'check_account_action'      => 'bh_wp_mailboxes_check_account_' . $accounts_cpt,
-				'save_account_action'       => 'bh_wp_mailboxes_save_account_' . $accounts_cpt,
-				'test_connection_action'    => 'bh_wp_mailboxes_test_account_connection_' . $accounts_cpt,
-				'set_account_active_action' => 'bh_wp_mailboxes_set_account_active_' . $accounts_cpt,
-				'delete_account_action'     => 'bh_wp_mailboxes_delete_account_' . $accounts_cpt,
-				'delete_on_server_action'   => 'bh_wp_mailboxes_delete_on_server_' . $emails_cpt,
-				'remote_action_nonce'       => wp_create_nonce( 'bh-wp-mailboxes-remote-action' ),
+				'rest' => array(
+					'root'     => REST_Namespace::url( $this->settings ),
+					'nonce'    => wp_create_nonce( 'wp_rest' ),
+					'emails'   => $this->settings->get_emails_cpt_dashed(),
+					'accounts' => $this->settings->get_email_accounts_cpt_dashed(),
+				),
 			)
 		);
 
@@ -92,11 +97,15 @@ class Email_Account_Modal {
 	}
 
 	/**
-	 * Print an "Add account" button that opens the modal.
+	 * Print an "Add account" button that opens the modal. Prints nothing for a user who may not manage
+	 * the mailbox's accounts.
 	 *
 	 * @param string $classes Extra CSS classes for the button.
 	 */
 	public function print_add_button( string $classes = 'button' ): void {
+		if ( ! $this->capabilities->current_user_can_manage_email_accounts() ) {
+			return;
+		}
 		echo '<button type="button" class="' . esc_attr( trim( $classes . ' bh-account-add' ) ) . '">' . esc_html__( 'Add account', 'bh-wp-mailboxes' ) . '</button>';
 	}
 
@@ -106,9 +115,10 @@ class Email_Account_Modal {
 	const PRINTED_ACTION = 'bh_wp_mailboxes_account_modal_printed';
 
 	/**
-	 * Print the account-actions nonce, the add/edit modal (IMAP fields only) and the delete
+	 * Print the add/edit modal (IMAP fields only) and the delete
 	 * confirmation dialog. Printed once per page: by {@see Status_View::display()} on the emails list
-	 * screen, or by a consumer on `admin_footer` on their own screen; a second call is a no-op.
+	 * screen, or by a consumer on `admin_footer` on their own screen; a second call is a no-op, as is any
+	 * call for a user who may not manage the mailbox's accounts.
 	 *
 	 * @hooked admin_footer
 	 */
@@ -117,12 +127,15 @@ class Email_Account_Modal {
 			return;
 		}
 
+		if ( ! $this->capabilities->current_user_can_manage_email_accounts() ) {
+			return;
+		}
+
 		/**
 		 * The modal markup is being printed (at most once per page, whichever instance prints first).
 		 */
 		do_action( self::PRINTED_ACTION );
 
-		wp_nonce_field( Email_Accounts_Ajax::NONCE_ACTION, '_wpnonce_account_actions' );
 		?>
 		<dialog id="bh-mailboxes-account-dialog" class="bh-mailboxes-account-dialog" aria-labelledby="bh-mailboxes-account-dialog-title">
 			<form class="bh-mailboxes-account-form" autocomplete="off" data-mode="add">

@@ -60,9 +60,9 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 	 */
 	public function find_by_post_id( int $post_id ): BH_Email {
 		$post = get_post( $post_id );
-		if ( ! ( $post instanceof WP_Post ) ) {
+		if ( ! ( $post instanceof WP_Post ) || $post->post_type !== $this->post_type ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- integer, safe to include in exception.
-			throw new InvalidArgumentException( "No post found with ID {$post_id}." );
+			throw new InvalidArgumentException( "No email found with ID {$post_id}." );
 		}
 		return $this->bh_email_factory->from_wp_post( $post );
 	}

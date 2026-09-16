@@ -14,6 +14,7 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin;
 
 use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Modal;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
@@ -25,6 +26,7 @@ use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\Imap_Credentials_Env;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Editor_Access;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Dev_Mailboxes;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_API;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Imap;
@@ -38,13 +40,14 @@ use Throwable;
  */
 class Settings {
 
-	public const MENU_SLUG              = 'development-plugin-settings';
-	public const SAVE_ACTION            = 'bh_wp_mailboxes_dev_save_imap';
-	public const RUN_NOW_ACTION         = 'bh_wp_mailboxes_dev_run_now';
-	public const SAVE_REST_ACTION       = 'bh_wp_mailboxes_dev_save_rest';
-	public const ADD_ENV_IMAP_ACTION    = 'bh_wp_mailboxes_dev_add_env_imap';
-	public const USE_GMAIL_FILES_ACTION = 'bh_wp_mailboxes_dev_use_gmail_files';
-	public const SAVE_GMAIL_ACTION      = 'bh_wp_mailboxes_dev_save_gmail';
+	public const MENU_SLUG                 = 'development-plugin-settings';
+	public const SAVE_ACTION               = 'bh_wp_mailboxes_dev_save_imap';
+	public const RUN_NOW_ACTION            = 'bh_wp_mailboxes_dev_run_now';
+	public const SAVE_REST_ACTION          = 'bh_wp_mailboxes_dev_save_rest';
+	public const ADD_ENV_IMAP_ACTION       = 'bh_wp_mailboxes_dev_add_env_imap';
+	public const USE_GMAIL_FILES_ACTION    = 'bh_wp_mailboxes_dev_use_gmail_files';
+	public const SAVE_GMAIL_ACTION         = 'bh_wp_mailboxes_dev_save_gmail';
+	public const SAVE_EDITOR_ACCESS_ACTION = 'bh_wp_mailboxes_dev_save_editor_access';
 
 	/**
 	 * Which mailbox the typed-in IMAP credentials are configured for ('' when none), and the account's address.
@@ -69,6 +72,7 @@ class Settings {
 		'env_account_configured'         => 'Account from .env.secret configured in the mailbox.',
 		'gmail_files_account_configured' => 'Gmail account (file credentials) configured in the mailbox.',
 		'gmail_saved_account_configured' => 'Gmail account configured in the mailbox and its credentials saved.',
+		'editor_access_saved'            => 'Editor access saved.',
 	);
 
 	/**
@@ -129,6 +133,7 @@ class Settings {
 		add_action( 'admin_post_' . self::ADD_ENV_IMAP_ACTION, array( $this, 'add_env_imap_account' ) );
 		add_action( 'admin_post_' . self::USE_GMAIL_FILES_ACTION, array( $this, 'use_gmail_file_credentials' ) );
 		add_action( 'admin_post_' . self::SAVE_GMAIL_ACTION, array( $this, 'save_gmail_credentials' ) );
+		add_action( 'admin_post_' . self::SAVE_EDITOR_ACCESS_ACTION, array( $this, 'save_editor_access' ) );
 
 		// The README's "Managing accounts from your own screen" recipe: enqueue the modal's script/style and
 		// print its markup only on this screen; the button is printed in render_modal_section().
@@ -148,7 +153,8 @@ class Settings {
 	 */
 	private function get_modal(): Email_Account_Modal {
 		if ( null === $this->modal ) {
-			$this->modal = new Email_Account_Modal( Dev_Mailboxes::make_settings( self::MODAL_MAILBOX ) );
+			$settings    = Dev_Mailboxes::make_settings( self::MODAL_MAILBOX );
+			$this->modal = new Email_Account_Modal( $settings, new Mailbox_Capabilities( $settings ) );
 		}
 		return $this->modal;
 	}
@@ -319,6 +325,22 @@ class Settings {
 		}
 
 		$this->redirect_with_notice( 'bh_notice', 'rest_saved' );
+	}
+
+	/**
+	 * Save the level at which editors may use the e2e mailbox (see Editor_Access).
+	 */
+	public function save_editor_access(): void {
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Insufficient permissions.' );
+		}
+		check_admin_referer( self::SAVE_EDITOR_ACCESS_ACTION );
+
+		$level = isset( $_POST['editor_access'] ) && is_string( $_POST['editor_access'] ) ? sanitize_key( wp_unslash( $_POST['editor_access'] ) ) : '';
+		Editor_Access::set_level( $level );
+
+		$this->redirect_with_notice( 'bh_notice', 'editor_access_saved' );
 	}
 
 	/**
@@ -558,6 +580,7 @@ class Settings {
 
 		$this->render_notices();
 		$this->render_mailboxes_section();
+		$this->render_editor_access_section();
 		$this->render_env_secret_section();
 		$this->render_imap_section();
 		$this->render_modal_section();
@@ -617,6 +640,35 @@ class Settings {
 
 		echo '</tbody></table>';
 		submit_button( 'Save REST settings' );
+		echo '</form>';
+	}
+
+	/**
+	 * Render the editor-access level for the e2e mailbox: the consumer side of the library's capability
+	 * model (its `bh_wp_mailboxes_required_capability` filter), which the Playwright "editor" project uses.
+	 */
+	private function render_editor_access_section(): void {
+
+		$labels = array(
+			''       => 'None (administrators only)',
+			'read'   => 'Read: list and open emails, no actions',
+			'edit'   => 'Edit: act on emails, but not on accounts',
+			'manage' => 'Manage: everything, including the accounts table and "Check now"',
+		);
+
+		echo '<h2>Editor access to the E2E mailbox</h2>';
+		echo '<p>What users with the Editor role may do in the e2e mailbox (<code>edit.php?post_type=e2e_email</code>), via the library\'s <code>bh_wp_mailboxes_required_capability</code> filter. The admin screens render only the controls the user may use.</p>';
+
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::SAVE_EDITOR_ACCESS_ACTION ) . '" />';
+		wp_nonce_field( self::SAVE_EDITOR_ACCESS_ACTION );
+		echo '<label for="editor_access">Editors may</label> ';
+		echo '<select id="editor_access" name="editor_access">';
+		foreach ( $labels as $level => $label ) {
+			echo '<option value="' . esc_attr( $level ) . '"' . selected( Editor_Access::get_level(), $level, false ) . '>' . esc_html( $label ) . '</option>';
+		}
+		echo '</select> ';
+		submit_button( 'Save editor access', 'secondary', 'submit', false );
 		echo '</form>';
 	}
 

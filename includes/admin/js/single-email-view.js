@@ -4,6 +4,12 @@
 	$(function () {
 		var settings = window.bhWpMailboxesSingleEmail || {};
 
+		// The server lists the routes this user may call (`actions`); bind nothing else. Its permission
+		// callbacks remain the security boundary: this only avoids requests that would be refused.
+		function allowed( action ) {
+			return ! settings.actions || settings.actions.indexOf( action ) !== -1;
+		}
+
 		/**
 		 * Build the same badge markup that PHP's get_remote_status_html() would produce.
 		 *
@@ -68,25 +74,36 @@
 			} );
 		}
 
+		// The library's REST route for this email, e.g. `.../{emails}/123/mark-read`.
+		function emailRoute( path ) {
+			return settings.restRoot + '/' + settings.emailsBase + '/' + settings.postId + ( path ? '/' + path : '' );
+		}
+
+		function restRequest( method, path, data ) {
+			var options = {
+				url:      emailRoute( path ),
+				method:   method,
+				dataType: 'json',
+				headers:  { 'X-WP-Nonce': settings.restNonce }
+			};
+			if ( data ) {
+				options.contentType = 'application/json';
+				options.data        = JSON.stringify( data );
+			}
+			return $.ajax( options );
+		}
+
 		function remoteAction( action, $btn ) {
+			if ( ! allowed( action ) ) {
+				return;
+			}
 			$btn.prop( 'disabled', true );
 
-			$.post(
-				settings.ajaxUrl || ajaxurl,
-				{
-					action:   action,
-					post_id:  settings.postId,
-					_wpnonce: settings.nonce,
-				},
-				function ( response ) {
-					if ( response.success && response.data ) {
-						updateRemoteUi( response.data.is_read, response.data.is_remote_deleted );
-					}
-					// The action records a log entry (success or failure); reflect it immediately.
-					refreshLog();
-					$btn.prop( 'disabled', false );
-				}
-			).fail( function () {
+			restRequest( 'POST', action ).done( function ( body ) {
+				updateRemoteUi( body.is_read, body.is_remote_deleted );
+			} ).always( function () {
+				// The action records a log entry (success or failure); reflect it immediately.
+				refreshLog();
 				$btn.prop( 'disabled', false );
 			} );
 		}
@@ -100,8 +117,7 @@
 			}
 			// Clear the current-status highlight while the change is pending; updateRemoteUi restores it on success.
 			$( '#bh-email-read-status-options .bh-email-status__option' ).removeClass( 'bh-email-status__option--current' );
-			var action = value === 'read' ? settings.markReadAction : settings.markUnreadAction;
-			remoteAction( action, $( this ) );
+			remoteAction( value === 'read' ? 'mark-read' : 'mark-unread', $( this ) );
 		} );
 
 		$( '#bh-email-delete-on-server' ).on( 'click', function ( e ) {
@@ -109,23 +125,18 @@
 			if ( ! window.confirm( 'Delete this email on the remote server?' ) ) {
 				return;
 			}
-			remoteAction( settings.deleteOnServerAction, $( this ) );
+			remoteAction( 'delete-on-server', $( this ) );
 		} );
 
 		// The status is the only mutable field. Save it through the API (which records the change in the
 		// email's log) rather than the native post save, then reload to show the new status and log entry.
 		$( '#bh-email-status-box #save' ).on( 'click', function ( e ) {
 			e.preventDefault();
+			if ( ! allowed( 'status' ) ) {
+				return;
+			}
 			var $btn = $( this ).prop( 'disabled', true );
-			$.post(
-				settings.ajaxUrl || ajaxurl,
-				{
-					action:   settings.updateStatusAction,
-					post_id:  settings.postId,
-					status:   $( 'input[name="post_status"]:checked' ).val(),
-					_wpnonce: settings.nonce,
-				}
-			).done( function () {
+			restRequest( 'POST', 'status', { status: $( 'input[name="post_status"]:checked' ).val() } ).done( function () {
 				window.location.reload();
 			} ).fail( function () {
 				$btn.prop( 'disabled', false );
@@ -134,22 +145,10 @@
 
 		// On load, fetch the live remote status and update the highlighted radio (or the badge fallback).
 		var $remoteStatus = $( '.bh-email-remote-status.is-loading, #bh-email-read-status-options.is-loading' );
-		if ( $remoteStatus.length && settings.getRemoteStatusAction ) {
-			$.post(
-				settings.ajaxUrl || ajaxurl,
-				{
-					action:   settings.getRemoteStatusAction,
-					post_id:  settings.postId,
-					_wpnonce: settings.nonce,
-				},
-				function ( response ) {
-					if ( response.success && response.data ) {
-						updateRemoteUi( response.data.is_read, response.data.is_remote_deleted );
-					} else {
-						$remoteStatus.removeClass( 'is-loading' ).find( '.spinner' ).remove();
-					}
-				}
-			).fail( function () {
+		if ( $remoteStatus.length && settings.restRoot && allowed( 'remote-status' ) ) {
+			restRequest( 'GET', 'remote-status' ).done( function ( body ) {
+				updateRemoteUi( body.is_read, body.is_remote_deleted );
+			} ).fail( function () {
 				$remoteStatus.removeClass( 'is-loading' ).find( '.spinner' ).remove();
 			} );
 		}

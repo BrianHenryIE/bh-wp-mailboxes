@@ -8,6 +8,10 @@
  */
 import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 
+// "saves the per-mailbox REST setting" changes Mailbox One's REST namespace, moving the routes the
+// account modal test (same mailbox) posts to. Run this file's tests one at a time so they cannot race.
+test.describe.configure( { mode: 'default' } );
+
 test.describe( 'Development plugin settings page', () => {
 	test.beforeEach( async ( { admin } ) => {
 		await admin.visitAdminPage(
@@ -84,6 +88,29 @@ test.describe( 'Development plugin settings page', () => {
 		await expect(
 			page.locator( '#rest_enabled_mailbox-one' )
 		).not.toBeChecked();
+	} );
+
+	test( 'saves the editor-access level for the e2e mailbox', async ( { admin, page } ) => {
+		await expect(
+			page.getByRole( 'heading', { name: 'Editor access to the E2E mailbox' } )
+		).toBeVisible();
+
+		await page.locator( '#editor_access' ).selectOption( 'edit' );
+		await page.getByRole( 'button', { name: 'Save editor access' } ).click();
+
+		await expect( page.locator( '.notice-success' ) ).toContainText( 'Editor access saved' );
+		await expect( page.locator( '#editor_access' ) ).toHaveValue( 'edit' );
+
+		// Restore the default (see the REST test above for why fetch() rather than a second click).
+		await page.evaluate( () => {
+			const form = document.querySelector( '#editor_access' ).closest( 'form' );
+			const data = new FormData( form );
+			data.set( 'editor_access', '' );
+			return fetch( form.getAttribute( 'action' ), { method: 'POST', body: data, credentials: 'same-origin' } );
+		} );
+
+		await admin.visitAdminPage( 'admin.php', 'page=development-plugin-settings' );
+		await expect( page.locator( '#editor_access' ) ).toHaveValue( '' );
 	} );
 
 	test( 'shows the .env.secret section', async ( { page } ) => {

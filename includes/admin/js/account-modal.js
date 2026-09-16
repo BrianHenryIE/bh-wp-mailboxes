@@ -7,8 +7,7 @@
  * the page, saving/deleting swaps in the refreshed table returned by the server; otherwise the result
  * is only reported in a notice.
  *
- * Relies on `bh_wp_mailboxes_ajax` (localised action names) and `#_wpnonce_account_actions` (printed
- * with the modal markup).
+ * Relies on `bh_wp_mailboxes_ajax.rest` (the mailbox's REST root, route bases and cookie-auth nonce).
  */
 (function( $ ) {
     'use strict';
@@ -62,21 +61,39 @@
         return $( '.bh-mailboxes-account[data-account-id="' + accountId + '"]' );
     }
 
-    function accountsNonce() {
-        return $( '#_wpnonce_account_actions' ).val();
-    }
-
     // Replace the accounts table (when there is one on the page) with the server-rendered copy carried by an AJAX response.
     function replaceTable( html ) {
         $( '.bh-mailboxes-status__table' ).html( html );
     }
 
-    function postAccounts( action, data ) {
-        return $.post( ajaxurl, $.extend( { action: action, _wpnonce: accountsNonce() }, data ) );
+    // The library's REST routes for this mailbox (root URL, cookie-auth nonce, emails/accounts route bases).
+    var rest = ( window.bh_wp_mailboxes_ajax && bh_wp_mailboxes_ajax.rest ) || {};
+
+    // A REST call resolved to the admin-ajax-style `{ success, data }` shape the handlers below read: `data`
+    // is the response body; `success` is false only when the body says so (a check or connection test that
+    // ran but reported a failure). HTTP errors (4xx/5xx) reject with the jqXHR, whose responseJSON is WP's
+    // `{ code, message, data: { status } }`.
+    function restRequest( method, path, data ) {
+        var settings = {
+            url:      rest.root + '/' + path,
+            method:   method,
+            dataType: 'json',
+            headers:  { 'X-WP-Nonce': rest.nonce }
+        };
+        if ( data ) {
+            settings.contentType = 'application/json';
+            settings.data        = JSON.stringify( data );
+        }
+        return $.ajax( settings ).then( function( body ) {
+            return { success: ! ( body && body.success === false ), data: body || {} };
+        } );
     }
 
     function failMessage( xhr, fallback ) {
         var json = xhr && xhr.responseJSON;
+        if ( json && json.message ) {
+            return json.message;
+        }
         return ( json && json.data && json.data.message ) ? json.data.message : fallback;
     }
 
@@ -87,7 +104,8 @@
         showTableNotice: showTableNotice,
         accountRow:      accountRow,
         replaceTable:    replaceTable,
-        postAccounts:    postAccounts,
+        restRequest:     restRequest,
+        rest:            rest,
         failMessage:     failMessage
     };
 
@@ -159,7 +177,7 @@
             data[ field.name ] = field.value;
         } );
         // An unticked checkbox is omitted by serializeArray(); post an explicit value either way.
-        data.validate_cert = $form.find( '[name="validate_cert"]' ).is( ':checked' ) ? '1' : '0';
+        data.validate_cert = $form.find( '[name="validate_cert"]' ).is( ':checked' );
         return data;
     }
 
@@ -176,7 +194,7 @@
         $submit.prop( 'disabled', true );
         $spinner.addClass( 'is-active' );
 
-        postAccounts( bh_wp_mailboxes_ajax.test_connection_action, formData() ).done( function( response ) {
+        restRequest( 'POST', rest.accounts + '/test-connection', formData() ).done( function( response ) {
             // A refused login / unreachable server comes back as HTTP 200 with success:false.
             formNotice( response.data.message, response.success ? 'success' : 'error' );
         } ).fail( function( xhr ) {
@@ -199,7 +217,7 @@
         $test.prop( 'disabled', true );
         $spinner.addClass( 'is-active' );
 
-        postAccounts( bh_wp_mailboxes_ajax.save_account_action, data ).done( function( response ) {
+        restRequest( 'POST', rest.accounts, data ).done( function( response ) {
             replaceTable( response.data.table_html );
             dialog.close();
             if ( response.data.connection && response.data.connection.success ) {
@@ -230,7 +248,7 @@
     function deleteAccount( accountId ) {
         var emailAddress = accountRow( accountId ).data( 'email-address' );
         $( confirmDialog ).find( '.bh-mailboxes-account-confirm__delete' ).prop( 'disabled', true );
-        postAccounts( bh_wp_mailboxes_ajax.delete_account_action, { account_post_id: accountId } ).done( function( response ) {
+        restRequest( 'DELETE', rest.accounts + '/' + accountId ).done( function( response ) {
             replaceTable( response.data.table_html );
             showTableNotice( emailAddress + ' deleted. Its downloaded emails are kept.', 'success' );
         } ).fail( function( xhr ) {

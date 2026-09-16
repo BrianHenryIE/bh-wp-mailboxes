@@ -5,7 +5,7 @@
  * Lists each account with its status, email count, last fetched/failure times, a "Check now"
  * button (with the set-fetch-since date utility) and enable/disable, edit and delete actions, plus
  * an "Add account" button. Adding and editing happen in the {@see Email_Account_Modal} (reusable on
- * other screens); the library saves the account and its credentials (see {@see Email_Accounts_Ajax}).
+ * other screens); the library saves the account and its credentials (see {@see \BrianHenryIE\WP_Mailboxes\REST\Email_Accounts_REST_Controller}).
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -23,6 +23,7 @@ use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\IMAP_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use DateInterval;
 use DateTimeImmutable;
 use Psr\Log\LoggerAwareTrait;
@@ -43,6 +44,13 @@ class Status_View {
 	protected Email_Account_Modal $modal;
 
 	/**
+	 * Decides whether the current user sees the table at all.
+	 *
+	 * @var Mailbox_Capabilities
+	 */
+	protected Mailbox_Capabilities $capabilities;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param API_Interface                      $api                     Main API instance.
@@ -50,6 +58,7 @@ class Status_View {
 	 * @param Email_Repository_Interface         $email_wp_post_repository Email repository (for counts).
 	 * @param LoggerInterface                    $logger                  PSR-3 logger.
 	 * @param ?Email_Account_Modal               $modal                   The add/edit modal printed with the table; built from settings when omitted.
+	 * @param ?Mailbox_Capabilities              $capabilities            This mailbox's capability checks; built from settings when omitted.
 	 */
 	public function __construct(
 		protected API_Interface $api,
@@ -57,13 +66,19 @@ class Status_View {
 		protected Email_Repository_Interface $email_wp_post_repository,
 		LoggerInterface $logger,
 		?Email_Account_Modal $modal = null,
+		?Mailbox_Capabilities $capabilities = null,
 	) {
 		$this->setLogger( $logger );
-		$this->modal = $modal ?? new Email_Account_Modal( $settings );
+		$this->capabilities = $capabilities ?? new Mailbox_Capabilities( $settings );
+		$this->modal        = $modal ?? new Email_Account_Modal( $settings, $this->capabilities );
 	}
 
 	/**
 	 * Renders the accounts table and modal in the admin notices area of the emails list screen.
+	 *
+	 * The table is all-or-nothing: it lists each account's server and username (in the rows' `data-*`
+	 * attributes, to pre-fill the edit form) and every control on it is an account action, so it is
+	 * printed only for users who may manage the mailbox's accounts.
 	 *
 	 * @hooked admin_notices
 	 */
@@ -73,6 +88,10 @@ class Status_View {
 		$post_type = $this->settings->get_emails_cpt_underscored_20();
 
 		if ( null === $screen || $screen->post_type !== $post_type || 'edit' !== $screen->base ) {
+			return;
+		}
+
+		if ( ! $this->capabilities->current_user_can_manage_email_accounts() ) {
 			return;
 		}
 
@@ -96,6 +115,15 @@ class Status_View {
 	 * filter for its screen on construction, which must not happen on the accounts CPT's own list page.
 	 */
 	public function render_table(): void {
+
+		// WP_List_Table (and the screen functions it uses) are only loaded on admin screens; the REST routes
+		// re-render this table for their responses too.
+		if ( ! class_exists( 'WP_List_Table' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/class-wp-screen.php';
+			require_once ABSPATH . 'wp-admin/includes/screen.php';
+			require_once ABSPATH . 'wp-admin/includes/template.php';
+			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
+		}
 
 		$accounts = $this->api->get_email_accounts();
 

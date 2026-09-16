@@ -16,6 +16,7 @@ use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\Unit_Testcase;
 use DateTimeImmutable;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use Mockery;
 use stdClass;
 use WP_Mock;
@@ -63,7 +64,10 @@ class Admin_Notices_Unit_Test extends Unit_Testcase {
 		$api = Mockery::mock( API_Interface::class );
 		$api->allows( 'get_email_accounts' )->andReturn( $accounts );
 
-		return new Admin_Notices( $api, $settings, $this->logger, $notices );
+		$capabilities = Mockery::mock( Mailbox_Capabilities::class );
+		$capabilities->allows( 'get_list_emails_capability' )->andReturn( 'edit_' . $this->post_type . 's' );
+
+		return new Admin_Notices( $api, $settings, $this->logger, $notices, $capabilities );
 	}
 
 	/**

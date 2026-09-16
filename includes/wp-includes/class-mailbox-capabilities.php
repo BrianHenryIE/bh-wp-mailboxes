@@ -86,6 +86,15 @@ class Mailbox_Capabilities {
 	}
 
 	/**
+	 * The (mailbox-scoped) capability for listing emails, e.g. `edit_my_plugin_emails`, for code that
+	 * needs a capability name rather than a check (the auth-failure admin notice); null when the emails
+	 * post type is not registered.
+	 */
+	public function get_list_emails_capability(): ?string {
+		return $this->get_capability( $this->settings->get_emails_cpt_underscored_20(), 'edit_posts' );
+	}
+
+	/**
 	 * May the current user create emails in this mailbox (the REST ingress)?
 	 */
 	public function current_user_can_create_email(): bool {

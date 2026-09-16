@@ -21,6 +21,7 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Connections\Mock_Mailbox_E2E_Connection;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Editor_Access;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Mailbox_Settings;
 use Exception;
 use Psr\Log\NullLogger;
@@ -37,6 +38,8 @@ use ZBateson\MailMimeParser\MailMimeParser;
  * `GET    /wp-json/bh-wp-mailboxes-dev/v2/emails/{id}/attachments` — an email's status and its attachment posts and files.
  * `GET    /wp-json/bh-wp-mailboxes-dev/v2/attachments/{id}?file=` — whether an attachment post, and its file, still exist.
  * `POST   /wp-json/bh-wp-mailboxes-dev/v2/fetch`    — run the fetch for the registered mailboxes.
+ * `POST   /wp-json/bh-wp-mailboxes-dev/v2/users`    — create (or reset) a test user with a role and a known password.
+ * `POST   /wp-json/bh-wp-mailboxes-dev/v2/editor-access` — set the level at which editors may use the e2e mailbox.
  *
  * Fixtures are stored through the library's own repositories (the same code the production fetch and
  * REST-ingress paths use), so what the tests arrange is byte-for-byte what production would store; only
@@ -270,6 +273,105 @@ class Mailboxes {
 				),
 			)
 		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/users',
+			array(
+				'methods'             => 'POST',
+				'callback'            => $this->create_user( ... ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'role' => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/editor-access',
+			array(
+				'methods'             => 'POST',
+				'callback'            => $this->set_editor_access( ... ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'level' => array(
+						'type'     => 'string',
+						'enum'     => Editor_Access::LEVELS,
+						'required' => true,
+					),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Create a test user `e2e-{role}` with the password `password`, or reset that user's password and
+	 * role when it already exists, so a Playwright project can sign in as a non-administrator.
+	 *
+	 * Returns { user_id, login, password } with HTTP 201.
+	 *
+	 * @param WP_REST_Request $request The REST request object.
+	 */
+	public function create_user( WP_REST_Request $request ): WP_REST_Response {
+
+		$role_param = $request->get_param( 'role' );
+		$role       = sanitize_key( is_string( $role_param ) ? $role_param : '' );
+		if ( is_null( get_role( $role ) ) ) {
+			return new WP_REST_Response( array( 'error' => "Unknown role: {$role}" ), 400 );
+		}
+
+		$login    = "e2e-{$role}";
+		$password = 'password';
+		$user_id  = username_exists( $login );
+
+		if ( false === $user_id ) {
+			$created = wp_insert_user(
+				array(
+					'user_login' => $login,
+					'user_pass'  => $password,
+					'user_email' => "{$login}@bh-wp-mailboxes.test",
+					'role'       => $role,
+				)
+			);
+			if ( is_wp_error( $created ) ) {
+				return new WP_REST_Response( array( 'error' => $created->get_error_message() ), 500 );
+			}
+			$user_id = $created;
+		} else {
+			wp_set_password( $password, $user_id );
+			$user = get_user_by( 'id', $user_id );
+			if ( $user instanceof \WP_User ) {
+				$user->set_role( $role );
+			}
+		}
+
+		return new WP_REST_Response(
+			array(
+				'user_id'  => $user_id,
+				'login'    => $login,
+				'password' => $password,
+			),
+			201
+		);
+	}
+
+	/**
+	 * Set the level at which editors may use the e2e mailbox (see Editor_Access).
+	 *
+	 * Returns { level } with HTTP 200.
+	 *
+	 * @param WP_REST_Request $request The REST request object.
+	 */
+	public function set_editor_access( WP_REST_Request $request ): WP_REST_Response {
+
+		$level = $request->get_param( 'level' );
+		Editor_Access::set_level( is_string( $level ) ? $level : '' );
+
+		return new WP_REST_Response( array( 'level' => Editor_Access::get_level() ), 200 );
 	}
 
 	/**

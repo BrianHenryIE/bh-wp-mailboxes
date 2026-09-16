@@ -17,7 +17,9 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\BH_WP_Mailboxes_Settings_Fixture;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 
 /**
@@ -75,6 +77,16 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$api_mock->allows( 'get_connection_for_email_account' )->andReturn( $connection_mock );
 
 		return $api_mock;
+	}
+
+	/**
+	 * A user who may do everything: these tests cover the rendering, the capability gate has its own tests
+	 * (Capability_Aware_UI_WPUnit_Test).
+	 */
+	private function all_capabilities(): Mailbox_Capabilities {
+		/** @var Mailbox_Capabilities $capabilities */
+		$capabilities = \Mockery::mock( Mailbox_Capabilities::class )->shouldIgnoreMissing( true );
+		return $capabilities;
 	}
 
 	/** @return Email_WP_Post_Repository */
@@ -152,12 +164,12 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		);
 
 		$filepath = codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
-		$bh_email = BH_Email_Fixture::make_from_file( $filepath );
+		$bh_email = BH_Email_Fixture::make_from_file( $filepath, BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		$post = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		global $wp_meta_boxes;
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting before assertion is intentional in tests.
@@ -191,11 +203,11 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		$post     = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 		$sut->add_meta_boxes( $post );
 
 		global $wp_meta_boxes;
@@ -218,17 +230,17 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		// Post from plain-text-only fixture (non-multipart, no HTML part).
 
 		$filepath        = codecept_root_dir( 'tests/_data/wpunit/non-multipart.eml' );
-		$bh_email        = BH_Email_Fixture::make_from_file( $filepath );
+		$bh_email        = BH_Email_Fixture::make_from_file( $filepath, BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id_no_html = $bh_email->post_id;
 		$post_no_html    = get_post( $post_id_no_html );
 
 		// Post from HTML+plain-text fixture (has an HTML part).
 		$filepath          = codecept_root_dir( 'tests/_data/wpunit/html-and-plaintext.eml' );
-		$bh_email          = BH_Email_Fixture::make_from_file( $filepath );
+		$bh_email          = BH_Email_Fixture::make_from_file( $filepath, BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id_with_html = $bh_email->post_id;
 		$post_with_html    = get_post( $post_id_with_html );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		// Test without HTML.
 		global $wp_meta_boxes;
@@ -276,7 +288,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		$incoming_data = array(
 			'post_type'    => $this->post_type,
@@ -310,7 +322,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$this->factory()->attachment->create( array( 'post_parent' => $post_id ) );
 		$post = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		global $wp_meta_boxes;
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting before assertion is intentional in tests.
@@ -339,7 +351,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
 		$post    = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		global $wp_meta_boxes;
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting before assertion is intentional in tests.
@@ -370,13 +382,13 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		update_post_meta( $post_id, 'Date', 'Wed, 30 Jul 2025 03:38:07 +0000' );
 		$post = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_local_status_metabox( $post );
@@ -398,11 +410,11 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		$post     = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_local_status_metabox( $post );
@@ -424,12 +436,12 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		update_post_meta( $post_id, 'is_remote_read', 'yes' );
 		$post = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
@@ -455,12 +467,12 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		update_post_meta( $post_id, 'is_remote_read', 'no' );
 		$post = get_post( $post_id );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
@@ -486,7 +498,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		$post     = get_post( $post_id );
 
@@ -496,7 +508,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$connection_mock->expects( 'can_read_status' )->andReturnFalse();
 
 		$api_mock = $this->make_api( connection_mock: $connection_mock );
-		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
+		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
@@ -518,7 +530,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		update_post_meta( $post_id, 'bh_email_is_read', '0' );
@@ -543,7 +555,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
@@ -572,7 +584,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		update_post_meta( $post_id, 'is_remote_deleted', 'yes' );
 		$post = get_post( $post_id );
@@ -583,7 +595,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$connection_mock->allows( 'can_read_status' )->andReturnTrue();
 
 		$api_mock = $this->make_api( connection_mock: $connection_mock );
-		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
+		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
@@ -607,13 +619,13 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 
 		$post = get_post( $post_id );
 
 		$api_mock = $this->make_api( can_return_email_account: false );
-		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger );
+		$sut      = new Single_Email_View( $this->make_settings(), $api_mock, $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
@@ -636,7 +648,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->register_cpt();
 
-		$bh_email = BH_Email_Fixture::make_from_file();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
 		$post_id  = $bh_email->post_id;
 		$post     = get_post( $post_id );
 
@@ -659,12 +671,82 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger );
+		$sut = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
 
 		ob_start();
 		$sut->render_remote_status_metabox( $post );
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'bh-email-delete-on-server', $html );
+	}
+
+	/**
+	 * On the email's edit screen the inline config the script reads carries the post id, the mailbox's REST
+	 * root and route base, and a cookie-auth nonce.
+	 *
+	 * @covers ::enqueue_scripts
+	 * @covers \BrianHenryIE\WP_Mailboxes\REST\REST_Namespace::url
+	 */
+	public function test_enqueue_scripts_adds_the_rest_config_on_the_edit_screen(): void {
+		$this->register_cpt();
+		$bh_email = BH_Email_Fixture::make_from_file( mailbox_settings: BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ) );
+
+		$settings = $this->makeEmpty(
+			BH_WP_Mailboxes_Settings_Interface::class,
+			array(
+				'get_emails_cpt_underscored_20' => fn() => $this->post_type,
+				'get_emails_cpt_dashed'         => fn() => 'test-mailbox-emails',
+				'get_plugin_slug'               => fn() => 'test-plugin',
+				'get_rest_namespace'            => fn() => null,
+			)
+		);
+		$sut      = new Single_Email_View( $settings, $this->make_api(), $this->make_repository(), $this->logger );
+
+		// The inline config is attached to core's `post` script; another test may have replaced the scripts registry.
+		if ( ! wp_script_is( 'post', 'registered' ) ) {
+			wp_register_script( 'post', admin_url( 'js/post.js' ), array(), '1', true );
+		}
+
+		// The single-post edit screen for this CPT, with the email as the current post.
+		set_current_screen( $this->post_type );
+		$GLOBALS['post'] = get_post( $bh_email->post_id );
+		setup_postdata( $GLOBALS['post'] );
+		try {
+			$sut->enqueue_scripts();
+			$after = wp_scripts()->get_data( 'post', 'after' );
+		} finally {
+			wp_reset_postdata();
+			unset( $GLOBALS['post'] );
+			set_current_screen( 'front' );
+		}
+
+		$this->assertIsArray( $after );
+		$config = array_values( array_filter( $after, fn( $script ) => is_string( $script ) && str_starts_with( $script, 'var bhWpMailboxesSingleEmail = ' ) ) );
+		$this->assertCount( 1, $config );
+		$decoded = json_decode( substr( $config[0], strlen( 'var bhWpMailboxesSingleEmail = ' ), -1 ), true );
+		$this->assertSame( $bh_email->post_id, $decoded['postId'] );
+		$this->assertSame( rest_url( 'test-plugin/v2' ), $decoded['restRoot'] );
+		$this->assertSame( 'test-mailbox-emails', $decoded['emailsBase'] );
+		$this->assertSame( 1, wp_verify_nonce( $decoded['restNonce'], 'wp_rest' ) );
+	}
+
+	/**
+	 * Nothing is enqueued away from the email edit screen.
+	 *
+	 * @covers ::enqueue_scripts
+	 */
+	public function test_enqueue_scripts_does_nothing_on_other_screens(): void {
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger );
+
+		// Scripts persist across tests in the process, so compare before and after.
+		$before = wp_scripts()->get_data( 'post', 'after' );
+		set_current_screen( 'edit-post' );
+		try {
+			$sut->enqueue_scripts();
+		} finally {
+			set_current_screen( 'front' );
+		}
+
+		$this->assertSame( $before, wp_scripts()->get_data( 'post', 'after' ), 'Nothing added on the list screen.' );
 	}
 }

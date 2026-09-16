@@ -14,6 +14,7 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Mockery;
 use WP_Post;
@@ -73,7 +74,10 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 			$api->allows( 'get_email_account_for_email' )->andReturnNull();
 		}
 
-		return new Emails_List_Page( $repository, $api, $settings, $this->logger );
+		// These tests cover the rendering; the capability gate has its own tests (Capability_Aware_UI_WPUnit_Test).
+		$capabilities = Mockery::mock( Mailbox_Capabilities::class )->shouldIgnoreMissing( true );
+
+		return new Emails_List_Page( $repository, $api, $settings, $this->logger, null, $capabilities );
 	}
 
 	private function make_post(): WP_Post {
@@ -262,7 +266,7 @@ class Emails_List_Page_WPUnit_Test extends WPUnit_Testcase {
 			)
 		);
 
-		$sut = new Emails_List_Page( Mockery::mock( Email_WP_Post_Repository::class ), $api, $settings, $this->logger );
+		$sut = new Emails_List_Page( Mockery::mock( Email_WP_Post_Repository::class ), $api, $settings, $this->logger, null, Mockery::mock( Mailbox_Capabilities::class )->shouldIgnoreMissing( true ) );
 
 		ob_start();
 		$sut->table_filters();

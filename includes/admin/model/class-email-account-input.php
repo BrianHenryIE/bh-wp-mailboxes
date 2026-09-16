@@ -12,7 +12,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin\Model;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 
 /**
- * Built by {@see \BrianHenryIE\WP_Mailboxes\Admin\Email_Accounts_Ajax::validate()} for both saving
+ * Built by {@see \BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Manager::validate()} for both saving
  * and testing a connection, with the form's defaults applied (display name and username default to
  * the address; a blank password when editing is replaced by the saved one).
  */

@@ -126,8 +126,8 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		await expect( row ).toBeVisible();
 
 		// While the delete request is in flight the confirm button is disabled (no double submit).
-		await page.route( '**/admin-ajax.php', async ( route ) => {
-			if ( route.request().postData()?.includes( 'delete_account' ) ) {
+		await page.route( '**/e2e-accounts/*', async ( route ) => {
+			if ( route.request().method() === 'DELETE' ) {
 				await new Promise( ( resolve ) => setTimeout( resolve, 800 ) );
 			}
 			await route.continue();
@@ -174,21 +174,18 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		// The save handler is keyed by email address: posting the ingress account's address must not
 		// convert it into an IMAP account.
 		const hijack = await page.evaluate( async ( emailAddress ) => {
-			const body = new URLSearchParams( {
-				action: ( window as any ).bh_wp_mailboxes_ajax.save_account_action,
-				_wpnonce: ( document.getElementById( '_wpnonce_account_actions' ) as HTMLInputElement ).value,
-				email_address: emailAddress,
-				display_name: 'Hijacked',
-				server: '127.0.0.1:1',
-				password: 'x',
-				encryption: 'TLS',
+			const rest = ( window as any ).bh_wp_mailboxes_ajax.rest;
+			const response = await fetch( `${ rest.root }/${ rest.accounts }`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': rest.nonce },
+				credentials: 'same-origin',
+				body: JSON.stringify( { email_address: emailAddress, display_name: 'Hijacked', server: '127.0.0.1:1', password: 'x', encryption: 'TLS' } ),
 			} );
-			const response = await fetch( ( window as any ).ajaxurl, { method: 'POST', body, credentials: 'same-origin' } );
 			return { status: response.status, json: await response.json() };
 		}, INGRESS_ACCOUNT_EMAIL );
 		expect( hijack.status ).toBe( 400 );
 		// On a dotless host (localhost) the address fails is_email() first; elsewhere the IMAP guard rejects it.
-		expect( hijack.json.data.message ).toMatch( /not an IMAP account|valid email address is required/ );
+		expect( hijack.json.message ).toMatch( /not an IMAP account|valid email address is required/ );
 
 		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
 		const after = accountRow( page, INGRESS_ACCOUNT_EMAIL );
@@ -302,8 +299,8 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 	test( 'saving shows a busy state until the response arrives', async ( { admin, page } ) => {
 		const emailAddress = `modal-busy-${ Date.now() }@example.com`;
 		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
-		await page.route( '**/admin-ajax.php', async ( route ) => {
-			if ( route.request().postData()?.includes( 'save_account' ) ) {
+		await page.route( '**/e2e-accounts', async ( route ) => {
+			if ( route.request().method() === 'POST' ) {
 				await new Promise( ( resolve ) => setTimeout( resolve, 800 ) );
 			}
 			await route.continue();
@@ -376,10 +373,8 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 
 	test( '"Test connection" requires the same fields as saving, and shows a busy state', async ( { admin, page } ) => {
 		await admin.visitAdminPage( 'edit.php', EMAILS_LIST );
-		await page.route( '**/admin-ajax.php', async ( route ) => {
-			if ( route.request().postData()?.includes( 'test_account_connection' ) ) {
-				await new Promise( ( resolve ) => setTimeout( resolve, 800 ) );
-			}
+		await page.route( '**/e2e-accounts/test-connection', async ( route ) => {
+			await new Promise( ( resolve ) => setTimeout( resolve, 800 ) );
 			await route.continue();
 		} );
 

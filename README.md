@@ -49,7 +49,7 @@ Credentials are saved by the library, encrypted, using the [WordPress Secrets AP
 The Secrets API derives its encryption key from `LOGGED_IN_KEY`/`LOGGED_IN_SALT`, or from a `WP_SECRETS_KEY` constant (base64-encoded 32 bytes) when defined; a site whose `wp-config.php` still has the sample placeholders (e.g. WordPress Playground) must define `WP_SECRETS_KEY` or saving fails with a logged error.
 
 Saved mailboxes are checked on a cron job for new emails. When a new email is downloaded, the library fires `bh_wp_mailboxes_new_email` for you to listen for.  
-Use the methods on `New_Email_Interface` to read the email, log any action taken, and maybe mark it to be saved 
+Use the methods on `Email_Controller_Interface` (a `Remote_Email_Controller_Interface` when the account's connection can act on the server) to read the email, log any action taken, and maybe mark it to be saved 
 
 ## Connection Types
 
@@ -113,20 +113,41 @@ gateway settings page) together with an "Add account" button, and enqueue its as
 
 ```php
 use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Modal;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 
-$modal = new Email_Account_Modal( $settings );
+$modal = new Email_Account_Modal( $settings, new Mailbox_Capabilities( $settings ) );
 add_action( 'admin_enqueue_scripts', fn() => $modal->enqueue_assets() ); // Only on your screen.
 add_action( 'admin_footer', fn() => $modal->print_modal() );
 $modal->print_add_button(); // Where the button should appear.
 ```
 
 The library saves the account and its credentials (encrypted, in the WordPress Secrets API): there is
-nothing for you to persist.
+nothing for you to persist. The button and the modal are printed only for users who may manage the
+mailbox's accounts (see Capabilities below), so your screen needs no check of its own.
 
 The result is reported in an admin notice inserted after your page's `<hr class="wp-header-end">`
 (or after its first heading when there is none). The development plugin's settings page
 (`development-plugin/admin/class-settings.php`) is a working example, including saving credentials
 from its own forms with `API::save_account_credentials()`.
+
+## REST API
+
+The admin screens (accounts table, account modal, "Check now"/"Check all", the single-email remote actions and
+local status) call the library's own REST routes rather than admin-ajax. They live under
+`{rest_namespace}/v2` (the namespace the ingress route uses; the plugin slug when no REST namespace is
+configured), with the mailbox's dashed post types as route bases:
+
+| Route | Capability |
+|---|---|
+| `GET /{emails}`, `GET /{emails}/{id}`, `GET /{emails}/{id}/remote-status` | read (list / per email) |
+| `POST /{emails}/{id}/mark-read`, `…/mark-unread`, `…/delete-on-server`, `…/status` | edit (per email) |
+| `DELETE /{emails}/{id}` (`force=true` deletes instead of trashing) | delete (per email) |
+| `POST /{emails}/check`, `POST /{accounts}`, `POST /{accounts}/test-connection`, `POST /{accounts}/{id}/check`, `POST /{accounts}/{id}/active`, `DELETE /{accounts}/{id}` | manage accounts |
+
+Every route has a permission callback backed by the capability model above (reads included); an id
+belonging to another post type is a 404. Cookie authentication needs the `wp_rest` nonce in `X-WP-Nonce`;
+application passwords work too. A remote action the mail server refuses answers 502 (the error is also
+recorded in the email's log).
 
 ## Extensibility
 
@@ -149,6 +170,24 @@ add_filter( 'bh_wp_mailboxes_required_capability', function ( string $required, 
 
 The REST ingress requires the mailbox's create capability, so the Cloudflare worker's application password
 belongs to a user with `manage_options` (or whatever the filter maps it to).
+
+The admin screens follow the same capabilities: a user sees only the controls they may use. Without the
+manage-accounts capability (`manage_{accounts_cpt}`) the emails list has no "Check now" button, no accounts
+table and no "Add account" button (the reusable modal prints nothing on your own screen either); a user who
+may read but not act on an email gets its status and remote state read-only. The filter receives the
+capability being checked, so it can grant reading and acting on emails while keeping account management
+for administrators:
+
+```php
+add_filter( 'bh_wp_mailboxes_required_capability', function ( string $required, string $capability, string $post_type ): string {
+    if ( 'my_plugin_emails' === $post_type ) {
+        return 'manage_woocommerce'; // Emails: shop managers.
+    }
+    return $required; // Accounts (`manage_my_plugin_accounts`, …): administrators.
+}, 10, 3 );
+```
+
+Hiding a control is a courtesy, not the security boundary: every REST route checks the capability itself.
 
 <!-- filters -->
 ### Filters
