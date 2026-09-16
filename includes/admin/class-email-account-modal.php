@@ -5,7 +5,7 @@
  * The emails list screen prints it beside the accounts table; a consumer can print it elsewhere,
  * e.g. on a WooCommerce payment gateway settings screen, with an "Add account" button:
  *
- *     $modal = new Email_Account_Modal( $settings );
+ *     $modal = new Email_Account_Modal( $settings, new Mailbox_Capabilities( $settings ) );
  *     add_action( 'admin_enqueue_scripts', fn() => $modal->enqueue_assets() ); // On the relevant screen.
  *     add_action( 'admin_footer', fn() => $modal->print_modal() );
  *     $modal->print_add_button(); // Wherever the button should appear.
@@ -42,23 +42,15 @@ use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 class Email_Account_Modal {
 
 	/**
-	 * Decides whether the current user sees the button and the modal.
-	 *
-	 * @var Mailbox_Capabilities
-	 */
-	protected Mailbox_Capabilities $capabilities;
-
-	/**
 	 * Constructor.
 	 *
 	 * @param BH_WP_Mailboxes_Settings_Interface $settings     Provides the post type keys the REST routes are scoped by.
-	 * @param ?Mailbox_Capabilities              $capabilities This mailbox's capability checks; built from settings when omitted.
+	 * @param Mailbox_Capabilities               $capabilities Decides whether the current user sees the button and the modal.
 	 */
 	public function __construct(
 		protected BH_WP_Mailboxes_Settings_Interface $settings,
-		?Mailbox_Capabilities $capabilities = null,
+		protected Mailbox_Capabilities $capabilities,
 	) {
-		$this->capabilities = $capabilities ?? new Mailbox_Capabilities( $settings );
 	}
 
 	/**

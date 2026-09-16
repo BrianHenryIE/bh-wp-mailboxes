@@ -14,6 +14,7 @@
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin;
 
 use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Modal;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
@@ -152,7 +153,8 @@ class Settings {
 	 */
 	private function get_modal(): Email_Account_Modal {
 		if ( null === $this->modal ) {
-			$this->modal = new Email_Account_Modal( Dev_Mailboxes::make_settings( self::MODAL_MAILBOX ) );
+			$settings    = Dev_Mailboxes::make_settings( self::MODAL_MAILBOX );
+			$this->modal = new Email_Account_Modal( $settings, new Mailbox_Capabilities( $settings ) );
 		}
 		return $this->modal;
 	}

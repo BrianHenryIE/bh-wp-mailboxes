@@ -113,8 +113,9 @@ gateway settings page) together with an "Add account" button, and enqueue its as
 
 ```php
 use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Modal;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 
-$modal = new Email_Account_Modal( $settings );
+$modal = new Email_Account_Modal( $settings, new Mailbox_Capabilities( $settings ) );
 add_action( 'admin_enqueue_scripts', fn() => $modal->enqueue_assets() ); // Only on your screen.
 add_action( 'admin_footer', fn() => $modal->print_modal() );
 $modal->print_add_button(); // Where the button should appear.

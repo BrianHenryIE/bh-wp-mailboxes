@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Mockery;
 
@@ -47,8 +48,9 @@ class Email_Account_Modal_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers \BrianHenryIE\WP_Mailboxes\REST\REST_Namespace::url
 	 */
 	public function test_enqueue_assets_localises_the_rest_settings(): void {
-		$modal  = new Email_Account_Modal( $this->make_settings() );
-		$handle = $modal->get_script_handle();
+		$settings = $this->make_settings();
+		$modal    = new Email_Account_Modal( $settings, new Mailbox_Capabilities( $settings ) );
+		$handle   = $modal->get_script_handle();
 
 		$modal->enqueue_assets();
 
@@ -74,7 +76,8 @@ class Email_Account_Modal_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers ::enqueue_assets
 	 */
 	public function test_enqueue_assets_is_idempotent(): void {
-		$modal = new Email_Account_Modal( $this->make_settings() );
+		$settings = $this->make_settings();
+		$modal    = new Email_Account_Modal( $settings, new Mailbox_Capabilities( $settings ) );
 
 		$modal->enqueue_assets();
 		$data_after_first = wp_scripts()->get_data( $modal->get_script_handle(), 'data' );
