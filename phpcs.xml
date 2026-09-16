@@ -14,6 +14,7 @@
     <!-- Show colors -->
     <arg name="colors"/>
 
+    <exclude-pattern>/.claude/</exclude-pattern>
     <exclude-pattern>/assets/</exclude-pattern>
     <exclude-pattern>/bin/</exclude-pattern>
     <exclude-pattern>/docs/</exclude-pattern>

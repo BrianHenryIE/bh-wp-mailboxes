@@ -76,3 +76,4 @@ quickstart-cli.php
 /test-results
 /.playwright-mcp
 /gh-pages/
+/.claude
