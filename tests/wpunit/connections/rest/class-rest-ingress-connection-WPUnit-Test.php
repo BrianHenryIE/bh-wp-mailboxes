@@ -136,6 +136,7 @@ class REST_Ingress_Connection_WPUnit_Test extends WPUnit_Testcase {
 			$this->email_account_repository,
 			$private_uploads,
 			$this->logger,
+			new Mailbox_Capabilities( $settings ?? $this->settings ),
 		);
 	}
 

@@ -146,7 +146,8 @@ class BH_WP_Mailboxes_Hooks {
 			$this->email_wp_post_repository,
 			$this->email_account_wp_post_repository,
 			$this->private_uploads,
-			$this->logger
+			$this->logger,
+			new Mailbox_Capabilities( $this->settings ),
 		);
 
 		add_action( 'rest_api_init', $rest_ingress_connection->rest_init( ... ) );

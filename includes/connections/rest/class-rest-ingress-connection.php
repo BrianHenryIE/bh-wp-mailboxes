@@ -61,7 +61,7 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 	 * @param Email_Account_WP_Post_Repository   $email_account_repository Persists the auto-created ingress account.
 	 * @param ?Private_Uploads_API_Interface     $private_uploads          Private uploads API, or null to skip attachment saving.
 	 * @param LoggerInterface                    $logger                   PSR-3 logger.
-	 * @param ?Mailbox_Capabilities              $capabilities             Decides who may create emails; built from the settings when omitted.
+	 * @param Mailbox_Capabilities               $capabilities             Decides who may create emails in this mailbox.
 	 */
 	public function __construct(
 		protected API_Interface $api,
@@ -70,17 +70,9 @@ class REST_Ingress_Connection implements Email_Connection_Interface {
 		protected Email_Account_WP_Post_Repository $email_account_repository,
 		protected ?Private_Uploads_API_Interface $private_uploads,
 		protected LoggerInterface $logger,
-		?Mailbox_Capabilities $capabilities = null,
+		protected Mailbox_Capabilities $capabilities,
 	) {
-		$this->capabilities = $capabilities ?? new Mailbox_Capabilities( $mailboxes_settings );
 	}
-
-	/**
-	 * Decides who may create emails in this mailbox.
-	 *
-	 * @var Mailbox_Capabilities
-	 */
-	protected Mailbox_Capabilities $capabilities;
 
 	/**
 	 * Register the ingress route, unless the settings do not provide a REST namespace.

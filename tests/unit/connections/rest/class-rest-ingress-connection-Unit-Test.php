@@ -25,6 +25,7 @@ use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 use ZBateson\MailMimeParser\Message;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Connections\Rest\REST_Ingress_Connection
@@ -92,6 +93,7 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 			$this->email_account_repository,
 			null,
 			$this->logger,
+			new Mailbox_Capabilities( $this->settings ),
 		);
 	}
 

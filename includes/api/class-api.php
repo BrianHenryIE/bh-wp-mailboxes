@@ -23,6 +23,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Result\Delete_Old_Emails_Result;
 use BrianHenryIE\WP_Mailboxes\API\Model\Result\Test_Connection_Result;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Repository_Interface;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads;
 use DateException;
 use DateInterval;
@@ -892,7 +893,8 @@ class API implements API_Interface {
 				$this->email_repository,
 				$this->email_account_repository,
 				$this->private_uploads,
-				$this->logger
+				$this->logger,
+				new Mailbox_Capabilities( $this->settings ),
 			);
 		} else {
 			$this->logger->warning(
