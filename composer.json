@@ -100,7 +100,7 @@
         "squizlabs/php_codesniffer": "*",
         "szepeviktor/phpstan-wordpress": "*",
         "vlucas/phpdotenv": "*",
-        "wordpress/wordpress": "7.1.0",
+        "wordpress/wordpress": "7.1.1",
         "wp-coding-standards/wpcs": "*",
         "wpackagist-plugin/wp-crontrol": "^1.21",
         "wpackagist-theme/twentytwenty": "*"
