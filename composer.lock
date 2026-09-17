@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f5f2426dd33bf61b2b393f03eaaaf562",
+    "content-hash": "291007a69a98203d0705e06d96a03bc6",
     "packages": [
         {
             "name": "carbonphp/carbon-doctrine-types",
@@ -9639,11 +9639,11 @@
         },
         {
             "name": "wordpress/wordpress",
-            "version": "7.1.0",
+            "version": "7.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/WordPress/wordpress-develop.git",
-                "reference": "daaca56d3d6a9a42a0c87f6eda766c33a77c1d05"
+                "reference": "a940fbc1e63a7e24d31a28e707e545ad4873cb84"
             },
             "require": {
                 "ext-hash": "*",
@@ -9735,7 +9735,7 @@
             "support": {
                 "issues": "https://core.trac.wordpress.org/"
             },
-            "time": "2026-08-19T20:05:06+00:00"
+            "time": "2026-09-17T19:08:04+00:00"
         },
         {
             "name": "wp-coding-standards/wpcs",
