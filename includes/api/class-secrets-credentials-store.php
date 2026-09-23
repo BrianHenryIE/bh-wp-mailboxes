@@ -126,7 +126,7 @@ class Secrets_Credentials_Store implements Credentials_Store_Interface {
 	public function get_secret_name( BH_Email_Account $account ): string {
 		$namespace = $this->normalise_segment( $this->settings->get_plugin_slug() );
 		$key       = $this->normalise_segment( $this->settings->get_email_accounts_cpt_underscored_20() )
-			. '-' . $this->normalise_segment( str_replace( '@', '-at-', trim( $account->email_address ) ) );
+			. '-' . $this->normalise_segment( str_replace( '@', '_at_', trim( $account->email_address ) ) );
 
 		return $namespace . '/' . $key;
 	}
@@ -259,6 +259,7 @@ class Secrets_Credentials_Store implements Credentials_Store_Interface {
 	 */
 	protected function normalise_segment( string $value ): string {
 		$segment = (string) preg_replace( '/[^a-z0-9_-]+/', '-', strtolower( $value ) );
+		$segment = str_replace( '-', '_', $segment );
 		$segment = trim( $segment, '-_' );
 
 		return '' === $segment ? 'bh-wp-mailboxes' : $segment;
