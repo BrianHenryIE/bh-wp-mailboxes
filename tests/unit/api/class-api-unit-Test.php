@@ -545,7 +545,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		/**
 		 * On a fetch failure `update()` is called once; the mock declares the full signature, so the
-		 * named `last_failed_login_time` argument binds to its declared position (index 10).
+		 * named `last_failed_login_time` argument binds to its declared position (index 12).
 		 */
 		$captured_update_args = array();
 
@@ -570,7 +570,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$this->assertNotEmpty( $captured_update_args, 'Email_Account_WP_Post_Repository::update() was not called.' );
 		$this->assertSame( $email_account, $captured_update_args[0][0] );
 
-		$last_failed_login_time = $captured_update_args[0][10] ?? null;
+		$last_failed_login_time = $captured_update_args[0][12] ?? null;
 		$this->assertInstanceOf( DateTimeInterface::class, $last_failed_login_time );
 		$this->assertEqualsWithDelta( time(), $last_failed_login_time->getTimestamp(), 60 );
 	}
@@ -722,7 +722,8 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
-		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->once();
+		// Once for the login/checked times, once for the lifetime totals.
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->twice();
 
 		$this->store_credentials( $credentials );
 
@@ -1532,5 +1533,166 @@ class API_Unit_Test extends Unit_Testcase {
 		WP_Mock::onFilter( 'bh_wp_mailboxes_connection_for_account' )->with( null, 'test-plugin', 'test_emails', $account )->reply( $connection );
 
 		$this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository )->check_email();
+	}
+
+	// ── lifetime totals ───────────────────────────────────────────────────────────
+
+	/**
+	 * Run check_email() for the account and capture every named argument passed to update().
+	 *
+	 * @param BH_Email_Account $email_account The account (carrying its current totals).
+	 * @param Fetched_Email[]  $fetched       What the connection returns.
+	 * @param string[]         $already_saved Message-IDs the email repository reports as already saved.
+	 * @param int              $saved_count   How many emails save_all() reports as saved.
+	 *
+	 * @return array<int, array<int, mixed>> Positional args of each update() call.
+	 */
+	private function check_capturing_updates( BH_Email_Account $email_account, array $fetched, array $already_saved = array(), ?int $saved_count = null ): array {
+		$credentials = Mockery::mock( Account_Credentials_Interface::class );
+		$connection  = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$settings    = Mockery::mock(
+			BH_WP_Mailboxes_Settings_Interface::class,
+			array(
+				'get_plugin_slug'               => 'test-plugin',
+				'get_emails_cpt_underscored_20' => 'test_emails',
+			)
+		)->shouldIgnoreMissing();
+
+		$connection->expects( 'retrieve_emails' )->andReturn( new Collection( $fetched ) );
+
+		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
+		$email_repository->allows( 'is_post_for_message_id' )->andReturnUsing(
+			fn( string $address, string $message_id ): bool => in_array( $message_id, $already_saved, true )
+		);
+		$email_repository->expects( 'save_all' )->andReturnUsing(
+			function ( Collection $emails_to_save ) use ( $saved_count ) {
+				$count = $saved_count ?? $emails_to_save->count();
+				return array_fill( 0, $count, BH_Email_Fixture::new( post_id: 1, post_type: 'test_emails', email_account_local_id: 2, imessage: Mockery::mock( IMessage::class ), message_id: 'm@example.org', subject: 'Hi', from_email: 'a@example.org' ) );
+			}
+		);
+
+		$captured = array();
+
+		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
+		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
+		$email_account_repository->allows( 'update' )->andReturnUsing(
+			function ( ...$args ) use ( &$captured, $email_account ) {
+				$captured[] = $args;
+				return $email_account;
+			}
+		);
+
+		$this->store_credentials( $credentials );
+		WP_Mock::onFilter( 'bh_wp_mailboxes_connection_for_account' )->with( null, 'test-plugin', 'test_emails', $email_account )->reply( $connection );
+
+		$this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository )->check_email();
+
+		return $captured;
+	}
+
+	/**
+	 * After a fetch, the run's new and saved counts are added to the account's existing lifetime
+	 * totals and written via update() (positions 7 and 8 of its signature).
+	 *
+	 * @covers ::check_email
+	 */
+	public function test_check_email_adds_run_counts_to_lifetime_totals(): void {
+		$email_account = BH_Email_Account_Fixture::make(
+			from_address_regex_filter: '/keep/',
+			total_emails_downloaded_count: 100,
+			total_emails_saved_count: 40,
+		);
+
+		$updates = $this->check_capturing_updates(
+			$email_account,
+			array(
+				$this->make_fetched_email( 'old@example.org', 'keep@example.com' ),
+				$this->make_fetched_email( 'keep-1@example.org', 'keep@example.com' ),
+				$this->make_fetched_email( 'keep-2@example.org', 'keep@example.com' ),
+				$this->make_fetched_email( 'drop@example.org', 'drop@example.com' ),
+			),
+			already_saved: array( 'old@example.org' ),
+		);
+
+		$this->assertCount( 2, $updates, 'One update for the login times, one for the totals.' );
+
+		$totals_update = $updates[1];
+		$this->assertSame( $email_account, $totals_update[0] );
+		$this->assertSame( 103, $totals_update[7], '100 + 3 new (the already-saved email is not counted).' );
+		$this->assertSame( 42, $totals_update[8], '40 + 2 saved (the filtered-out email is not counted).' );
+	}
+
+	/**
+	 * The totals count what save_all() actually saved, not what was handed to it.
+	 *
+	 * @covers ::check_email
+	 */
+	public function test_check_email_saved_total_reflects_what_save_all_returned(): void {
+		$email_account = BH_Email_Account_Fixture::make( total_emails_downloaded_count: 0, total_emails_saved_count: 0 );
+
+		$updates = $this->check_capturing_updates(
+			$email_account,
+			array(
+				$this->make_fetched_email( 'a@example.org', 'a@example.com' ),
+				$this->make_fetched_email( 'b@example.org', 'b@example.com' ),
+			),
+			saved_count: 1,
+		);
+
+		$this->assertSame( 2, $updates[1][7] );
+		$this->assertSame( 1, $updates[1][8] );
+	}
+
+	/**
+	 * When nothing new was fetched the totals are unchanged, so no second update() is made.
+	 *
+	 * @covers ::check_email
+	 */
+	public function test_check_email_does_not_update_totals_when_nothing_new(): void {
+		$email_account = BH_Email_Account_Fixture::make( total_emails_downloaded_count: 5, total_emails_saved_count: 5 );
+
+		$updates = $this->check_capturing_updates(
+			$email_account,
+			array( $this->make_fetched_email( 'old@example.org', 'a@example.com' ) ),
+			already_saved: array( 'old@example.org' ),
+		);
+
+		$this->assertCount( 1, $updates, 'Only the login-times update.' );
+	}
+
+	/**
+	 * A debug log line summarises the run: retrieved, already saved, new, filtered out, saved, and the totals.
+	 *
+	 * @covers ::check_email
+	 */
+	public function test_check_email_logs_fetch_summary(): void {
+		$email_account = BH_Email_Account_Fixture::make(
+			email_address: 'inbox@example.org',
+			from_address_regex_filter: '/keep/',
+			total_emails_downloaded_count: 10,
+			total_emails_saved_count: 4,
+		);
+
+		$this->check_capturing_updates(
+			$email_account,
+			array(
+				$this->make_fetched_email( 'old@example.org', 'keep@example.com' ),
+				$this->make_fetched_email( 'keep@example.org', 'keep@example.com' ),
+				$this->make_fetched_email( 'drop@example.org', 'drop@example.com' ),
+			),
+			already_saved: array( 'old@example.org' ),
+		);
+
+		$this->assertTrue( $this->logger->hasDebugThatContains( 'inbox@example.org: 3 emails retrieved since ' ) );
+		$this->assertTrue( $this->logger->hasDebugThatContains( '; 1 already saved, 2 new; 1 filtered out, 1 saved. Lifetime totals: 12 downloaded, 5 saved.' ) );
+
+		$record = array_values( array_filter( $this->logger->records, fn( array $r ) => str_contains( $r['message'], 'emails retrieved since' ) ) )[0];
+		$this->assertSame( 3, $record['context']['retrieved'] );
+		$this->assertSame( 1, $record['context']['already_saved'] );
+		$this->assertSame( 2, $record['context']['new'] );
+		$this->assertSame( 1, $record['context']['filtered_out'] );
+		$this->assertSame( 1, $record['context']['saved'] );
+		$this->assertSame( 12, $record['context']['total_emails_downloaded_count'] );
+		$this->assertSame( 5, $record['context']['total_emails_saved_count'] );
 	}
 }

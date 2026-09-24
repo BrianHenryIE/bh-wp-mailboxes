@@ -255,4 +255,62 @@ class Email_Account_WP_Post_Repository_WPUnit_Test extends WPUnit_Testcase {
 		$reloaded = $sut->find_by_post_id( $saved->get_post_id() );
 		$this->assertFalse( $reloaded->is_active(), 'The account should be inactive after the status update.' );
 	}
+
+	/**
+	 * A new account starts with both lifetime totals at zero, stored explicitly as meta.
+	 *
+	 * @covers ::save_new
+	 */
+	public function test_save_new_initialises_lifetime_totals_to_zero(): void {
+		$sut = $this->make_sut();
+
+		$saved = $this->save_account( $sut );
+
+		$this->assertSame( 0, $saved->total_emails_downloaded_count );
+		$this->assertSame( 0, $saved->total_emails_saved_count );
+		$this->assertSame( '0', get_post_meta( $saved->get_post_id(), 'total_emails_downloaded_count', true ) );
+		$this->assertSame( '0', get_post_meta( $saved->get_post_id(), 'total_emails_saved_count', true ) );
+	}
+
+	/**
+	 * The lifetime totals can be raised and persist.
+	 *
+	 * @covers ::update
+	 */
+	public function test_update_raises_lifetime_totals(): void {
+		$sut = $this->make_sut();
+
+		$saved = $this->save_account( $sut );
+
+		$updated = $sut->update( $saved, total_emails_downloaded_count: 12, total_emails_saved_count: 7 );
+		$this->assertSame( 12, $updated->total_emails_downloaded_count );
+		$this->assertSame( 7, $updated->total_emails_saved_count );
+
+		$updated = $sut->update( $updated, total_emails_downloaded_count: 30 );
+		$this->assertSame( 30, $updated->total_emails_downloaded_count );
+		$this->assertSame( 7, $updated->total_emails_saved_count, 'A total not passed is left unchanged.' );
+
+		$reloaded = $sut->find_by_post_id( $saved->get_post_id() );
+		$this->assertSame( 30, $reloaded->total_emails_downloaded_count );
+		$this->assertSame( 7, $reloaded->total_emails_saved_count );
+	}
+
+	/**
+	 * The lifetime totals are a historical record: an attempt to lower one is ignored and logged.
+	 *
+	 * @covers ::update
+	 */
+	public function test_update_refuses_to_lower_lifetime_totals(): void {
+		$sut = $this->make_sut();
+
+		$saved   = $this->save_account( $sut );
+		$updated = $sut->update( $saved, total_emails_downloaded_count: 20, total_emails_saved_count: 10 );
+
+		$updated = $sut->update( $updated, total_emails_downloaded_count: 5, total_emails_saved_count: 10, status: 'bh_email_ac_inactive' );
+
+		$this->assertSame( 20, $updated->total_emails_downloaded_count, 'The lower value is ignored.' );
+		$this->assertSame( 10, $updated->total_emails_saved_count );
+		$this->assertFalse( $updated->is_active(), 'The rest of the update still applies.' );
+		$this->assertTrue( $this->logger->hasWarningThatContains( 'Ignoring attempt to lower total_emails_downloaded_count from 20 to 5' ) );
+	}
 }

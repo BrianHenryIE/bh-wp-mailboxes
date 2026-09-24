@@ -48,6 +48,8 @@ class CLI_Unit_Test extends Unit_Testcase {
 			body_identifier_regex_filter: null,
 			after_download_remote_email_action: null,
 			delete_local_emails_after_n_days: null,
+			total_emails_downloaded_count: 0,
+			total_emails_saved_count: 0,
 			last_checked_time: $last_checked_time,
 			last_successful_login_time: null,
 			last_failed_login_time: null,

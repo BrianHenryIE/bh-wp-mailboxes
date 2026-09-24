@@ -40,7 +40,7 @@ class Secrets_Credentials_Store_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	protected function make_account( string $email_address, string $connection_type_class = ImapEngine_Imap_Email_Connection::class ): BH_Email_Account {
-		return new BH_Email_Account( 1, 'test_accounts', 'bh_email_ac_active', $connection_type_class, $email_address, $email_address, null, null, null, null, null, null, null );
+		return new BH_Email_Account( 1, 'test_accounts', 'bh_email_ac_active', $connection_type_class, $email_address, $email_address, null, null, null, null, 0, 0, null, null, null );
 	}
 
 	/**

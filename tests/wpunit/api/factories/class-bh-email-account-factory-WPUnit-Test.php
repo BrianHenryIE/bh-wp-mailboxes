@@ -91,6 +91,8 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 				'body_identifier_regex_filter'       => '/order #\\d+/',
 				'after_download_remote_email_action' => 'mark_read',
 				'delete_local_emails_after_n_days'   => '14',
+				'total_emails_downloaded_count'      => '250',
+				'total_emails_saved_count'           => '75',
 			)
 		);
 
@@ -106,6 +108,43 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( '/@example.com$/', $account->from_address_regex_filter );
 		$this->assertSame( 'mark_read', $account->after_download_remote_email_action );
 		$this->assertSame( 14, $account->delete_local_emails_after_n_days );
+		$this->assertSame( 250, $account->total_emails_downloaded_count );
+		$this->assertSame( 75, $account->total_emails_saved_count );
+	}
+
+	/**
+	 * Accounts saved before the lifetime totals existed have no meta for them: they read as zero, not null.
+	 *
+	 * @covers ::from_wp_post
+	 */
+	public function test_from_wp_post_defaults_lifetime_totals_to_zero(): void {
+
+		$account = ( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post(
+			$this->make_account_post( $this->required_meta() )
+		);
+
+		$this->assertSame( 0, $account->total_emails_downloaded_count );
+		$this->assertSame( 0, $account->total_emails_saved_count );
+	}
+
+	/**
+	 * Garbage in the totals meta reads as zero rather than throwing.
+	 *
+	 * @covers ::from_wp_post
+	 */
+	public function test_from_wp_post_treats_non_numeric_totals_as_zero(): void {
+
+		$account = ( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post(
+			$this->make_account_post(
+				$this->required_meta() + array(
+					'total_emails_downloaded_count' => 'lots',
+					'total_emails_saved_count'      => '-3',
+				)
+			)
+		);
+
+		$this->assertSame( 0, $account->total_emails_downloaded_count );
+		$this->assertSame( 0, $account->total_emails_saved_count );
 	}
 
 	/**

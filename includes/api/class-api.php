@@ -454,6 +454,8 @@ class API implements API_Interface {
 			);
 		}
 
+		$downloaded_count = $all_new_account_emails->count();
+
 		// The fetch authenticated and completed, so record the successful login and check time.
 		$this->email_account_repository->update(
 			$email_account,
@@ -476,11 +478,53 @@ class API implements API_Interface {
 			)
 		);
 
+		$new_emails_downloaded_count = $all_new_account_emails->count();
+
 		// Keep only the emails whose sender and body match the account's regex filters.
 		$all_new_account_emails = $this->filter_by_account_regexes( $email_account, $all_new_account_emails, $warnings );
 
-		// TODO: Log the number of emails found.
+		$filtered_out_count = $new_emails_downloaded_count - $all_new_account_emails->count();
+
 		$saved = $this->email_repository->save_all( $all_new_account_emails, $this->settings, $email_account, $this->private_uploads );
+
+		$new_emails_saved_count = count( $saved );
+
+		// Add this run to the account's lifetime totals (a historical record; they never decrease).
+		$total_emails_downloaded_count = $email_account->total_emails_downloaded_count + $new_emails_downloaded_count;
+		$total_emails_saved_count      = $email_account->total_emails_saved_count + $new_emails_saved_count;
+		if ( $new_emails_downloaded_count > 0 ) {
+			$this->email_account_repository->update(
+				$email_account,
+				total_emails_downloaded_count: $total_emails_downloaded_count,
+				total_emails_saved_count: $total_emails_saved_count,
+			);
+		}
+
+		$this->logger->debug(
+			sprintf(
+				'%s: %d emails retrieved since %s; %d already saved, %d new; %d filtered out, %d saved. Lifetime totals: %d downloaded, %d saved.',
+				$email_account->email_address,
+				$downloaded_count,
+				$since_datetime->format( DateTimeInterface::ATOM ),
+				$downloaded_count - $new_emails_downloaded_count,
+				$new_emails_downloaded_count,
+				$filtered_out_count,
+				$new_emails_saved_count,
+				$total_emails_downloaded_count,
+				$total_emails_saved_count
+			),
+			array(
+				'account'                       => $email_account->email_address,
+				'since'                         => $since_datetime->format( DateTimeInterface::ATOM ),
+				'retrieved'                     => $downloaded_count,
+				'already_saved'                 => $downloaded_count - $new_emails_downloaded_count,
+				'new'                           => $new_emails_downloaded_count,
+				'filtered_out'                  => $filtered_out_count,
+				'saved'                         => $new_emails_saved_count,
+				'total_emails_downloaded_count' => $total_emails_downloaded_count,
+				'total_emails_saved_count'      => $total_emails_saved_count,
+			)
+		);
 
 		// If the mailbox is configured to mark-as-read or delete emails on the server after downloading,
 		// perform that action now. The mark/delete methods record their own log entry on each email.

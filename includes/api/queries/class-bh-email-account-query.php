@@ -32,6 +32,8 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 	 * @param ?string            $body_identifier_regex_filter Only emails whose body matches this regex will be saved.
 	 * @param ?string            $after_download_remote_email_action What to do after downloading the email – delete|mark-read|nothing.
 	 * @param ?int               $delete_local_emails_after_n_days How long to keep the emails before cron deletes them.
+	 * @param ?int               $total_emails_downloaded_count Lifetime count of new emails fetched from the server.
+	 * @param ?int               $total_emails_saved_count Lifetime count of emails saved locally.
 	 * @param ?DateTimeInterface $last_successful_login_time Record of last successful connection time.
 	 * @param ?DateTimeInterface $last_failed_login_time Record of last failure time.
 	 */
@@ -48,6 +50,8 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 		protected ?string $body_identifier_regex_filter = null,
 		protected ?string $after_download_remote_email_action = null,
 		protected ?int $delete_local_emails_after_n_days = null,
+		protected ?int $total_emails_downloaded_count = null,
+		protected ?int $total_emails_saved_count = null,
 		protected ?DateTimeInterface $last_successful_login_time = null,
 		protected ?DateTimeInterface $last_failed_login_time = null,
 	) {
@@ -88,6 +92,8 @@ readonly class BH_Email_Account_Query extends WP_Post_Query_Abstract {
 			'body_identifier_regex_filter'       => $this->body_identifier_regex_filter,
 			'after_download_remote_email_action' => $this->after_download_remote_email_action,
 			'delete_local_emails_after_n_days'   => $this->delete_local_emails_after_n_days,
+			'total_emails_downloaded_count'      => $this->total_emails_downloaded_count,
+			'total_emails_saved_count'           => $this->total_emails_saved_count,
 			'last_checked_time'                  => $this->last_checked_time,
 			'last_successful_login_time'         => $this->last_successful_login_time,
 			'last_failed_login_time'             => $this->last_failed_login_time,

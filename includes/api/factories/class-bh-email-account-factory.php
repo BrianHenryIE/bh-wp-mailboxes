@@ -53,7 +53,7 @@ class BH_Email_Account_Factory {
 	 *
 	 * @param WP_Post $post The wp_post row.
 	 *
-	 * @return array{post_id:int<1, max>, post_type:string, local_status:string, after_download_remote_email_action:string|null, body_identifier_regex_filter:string|null, delete_local_emails_after_n_days:int|null, display_name:string, email_address:string, from_address_regex_filter:string|null, last_checked_time:DateTimeInterface|null, last_failed_login_time:DateTimeInterface|null, last_successful_login_time:DateTimeInterface|null, connection_type_class:class-string<Email_Connection_Interface>} $args
+	 * @return array{post_id:int<1, max>, post_type:string, local_status:string, after_download_remote_email_action:string|null, body_identifier_regex_filter:string|null, delete_local_emails_after_n_days:int|null, total_emails_downloaded_count:int, total_emails_saved_count:int, display_name:string, email_address:string, from_address_regex_filter:string|null, last_checked_time:DateTimeInterface|null, last_failed_login_time:DateTimeInterface|null, last_successful_login_time:DateTimeInterface|null, connection_type_class:class-string<Email_Connection_Interface>} $args
 	 * @throws Exception When an expected value is missing or the incorrect type.
 	 */
 	protected function get_array_from_post_meta( WP_Post $post ): array {
@@ -65,6 +65,8 @@ class BH_Email_Account_Factory {
 			'body_identifier_regex_filter'       => null,
 			'after_download_remote_email_action' => null,
 			'delete_local_emails_after_n_days'   => null,
+			'total_emails_downloaded_count'      => 0,
+			'total_emails_saved_count'           => 0,
 			'last_checked_time'                  => null,
 			'last_successful_login_time'         => null,
 			'last_failed_login_time'             => null,
@@ -83,6 +85,8 @@ class BH_Email_Account_Factory {
 			'body_identifier_regex_filter',
 			'after_download_remote_email_action',
 			'delete_local_emails_after_n_days',
+			'total_emails_downloaded_count',
+			'total_emails_saved_count',
 			'last_checked_time',
 			'last_successful_login_time',
 			'last_failed_login_time',
@@ -108,6 +112,12 @@ class BH_Email_Account_Factory {
 		$int_keys = array(
 			'post_id',
 			'delete_local_emails_after_n_days',
+		);
+
+		// Lifetime counters: absent meta (accounts created before the counters existed) reads as zero.
+		$count_keys = array(
+			'total_emails_downloaded_count',
+			'total_emails_saved_count',
 		);
 
 		$datetime_keys = array(
@@ -139,6 +149,10 @@ class BH_Email_Account_Factory {
 
 		foreach ( $int_keys as $int_key ) {
 			$args[ $int_key ] = (int) $args[ $int_key ] ?: null;
+		}
+
+		foreach ( $count_keys as $count_key ) {
+			$args[ $count_key ] = is_numeric( $args[ $count_key ] ) ? max( 0, (int) $args[ $count_key ] ) : 0;
 		}
 
 		foreach ( $datetime_keys as $datetime_key ) {
