@@ -364,7 +364,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * A fetch-capable account offers "Check now", the set-fetch-since date input, and Delete.
+	 * A fetch-capable account offers "Check now", "Check since…" (with its default date), and Delete; the check-since dialog is printed.
 	 *
 	 * @covers ::display
 	 * @covers ::render_table
@@ -380,7 +380,9 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		$html = $this->capture_display( $this->make_sut( $api ) );
 
 		$this->assertStringContainsString( 'class="bh-check-account" data-account-id="77"', $html );
-		$this->assertStringContainsString( 'bh-fetch-since-input', $html );
+		$this->assertStringContainsString( 'class="bh-fetch-since-toggle" data-account-id="77" data-since-value="', $html );
+		$this->assertStringNotContainsString( 'bh-fetch-since-input" data-account-id', $html, 'The date input lives in the dialog, not in the row.' );
+		$this->assertStringContainsString( '<dialog id="bh-mailboxes-fetch-since"', $html );
 		$this->assertStringContainsString( '<div class="row-actions"><span class=\'toggle\'>', $html, 'Enable/disable, edit, delete are row actions on the account column.' );
 		$this->assertStringContainsString( 'bh-account-delete', $html );
 		$this->assertStringNotContainsString( 'column-actions', $html );

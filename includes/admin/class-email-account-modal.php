@@ -217,6 +217,22 @@ class Email_Account_Modal {
 				<button type="button" class="button button-primary bh-mailboxes-account-confirm__delete"><?php esc_html_e( 'Delete account', 'bh-wp-mailboxes' ); ?></button>
 			</p>
 		</dialog>
+
+		<dialog id="bh-mailboxes-fetch-since" class="bh-mailboxes-fetch-since" aria-labelledby="bh-mailboxes-fetch-since-title">
+			<form method="dialog" class="bh-mailboxes-fetch-since__form">
+				<h2 id="bh-mailboxes-fetch-since-title"><?php esc_html_e( 'Check for emails since…', 'bh-wp-mailboxes' ); ?></h2>
+				<p class="bh-mailboxes-fetch-since__account"></p>
+				<p>
+					<label for="bh-mailboxes-fetch-since-date"><?php esc_html_e( 'Fetch emails received on or after', 'bh-wp-mailboxes' ); ?></label>
+					<input type="date" id="bh-mailboxes-fetch-since-date" class="bh-fetch-since-input" autocomplete="off" data-lpignore="true" data-1p-ignore required>
+				</p>
+				<p class="description"><?php esc_html_e( 'This will poll for 100 emails at a time until no more are found. Emails already downloaded will be ignored based on their message id.', 'bh-wp-mailboxes' ); ?></p>
+				<p class="bh-mailboxes-fetch-since__actions">
+					<button type="button" class="button bh-mailboxes-fetch-since__cancel"><?php esc_html_e( 'Cancel', 'bh-wp-mailboxes' ); ?></button>
+					<button type="submit" class="button button-primary bh-mailboxes-fetch-since__fetch"><?php esc_html_e( 'Fetch', 'bh-wp-mailboxes' ); ?></button>
+				</p>
+			</form>
+		</dialog>
 		<?php
 	}
 }

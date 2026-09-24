@@ -212,39 +212,54 @@
             } );
         } );
 
-        // ── Per-account: Since toggle ──────────────────────────────────────────
-        $( document ).on( 'click', '.bh-fetch-since-toggle', function( event ) {
-            event.preventDefault();
-            var accountId = $( this ).data( 'account-id' );
-            $( '.bh-fetch-since-input[data-account-id="' + accountId + '"]' ).toggle().focus();
-        } );
+        // ── Per-account: Check since… dialog ───────────────────────────────────
+        var sinceDialog = document.getElementById( 'bh-mailboxes-fetch-since' );
+        if ( ! sinceDialog || typeof sinceDialog.showModal !== 'function' ) {
+            return;
+        }
+        var $sinceInput         = $( sinceDialog ).find( '.bh-fetch-since-input' );
+        var pendingSinceAccount = null;
 
-        // ── Per-account: Since date change ─────────────────────────────────────
-        $( document ).on( 'change', '.bh-fetch-since-input', function() {
-            var $input      = $( this );
-            var accountId   = $input.data( 'account-id' );
+        function checkSince( accountId, sinceDate ) {
             var $row        = accountRow( accountId );
             var accountName = $row.data( 'account-name' );
-            var sinceDate   = $input.val();
-
-            if ( ! sinceDate ) {
-                // Ignore an empty value, e.g. the spurious re-fire of `change` after we clear the input below.
-                return;
-            }
-
-            $input.hide();
-            // Clear the value so re-opening and picking the same date fires `change` again — a date
-            // input does not emit `change` when re-committed with an unchanged value, which otherwise
-            // limited this to one check per page load.
-            $input.val( '' );
-
-            var $notice = makeCheckNotice( accountId, accountName );
+            var $notice     = makeCheckNotice( accountId, accountName );
 
             restRequest( 'POST', rest.accounts + '/' + accountId + '/check', { since_date: sinceDate } ).done( function( response ) {
                 handleCheckResponse( response, $row, $notice );
             } ).fail( function( xhr ) {
                 finishNotice( $notice, failMessage( xhr, 'Check failed: server error.' ), '#d63638' );
             } );
+        }
+
+        $( document ).on( 'click', '.bh-fetch-since-toggle', function( event ) {
+            event.preventDefault();
+            var $link = $( this );
+            pendingSinceAccount = $link.data( 'account-id' );
+            $( sinceDialog ).find( '.bh-mailboxes-fetch-since__account' ).text( accountRow( pendingSinceAccount ).data( 'email-address' ) );
+            $sinceInput.val( $link.data( 'since-value' ) );
+            sinceDialog.showModal();
+            $sinceInput.trigger( 'focus' );
+        } );
+
+        // The form's method="dialog" closes the dialog after submit; the request is started first.
+        $( sinceDialog ).find( '.bh-mailboxes-fetch-since__form' ).on( 'submit', function() {
+            var sinceDate = $sinceInput.val();
+            if ( pendingSinceAccount && sinceDate ) {
+                checkSince( pendingSinceAccount, sinceDate );
+            }
+        } );
+        $( sinceDialog ).find( '.bh-mailboxes-fetch-since__cancel' ).on( 'click', function() {
+            sinceDialog.close();
+        } );
+        $( sinceDialog ).on( 'close', function() {
+            pendingSinceAccount = null;
+        } );
+        // Clicking the backdrop (outside the dialog's box) closes it.
+        $( sinceDialog ).on( 'click', function( event ) {
+            if ( event.target === this ) {
+                this.close();
+            }
         } );
 
     } );

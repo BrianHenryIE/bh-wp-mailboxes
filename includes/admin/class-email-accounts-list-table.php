@@ -233,9 +233,8 @@ class Email_Accounts_List_Table extends WP_List_Table {
 		return '<span data-field="last-fetched">' . esc_html( $this->format_time( $item->account->last_successful_login_time ) ) . '</span>'
 			. '<div class="row-actions visible bh-mailboxes-account__check">'
 			. '<span class="check"><a href="#" class="bh-check-account" data-account-id="' . esc_attr( $account_id ) . '">' . esc_html__( 'Check now', 'bh-wp-mailboxes' ) . '</a> | </span>'
-			. '<span class="since"><a href="#" class="bh-fetch-since-toggle" data-account-id="' . esc_attr( $account_id ) . '" title="' . esc_attr__( 'Set the date from which emails will be fetched', 'bh-wp-mailboxes' ) . '">' . esc_html__( 'Check since…', 'bh-wp-mailboxes' ) . '</a></span>'
-			. '</div>'
-			. '<input type="date" class="bh-fetch-since-input" data-account-id="' . esc_attr( $account_id ) . '" value="' . esc_attr( $item->since_value ) . '" style="display:none;">';
+			. '<span class="since"><a href="#" class="bh-fetch-since-toggle" data-account-id="' . esc_attr( $account_id ) . '" data-since-value="' . esc_attr( $item->since_value ) . '" title="' . esc_attr__( 'Set the date from which emails will be fetched', 'bh-wp-mailboxes' ) . '">' . esc_html__( 'Check since…', 'bh-wp-mailboxes' ) . '</a></span>'
+			. '</div>';
 	}
 
 	/**

@@ -1,4 +1,4 @@
-/* The add/edit IMAP account modal, its delete confirmation, and the notices they report in (see Email_Account_Modal). */
+/* The add/edit IMAP account modal, its delete confirmation, the check-since dialog, and the notices they report in (see Email_Account_Modal). */
 
 .bh-check-notice {
 	transition: border-left-color 0.3s ease;
@@ -13,7 +13,8 @@
 /* Dialogs. */
 
 .bh-mailboxes-account-dialog,
-.bh-mailboxes-account-confirm {
+.bh-mailboxes-account-confirm,
+.bh-mailboxes-fetch-since {
 	padding: 0 24px 20px;
 	border: 1px solid #c3c4c7;
 	border-radius: 4px;
@@ -27,19 +28,22 @@
 	overflow: auto;
 }
 
-.bh-mailboxes-account-confirm {
+.bh-mailboxes-account-confirm,
+.bh-mailboxes-fetch-since {
 	width: min( 480px, calc( 100vw - 40px ) );
 	padding-top: 20px;
 }
 
 .bh-mailboxes-account-dialog::backdrop,
-.bh-mailboxes-account-confirm::backdrop {
+.bh-mailboxes-account-confirm::backdrop,
+.bh-mailboxes-fetch-since::backdrop {
 	background: rgba( 0, 0, 0, 0.5 );
 }
 
 /* WordPress's .button display rule would otherwise override the hidden attribute. */
 .bh-mailboxes-account-dialog [hidden],
-.bh-mailboxes-account-confirm [hidden] {
+.bh-mailboxes-account-confirm [hidden],
+.bh-mailboxes-fetch-since [hidden] {
 	display: none !important;
 }
 
@@ -53,14 +57,21 @@
 }
 
 .bh-mailboxes-account-dialog__header h2,
-.bh-mailboxes-account-confirm h2 {
+.bh-mailboxes-account-confirm h2,
+.bh-mailboxes-fetch-since h2 {
 	flex: 1;
 	margin: 0;
 	font-size: 1.3em;
 }
 
-.bh-mailboxes-account-confirm h2 {
+.bh-mailboxes-account-confirm h2,
+.bh-mailboxes-fetch-since h2 {
 	margin-bottom: 8px;
+}
+
+.bh-mailboxes-fetch-since label {
+	display: block;
+	margin-bottom: 4px;
 }
 
 .bh-mailboxes-account-dialog__close {
@@ -91,7 +102,8 @@
 }
 
 .bh-mailboxes-account-form__actions,
-.bh-mailboxes-account-confirm__actions {
+.bh-mailboxes-account-confirm__actions,
+.bh-mailboxes-fetch-since__actions {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;

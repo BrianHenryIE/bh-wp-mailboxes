@@ -1,7 +1,7 @@
 /**
  * Playwright tests for Status_View interactive behaviours.
  *
- * Covers: "Check now" notice lifecycle, clock/since-date input, and card in-place updates.
+ * Covers: "Check now" notice lifecycle, the "Check since…" dialog, and card in-place updates.
  */
 import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import type { Page } from '@playwright/test';
@@ -125,25 +125,41 @@ test.describe( 'Status_View — Check now button', () => {
 	} );
 } );
 
-test.describe( 'Status_View — Since (clock) button', () => {
-	test( 'date input is hidden initially and appears below the actions row after clicking clock', async ( { admin, page, request } ) => {
-		const email = `clock-toggle-${ Date.now() }@example.com`;
+test.describe( 'Status_View — Check since… dialog', () => {
+	const DIALOG = '#bh-mailboxes-fetch-since';
+
+	/** Opens the dialog for the account and returns its locators. */
+	async function openSinceDialog( page: Page, postId: number ) {
+		const card = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
+		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
+		const dialog = page.locator( DIALOG );
+		await expect( dialog ).toBeVisible();
+		return { card, dialog, input: dialog.locator( '.bh-fetch-since-input' ) };
+	}
+
+	test( 'clicking "Check since…" opens a modal without changing the row height', async ( { admin, page, request } ) => {
+		const email = `since-open-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		const card   = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
-		const input  = card.locator( '.bh-fetch-since-input' );
-		await expect( input ).not.toBeVisible();
+		const card = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
+		await expect( page.locator( DIALOG ) ).not.toBeVisible();
+		const before = await card.boundingBox();
 
-		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
-		await expect( input ).toBeVisible();
+		const { dialog } = await openSinceDialog( page, postId );
 
-		const actionsBox = await card.locator( '.bh-mailboxes-account__check' ).boundingBox();
-		const inputBox   = await input.boundingBox();
-		expect( actionsBox ).not.toBeNull();
-		expect( inputBox ).not.toBeNull();
-		// Input top edge must be at or below the actions div bottom edge.
-		expect( inputBox!.y ).toBeGreaterThanOrEqual( actionsBox!.y + actionsBox!.height - 2 );
+		// Native <dialog> opened with showModal() carries the `open` attribute and a backdrop.
+		await expect( dialog ).toHaveAttribute( 'open', '' );
+		await expect( dialog ).toContainText( email );
+		await expect( dialog ).toContainText( 'This will poll for 100 emails at a time until no more are found.' );
+		await expect( dialog ).toContainText( 'Emails already downloaded will be ignored based on their message id.' );
+		await expect( dialog.getByRole( 'button', { name: 'Fetch' } ) ).toBeVisible();
+		await expect( dialog.getByRole( 'button', { name: 'Cancel' } ) ).toBeVisible();
+
+		const after = await card.boundingBox();
+		expect( before ).not.toBeNull();
+		expect( after ).not.toBeNull();
+		expect( after!.height ).toBe( before!.height );
 	} );
 
 	test( 'date input is pre-populated with one week ago for a new account', async ( { admin, page, request } ) => {
@@ -151,16 +167,34 @@ test.describe( 'Status_View — Since (clock) button', () => {
 		const postId = await createAccount( request, email );
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		const value = await page
-			.locator( `.bh-mailboxes-account[data-account-id="${ postId }"] .bh-fetch-since-input` )
-			.inputValue();
+		const { input } = await openSinceDialog( page, postId );
 
 		const oneWeekAgo = new Date();
 		oneWeekAgo.setDate( oneWeekAgo.getDate() - 7 );
-		expect( value ).toBe( oneWeekAgo.toISOString().split( 'T' )[ 0 ] );
+		await expect( input ).toHaveValue( oneWeekAgo.toISOString().split( 'T' )[ 0 ] );
 	} );
 
-	test( 'changing since date shows grey notice with spinner then resolves', async ( { admin, page, request } ) => {
+	test( 'Cancel closes the dialog without sending a check', async ( { admin, page, request } ) => {
+		const email = `since-cancel-${ Date.now() }@example.com`;
+		const postId = await createAccount( request, email );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
+
+		let checkRequests = 0;
+		await page.route( `**/${ postId }/check`, async ( route ) => {
+			checkRequests++;
+			await route.continue();
+		} );
+
+		const { dialog, input } = await openSinceDialog( page, postId );
+		await input.fill( '2026-01-01' );
+		await dialog.getByRole( 'button', { name: 'Cancel' } ).click();
+
+		await expect( dialog ).not.toBeVisible();
+		await expect( page.locator( `.bh-check-notice[data-account-id="${ postId }"]` ) ).toHaveCount( 0 );
+		expect( checkRequests ).toBe( 0 );
+	} );
+
+	test( 'Fetch closes the dialog and shows grey notice with spinner then resolves', async ( { admin, page, request } ) => {
 		const email = `since-change-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
 
@@ -168,13 +202,11 @@ test.describe( 'Status_View — Since (clock) button', () => {
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		const card  = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
-		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
-
-		const input = card.locator( '.bh-fetch-since-input' );
-		await expect( input ).toBeVisible();
+		const { dialog, input } = await openSinceDialog( page, postId );
 		await input.fill( '2026-01-01' );
-		await input.dispatchEvent( 'change' );
+		await dialog.getByRole( 'button', { name: 'Fetch' } ).click();
+
+		await expect( dialog ).not.toBeVisible();
 
 		const notice = page.locator( `.bh-check-notice[data-account-id="${ postId }"]` );
 		await expect( notice ).toBeVisible();
@@ -199,47 +231,18 @@ test.describe( 'Status_View — Since (clock) button', () => {
 		await expect( page.locator( '#the-list tr.bh-email-row--new' ).first() ).toBeAttached( { timeout: 5000 } );
 	} );
 
-	test( 'set-date check can be triggered more than once per page load', async ( { admin, page, request } ) => {
+	test( 'set-date check can be triggered more than once per page load with the same date', async ( { admin, page, request } ) => {
 		const email = `since-twice-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		const card  = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
-		const input = card.locator( '.bh-fetch-since-input' );
-
-		// First set-date check.
-		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
-		await expect( input ).toBeVisible();
-		await input.fill( '2026-01-01' );
-		const first = waitForCheckResponse( page, postId );
-		await input.dispatchEvent( 'change' );
-		await first;
-
-		// The input is cleared after a check, so re-selecting the same date counts as a change.
-		await expect( input ).toHaveValue( '' );
-
-		// Second set-date check — re-open and pick the SAME date. Should fire another request.
-		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
-		await expect( input ).toBeVisible();
-		await input.fill( '2026-01-01' );
-		const second = waitForCheckResponse( page, postId );
-		await input.dispatchEvent( 'change' );
-		await second;
-	} );
-
-	test( 'since input hides after a successful check', async ( { admin, page, request } ) => {
-		const email = `since-hide-${ Date.now() }@example.com`;
-		const postId = await createAccount( request, email );
-		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
-
-		const card  = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
-		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
-
-		const input = card.locator( '.bh-fetch-since-input' );
-		await input.fill( '2026-01-01' );
-		await input.dispatchEvent( 'change' );
-		await waitForCheckResponse( page, postId );
-
-		await expect( input ).not.toBeVisible();
+		for ( let i = 0; i < 2; i++ ) {
+			const { dialog, input } = await openSinceDialog( page, postId );
+			await input.fill( '2026-01-01' );
+			const response = waitForCheckResponse( page, postId );
+			await dialog.getByRole( 'button', { name: 'Fetch' } ).click();
+			await response;
+			await expect( dialog ).not.toBeVisible();
+		}
 	} );
 } );
