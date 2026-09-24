@@ -29,21 +29,27 @@ use ZBateson\MailMimeParser\MailMimeParser;
 class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
 	/**
-	 * Build the fetcher with a mocked Mailbox whose inbox returns the given messages from `get()`.
+	 * Build the fetcher with a mocked Mailbox whose inbox query delivers the given pages of messages via `chunk()`.
 	 *
-	 * @param MessageInterface[] $messages     The messages the (mocked) inbox query returns.
-	 * @param int                $uid_validity The folder UIDVALIDITY to report.
-	 * @param string             $folder_path  The folder path to report.
+	 * @param MessageInterface[][] $pages        The pages of messages the (mocked) inbox query delivers to the chunk callback.
+	 * @param int                  $uid_validity The folder UIDVALIDITY to report.
+	 * @param string               $folder_path  The folder path to report.
 	 */
-	private function make_sut_with_messages( array $messages, int $uid_validity = 12345, string $folder_path = 'INBOX' ): ImapEngine_Imap_Email_Connection {
+	private function make_sut_with_pages( array $pages, int $uid_validity = 12345, string $folder_path = 'INBOX' ): ImapEngine_Imap_Email_Connection {
 
 		$query = Mockery::mock( MessageQuery::class );
 		$query->allows( 'since' );
-		$query->allows( 'limit' )->andReturnSelf();
+		$query->allows( 'oldest' )->andReturnSelf();
 		$query->allows( 'withHeaders' )->andReturnSelf();
 		$query->allows( 'withBody' )->andReturnSelf();
 		$query->allows( 'withFlags' )->andReturnSelf();
-		$query->allows( 'get' )->andReturn( new MessageCollection( $messages ) );
+		$query->allows( 'chunk' )->andReturnUsing(
+			function ( callable $callback ) use ( $pages ): void {
+				foreach ( array_values( $pages ) as $index => $page ) {
+					$callback( new MessageCollection( $page ), $index + 1 );
+				}
+			}
+		);
 
 		$folder = Mockery::mock( Folder::class );
 		$folder->allows( 'path' )->andReturn( $folder_path );
@@ -62,6 +68,17 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 		$property->setValue( $sut, $mailbox );
 
 		return $sut;
+	}
+
+	/**
+	 * Build the fetcher with a mocked Mailbox whose inbox query delivers the given messages in a single page.
+	 *
+	 * @param MessageInterface[] $messages     The messages the (mocked) inbox query returns.
+	 * @param int                $uid_validity The folder UIDVALIDITY to report.
+	 * @param string             $folder_path  The folder path to report.
+	 */
+	private function make_sut_with_messages( array $messages, int $uid_validity = 12345, string $folder_path = 'INBOX' ): ImapEngine_Imap_Email_Connection {
+		return $this->make_sut_with_pages( array( $messages ), $uid_validity, $folder_path );
 	}
 
 	/**
@@ -107,7 +124,7 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
 		$sut = $this->make_sut_with_messages( $messages, uid_validity: 999, folder_path: 'INBOX' );
 
-		$result = $sut->retrieve_emails( ( new DateTime() )->modify( '-7 days' ), 100 );
+		$result = $sut->retrieve_emails( ( new DateTime() )->modify( '-7 days' ) );
 
 		$fetched = $result->values()->all();
 		$this->assertCount( 4, $fetched );
@@ -147,11 +164,60 @@ class ImapEngine_Imap_Email_Fetcher_Unit_Test extends Unit_Testcase {
 
 		$sut = $this->make_sut_with_messages( $messages );
 
-		$result = $sut->retrieve_emails( ( new DateTime() )->modify( '-7 days' ), 100 );
+		$result = $sut->retrieve_emails( ( new DateTime() )->modify( '-7 days' ) );
 
 		$fetched = $result->values()->all();
 		$this->assertCount( 1, $fetched );
 		$this->assertSame( '11', $fetched[0]->coordinates->remote_uid );
+	}
+
+	/**
+	 * Messages are fetched in pages of FETCH_CHUNK_SIZE and every page is returned, so a backlog
+	 * larger than one page is not truncated.
+	 *
+	 * @covers ::retrieve_emails
+	 */
+	public function test_retrieve_emails_accumulates_all_pages(): void {
+
+		$now = Carbon::now();
+
+		$page_one = array(
+			$this->make_message( 'test_save_new.eml', 11, true, $now ),
+			$this->make_message( 'html-and-plaintext.eml', 22, false, $now ),
+		);
+		$page_two = array(
+			$this->make_message( 'html-no-plain-text.eml', 33, true, $now ),
+		);
+
+		$query = Mockery::mock( MessageQuery::class );
+		$query->allows( 'since' );
+		$query->expects( 'oldest' )->once()->andReturnSelf();
+		$query->allows( 'withHeaders' )->andReturnSelf();
+		$query->allows( 'withBody' )->andReturnSelf();
+		$query->allows( 'withFlags' )->andReturnSelf();
+		$query->expects( 'chunk' )
+			->once()
+			->with( Mockery::type( 'callable' ), 100 )
+			->andReturnUsing(
+				function ( callable $callback ) use ( $page_one, $page_two ): void {
+					$callback( new MessageCollection( $page_one ), 1 );
+					$callback( new MessageCollection( $page_two ), 2 );
+				}
+			);
+
+		$folder = Mockery::mock( Folder::class );
+		$folder->allows( 'path' )->andReturn( 'INBOX' );
+		$folder->allows( 'status' )->andReturn( array( 'UIDVALIDITY' => 1 ) );
+		$folder->allows( 'messages' )->andReturn( $query );
+
+		$mailbox = Mockery::mock( Mailbox::class );
+		$mailbox->allows( 'connect' );
+		$mailbox->allows( 'inbox' )->andReturn( $folder );
+
+		$result = $this->make_sut_with_mailbox( $mailbox )->retrieve_emails( ( new DateTime() )->modify( '-7 days' ) );
+
+		$uids = $result->map( fn( Fetched_Email $fetched ) => $fetched->coordinates->remote_uid )->values()->all();
+		$this->assertSame( array( '11', '22', '33' ), $uids );
 	}
 
 	/**

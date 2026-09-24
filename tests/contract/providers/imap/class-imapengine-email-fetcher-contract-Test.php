@@ -97,7 +97,7 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 		$sut->set_credentials( $credentials );
 
 		$since_time = ( new DateTime() )->sub( new DateInterval( 'P30D' ) );
-		$newest     = $sut->retrieve_emails( $since_time, 1 )->first();
+		$newest     = $sut->retrieve_emails( $since_time )->last();
 
 		if ( is_null( $newest ) ) {
 			$this->markTestSkipped( 'No recent emails in inbox to test mark-read.' );
@@ -131,6 +131,7 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 
 		try {
 			$sut = new ImapEngine_Imap_Email_Connection( $this->settings, $this->logger );
+			$sut->set_credentials( new Imap_Credentials_Env() );
 		} catch ( ImapEngineException $e ) {
 			// * When the server or user/password are bad.
 			// * DirectoryTree\ImapEngine\Exceptions\ImapStreamException : Unexpected end of stream while trying to fill the buffer
@@ -140,7 +141,7 @@ class ImapEngine_Email_Fetcher_Integration_Test extends Unit_Testcase {
 		$year_in_seconds = 367 * 24 * 60 * 60;
 		$since_unix_time = time() - $year_in_seconds;
 		$since_time      = DateTime::createFromFormat( 'U', $since_unix_time );
-		$messages        = $sut->retrieve_emails( $since_time, 100 );
+		$messages        = $sut->retrieve_emails( $since_time );
 
 		$this->assertNotEmpty( $messages->count() );
 
