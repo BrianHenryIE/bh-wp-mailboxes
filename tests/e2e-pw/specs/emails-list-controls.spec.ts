@@ -7,6 +7,7 @@
  * Arrange via REST, assert by navigating to the emails admin list page.
  */
 import { test, expect } from '@wordpress/e2e-test-utils-playwright';
+import type { Page } from '@playwright/test';
 
 const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v2';
 
@@ -20,6 +21,13 @@ async function createAccount(
 	expect( res.status() ).toBe( 201 );
 	const body = await res.json();
 	return body.post_id as number;
+}
+
+/** Row actions are revealed on row hover (WP_List_Table's `.row-actions`): hover the account row, then click "Check now". */
+async function clickCheckNow( page: Page, accountId: number ) {
+	const row = page.locator( `.bh-mailboxes-account[data-account-id="${ accountId }"]` );
+	await row.hover();
+	await row.locator( '.bh-check-account' ).click();
 }
 
 test.describe( 'Emails list page — check button', () => {
@@ -81,9 +89,7 @@ test.describe( 'Emails list page — row actions', () => {
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		const checkResponse = page.waitForResponse( ( res ) => res.url().includes( `/${ accountId }/check` ) );
-		await page
-			.locator( `.bh-check-account[data-account-id="${ accountId }"]` )
-			.click( { force: true } );
+		await clickCheckNow( page, accountId );
 		const checkBody = await ( await checkResponse ).json();
 		const emailId = checkBody.new_email_ids[ 0 ] as number;
 		expect( emailId ).toBeTruthy();

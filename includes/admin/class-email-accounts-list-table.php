@@ -210,16 +210,46 @@ class Email_Accounts_List_Table extends WP_List_Table {
 	 * @param Email_Account_Row $item The row.
 	 */
 	protected function column_emails( Email_Account_Row $item ): string {
-		return '<span data-field="email-count">' . esc_html( (string) $item->email_count ) . '</span>';
+		$html = '<span data-field="email-count">' . esc_html( (string) $item->email_count ) . '</span>';
+
+		if ( $item->new_email_count > 0 ) {
+			$html .= '<span data-field="email-count-new" class="bh-mailboxes-muted" title="' . esc_attr__( 'Not yet processed by a plugin.', 'bh-wp-mailboxes' ) . '"> ('
+				. esc_html( sprintf( /* translators: %d: number of emails still in the "new" status */ __( '%d new', 'bh-wp-mailboxes' ), $item->new_email_count ) )
+				. ')</span>';
+		}
+
+		$fetched = $item->account->total_emails_downloaded_count;
+		if ( $fetched > 0 ) {
+			$saved   = $item->account->total_emails_saved_count;
+			$ignored = max( 0, $fetched - $saved );
+			$removed = max( 0, $saved - $item->email_count );
+
+			$text = sprintf( /* translators: %d: lifetime number of emails fetched from the server */ __( '%d fetched', 'bh-wp-mailboxes' ), $fetched );
+			if ( $ignored > 0 ) {
+				$text .= ' · ' . sprintf( /* translators: %d: number of fetched emails the account's filters rejected */ __( '%d ignored', 'bh-wp-mailboxes' ), $ignored );
+			}
+
+			$title = sprintf(
+				/* translators: 1: emails fetched, 2: emails ignored by the account's filters, 3: emails saved, 4: saved emails since deleted */
+				__( '%1$d fetched, %2$d ignored by the account\'s filters, %3$d saved, %4$d since removed.', 'bh-wp-mailboxes' ),
+				$fetched,
+				$ignored,
+				$saved,
+				$removed
+			);
+
+			$html .= '<span data-field="lifetime" class="bh-mailboxes-account__lifetime bh-mailboxes-muted" data-fetched="' . esc_attr( (string) $fetched ) . '" data-saved="' . esc_attr( (string) $saved ) . '" title="' . esc_attr( $title ) . '">' . esc_html( $text ) . '</span>';
+		}
+
+		return $html;
 	}
 
 	/**
-	 * Last fetched time with "Check now" / "Check since…" row actions and the set-fetch-since date
-	 * input; "N/A" for receive-only accounts.
+	 * Last fetched time with "Check now" / "Check since…" row actions, revealed on row hover like
+	 * core's row actions; "N/A" for receive-only accounts.
 	 *
-	 * Always visible (core's `visible` row-actions class): "Check now" is the column's main control.
 	 * Built by hand rather than with {@see row_actions()} so the wrapper can carry the
-	 * `bh-mailboxes-account__check` class the date input is positioned against.
+	 * `bh-mailboxes-account__check` class.
 	 *
 	 * @param Email_Account_Row $item The row.
 	 */
@@ -231,11 +261,10 @@ class Email_Accounts_List_Table extends WP_List_Table {
 		$account_id = (string) $item->account->get_post_id();
 
 		return '<span data-field="last-fetched">' . esc_html( $this->format_time( $item->account->last_successful_login_time ) ) . '</span>'
-			. '<div class="row-actions visible bh-mailboxes-account__check">'
+			. '<div class="row-actions bh-mailboxes-account__check">'
 			. '<span class="check"><a href="#" class="bh-check-account" data-account-id="' . esc_attr( $account_id ) . '">' . esc_html__( 'Check now', 'bh-wp-mailboxes' ) . '</a> | </span>'
-			. '<span class="since"><a href="#" class="bh-fetch-since-toggle" data-account-id="' . esc_attr( $account_id ) . '" title="' . esc_attr__( 'Set the date from which emails will be fetched', 'bh-wp-mailboxes' ) . '">' . esc_html__( 'Check since…', 'bh-wp-mailboxes' ) . '</a></span>'
-			. '</div>'
-			. '<input type="date" class="bh-fetch-since-input" data-account-id="' . esc_attr( $account_id ) . '" value="' . esc_attr( $item->since_value ) . '" style="display:none;">';
+			. '<span class="since"><a href="#" class="bh-fetch-since-toggle" data-account-id="' . esc_attr( $account_id ) . '" data-since-value="' . esc_attr( $item->since_value ) . '" title="' . esc_attr__( 'Set the date from which emails will be fetched', 'bh-wp-mailboxes' ) . '">' . esc_html__( 'Check since…', 'bh-wp-mailboxes' ) . '</a></span>'
+			. '</div>';
 	}
 
 	/**

@@ -19,6 +19,7 @@ use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\Email_Account_Settings_Interface;
 use DateTime;
 use DateTimeInterface;
+use DirectoryTree\ImapEngine\Collections\MessageCollection;
 use DirectoryTree\ImapEngine\Enums\ImapFetchIdentifier;
 use DirectoryTree\ImapEngine\Exceptions\ImapConnectionFailedException;
 use DirectoryTree\ImapEngine\Mailbox;
@@ -34,6 +35,11 @@ use Psr\Log\LoggerInterface;
 class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Requires_Credentials, Supports_Fetching {
 
 	use LoggerAwareTrait;
+
+	/**
+	 * Number of messages requested per IMAP FETCH round-trip when retrieving emails.
+	 */
+	private const FETCH_CHUNK_SIZE = 100;
 
 	/**
 	 * The IMAP mailbox connection.
@@ -281,17 +287,19 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 	}
 
 	/**
-	 * Fetches emails from INBOX since the given time.
+	 * Fetches all emails from INBOX since the given time, oldest first.
+	 *
+	 * The server is searched once and the matching messages are then fetched in chunks of
+	 * {@see self::FETCH_CHUNK_SIZE}, so a long gap since the last check does not drop messages.
 	 *
 	 * Each message's UID, folder, and the folder's UIDVALIDITY are captured here (the parsed MIME
 	 * `IMessage` cannot carry them) so read-status checks can later address the message by UID.
 	 *
 	 * @param DateTimeInterface $since_time The earliest date/time from which to fetch messages.
-	 * @param int               $limit      Maximum number of messages to retrieve.
 	 *
 	 * @return Collection<int, Fetched_Email> Unsaved emails with their remote coordinates and read state.
 	 */
-	public function retrieve_emails( DateTimeInterface $since_time, int $limit = 100 ): Collection {
+	public function retrieve_emails( DateTimeInterface $since_time ): Collection {
 
 		// TODO: validate we have had credentials set.
 
@@ -315,16 +323,31 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 		);
 
 		// Call since() before chaining to avoid phpstan's @mixin ImapQueryBuilder type inference
-		// resolving the chain to ImapQueryBuilder, which lacks limit().
+		// resolving the chain to ImapQueryBuilder, which lacks chunk().
 		$message_query = $inbox->messages();
 		$message_query->since( $previous_day );
 
-		$messages = $message_query
-			->limit( $limit )
+		/**
+		 * Accumulate every page of results; chunk() runs the SEARCH once then FETCHes each page.
+		 *
+		 * @var MessageInterface[] $all_messages
+		 */
+		$all_messages = array();
+
+		$message_query
+			->oldest()
 			->withHeaders()
 			->withBody()
 			->withFlags()
-			->get();
+			->chunk(
+				function ( MessageCollection $chunk, int $page ) use ( &$all_messages ): void {
+					$this->logger->debug( 'Fetched IMAP page ' . $page . ' (' . $chunk->count() . ' messages).' );
+					$all_messages = array_merge( $all_messages, $chunk->values()->all() );
+				},
+				self::FETCH_CHUNK_SIZE
+			);
+
+		$messages = new MessageCollection( $all_messages );
 
 		$this->logger->debug( $messages->count() . ' found since ' . $previous_day->format( 'j-M-Y' ) );
 

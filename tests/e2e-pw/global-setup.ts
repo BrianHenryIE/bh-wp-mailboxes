@@ -9,7 +9,7 @@ import type { FullConfig } from '@playwright/test';
 const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v2';
 
 function baseUrl(): string {
-	return process.env.WP_BASE_URL || process.env.BASEURL || 'http://localhost:8888';
+	return process.env.WP_BASE_URL || process.env.BASEURL || 'http://localhost:8886';
 }
 
 async function globalSetup( _config: FullConfig ): Promise< void > {

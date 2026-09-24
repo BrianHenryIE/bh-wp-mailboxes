@@ -51,7 +51,7 @@ jobs:
         run: |
           echo "Waiting for WordPress to be ready..."
           for i in {1..30}; do
-            if curl -s http://localhost:8888 > /dev/null; then
+            if curl -s http://localhost:8886 > /dev/null; then
               echo "WordPress is ready!"
               break
             fi
@@ -63,7 +63,7 @@ jobs:
         run: |
           # Set up permalinks for REST API
           npx wp-env run cli -- wp rewrite structure '/%year%/%monthnum%/%postname%/' --hard
-          # Activate the development plugin on development environment (port 8888)
+          # Activate the development plugin on development environment (port 8886)
           npx wp-env run cli -- wp plugin activate development-plugin
           # List plugins to verify activation
 #          npx wp-env run cli -- wp plugin list # `Error: Invalid format: table`.

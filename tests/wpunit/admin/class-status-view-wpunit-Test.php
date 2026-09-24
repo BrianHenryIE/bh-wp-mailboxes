@@ -364,7 +364,7 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * A fetch-capable account offers "Check now", the set-fetch-since date input, and Delete.
+	 * A fetch-capable account offers "Check now", "Check since…" (with its default date), and Delete; the check-since dialog is printed.
 	 *
 	 * @covers ::display
 	 * @covers ::render_table
@@ -380,7 +380,9 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		$html = $this->capture_display( $this->make_sut( $api ) );
 
 		$this->assertStringContainsString( 'class="bh-check-account" data-account-id="77"', $html );
-		$this->assertStringContainsString( 'bh-fetch-since-input', $html );
+		$this->assertStringContainsString( 'class="bh-fetch-since-toggle" data-account-id="77" data-since-value="', $html );
+		$this->assertStringNotContainsString( 'bh-fetch-since-input" data-account-id', $html, 'The date input lives in the dialog, not in the row.' );
+		$this->assertStringContainsString( '<dialog id="bh-mailboxes-fetch-since"', $html );
 		$this->assertStringContainsString( '<div class="row-actions"><span class=\'toggle\'>', $html, 'Enable/disable, edit, delete are row actions on the account column.' );
 		$this->assertStringContainsString( 'bh-account-delete', $html );
 		$this->assertStringNotContainsString( 'column-actions', $html );
@@ -413,5 +415,94 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertStringNotContainsString( 'id="the-list"', $html );
 		$this->assertStringContainsString( 'class="bh-mailboxes-accounts__rows"', $html );
 		$this->assertFalse( has_filter( 'manage_edit-' . $this->post_type . '_columns' ), 'The emails screen columns filter must not be touched.' );
+	}
+
+	/**
+	 * Emails still in `bh_email_new` are called out beside the count; nothing is appended when there are none.
+	 *
+	 * @covers ::display
+	 */
+	public function test_display_shows_unprocessed_count_only_when_nonzero(): void {
+		foreach ( array( 'bh_email_new', 'bh_email_new', 'bh_email_processed' ) as $status ) {
+			$this->factory()->post->create(
+				array(
+					'post_type'   => $this->post_type,
+					'post_status' => $status,
+					'post_parent' => 322,
+				)
+			);
+		}
+		$this->factory()->post->create(
+			array(
+				'post_type'   => $this->post_type,
+				'post_status' => 'bh_email_processed',
+				'post_parent' => 323,
+			)
+		);
+
+		$with_new    = BH_Email_Account_Fixture::make( post_id: 322, email_address: 'new@example.com' );
+		$without_new = BH_Email_Account_Fixture::make( post_id: 323, email_address: 'done@example.com' );
+
+		/** @var API_Interface $api */
+		$api = Mockery::mock( API_Interface::class );
+		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $with_new, $without_new ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
+
+		$html = $this->capture_display( $this->make_sut( $api ) );
+
+		$this->assertStringContainsString( '<span data-field="email-count">3</span><span data-field="email-count-new" class="bh-mailboxes-muted" title="Not yet processed by a plugin."> (2 new)</span>', $html );
+		$this->assertStringContainsString( '<span data-field="email-count">1</span>', $html );
+		$this->assertSame( 1, substr_count( $html, 'data-field="email-count-new"' ), 'Only the account with new emails gets the suffix.' );
+	}
+
+	/**
+	 * The lifetime "N fetched · N ignored" line appears under the count with a full-breakdown tooltip, and
+	 * only for accounts that have fetched something.
+	 *
+	 * @covers ::display
+	 */
+	public function test_display_shows_lifetime_totals_only_when_fetched(): void {
+		foreach ( range( 1, 45 ) as $i ) {
+			$this->factory()->post->create(
+				array(
+					'post_type'   => $this->post_type,
+					'post_status' => 'bh_email_processed',
+					'post_parent' => 324,
+				)
+			);
+		}
+
+		$fetched = BH_Email_Account_Fixture::make( post_id: 324, email_address: 'busy@example.com', total_emails_downloaded_count: 120, total_emails_saved_count: 115 );
+		$fresh   = BH_Email_Account_Fixture::make( post_id: 325, email_address: 'fresh@example.com', total_emails_downloaded_count: 0, total_emails_saved_count: 0 );
+
+		/** @var API_Interface $api */
+		$api = Mockery::mock( API_Interface::class );
+		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $fetched, $fresh ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
+
+		$html = $this->capture_display( $this->make_sut( $api ) );
+
+		$this->assertStringContainsString( '<span data-field="lifetime" class="bh-mailboxes-account__lifetime bh-mailboxes-muted" data-fetched="120" data-saved="115" title="120 fetched, 5 ignored by the account&#039;s filters, 115 saved, 70 since removed.">120 fetched · 5 ignored</span>', $html );
+		$this->assertSame( 1, substr_count( $html, 'data-field="lifetime"' ), 'The fresh account has no lifetime line.' );
+	}
+
+	/**
+	 * When nothing was ignored, the lifetime line says only "N fetched".
+	 *
+	 * @covers ::display
+	 */
+	public function test_display_omits_ignored_when_zero(): void {
+		$account = BH_Email_Account_Fixture::make( post_id: 326, total_emails_downloaded_count: 7, total_emails_saved_count: 7 );
+
+		/** @var API_Interface $api */
+		$api = Mockery::mock( API_Interface::class );
+		$api->expects( 'get_email_accounts' )->once()->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
+
+		$html = $this->capture_display( $this->make_sut( $api ) );
+
+		$this->assertStringContainsString( '>7 fetched</span>', $html );
+		$this->assertStringNotContainsString( 'ignored</span>', $html );
+		$this->assertStringContainsString( '7 fetched, 0 ignored by the account&#039;s filters, 7 saved, 7 since removed.', $html );
 	}
 }

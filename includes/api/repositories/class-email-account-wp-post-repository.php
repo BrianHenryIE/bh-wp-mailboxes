@@ -86,6 +86,8 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			body_identifier_regex_filter: $body_identifier_regex_filter,
 			after_download_remote_email_action: $after_download_remote_email_action,
 			delete_local_emails_after_n_days: $delete_local_emails_after_n_days,
+			total_emails_downloaded_count: 0,
+			total_emails_saved_count: 0,
 		);
 
 		$post_id = $this->insert( $query );
@@ -221,6 +223,8 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 	 * @param ?string            $body_identifier_regex_filter Filter to only save emails whose body matches this.
 	 * @param ?string            $after_download_remote_email_action Operation to perform after: delete|mark-read|nothing.
 	 * @param ?int               $delete_local_emails_after_n_days When to purge the local copies.
+	 * @param ?int               $total_emails_downloaded_count New lifetime count of emails fetched; must not be lower than the current value.
+	 * @param ?int               $total_emails_saved_count New lifetime count of emails saved; must not be lower than the current value.
 	 * @param ?string            $status The optional status change.
 	 * @param ?DateTimeInterface $last_checked_time The new last checked time.
 	 * @param ?DateTimeInterface $last_successful_login_time Record of success.
@@ -237,12 +241,25 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 		?string $body_identifier_regex_filter = null,
 		?string $after_download_remote_email_action = null,
 		?int $delete_local_emails_after_n_days = null,
+		// Lifetime counters (only ever increase).
+		?int $total_emails_downloaded_count = null,
+		?int $total_emails_saved_count = null,
 		// Status.
 		?string $status = null,
 		?DateTimeInterface $last_checked_time = null,
 		?DateTimeInterface $last_successful_login_time = null,
 		?DateTimeInterface $last_failed_login_time = null,
 	): BH_Email_Account {
+
+		// The totals are a historical record of the account's activity and never decrease.
+		if ( ! is_null( $total_emails_downloaded_count ) && $total_emails_downloaded_count < $account->total_emails_downloaded_count ) {
+			$this->logger->warning( 'Ignoring attempt to lower total_emails_downloaded_count from ' . $account->total_emails_downloaded_count . ' to ' . $total_emails_downloaded_count . '.', array( 'account' => $account->email_address ) );
+			$total_emails_downloaded_count = null;
+		}
+		if ( ! is_null( $total_emails_saved_count ) && $total_emails_saved_count < $account->total_emails_saved_count ) {
+			$this->logger->warning( 'Ignoring attempt to lower total_emails_saved_count from ' . $account->total_emails_saved_count . ' to ' . $total_emails_saved_count . '.', array( 'account' => $account->email_address ) );
+			$total_emails_saved_count = null;
+		}
 
 		$query = new BH_Email_Account_Query(
 			post_type: $account->get_post_type(),
@@ -255,6 +272,8 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			body_identifier_regex_filter: $body_identifier_regex_filter,
 			after_download_remote_email_action: $after_download_remote_email_action,
 			delete_local_emails_after_n_days: $delete_local_emails_after_n_days,
+			total_emails_downloaded_count: $total_emails_downloaded_count,
+			total_emails_saved_count: $total_emails_saved_count,
 			last_successful_login_time: $last_successful_login_time,
 			last_failed_login_time: $last_failed_login_time,
 		);

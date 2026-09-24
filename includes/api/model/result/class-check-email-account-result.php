@@ -32,6 +32,7 @@ readonly class Check_Email_Account_Result {
 	 * @param bool                         $skipped    Whether the account was deliberately not checked (disabled, receive-only, rate-limited).
 	 * @param ?string                      $message    Why the check was skipped or failed; null on success.
 	 * @param string[]                     $warnings   Problems after a successful fetch (e.g. a post-download action or a credentials refresh that could not be saved).
+	 * @param int                          $filtered_out_count New emails fetched but not saved because they did not match the account's regex filters.
 	 */
 	public function __construct(
 		public BH_Email_Account $bh_account,
@@ -41,6 +42,7 @@ readonly class Check_Email_Account_Result {
 		public bool $skipped = false,
 		public ?string $message = null,
 		public array $warnings = array(),
+		public int $filtered_out_count = 0,
 	) {}
 
 	/**
@@ -56,6 +58,6 @@ readonly class Check_Email_Account_Result {
 	 * @param Email_Controller_Interface[] $new_emails The wrapped emails.
 	 */
 	public function with_new_emails( array $new_emails ): self {
-		return new self( $this->bh_account, $this->success, $this->bh_emails, $new_emails, $this->skipped, $this->message, $this->warnings );
+		return new self( $this->bh_account, $this->success, $this->bh_emails, $new_emails, $this->skipped, $this->message, $this->warnings, $this->filtered_out_count );
 	}
 }

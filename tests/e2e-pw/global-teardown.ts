@@ -15,7 +15,7 @@ const ALLOWLIST: RegExp[] = [
 ];
 
 function baseUrl(): string {
-	return process.env.WP_BASE_URL || process.env.BASEURL || 'http://localhost:8888';
+	return process.env.WP_BASE_URL || process.env.BASEURL || 'http://localhost:8886';
 }
 
 async function globalTeardown( _config: FullConfig ): Promise< void > {

@@ -416,13 +416,14 @@ class Emails_REST_Controller extends Mailbox_REST_Controller {
 			'new_email_ids'   => array_map( fn( Email_Controller_Interface $email ): int => $email->get_email()->get_post_id(), $result->get_emails() ),
 			'accounts'        => array_map(
 				fn( Check_Email_Account_Result $account_result ): array => array(
-					'account_post_id' => $account_result->bh_account->get_post_id(),
-					'name'            => $account_result->bh_account->display_name,
-					'email_address'   => $account_result->bh_account->email_address,
-					'status'          => $account_result->success ? 'success' : ( $account_result->skipped ? 'skipped' : 'failed' ),
-					'message'         => $account_result->message,
-					'new_email_count' => count( $account_result->new_emails ),
-					'warnings'        => $account_result->warnings,
+					'account_post_id'     => $account_result->bh_account->get_post_id(),
+					'name'                => $account_result->bh_account->display_name,
+					'email_address'       => $account_result->bh_account->email_address,
+					'status'              => $account_result->success ? 'success' : ( $account_result->skipped ? 'skipped' : 'failed' ),
+					'message'             => $account_result->message,
+					'new_email_count'     => count( $account_result->new_emails ),
+					'ignored_email_count' => $account_result->filtered_out_count,
+					'warnings'            => $account_result->warnings,
 				),
 				$result->account_results
 			),

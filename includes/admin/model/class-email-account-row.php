@@ -26,7 +26,8 @@ readonly class Email_Account_Row {
 	 * @param bool                        $supports_fetching Can the connection fetch (pull) emails? False for receive-only connections.
 	 * @param bool                        $can_edit          Is this an IMAP account whose credentials the consumer manages? True only then.
 	 * @param ?IMAP_Credentials_Interface $credentials       The consumer's credentials, for pre-filling the edit form (password never printed).
-	 * @param int                         $email_count       Emails saved for the account.
+	 * @param int                         $email_count       Emails currently stored for the account (non-trashed).
+	 * @param int                         $new_email_count   Of those, how many are still `bh_email_new` (not yet handled by a consumer).
 	 * @param bool                        $has_login_failure Did the most recent login attempt fail? Shown as a warning.
 	 * @param string                      $since_value       Default for the set-fetch-since date input, Y-m-d.
 	 */
@@ -37,6 +38,7 @@ readonly class Email_Account_Row {
 		public bool $can_edit,
 		public ?IMAP_Credentials_Interface $credentials,
 		public int $email_count,
+		public int $new_email_count,
 		public bool $has_login_failure,
 		public string $since_value,
 	) {}

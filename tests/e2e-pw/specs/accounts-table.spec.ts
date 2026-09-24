@@ -12,7 +12,7 @@ const EMAILS_LIST = 'post_type=e2e_email';
 const INGRESS_URL = '/wp-json/bh-wp-mailboxes-dev/v2/e2e-email/new';
 /** The ingress account's address: `{rest namespace}@{site host}` (see REST_Ingress_Connection::get_email_account_wp_post_for_mailbox()). */
 const INGRESS_ACCOUNT_EMAIL = `bh-wp-mailboxes-dev@${
-	new URL( process.env.BASEURL || process.env.WP_BASE_URL || 'http://localhost:8888' ).hostname
+	new URL( process.env.BASEURL || process.env.WP_BASE_URL || 'http://localhost:8886' ).hostname
 }`;
 
 function accountRow( page: Page, emailAddress: string ) {

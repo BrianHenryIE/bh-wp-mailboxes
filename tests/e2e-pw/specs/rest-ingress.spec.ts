@@ -26,7 +26,7 @@ import fs from 'fs';
 test.describe.configure( { mode: 'serial' } );
 
 const ADMIN_USER = process.env.WP_ADMIN_USER || 'admin';
-const BASE_URL = process.env.BASEURL || process.env.WP_BASE_URL || 'http://localhost:8888';
+const BASE_URL = process.env.BASEURL || process.env.WP_BASE_URL || 'http://localhost:8886';
 
 // Copies of the Cloudflare worker's .eml fixtures; the worker now lives at
 // https://github.com/BrianHenryIE/bh-wp-mailboxes-cloudflare-worker

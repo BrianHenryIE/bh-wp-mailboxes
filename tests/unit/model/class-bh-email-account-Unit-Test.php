@@ -110,4 +110,17 @@ class BH_Email_Account_Unit_Test extends Unit_Testcase {
 		$this->assertNull( $sut->get_body_identifier_regex() );
 		$this->assertNull( $sut->get_delete_emails_days() );
 	}
+
+	/**
+	 * The lifetime totals are exposed as constructed.
+	 *
+	 * @covers ::__construct
+	 */
+	public function test_lifetime_totals_are_returned_as_constructed(): void {
+
+		$sut = BH_Email_Account_Fixture::make( total_emails_downloaded_count: 120, total_emails_saved_count: 45 );
+
+		$this->assertSame( 120, $sut->total_emails_downloaded_count );
+		$this->assertSame( 45, $sut->total_emails_saved_count );
+	}
 }

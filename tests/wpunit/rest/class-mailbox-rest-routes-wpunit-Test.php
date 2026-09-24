@@ -718,7 +718,7 @@ class Mailbox_REST_Routes_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertInstanceOf( \DateTimeImmutable::class, $since_seen );
 		$this->assertSame( '2026-01-31', $since_seen->format( 'Y-m-d' ) );
-		$this->assertSame( array( 'success', 'new_email_count', 'new_email_ids', 'warnings', 'last_fetched' ), array_keys( $response->get_data() ) );
+		$this->assertSame( array( 'success', 'new_email_count', 'new_email_ids', 'ignored_email_count', 'warnings', 'last_fetched' ), array_keys( $response->get_data() ) );
 		$this->assertSame( array( $email->get_post_id() ), $response->get_data()['new_email_ids'] );
 		$this->assertSame( array( 'a warning' ), $response->get_data()['warnings'] );
 	}

@@ -35,11 +35,13 @@ use DateTimeInterface;
 use DateTimeZone;
 use DirectoryTree\ImapEngine\Exceptions\ImapConnectionClosedException;
 use Exception;
+use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Throwable;
+use ZBateson\MailMimeParser\Header\AddressHeader;
 
 /**
  * Main API for fetching, saving, and managing emails.
@@ -452,6 +454,8 @@ class API implements API_Interface {
 			);
 		}
 
+		$downloaded_count = $all_new_account_emails->count();
+
 		// The fetch authenticated and completed, so record the successful login and check time.
 		$this->email_account_repository->update(
 			$email_account,
@@ -474,8 +478,53 @@ class API implements API_Interface {
 			)
 		);
 
-		// TODO: Log the number of emails found.
+		$new_emails_downloaded_count = $all_new_account_emails->count();
+
+		// Keep only the emails whose sender and body match the account's regex filters.
+		$all_new_account_emails = $this->filter_by_account_regexes( $email_account, $all_new_account_emails, $warnings );
+
+		$filtered_out_count = $new_emails_downloaded_count - $all_new_account_emails->count();
+
 		$saved = $this->email_repository->save_all( $all_new_account_emails, $this->settings, $email_account, $this->private_uploads );
+
+		$new_emails_saved_count = count( $saved );
+
+		// Add this run to the account's lifetime totals (a historical record; they never decrease).
+		$total_emails_downloaded_count = $email_account->total_emails_downloaded_count + $new_emails_downloaded_count;
+		$total_emails_saved_count      = $email_account->total_emails_saved_count + $new_emails_saved_count;
+		if ( $new_emails_downloaded_count > 0 ) {
+			$this->email_account_repository->update(
+				$email_account,
+				total_emails_downloaded_count: $total_emails_downloaded_count,
+				total_emails_saved_count: $total_emails_saved_count,
+			);
+		}
+
+		$this->logger->debug(
+			sprintf(
+				'%s: %d emails retrieved since %s; %d already saved, %d new; %d filtered out, %d saved. Lifetime totals: %d downloaded, %d saved.',
+				$email_account->email_address,
+				$downloaded_count,
+				$since_datetime->format( DateTimeInterface::ATOM ),
+				$downloaded_count - $new_emails_downloaded_count,
+				$new_emails_downloaded_count,
+				$filtered_out_count,
+				$new_emails_saved_count,
+				$total_emails_downloaded_count,
+				$total_emails_saved_count
+			),
+			array(
+				'account'                       => $email_account->email_address,
+				'since'                         => $since_datetime->format( DateTimeInterface::ATOM ),
+				'retrieved'                     => $downloaded_count,
+				'already_saved'                 => $downloaded_count - $new_emails_downloaded_count,
+				'new'                           => $new_emails_downloaded_count,
+				'filtered_out'                  => $filtered_out_count,
+				'saved'                         => $new_emails_saved_count,
+				'total_emails_downloaded_count' => $total_emails_downloaded_count,
+				'total_emails_saved_count'      => $total_emails_saved_count,
+			)
+		);
 
 		// If the mailbox is configured to mark-as-read or delete emails on the server after downloading,
 		// perform that action now. The mark/delete methods record their own log entry on each email.
@@ -504,7 +553,124 @@ class API implements API_Interface {
 			}
 		}
 
-		return new Check_Email_Account_Result( bh_account: $email_account, success: true, bh_emails: $saved, warnings: $warnings );
+		return new Check_Email_Account_Result( bh_account: $email_account, success: true, bh_emails: $saved, warnings: $warnings, filtered_out_count: $filtered_out_count );
+	}
+
+	/**
+	 * Keep only the emails whose sender address matches the account's from-address regex and whose body
+	 * matches its body-identifier regex.
+	 *
+	 * A null (or blank) regex matches everything. The body regex is tested against the plain-text body
+	 * and, failing that, the HTML body. An invalid regex is reported as a warning and ignored, so a typo
+	 * in a filter never silently discards mail.
+	 *
+	 * @see Email_Account_Settings_Interface::get_from_email_regex()
+	 * @see Email_Account_Settings_Interface::get_body_identifier_regex()
+	 *
+	 * @param BH_Email_Account               $email_account The account whose filters to apply.
+	 * @param Collection<int, Fetched_Email> $emails        The fetched emails not yet saved.
+	 * @param string[]                       $warnings      Appended to with a message for each invalid regex.
+	 *
+	 * @return Collection<int, Fetched_Email> The emails that passed both filters, re-indexed.
+	 */
+	protected function filter_by_account_regexes( BH_Email_Account $email_account, Collection $emails, array &$warnings ): Collection {
+
+		$from_regex = $this->validate_regex( $email_account->get_from_email_regex(), __( 'from address', 'bh-wp-mailboxes' ), $email_account, $warnings );
+		$body_regex = $this->validate_regex( $email_account->get_body_identifier_regex(), __( 'body identifier', 'bh-wp-mailboxes' ), $email_account, $warnings );
+
+		if ( is_null( $from_regex ) && is_null( $body_regex ) ) {
+			return $emails;
+		}
+
+		$filtered = $emails->filter(
+			function ( Fetched_Email $fetched ) use ( $from_regex, $body_regex, $email_account ): bool {
+				$message_id = $fetched->message->getMessageId() ?? '';
+				$context    = array(
+					'account'    => $email_account->email_address,
+					'message_id' => $message_id,
+				);
+
+				if ( ! is_null( $from_regex ) ) {
+					$from_header = $fetched->message->getHeader( 'From' );
+					$sender      = $from_header instanceof AddressHeader ? ( $from_header->getEmail() ?? '' ) : '';
+
+					if ( 1 !== preg_match( $from_regex, $sender ) ) {
+						$this->logger->debug( 'Not saving email ' . $message_id . ': sender "' . $sender . '" does not match the from address filter ' . $from_regex . '.', $context );
+						return false;
+					}
+				}
+
+				if ( ! is_null( $body_regex ) ) {
+					$text = $fetched->message->getTextContent();
+					$html = $fetched->message->getHtmlContent();
+
+					$body_matches = ( ! is_null( $text ) && 1 === preg_match( $body_regex, $text ) )
+						|| ( ! is_null( $html ) && 1 === preg_match( $body_regex, $html ) );
+
+					if ( ! $body_matches ) {
+						$this->logger->debug( 'Not saving email ' . $message_id . ': body does not match the body identifier filter ' . $body_regex . '.', $context );
+						return false;
+					}
+				}
+
+				return true;
+			}
+		);
+
+		$dropped_count = $emails->count() - $filtered->count();
+		if ( $dropped_count > 0 ) {
+			$this->logger->info(
+				$dropped_count . ' of ' . $emails->count() . ' new emails did not match the account\'s filters and were not saved.',
+				array( 'account' => $email_account->email_address )
+			);
+		}
+
+		return $filtered->values();
+	}
+
+	/**
+	 * Return the regex if it is usable, or null if it is unset, blank, or does not compile.
+	 *
+	 * @param ?string          $regex         The account setting.
+	 * @param string           $label         Which filter this is, for the warning message.
+	 * @param BH_Email_Account $email_account The account, for logging.
+	 * @param string[]         $warnings      Appended to when the regex is invalid.
+	 */
+	protected function validate_regex( ?string $regex, string $label, BH_Email_Account $email_account, array &$warnings ): ?string {
+		if ( is_null( $regex ) || '' === trim( $regex ) ) {
+			return null;
+		}
+
+		// preg_match() returns false and raises a warning (with PCRE's reason) for a pattern that does not compile.
+		$reason = '';
+		set_error_handler( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler
+			function ( int $errno, string $errstr ) use ( &$reason ): bool {
+				$reason = $errstr;
+				return true;
+			}
+		);
+		try {
+			$compiles = false !== preg_match( $regex, '' );
+		} finally {
+			restore_error_handler();
+		}
+
+		if ( $compiles ) {
+			return $regex;
+		}
+
+		$message = sprintf(
+			/* translators: 1: which filter ("from address" or "body identifier"), 2: the regex as entered, 3: PCRE's error message */
+			__( 'The %1$s filter "%2$s" is not a valid regular expression and was ignored: %3$s', 'bh-wp-mailboxes' ),
+			$label,
+			$regex,
+			'' !== $reason ? $reason : preg_last_error_msg()
+		);
+
+		$this->logger->warning( $message, array( 'account' => $email_account->email_address ) );
+		$warnings[] = $message;
+
+		return null;
 	}
 
 	/**

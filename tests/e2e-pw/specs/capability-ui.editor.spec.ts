@@ -40,7 +40,7 @@ async function createEmail( request: APIRequestContext, accountId: number ): Pro
 test.describe( 'Capability-aware UI (as an Editor)', () => {
 	// afterAll has no per-test request context: reset the shared setting with a plain fetch.
 	test.afterAll( async () => {
-		const baseUrl = process.env.WP_BASE_URL || process.env.BASEURL || 'http://localhost:8888';
+		const baseUrl = process.env.WP_BASE_URL || process.env.BASEURL || 'http://localhost:8886';
 		await fetch( `${ baseUrl }${ DEV_REST }/editor-access`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },

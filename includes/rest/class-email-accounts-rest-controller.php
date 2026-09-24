@@ -300,13 +300,15 @@ class Email_Accounts_REST_Controller extends Mailbox_REST_Controller {
 
 		return new WP_REST_Response(
 			array(
-				'success'         => true,
-				'new_email_count' => count( $result->bh_emails ),
+				'success'             => true,
+				'new_email_count'     => count( $result->bh_emails ),
 				// Post IDs of the new emails, so the JS can highlight their rows in the list table.
-				'new_email_ids'   => array_map( fn( $email ) => $email->get_post_id(), $result->bh_emails ),
-				'warnings'        => $result->warnings,
+				'new_email_ids'       => array_map( fn( $email ) => $email->get_post_id(), $result->bh_emails ),
+				// Fetched but rejected by the account's regex filters, so the JS can keep the row's lifetime figures current.
+				'ignored_email_count' => $result->filtered_out_count,
+				'warnings'            => $result->warnings,
 				/* translators: shown in the accounts table immediately after a manual check */
-				'last_fetched'    => __( 'Just now', 'bh-wp-mailboxes' ),
+				'last_fetched'        => __( 'Just now', 'bh-wp-mailboxes' ),
 			)
 		);
 	}

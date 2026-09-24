@@ -100,13 +100,27 @@ test.describe( 'Status_View', () => {
 		const card = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
 		await expect( card ).toBeVisible();
 
-		// Five emails were saved for this account.
+		// Five emails were saved for this account, all still unprocessed, and the lifetime line shows the fetch.
 		await expect( card.locator( '[data-field="email-count"]' ) ).toHaveText( '5' );
+		await expect( card.locator( '[data-field="email-count-new"]' ) ).toHaveText( ' (5 new)' );
+		const lifetime = card.locator( '[data-field="lifetime"]' );
+		await expect( lifetime ).toHaveText( '5 fetched' );
+		await expect( lifetime ).toHaveAttribute( 'title', "5 fetched, 0 ignored by the account's filters, 5 saved, 0 since removed." );
 
 		// Last fetched is now a real "X ago" time, no longer "Never".
 		const lastFetched = card.locator( '[data-field="last-fetched"]' );
 		await expect( lastFetched ).toContainText( 'ago' );
 		await expect( lastFetched ).not.toHaveText( 'Never' );
+	} );
+
+	test( 'a never-fetched account shows neither an unprocessed suffix nor a lifetime line', async ( { admin, page, request } ) => {
+		const postId = await createAccount( request, `status-fresh-e2e-${ Date.now() }@example.com` );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
+
+		const card = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
+		await expect( card.locator( '[data-field="email-count"]' ) ).toHaveText( '0' );
+		await expect( card.locator( '[data-field="email-count-new"]' ) ).toHaveCount( 0 );
+		await expect( card.locator( '[data-field="lifetime"]' ) ).toHaveCount( 0 );
 	} );
 
 	test( 'status table is absent on the accounts list page', async ( { admin, page } ) => {

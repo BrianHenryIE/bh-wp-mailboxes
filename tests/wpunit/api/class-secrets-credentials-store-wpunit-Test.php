@@ -40,7 +40,7 @@ class Secrets_Credentials_Store_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	protected function make_account( string $email_address, string $connection_type_class = ImapEngine_Imap_Email_Connection::class ): BH_Email_Account {
-		return new BH_Email_Account( 1, 'test_accounts', 'bh_email_ac_active', $connection_type_class, $email_address, $email_address, null, null, null, null, null, null, null );
+		return new BH_Email_Account( 1, 'test_accounts', 'bh_email_ac_active', $connection_type_class, $email_address, $email_address, null, null, null, null, 0, 0, null, null, null );
 	}
 
 	/**
@@ -60,7 +60,7 @@ class Secrets_Credentials_Store_WPUnit_Test extends WPUnit_Testcase {
 		$name = $sut->get_secret_name( $this->make_account( 'Inbox@Example.com' ) );
 
 		$this->assertTrue( wp_secrets_validate_name( $name ) );
-		$this->assertSame( 'my-plugin/my_accounts-inbox-at-example-com', $name );
+		$this->assertSame( 'my_plugin/my_accounts-inbox_at_example_com', $name );
 		$this->assertSame( $name, $sut->get_secret_name( $this->make_account( 'inbox@example.com' ) ), 'Addresses are matched case-insensitively.' );
 	}
 

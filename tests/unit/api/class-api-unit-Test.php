@@ -30,6 +30,8 @@ use DateTimeInterface;
 use Mockery;
 use Psr\Log\LoggerInterface;
 use WP_Mock;
+use ZBateson\MailMimeParser\Header\AddressHeader;
+use ZBateson\MailMimeParser\IMessage;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\API\API
@@ -543,7 +545,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		/**
 		 * On a fetch failure `update()` is called once; the mock declares the full signature, so the
-		 * named `last_failed_login_time` argument binds to its declared position (index 10).
+		 * named `last_failed_login_time` argument binds to its declared position (index 12).
 		 */
 		$captured_update_args = array();
 
@@ -568,7 +570,7 @@ class API_Unit_Test extends Unit_Testcase {
 		$this->assertNotEmpty( $captured_update_args, 'Email_Account_WP_Post_Repository::update() was not called.' );
 		$this->assertSame( $email_account, $captured_update_args[0][0] );
 
-		$last_failed_login_time = $captured_update_args[0][10] ?? null;
+		$last_failed_login_time = $captured_update_args[0][12] ?? null;
 		$this->assertInstanceOf( DateTimeInterface::class, $last_failed_login_time );
 		$this->assertEqualsWithDelta( time(), $last_failed_login_time->getTimestamp(), 60 );
 	}
@@ -720,7 +722,8 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
-		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->once();
+		// Once for the login/checked times, once for the lifetime totals.
+		$email_account_repository->expects( 'update' )->andReturnArg( 0 )->twice();
 
 		$this->store_credentials( $credentials );
 
@@ -1116,5 +1119,582 @@ class API_Unit_Test extends Unit_Testcase {
 			'mark unread'      => array( 'mark_email_unread', 'set_is_marked_read', 'Failed to mark as unread on server.' ),
 			'delete on server' => array( 'delete_email_on_server', 'do_delete_on_server', 'Failed to delete email on server.' ),
 		);
+	}
+
+	// ── from-address / body-identifier regex filters ─────────────────────────────
+
+	/**
+	 * A fetched email whose parsed message reports the given sender and bodies.
+	 *
+	 * @param string  $message_id The Message-ID.
+	 * @param ?string $from       The sender address; null for a message with no From header.
+	 * @param ?string $text       The plain-text body, or null when the message has none.
+	 * @param ?string $html       The HTML body, or null when the message has none.
+	 */
+	private function make_fetched_email( string $message_id, ?string $from, ?string $text = null, ?string $html = null ): Fetched_Email {
+		$message = Mockery::mock( IMessage::class );
+		$message->allows( 'getMessageId' )->andReturn( $message_id );
+		$message->allows( 'getTextContent' )->andReturn( $text );
+		$message->allows( 'getHtmlContent' )->andReturn( $html );
+
+		if ( is_null( $from ) ) {
+			$message->allows( 'getHeader' )->with( 'From' )->andReturnNull();
+		} else {
+			$from_header = Mockery::mock( AddressHeader::class );
+			$from_header->allows( 'getEmail' )->andReturn( $from );
+			$message->allows( 'getHeader' )->with( 'From' )->andReturn( $from_header );
+		}
+
+		return new Fetched_Email(
+			message: $message,
+			coordinates: new Remote_Email_Coordinates( message_id: $message_id ),
+			is_remote_read: false,
+		);
+	}
+
+	/**
+	 * Run check_email() for one account whose connection returns the given emails, and return what
+	 * reached save_all() (as Message-IDs) alongside the account's result.
+	 *
+	 * @param BH_Email_Account $email_account The account (carrying the regex filters under test).
+	 * @param Fetched_Email[]  $fetched       What the connection returns.
+	 *
+	 * @return array{saved: string[], result: \BrianHenryIE\WP_Mailboxes\API\Model\Result\Check_Email_Account_Result}
+	 */
+	private function check_with_filters( BH_Email_Account $email_account, array $fetched ): array {
+		$credentials = Mockery::mock( Account_Credentials_Interface::class );
+		$connection  = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$settings    = Mockery::mock(
+			BH_WP_Mailboxes_Settings_Interface::class,
+			array(
+				'get_plugin_slug'               => 'test-plugin',
+				'get_emails_cpt_underscored_20' => 'test_emails',
+			)
+		)->shouldIgnoreMissing();
+
+		$connection->expects( 'retrieve_emails' )->andReturn( new Collection( $fetched ) );
+
+		$saved_message_ids = null;
+
+		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
+		$email_repository->allows( 'is_post_for_message_id' )->andReturnFalse();
+		$email_repository->expects( 'save_all' )->once()->andReturnUsing(
+			function ( Collection $emails_to_save ) use ( &$saved_message_ids ) {
+				$saved_message_ids = $emails_to_save->map( fn( Fetched_Email $email ) => $email->message->getMessageId() )->all();
+				return array();
+			}
+		);
+
+		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
+		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
+		$email_account_repository->allows( 'update' )->andReturnArg( 0 );
+
+		$this->store_credentials( $credentials );
+
+		WP_Mock::onFilter( 'bh_wp_mailboxes_connection_for_account' )
+				->with( null, 'test-plugin', 'test_emails', $email_account )
+				->reply( $connection );
+
+		$sut    = $this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository );
+		$result = $sut->check_email();
+
+		$this->assertIsArray( $saved_message_ids, 'save_all() was not called.' );
+
+		return array(
+			'saved'  => $saved_message_ids,
+			'result' => $result->account_results[0],
+		);
+	}
+
+	/**
+	 * With no filters configured, every fetched email is saved.
+	 *
+	 * @covers ::filter_by_account_regexes
+	 * @covers ::validate_regex
+	 */
+	public function test_no_regex_filters_saves_every_email(): void {
+		$account = BH_Email_Account_Fixture::make( from_address_regex_filter: null, body_identifier_regex_filter: null );
+
+		$outcome = $this->check_with_filters(
+			$account,
+			array(
+				$this->make_fetched_email( 'a@example.org', 'anyone@example.com', 'anything' ),
+				$this->make_fetched_email( 'b@example.org', null, null ),
+			)
+		);
+
+		$this->assertSame( array( 'a@example.org', 'b@example.org' ), $outcome['saved'] );
+		$this->assertSame( array(), $outcome['result']->warnings );
+		$this->assertSame( 0, $outcome['result']->filtered_out_count );
+	}
+
+	/**
+	 * Blank filters are treated the same as unset ones.
+	 *
+	 * @covers ::validate_regex
+	 */
+	public function test_blank_regex_filters_are_ignored(): void {
+		$account = BH_Email_Account_Fixture::make( from_address_regex_filter: '  ', body_identifier_regex_filter: '' );
+
+		$outcome = $this->check_with_filters(
+			$account,
+			array( $this->make_fetched_email( 'a@example.org', null, null ) )
+		);
+
+		$this->assertSame( array( 'a@example.org' ), $outcome['saved'] );
+		$this->assertSame( array(), $outcome['result']->warnings );
+	}
+
+	/**
+	 * Only emails whose sender address matches the from-address regex are saved.
+	 *
+	 * @covers ::filter_by_account_regexes
+	 */
+	public function test_from_address_regex_keeps_only_matching_senders(): void {
+		$account = BH_Email_Account_Fixture::make( from_address_regex_filter: '/@venmo\.com$/i' );
+
+		$outcome = $this->check_with_filters(
+			$account,
+			array(
+				$this->make_fetched_email( 'match@example.org', 'venmo@venmo.com', 'body' ),
+				$this->make_fetched_email( 'upper@example.org', 'Receipts@VENMO.COM', 'body' ),
+				$this->make_fetched_email( 'other@example.org', 'someone@example.com', 'body' ),
+				$this->make_fetched_email( 'spoof@example.org', 'venmo.com@example.com', 'body' ),
+			)
+		);
+
+		$this->assertSame( array( 'match@example.org', 'upper@example.org' ), $outcome['saved'] );
+		$this->assertTrue( $this->logger->hasDebugThatContains( 'Not saving email other@example.org: sender "someone@example.com" does not match the from address filter' ) );
+		$this->assertTrue( $this->logger->hasInfoThatContains( "2 of 4 new emails did not match the account's filters and were not saved." ) );
+	}
+
+	/**
+	 * An email with no From header cannot match a from-address regex, so it is not saved.
+	 *
+	 * @covers ::filter_by_account_regexes
+	 */
+	public function test_from_address_regex_drops_email_without_from_header(): void {
+		$account = BH_Email_Account_Fixture::make( from_address_regex_filter: '/./' );
+
+		$outcome = $this->check_with_filters(
+			$account,
+			array( $this->make_fetched_email( 'headless@example.org', null, 'body' ) )
+		);
+
+		$this->assertSame( array(), $outcome['saved'] );
+		$this->assertTrue( $this->logger->hasDebugThatContains( 'sender "" does not match' ) );
+	}
+
+	/**
+	 * The body regex is matched against the plain-text body.
+	 *
+	 * @covers ::filter_by_account_regexes
+	 */
+	public function test_body_regex_keeps_only_matching_plain_text_bodies(): void {
+		$account = BH_Email_Account_Fixture::make( body_identifier_regex_filter: '/You paid \$\d+\.\d{2}/' );
+
+		$outcome = $this->check_with_filters(
+			$account,
+			array(
+				$this->make_fetched_email( 'receipt@example.org', 'a@example.com', 'Hi Brian, You paid $12.50 to Bob.' ),
+				$this->make_fetched_email( 'newsletter@example.org', 'a@example.com', 'This week in payments.' ),
+			)
+		);
+
+		$this->assertSame( array( 'receipt@example.org' ), $outcome['saved'] );
+		$this->assertTrue( $this->logger->hasDebugThatContains( 'Not saving email newsletter@example.org: body does not match the body identifier filter' ) );
+	}
+
+	/**
+	 * When the message has no plain-text part, the body regex is matched against the HTML body.
+	 *
+	 * @covers ::filter_by_account_regexes
+	 */
+	public function test_body_regex_falls_back_to_html_body(): void {
+		$account = BH_Email_Account_Fixture::make( body_identifier_regex_filter: '/Order #\d+/' );
+
+		$outcome = $this->check_with_filters(
+			$account,
+			array(
+				$this->make_fetched_email( 'html-only@example.org', 'a@example.com', null, '<p>Order #123 confirmed</p>' ),
+				$this->make_fetched_email( 'html-miss@example.org', 'a@example.com', null, '<p>Nothing here</p>' ),
+			)
+		);
+
+		$this->assertSame( array( 'html-only@example.org' ), $outcome['saved'] );
+	}
+
+	/**
+	 * A match in either body part is enough: plain text that misses does not veto HTML that matches.
+	 *
+	 * @covers ::filter_by_account_regexes
+	 */
+	public function test_body_regex_matches_when_only_html_part_matches(): void {
+		$account = BH_Email_Account_Fixture::make( body_identifier_regex_filter: '/data-order="\d+"/' );
+
+		$outcome = $this->check_with_filters(
+			$account,
+			array( $this->make_fetched_email( 'both@example.org', 'a@example.com', 'Plain text without the attribute.', '<div data-order="9">…</div>' ) )
+		);
+
+		$this->assertSame( array( 'both@example.org' ), $outcome['saved'] );
+	}
+
+	/**
+	 * A message with neither a plain-text nor an HTML body cannot match a body regex.
+	 *
+	 * @covers ::filter_by_account_regexes
+	 */
+	public function test_body_regex_drops_email_without_body(): void {
+		$account = BH_Email_Account_Fixture::make( body_identifier_regex_filter: '/.*/' );
+
+		$outcome = $this->check_with_filters(
+			$account,
+			array( $this->make_fetched_email( 'empty@example.org', 'a@example.com', null, null ) )
+		);
+
+		$this->assertSame( array(), $outcome['saved'] );
+	}
+
+	/**
+	 * When both filters are set an email must satisfy both to be saved.
+	 *
+	 * @covers ::filter_by_account_regexes
+	 */
+	public function test_both_regex_filters_must_match(): void {
+		$account = BH_Email_Account_Fixture::make(
+			from_address_regex_filter: '/^receipts@shop\.example$/',
+			body_identifier_regex_filter: '/Order #\d+/'
+		);
+
+		$outcome = $this->check_with_filters(
+			$account,
+			array(
+				$this->make_fetched_email( 'both@example.org', 'receipts@shop.example', 'Order #1' ),
+				$this->make_fetched_email( 'from-only@example.org', 'receipts@shop.example', 'Your password reset' ),
+				$this->make_fetched_email( 'body-only@example.org', 'phisher@evil.example', 'Order #2' ),
+				$this->make_fetched_email( 'neither@example.org', 'phisher@evil.example', 'Hello' ),
+			)
+		);
+
+		$this->assertSame( array( 'both@example.org' ), $outcome['saved'] );
+		$this->assertSame( 3, $outcome['result']->filtered_out_count );
+		$this->assertTrue( $this->logger->hasInfoThatContains( "3 of 4 new emails did not match the account's filters" ) );
+	}
+
+	/**
+	 * The collection passed to save_all() is re-indexed so its keys are contiguous after filtering.
+	 *
+	 * @covers ::filter_by_account_regexes
+	 */
+	public function test_filtered_collection_is_reindexed(): void {
+		$account = BH_Email_Account_Fixture::make( from_address_regex_filter: '/keep/' );
+
+		$credentials = Mockery::mock( Account_Credentials_Interface::class );
+		$connection  = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$settings    = Mockery::mock(
+			BH_WP_Mailboxes_Settings_Interface::class,
+			array(
+				'get_plugin_slug'               => 'test-plugin',
+				'get_emails_cpt_underscored_20' => 'test_emails',
+			)
+		)->shouldIgnoreMissing();
+
+		$connection->expects( 'retrieve_emails' )->andReturn(
+			new Collection(
+				array(
+					$this->make_fetched_email( 'drop@example.org', 'drop@example.com' ),
+					$this->make_fetched_email( 'keep@example.org', 'keep@example.com' ),
+				)
+			)
+		);
+
+		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
+		$email_repository->allows( 'is_post_for_message_id' )->andReturnFalse();
+		$email_repository->expects( 'save_all' )->andReturnUsing(
+			function ( Collection $emails_to_save ) {
+				$this->assertSame( array( 0 ), $emails_to_save->keys()->all() );
+				return array();
+			}
+		);
+
+		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
+		$email_account_repository->expects( 'get_all' )->andReturn( array( $account ) );
+		$email_account_repository->allows( 'update' )->andReturnArg( 0 );
+
+		$this->store_credentials( $credentials );
+		WP_Mock::onFilter( 'bh_wp_mailboxes_connection_for_account' )->with( null, 'test-plugin', 'test_emails', $account )->reply( $connection );
+
+		$this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository )->check_email();
+	}
+
+	/**
+	 * An invalid from-address regex is ignored (the emails are kept) and reported as a warning on the
+	 * result and in the log, rather than silently discarding every email.
+	 *
+	 * @covers ::validate_regex
+	 */
+	public function test_invalid_from_regex_is_ignored_and_reported(): void {
+		$account = BH_Email_Account_Fixture::make( from_address_regex_filter: '/unclosed(' );
+
+		$outcome = $this->check_with_filters(
+			$account,
+			array( $this->make_fetched_email( 'a@example.org', 'anyone@example.com', 'body' ) )
+		);
+
+		$this->assertSame( array( 'a@example.org' ), $outcome['saved'] );
+		$this->assertCount( 1, $outcome['result']->warnings );
+		$this->assertStringContainsString( 'The from address filter "/unclosed(" is not a valid regular expression and was ignored', $outcome['result']->warnings[0] );
+		$this->assertTrue( $this->logger->hasWarningThatContains( 'The from address filter "/unclosed(" is not a valid regular expression' ) );
+	}
+
+	/**
+	 * An invalid body regex is ignored while a valid from-address regex on the same account still applies.
+	 *
+	 * @covers ::validate_regex
+	 * @covers ::filter_by_account_regexes
+	 */
+	public function test_invalid_body_regex_is_ignored_but_valid_from_regex_still_applies(): void {
+		$account = BH_Email_Account_Fixture::make(
+			from_address_regex_filter: '/@shop\.example$/',
+			body_identifier_regex_filter: 'no delimiters'
+		);
+
+		$outcome = $this->check_with_filters(
+			$account,
+			array(
+				$this->make_fetched_email( 'shop@example.org', 'orders@shop.example', 'no delimiters' ),
+				$this->make_fetched_email( 'other@example.org', 'someone@example.com', 'no delimiters' ),
+			)
+		);
+
+		$this->assertSame( array( 'shop@example.org' ), $outcome['saved'] );
+		$this->assertCount( 1, $outcome['result']->warnings );
+		$this->assertStringContainsString( 'The body identifier filter "no delimiters" is not a valid regular expression', $outcome['result']->warnings[0] );
+	}
+
+	/**
+	 * A regex that does not compile must not leave PHP's warning unhandled (it would fail the test) and
+	 * must not leave a custom error handler installed afterwards.
+	 *
+	 * @covers ::validate_regex
+	 */
+	public function test_invalid_regex_restores_error_handler(): void {
+		$account = BH_Email_Account_Fixture::make( from_address_regex_filter: '/[/' );
+
+		$before = set_error_handler( null ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler
+		restore_error_handler();
+
+		$this->check_with_filters( $account, array( $this->make_fetched_email( 'a@example.org', 'a@example.com' ) ) );
+
+		$after = set_error_handler( null ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler
+		restore_error_handler();
+
+		$this->assertSame( $before, $after );
+	}
+
+	/**
+	 * Filtering happens after the already-saved dedupe, so a filter is never evaluated against an email
+	 * that would not be saved anyway.
+	 *
+	 * @covers ::filter_by_account_regexes
+	 */
+	public function test_regex_filters_are_not_evaluated_for_already_saved_emails(): void {
+		$account = BH_Email_Account_Fixture::make( email_address: 'test@example.org', from_address_regex_filter: '/./' );
+
+		$already_saved = Mockery::mock( IMessage::class );
+		$already_saved->allows( 'getMessageId' )->andReturn( 'saved@example.org' );
+		$already_saved->expects( 'getHeader' )->never();
+		$already_saved_fetched = new Fetched_Email( message: $already_saved, coordinates: new Remote_Email_Coordinates( message_id: 'saved@example.org' ) );
+
+		$credentials = Mockery::mock( Account_Credentials_Interface::class );
+		$connection  = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$settings    = Mockery::mock(
+			BH_WP_Mailboxes_Settings_Interface::class,
+			array(
+				'get_plugin_slug'               => 'test-plugin',
+				'get_emails_cpt_underscored_20' => 'test_emails',
+			)
+		)->shouldIgnoreMissing();
+		$connection->expects( 'retrieve_emails' )->andReturn( new Collection( array( $already_saved_fetched ) ) );
+
+		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
+		$email_repository->expects( 'is_post_for_message_id' )->with( 'test@example.org', 'saved@example.org' )->andReturnTrue();
+		$email_repository->expects( 'save_all' )->andReturnUsing(
+			function ( Collection $emails_to_save ) {
+				$this->assertCount( 0, $emails_to_save );
+				return array();
+			}
+		);
+
+		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
+		$email_account_repository->expects( 'get_all' )->andReturn( array( $account ) );
+		$email_account_repository->allows( 'update' )->andReturnArg( 0 );
+
+		$this->store_credentials( $credentials );
+		WP_Mock::onFilter( 'bh_wp_mailboxes_connection_for_account' )->with( null, 'test-plugin', 'test_emails', $account )->reply( $connection );
+
+		$this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository )->check_email();
+	}
+
+	// ── lifetime totals ───────────────────────────────────────────────────────────
+
+	/**
+	 * Run check_email() for the account and capture every named argument passed to update().
+	 *
+	 * @param BH_Email_Account $email_account The account (carrying its current totals).
+	 * @param Fetched_Email[]  $fetched       What the connection returns.
+	 * @param string[]         $already_saved Message-IDs the email repository reports as already saved.
+	 * @param int              $saved_count   How many emails save_all() reports as saved.
+	 *
+	 * @return array<int, array<int, mixed>> Positional args of each update() call.
+	 */
+	private function check_capturing_updates( BH_Email_Account $email_account, array $fetched, array $already_saved = array(), ?int $saved_count = null ): array {
+		$credentials = Mockery::mock( Account_Credentials_Interface::class );
+		$connection  = Mockery::mock( Email_Connection_Interface::class, Supports_Fetching::class );
+		$settings    = Mockery::mock(
+			BH_WP_Mailboxes_Settings_Interface::class,
+			array(
+				'get_plugin_slug'               => 'test-plugin',
+				'get_emails_cpt_underscored_20' => 'test_emails',
+			)
+		)->shouldIgnoreMissing();
+
+		$connection->expects( 'retrieve_emails' )->andReturn( new Collection( $fetched ) );
+
+		$email_repository = Mockery::mock( Email_WP_Post_Repository::class );
+		$email_repository->allows( 'is_post_for_message_id' )->andReturnUsing(
+			fn( string $address, string $message_id ): bool => in_array( $message_id, $already_saved, true )
+		);
+		$email_repository->expects( 'save_all' )->andReturnUsing(
+			function ( Collection $emails_to_save ) use ( $saved_count ) {
+				$count = $saved_count ?? $emails_to_save->count();
+				return array_fill( 0, $count, BH_Email_Fixture::new( post_id: 1, post_type: 'test_emails', email_account_local_id: 2, imessage: Mockery::mock( IMessage::class ), message_id: 'm@example.org', subject: 'Hi', from_email: 'a@example.org' ) );
+			}
+		);
+
+		$captured = array();
+
+		$email_account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
+		$email_account_repository->expects( 'get_all' )->andReturn( array( $email_account ) );
+		$email_account_repository->allows( 'update' )->andReturnUsing(
+			function ( ...$args ) use ( &$captured, $email_account ) {
+				$captured[] = $args;
+				return $email_account;
+			}
+		);
+
+		$this->store_credentials( $credentials );
+		WP_Mock::onFilter( 'bh_wp_mailboxes_connection_for_account' )->with( null, 'test-plugin', 'test_emails', $email_account )->reply( $connection );
+
+		$this->get_api( settings: $settings, email_repository: $email_repository, email_account_repository: $email_account_repository )->check_email();
+
+		return $captured;
+	}
+
+	/**
+	 * After a fetch, the run's new and saved counts are added to the account's existing lifetime
+	 * totals and written via update() (positions 7 and 8 of its signature).
+	 *
+	 * @covers ::check_email
+	 */
+	public function test_check_email_adds_run_counts_to_lifetime_totals(): void {
+		$email_account = BH_Email_Account_Fixture::make(
+			from_address_regex_filter: '/keep/',
+			total_emails_downloaded_count: 100,
+			total_emails_saved_count: 40,
+		);
+
+		$updates = $this->check_capturing_updates(
+			$email_account,
+			array(
+				$this->make_fetched_email( 'old@example.org', 'keep@example.com' ),
+				$this->make_fetched_email( 'keep-1@example.org', 'keep@example.com' ),
+				$this->make_fetched_email( 'keep-2@example.org', 'keep@example.com' ),
+				$this->make_fetched_email( 'drop@example.org', 'drop@example.com' ),
+			),
+			already_saved: array( 'old@example.org' ),
+		);
+
+		$this->assertCount( 2, $updates, 'One update for the login times, one for the totals.' );
+
+		$totals_update = $updates[1];
+		$this->assertSame( $email_account, $totals_update[0] );
+		$this->assertSame( 103, $totals_update[7], '100 + 3 new (the already-saved email is not counted).' );
+		$this->assertSame( 42, $totals_update[8], '40 + 2 saved (the filtered-out email is not counted).' );
+	}
+
+	/**
+	 * The totals count what save_all() actually saved, not what was handed to it.
+	 *
+	 * @covers ::check_email
+	 */
+	public function test_check_email_saved_total_reflects_what_save_all_returned(): void {
+		$email_account = BH_Email_Account_Fixture::make( total_emails_downloaded_count: 0, total_emails_saved_count: 0 );
+
+		$updates = $this->check_capturing_updates(
+			$email_account,
+			array(
+				$this->make_fetched_email( 'a@example.org', 'a@example.com' ),
+				$this->make_fetched_email( 'b@example.org', 'b@example.com' ),
+			),
+			saved_count: 1,
+		);
+
+		$this->assertSame( 2, $updates[1][7] );
+		$this->assertSame( 1, $updates[1][8] );
+	}
+
+	/**
+	 * When nothing new was fetched the totals are unchanged, so no second update() is made.
+	 *
+	 * @covers ::check_email
+	 */
+	public function test_check_email_does_not_update_totals_when_nothing_new(): void {
+		$email_account = BH_Email_Account_Fixture::make( total_emails_downloaded_count: 5, total_emails_saved_count: 5 );
+
+		$updates = $this->check_capturing_updates(
+			$email_account,
+			array( $this->make_fetched_email( 'old@example.org', 'a@example.com' ) ),
+			already_saved: array( 'old@example.org' ),
+		);
+
+		$this->assertCount( 1, $updates, 'Only the login-times update.' );
+	}
+
+	/**
+	 * A debug log line summarises the run: retrieved, already saved, new, filtered out, saved, and the totals.
+	 *
+	 * @covers ::check_email
+	 */
+	public function test_check_email_logs_fetch_summary(): void {
+		$email_account = BH_Email_Account_Fixture::make(
+			email_address: 'inbox@example.org',
+			from_address_regex_filter: '/keep/',
+			total_emails_downloaded_count: 10,
+			total_emails_saved_count: 4,
+		);
+
+		$this->check_capturing_updates(
+			$email_account,
+			array(
+				$this->make_fetched_email( 'old@example.org', 'keep@example.com' ),
+				$this->make_fetched_email( 'keep@example.org', 'keep@example.com' ),
+				$this->make_fetched_email( 'drop@example.org', 'drop@example.com' ),
+			),
+			already_saved: array( 'old@example.org' ),
+		);
+
+		$this->assertTrue( $this->logger->hasDebugThatContains( 'inbox@example.org: 3 emails retrieved since ' ) );
+		$this->assertTrue( $this->logger->hasDebugThatContains( '; 1 already saved, 2 new; 1 filtered out, 1 saved. Lifetime totals: 12 downloaded, 5 saved.' ) );
+
+		$record = array_values( array_filter( $this->logger->records, fn( array $r ) => str_contains( $r['message'], 'emails retrieved since' ) ) )[0];
+		$this->assertSame( 3, $record['context']['retrieved'] );
+		$this->assertSame( 1, $record['context']['already_saved'] );
+		$this->assertSame( 2, $record['context']['new'] );
+		$this->assertSame( 1, $record['context']['filtered_out'] );
+		$this->assertSame( 1, $record['context']['saved'] );
+		$this->assertSame( 12, $record['context']['total_emails_downloaded_count'] );
+		$this->assertSame( 5, $record['context']['total_emails_saved_count'] );
 	}
 }
