@@ -213,7 +213,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 
 	/**
 	 * The name is `{plugin-slug}/{accounts-cpt}-{address}`: every part lowercased and normalised to the
-	 * API's allowed characters, the address's `@` written as `-at-`.
+	 * API's allowed characters, the address's `@` written as `_at_`.
 	 *
 	 * @covers ::get_secret_name
 	 * @covers ::normalise_segment
@@ -223,7 +223,7 @@ class Secrets_Credentials_Store_Unit_Test extends Unit_Testcase {
 
 		$name = $sut->get_secret_name( $this->make_account( 'Inbox@Example.com' ) );
 
-		$this->assertSame( 'my-plugin-v2/my_accounts-inbox-at-example-com', $name );
+		$this->assertSame( 'my_plugin_v2/my_accounts-inbox_at_example_com', $name );
 		$this->assertSame( $name, $sut->get_secret_name( $this->make_account( '  inbox@example.com ' ) ) );
 		$this->assertNotSame( $name, $sut->get_secret_name( $this->make_account( 'other@example.com' ) ) );
 		$this->assertNotSame( $name, $this->make_sut( 'my-plugin-v2', 'other_accounts' )->get_secret_name( $this->make_account( 'inbox@example.com' ) ) );
