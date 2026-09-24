@@ -226,18 +226,94 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	/**
-	 * A datetime meta that is not ATOM-formatted throws rather than passing a bad value to the model.
+	 * A datetime meta that is not ATOM-formatted is dropped with a warning; the account still hydrates.
 	 *
 	 * @covers ::from_wp_post
 	 */
-	public function test_from_wp_post_throws_on_invalid_datetime(): void {
+	public function test_from_wp_post_ignores_invalid_datetime(): void {
 
 		$post = $this->make_account_post(
-			$this->required_meta() + array( 'last_successful_login_time' => 'not-a-valid-datetime' )
+			$this->required_meta() + array(
+				'last_successful_login_time' => 'not-a-valid-datetime',
+				'last_checked_time'          => '2026-01-15T10:20:30+00:00',
+			)
 		);
 
+		$account = ( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post( $post );
+
+		$this->assertNull( $account->last_successful_login_time );
+		$this->assertInstanceOf( DateTimeInterface::class, $account->last_checked_time, 'Other timestamps are unaffected.' );
+		$this->assertTrue( $this->logger->hasWarningThatContains( 'Ignoring unparseable last_successful_login_time "not-a-valid-datetime"' ) );
+	}
+
+	/**
+	 * Create an account post with an explicit slug (the URL-encoded address, as the repository writes it).
+	 *
+	 * @param array<string,string> $meta      Post meta key/value pairs.
+	 * @param string               $post_name The slug.
+	 */
+	private function make_account_post_with_slug( array $meta, string $post_name ): WP_Post {
+		$post_id = wp_insert_post(
+			array(
+				'post_type'   => $this->post_type,
+				'post_status' => 'bh_email_ac_active',
+				'post_title'  => 'Account',
+				'post_name'   => $post_name,
+			)
+		);
+		foreach ( $meta as $key => $value ) {
+			update_post_meta( $post_id, $key, $value );
+		}
+		$post = get_post( $post_id );
+		$this->assertInstanceOf( WP_Post::class, $post );
+		return $post;
+	}
+
+	/**
+	 * A missing display name alone defaults to the (present) email address meta.
+	 *
+	 * @covers ::backfill_identity_meta
+	 */
+	public function test_from_wp_post_defaults_missing_display_name_to_address(): void {
+
+		$meta = $this->required_meta();
+		unset( $meta['display_name'] );
+
+		$account = ( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post( $this->make_account_post( $meta ) );
+
+		$this->assertSame( 'inbox@example.com', $account->display_name );
+		$this->assertSame( 'inbox@example.com', get_post_meta( $account->get_post_id(), 'display_name', true ) );
+		$this->assertFalse( $this->logger->hasWarningThatContains( 'had no email_address meta' ), 'The address was present, so only the name is backfilled.' );
+	}
+
+	/**
+	 * Present meta is never overwritten by the backfill.
+	 *
+	 * @covers ::backfill_identity_meta
+	 */
+	public function test_from_wp_post_does_not_overwrite_present_identity_meta(): void {
+
+		$post = $this->make_account_post_with_slug( $this->required_meta(), rawurlencode( 'other@example.com' ) );
+
+		$account = ( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post( $post );
+
+		$this->assertSame( 'inbox@example.com', $account->email_address );
+		$this->assertSame( 'Test Inbox', $account->display_name );
+		$this->assertFalse( $this->logger->hasWarningRecords() );
+	}
+
+	/**
+	 * A missing email address cannot be defaulted (the slug is a lossy encoding), so the account still
+	 * fails to hydrate, naming both missing keys.
+	 *
+	 * @covers ::backfill_identity_meta
+	 */
+	public function test_from_wp_post_still_throws_when_email_address_missing(): void {
+
+		$post = $this->make_account_post_with_slug( array( 'connection_type_class' => 'Some_Connection_Class' ), rawurlencode( 'inbox@example.com' ) );
+
 		$this->expectException( Exception::class );
-		$this->expectExceptionMessageMatches( '/last_successful_login_time/' );
+		$this->expectExceptionMessageMatches( '/email_address, display_name/' );
 
 		( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post( $post );
 	}

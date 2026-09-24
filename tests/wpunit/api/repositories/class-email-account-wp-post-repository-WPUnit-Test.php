@@ -8,6 +8,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account_CPT;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
@@ -312,5 +313,72 @@ class Email_Account_WP_Post_Repository_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( 10, $updated->total_emails_saved_count );
 		$this->assertFalse( $updated->is_active(), 'The rest of the update still applies.' );
 		$this->assertTrue( $this->logger->hasWarningThatContains( 'Ignoring attempt to lower total_emails_downloaded_count from 20 to 5' ) );
+	}
+
+	/**
+	 * Create an account post the way the repository would, then strip the given meta to simulate a
+	 * post written by an older version or by a consumer directly.
+	 *
+	 * @param Email_Account_WP_Post_Repository $sut           The repository.
+	 * @param string                           $email_address The account address.
+	 * @param string[]                         $strip         Meta keys to delete.
+	 */
+	private function save_account_missing_meta( Email_Account_WP_Post_Repository $sut, string $email_address, array $strip ): int {
+		$saved = $this->save_account( $sut, $email_address );
+		foreach ( $strip as $key ) {
+			delete_post_meta( $saved->get_post_id(), $key );
+		}
+		return $saved->get_post_id();
+	}
+
+	/**
+	 * Looking an account up by address heals a post missing its email_address meta (the slug matched
+	 * that exact address) and defaults the display name, instead of throwing.
+	 *
+	 * @covers ::find_by_email_address
+	 */
+	public function test_find_by_email_address_heals_missing_identity_meta(): void {
+		$sut = $this->make_sut();
+
+		$post_id = $this->save_account_missing_meta( $sut, 'legacy@example.com', array( 'email_address', 'display_name' ) );
+		$this->assertSame( '', get_post_meta( $post_id, 'email_address', true ) );
+
+		$account = $sut->find_by_email_address( 'legacy@example.com' );
+
+		$this->assertInstanceOf( BH_Email_Account::class, $account );
+		$this->assertSame( $post_id, $account->get_post_id() );
+		$this->assertSame( 'legacy@example.com', $account->email_address );
+		$this->assertSame( 'legacy@example.com', $account->display_name, 'Display name defaults to the address.' );
+		$this->assertSame( 'legacy@example.com', get_post_meta( $post_id, 'email_address', true ), 'The address meta is restored.' );
+		$this->assertSame( 'legacy@example.com', get_post_meta( $post_id, 'display_name', true ), 'The display name meta is written.' );
+		$this->assertTrue( $this->logger->hasWarningThatContains( 'had no email_address meta; restored "legacy@example.com" from the lookup' ) );
+
+		// Once healed, every other path hydrates it too.
+		$this->logger->reset();
+		$this->assertSame( 'legacy@example.com', $sut->find_by_post_id( $post_id )->email_address );
+		$this->assertFalse( $this->logger->hasWarningRecords(), 'No further healing needed.' );
+	}
+
+	/**
+	 * A post missing its email_address meta that is reached any other way cannot be identified: it is
+	 * logged and skipped, and the remaining accounts are still returned.
+	 *
+	 * @covers ::get_all
+	 * @covers ::find_by_post_id
+	 */
+	public function test_broken_account_post_does_not_take_down_the_others(): void {
+		$sut = $this->make_sut();
+
+		$good_id   = $this->save_account( $sut, 'good@example.com' )->get_post_id();
+		$broken_id = $this->save_account_missing_meta( $sut, 'broken@example.com', array( 'email_address' ) );
+
+		$all = $sut->get_all();
+
+		$this->assertSame( array( $good_id ), array_map( fn( BH_Email_Account $a ) => $a->get_post_id(), $all ) );
+		$this->assertTrue( $this->logger->hasErrorThatContains( 'Error parsing post ' . $broken_id ) );
+
+		$this->expectException( \Exception::class );
+		$this->expectExceptionMessageMatches( '/email_address/' );
+		$sut->find_by_post_id( $broken_id );
 	}
 }
