@@ -32,6 +32,13 @@ async function delayCheckRequest( page: Page, accountId: number, ms: number ) {
 	} );
 }
 
+/** Row actions are revealed on row hover (WP_List_Table's `.row-actions`): hover the account row, then click "Check now". */
+async function clickCheckNow( page: Page, accountId: number ) {
+	const row = page.locator( `.bh-mailboxes-account[data-account-id="${ accountId }"]` );
+	await row.hover();
+	await row.locator( '.bh-check-account' ).click();
+}
+
 test.describe( 'Status_View — Check now button', () => {
 	test( 'shows grey notice with spinner immediately after click', async ( { admin, page, request } ) => {
 		const email = `check-spinner-${ Date.now() }@example.com`;
@@ -41,7 +48,7 @@ test.describe( 'Status_View — Check now button', () => {
 		await delayCheckRequest( page, postId, 800 );
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
-		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
+		await clickCheckNow( page, postId );
 
 		const notice = page.locator( `.bh-check-notice[data-account-id="${ postId }"]` );
 		await expect( notice ).toBeVisible();
@@ -60,11 +67,11 @@ test.describe( 'Status_View — Check now button', () => {
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
 		// First check saves the fixture emails for this account...
-		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
+		await clickCheckNow( page, postId );
 		await waitForCheckResponse( page, postId );
 
 		// ...so the second check finds them all already saved (deduped) → no new emails.
-		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
+		await clickCheckNow( page, postId );
 		await waitForCheckResponse( page, postId );
 		await page.waitForTimeout( 350 ); // CSS transition: border-left-color 0.3s
 
@@ -85,7 +92,7 @@ test.describe( 'Status_View — Check now button', () => {
 		await delayCheckRequest( page, postId, 3000 );
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
-		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
+		await clickCheckNow( page, postId );
 
 		const notice = page.locator( `.bh-check-notice[data-account-id="${ postId }"]` );
 		await expect( notice.locator( '.notice-dismiss' ) ).toBeVisible();
@@ -98,7 +105,7 @@ test.describe( 'Status_View — Check now button', () => {
 		const postId = await createAccount( request, email );
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 
-		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
+		await clickCheckNow( page, postId );
 		await waitForCheckResponse( page, postId );
 
 		const notice = page.locator( `.bh-check-notice[data-account-id="${ postId }"]` );
@@ -117,7 +124,7 @@ test.describe( 'Status_View — Check now button', () => {
 			.locator( '[data-field="last-fetched"]' );
 		await expect( lastFetched ).toContainText( 'Never' );
 
-		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
+		await clickCheckNow( page, postId );
 		await waitForCheckResponse( page, postId );
 
 		await expect( lastFetched ).toContainText( 'Just now' );
@@ -131,7 +138,9 @@ test.describe( 'Status_View — Check since… dialog', () => {
 	/** Opens the dialog for the account and returns its locators. */
 	async function openSinceDialog( page: Page, postId: number ) {
 		const card = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
-		await card.locator( '.bh-fetch-since-toggle' ).click( { force: true } );
+		// Row actions are revealed on row hover (WP_List_Table's `.row-actions`).
+		await card.hover();
+		await card.locator( '.bh-fetch-since-toggle' ).click();
 		const dialog = page.locator( DIALOG );
 		await expect( dialog ).toBeVisible();
 		return { card, dialog, input: dialog.locator( '.bh-fetch-since-input' ) };
@@ -224,7 +233,7 @@ test.describe( 'Status_View — Check since… dialog', () => {
 		await admin.visitAdminPage( 'edit.php', `post_type=e2e_email&bh_email_account=${ postId }` );
 
 		// A fresh account's first check fetches the fixture emails as new.
-		await page.locator( `.bh-check-account[data-account-id="${ postId }"]` ).click( { force: true } );
+		await clickCheckNow( page, postId );
 		await waitForCheckResponse( page, postId );
 
 		// After the table refreshes, the new rows carry the (transient, fading) highlight class.

@@ -4,8 +4,16 @@
  * Arrange via REST, assert via the WP admin edit screen.
  */
 import { test, expect } from '@wordpress/e2e-test-utils-playwright';
+import type { Page } from '@playwright/test';
 
 const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v2';
+
+/** Row actions are revealed on row hover (WP_List_Table's `.row-actions`): hover the account row, then click "Check now". */
+async function clickCheckNow( page: Page, accountId: number ) {
+	const row = page.locator( `.bh-mailboxes-account[data-account-id="${ accountId }"]` );
+	await row.hover();
+	await row.locator( '.bh-check-account' ).click();
+}
 
 test.describe( 'Single email view', () => {
 	/**
@@ -498,7 +506,7 @@ test.describe( 'Single email view', () => {
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 		const checkResponse = page.waitForResponse( ( res ) => res.url().includes( `/${ accountId }/check` ) );
-		await page.locator( `.bh-check-account[data-account-id="${ accountId }"]` ).click( { force: true } );
+		await clickCheckNow( page, accountId );
 		const checkBody = await ( await checkResponse ).json();
 		const emailId = checkBody.new_email_ids[ 0 ] as number;
 		expect( emailId ).toBeTruthy();
@@ -538,7 +546,7 @@ test.describe( 'Single email view', () => {
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
 		const checkResponse = page.waitForResponse( ( res ) => res.url().includes( `/${ accountId }/check` ) );
-		await page.locator( `.bh-check-account[data-account-id="${ accountId }"]` ).click( { force: true } );
+		await clickCheckNow( page, accountId );
 		const emailId = ( await ( await checkResponse ).json() ).new_email_ids[ 0 ] as number;
 		expect( emailId ).toBeTruthy();
 

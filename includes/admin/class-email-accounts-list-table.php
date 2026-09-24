@@ -214,12 +214,11 @@ class Email_Accounts_List_Table extends WP_List_Table {
 	}
 
 	/**
-	 * Last fetched time with "Check now" / "Check since…" row actions and the set-fetch-since date
-	 * input; "N/A" for receive-only accounts.
+	 * Last fetched time with "Check now" / "Check since…" row actions, revealed on row hover like
+	 * core's row actions; "N/A" for receive-only accounts.
 	 *
-	 * Always visible (core's `visible` row-actions class): "Check now" is the column's main control.
 	 * Built by hand rather than with {@see row_actions()} so the wrapper can carry the
-	 * `bh-mailboxes-account__check` class the date input is positioned against.
+	 * `bh-mailboxes-account__check` class.
 	 *
 	 * @param Email_Account_Row $item The row.
 	 */
@@ -231,7 +230,7 @@ class Email_Accounts_List_Table extends WP_List_Table {
 		$account_id = (string) $item->account->get_post_id();
 
 		return '<span data-field="last-fetched">' . esc_html( $this->format_time( $item->account->last_successful_login_time ) ) . '</span>'
-			. '<div class="row-actions visible bh-mailboxes-account__check">'
+			. '<div class="row-actions bh-mailboxes-account__check">'
 			. '<span class="check"><a href="#" class="bh-check-account" data-account-id="' . esc_attr( $account_id ) . '">' . esc_html__( 'Check now', 'bh-wp-mailboxes' ) . '</a> | </span>'
 			. '<span class="since"><a href="#" class="bh-fetch-since-toggle" data-account-id="' . esc_attr( $account_id ) . '" data-since-value="' . esc_attr( $item->since_value ) . '" title="' . esc_attr__( 'Set the date from which emails will be fetched', 'bh-wp-mailboxes' ) . '">' . esc_html__( 'Check since…', 'bh-wp-mailboxes' ) . '</a></span>'
 			. '</div>';
