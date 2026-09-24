@@ -231,7 +231,7 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 
 		$sut = $this->make_sut();
 
-		\WP_Mock::userFunction( 'site_url' )->andReturn( 'http://localhost:8888' );
+		\WP_Mock::userFunction( 'site_url' )->andReturn( 'http://localhost:8886' );
 		$this->passthru_wp_parse_url();
 
 		$account = $this->make_account();
@@ -254,7 +254,7 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 
 		$sut = $this->make_sut();
 
-		\WP_Mock::userFunction( 'site_url' )->andReturn( 'http://localhost:8888' );
+		\WP_Mock::userFunction( 'site_url' )->andReturn( 'http://localhost:8886' );
 		$this->passthru_wp_parse_url();
 
 		$account = $this->make_account();
@@ -309,7 +309,7 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 
 		$sut = $this->make_sut();
 
-		\WP_Mock::userFunction( 'site_url' )->andReturn( 'http://localhost:8888' );
+		\WP_Mock::userFunction( 'site_url' )->andReturn( 'http://localhost:8886' );
 		$this->passthru_wp_parse_url();
 
 		$this->email_account_repository->expects( 'find_by_email_address' )->andReturn( $this->make_account() );
@@ -330,7 +330,7 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 
 		$sut = $this->make_sut();
 
-		\WP_Mock::userFunction( 'site_url' )->andReturn( 'http://localhost:8888' );
+		\WP_Mock::userFunction( 'site_url' )->andReturn( 'http://localhost:8886' );
 		$this->passthru_wp_parse_url();
 
 		$this->email_account_repository->expects( 'find_by_email_address' )->andReturn( $this->make_account() );
@@ -374,7 +374,7 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 
 		$sut = $this->make_sut();
 
-		\WP_Mock::userFunction( 'site_url' )->andReturn( 'http://localhost:8888' );
+		\WP_Mock::userFunction( 'site_url' )->andReturn( 'http://localhost:8886' );
 		$this->passthru_wp_parse_url();
 
 		$this->email_account_repository->expects( 'find_by_email_address' )->andReturn( $this->make_account() );
@@ -399,7 +399,7 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 
 		$sut = $this->make_sut();
 
-		\WP_Mock::userFunction( 'site_url' )->andReturn( 'http://localhost:8888' );
+		\WP_Mock::userFunction( 'site_url' )->andReturn( 'http://localhost:8886' );
 		$this->passthru_wp_parse_url();
 
 		$raw_mime            = $this->raw_mime_without_message_id();
@@ -445,7 +445,7 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 
 		\WP_Mock::userFunction( 'rest_url' )
 			->with( 'test-ns/v2/test-email/new' )
-			->andReturn( 'http://localhost:8888/wp-json/test-ns/v2/test-email/new' );
+			->andReturn( 'http://localhost:8886/wp-json/test-ns/v2/test-email/new' );
 		\WP_Mock::userFunction( 'wp_convert_hr_to_bytes' )->andReturn( 8388608 );
 
 		$response = new WP_REST_Response( array( 'existing_key' => 'existing_value' ) );
@@ -461,7 +461,7 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 
 		self::assertSame( 1, $entry['version'] );
 		self::assertSame( 'test-ns/v2', $entry['namespace'] );
-		self::assertSame( 'http://localhost:8888/wp-json/test-ns/v2/test-email/new', $entry['url'] );
+		self::assertSame( 'http://localhost:8886/wp-json/test-ns/v2/test-email/new', $entry['url'] );
 		self::assertSame( 'message/rfc822', $entry['accepts'] );
 		self::assertSame( 8388608, $entry['max_message_size_bytes'] );
 	}
@@ -475,7 +475,7 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 
 		$sut = $this->make_sut();
 
-		\WP_Mock::userFunction( 'rest_url' )->andReturn( 'http://localhost:8888/wp-json/test-ns/v2/test-email/new' );
+		\WP_Mock::userFunction( 'rest_url' )->andReturn( 'http://localhost:8886/wp-json/test-ns/v2/test-email/new' );
 		\WP_Mock::userFunction( 'wp_convert_hr_to_bytes' )->andReturn( 8388608 );
 
 		$response = new WP_REST_Response(
@@ -500,7 +500,7 @@ class REST_Ingress_Connection_Unit_Test extends Unit_Testcase {
 
 		$sut = $this->make_sut();
 
-		\WP_Mock::userFunction( 'rest_url' )->andReturn( 'http://localhost:8888/wp-json/test-ns/v2/test-email/new' );
+		\WP_Mock::userFunction( 'rest_url' )->andReturn( 'http://localhost:8886/wp-json/test-ns/v2/test-email/new' );
 		\WP_Mock::userFunction( 'wp_convert_hr_to_bytes' )->andReturn( 0 );
 
 		$result = $sut->add_email_ingress_endpoint_to_index( new WP_REST_Response( array() ) );

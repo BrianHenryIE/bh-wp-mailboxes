@@ -11,7 +11,8 @@
     "wp-content/plugins/wp-crontrol": "./wp-content/plugins/wp-crontrol",
     "wp-content/uploads/bh-wp-mailboxes": "."
   },
-  "mysqlPort": 33066,
+  "port": 8886,
+  "mysqlPort": 33086,
   "lifecycleScripts": {
     "afterStart": "wp-env run cli sudo chmod -R a+w /var/www/html/wp-content/uploads/; wp-env run cli mkdir /var/www/html/wp-content/uploads/logs/; wp-env run cli wp plugin activate development-plugin"
   },

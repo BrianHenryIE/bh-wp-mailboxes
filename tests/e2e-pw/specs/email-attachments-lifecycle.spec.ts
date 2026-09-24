@@ -21,7 +21,7 @@ import type { APIRequestContext } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 
-const BASE_URL = process.env.BASEURL || process.env.WP_BASE_URL || 'http://localhost:8888';
+const BASE_URL = process.env.BASEURL || process.env.WP_BASE_URL || 'http://localhost:8886';
 const FIXTURES_DIR = path.resolve( __dirname, '../fixtures' );
 const DEV_REST = '/wp-json/bh-wp-mailboxes-dev/v2';
 const INGRESS_PATH = `${ DEV_REST }/e2e-email/new`;
