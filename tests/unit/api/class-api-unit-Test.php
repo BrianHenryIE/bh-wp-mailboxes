@@ -1225,6 +1225,7 @@ class API_Unit_Test extends Unit_Testcase {
 
 		$this->assertSame( array( 'a@example.org', 'b@example.org' ), $outcome['saved'] );
 		$this->assertSame( array(), $outcome['result']->warnings );
+		$this->assertSame( 0, $outcome['result']->filtered_out_count );
 	}
 
 	/**
@@ -1377,6 +1378,7 @@ class API_Unit_Test extends Unit_Testcase {
 		);
 
 		$this->assertSame( array( 'both@example.org' ), $outcome['saved'] );
+		$this->assertSame( 3, $outcome['result']->filtered_out_count );
 		$this->assertTrue( $this->logger->hasInfoThatContains( "3 of 4 new emails did not match the account's filters" ) );
 	}
 

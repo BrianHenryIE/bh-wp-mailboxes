@@ -553,7 +553,7 @@ class API implements API_Interface {
 			}
 		}
 
-		return new Check_Email_Account_Result( bh_account: $email_account, success: true, bh_emails: $saved, warnings: $warnings );
+		return new Check_Email_Account_Result( bh_account: $email_account, success: true, bh_emails: $saved, warnings: $warnings, filtered_out_count: $filtered_out_count );
 	}
 
 	/**

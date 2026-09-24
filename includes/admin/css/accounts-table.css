@@ -40,6 +40,13 @@
 	color: #646970;
 }
 
+/* Lifetime "N fetched · N ignored" under the current email count. */
+.bh-mailboxes-account__lifetime {
+	display: block;
+	font-size: 12px;
+	white-space: nowrap;
+}
+
 .bh-mailboxes-accounts .column-status .bh-mailboxes-badge,
 .bh-mailboxes-accounts .column-status .bh-mailboxes-warning {
 	display: block;

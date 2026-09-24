@@ -483,4 +483,53 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 
 		$this->assertIsInt( $result );
 	}
+
+	/**
+	 * Non-trashed emails are counted per local status; unknown statuses land in `other_count`, trash and
+	 * other accounts' emails are excluded.
+	 *
+	 * @covers ::count_by_status_for_account_email
+	 */
+	public function test_count_by_status_for_account_email(): void {
+
+		$post_type = 'test_post_type';
+		$sut       = new Email_WP_Post_Repository( $post_type, new BH_Email_Factory( $this->logger ), $this->logger );
+
+		$account       = BH_Email_Account_Fixture::make( post_id: 500, post_type: 'test_accounts' );
+		$other_account = BH_Email_Account_Fixture::make( post_id: 501, post_type: 'test_accounts' );
+
+		$make = function ( int $account_post_id, string $status ) use ( $post_type ): void {
+			$this->factory()->post->create(
+				array(
+					'post_type'   => $post_type,
+					'post_status' => $status,
+					'post_parent' => $account_post_id,
+				)
+			);
+		};
+
+		$make( 500, 'bh_email_new' );
+		$make( 500, 'bh_email_new' );
+		$make( 500, 'bh_email_processed' );
+		$make( 500, 'bh_email_saved' );
+		$make( 500, 'publish' );
+		$make( 500, 'trash' );
+		$make( 501, 'bh_email_new' );
+
+		$counts = $sut->count_by_status_for_account_email( $account );
+
+		$this->assertSame( 2, $counts->new_count );
+		$this->assertSame( 1, $counts->processed_count );
+		$this->assertSame( 1, $counts->saved_count );
+		$this->assertSame( 1, $counts->other_count );
+		$this->assertSame( 5, $counts->total() );
+		$this->assertSame( $sut->count_for_account_email( $account ), $counts->total(), 'Matches the plain count.' );
+
+		$empty = $sut->count_by_status_for_account_email( $other_account );
+		$this->assertSame( 1, $empty->total() );
+		$this->assertSame( 1, $empty->new_count );
+
+		$none = $sut->count_by_status_for_account_email( BH_Email_Account_Fixture::make( post_id: 502, post_type: 'test_accounts' ) );
+		$this->assertSame( 0, $none->total() );
+	}
 }

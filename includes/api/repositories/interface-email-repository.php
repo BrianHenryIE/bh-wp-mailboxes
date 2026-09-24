@@ -14,6 +14,7 @@ namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Email_Status_Counts;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Private_Uploads\API_Interface as Private_Uploads_API_Interface;
@@ -66,6 +67,13 @@ interface Email_Repository_Interface {
 	 * @param BH_Email_Account $email_account The mailbox account.
 	 */
 	public function count_for_account_email( BH_Email_Account $email_account ): int;
+
+	/**
+	 * Returns the number of stored (non-trashed) emails for a given account, broken down by local status.
+	 *
+	 * @param BH_Email_Account $email_account The mailbox account.
+	 */
+	public function count_by_status_for_account_email( BH_Email_Account $email_account ): Email_Status_Counts;
 
 	/**
 	 * Stores a new email (deduplicating against an already-stored copy).

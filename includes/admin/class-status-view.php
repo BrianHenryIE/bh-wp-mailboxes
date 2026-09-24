@@ -151,6 +151,7 @@ class Status_View {
 		$supports_fetching = $connection instanceof Supports_Fetching;
 		$can_edit          = $connection instanceof Requires_Credentials
 			&& ImapEngine_Imap_Email_Connection::class === $account->connection_type_class;
+		$email_counts      = $this->email_wp_post_repository->count_by_status_for_account_email( $account );
 
 		return new Email_Account_Row(
 			account: $account,
@@ -158,7 +159,8 @@ class Status_View {
 			supports_fetching: $supports_fetching,
 			can_edit: $can_edit,
 			credentials: $can_edit ? $this->get_credentials( $account ) : null,
-			email_count: $this->email_wp_post_repository->count_for_account_email( $account ),
+			email_count: $email_counts->total(),
+			new_email_count: $email_counts->new_count,
 			has_login_failure: ! is_null( $account->last_failed_login_time )
 				&& ( is_null( $account->last_successful_login_time ) || $account->last_failed_login_time > $account->last_successful_login_time ),
 			since_value: ( $account->last_successful_login_time ?? new DateTimeImmutable()->sub( new DateInterval( 'P1W' ) ) )->format( 'Y-m-d' ),

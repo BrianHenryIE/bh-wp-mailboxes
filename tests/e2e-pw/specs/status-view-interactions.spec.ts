@@ -40,6 +40,27 @@ async function clickCheckNow( page: Page, accountId: number ) {
 }
 
 test.describe( 'Status_View — Check now button', () => {
+	test( 'Check now updates the email count, unprocessed suffix and lifetime line in place', async ( { admin, page, request } ) => {
+		const postId = await createAccount( request, `count-inplace-${ Date.now() }@example.com` );
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
+
+		const card = page.locator( `.bh-mailboxes-account[data-account-id="${ postId }"]` );
+		await expect( card.locator( '[data-field="lifetime"]' ) ).toHaveCount( 0 );
+
+		await clickCheckNow( page, postId );
+		await waitForCheckResponse( page, postId );
+
+		// The fixtures connection delivers five emails; none are rejected by filters.
+		await expect( card.locator( '[data-field="email-count"]' ) ).toHaveText( '5' );
+		await expect( card.locator( '[data-field="email-count-new"]' ) ).toHaveText( ' (5 new)' );
+		await expect( card.locator( '[data-field="lifetime"]' ) ).toHaveText( '5 fetched' );
+
+		// Reloading shows the same figures server-rendered.
+		await admin.visitAdminPage( 'edit.php', 'post_type=e2e_email' );
+		await expect( card.locator( '[data-field="email-count-new"]' ) ).toHaveText( ' (5 new)' );
+		await expect( card.locator( '[data-field="lifetime"]' ) ).toHaveText( '5 fetched' );
+	} );
+
 	test( 'shows grey notice with spinner immediately after click', async ( { admin, page, request } ) => {
 		const email = `check-spinner-${ Date.now() }@example.com`;
 		const postId = await createAccount( request, email );

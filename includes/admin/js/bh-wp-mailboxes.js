@@ -24,6 +24,41 @@
         return count + ' new email' + ( count !== 1 ? 's' : '' );
     }
 
+    // Keep the Emails column's "(N new)" suffix and "N fetched · N ignored" line current after an in-place check.
+    function updateEmailCounts( $row, newCount, ignoredCount ) {
+        var $cell = $row.find( '[data-field="email-count"]' ).parent();
+
+        if ( newCount > 0 ) {
+            var $countEl = $row.find( '[data-field="email-count"]' );
+            $countEl.text( parseInt( $countEl.text(), 10 ) + newCount );
+
+            var $newEl = $row.find( '[data-field="email-count-new"]' );
+            if ( ! $newEl.length ) {
+                $newEl = $( '<span data-field="email-count-new" class="bh-mailboxes-muted" title="Not yet processed by a plugin."></span>' ).insertAfter( $countEl );
+                $newEl.data( 'new', 0 );
+            }
+            var unprocessed = ( parseInt( $newEl.attr( 'data-new' ), 10 ) || parseInt( ( $newEl.text().match( /\d+/ ) || [ 0 ] )[ 0 ], 10 ) ) + newCount;
+            $newEl.attr( 'data-new', unprocessed ).text( ' (' + unprocessed + ' new)' );
+        }
+
+        var fetched = newCount + ignoredCount;
+        if ( fetched > 0 ) {
+            var $lifetime = $row.find( '[data-field="lifetime"]' );
+            if ( ! $lifetime.length ) {
+                $lifetime = $( '<span data-field="lifetime" class="bh-mailboxes-account__lifetime bh-mailboxes-muted" data-fetched="0" data-saved="0"></span>' ).appendTo( $cell );
+            }
+            var totalFetched = ( parseInt( $lifetime.attr( 'data-fetched' ), 10 ) || 0 ) + fetched;
+            var totalSaved   = ( parseInt( $lifetime.attr( 'data-saved' ), 10 ) || 0 ) + newCount;
+            var ignored      = Math.max( 0, totalFetched - totalSaved );
+            var current      = parseInt( $row.find( '[data-field="email-count"]' ).text(), 10 ) || 0;
+            $lifetime
+                .attr( 'data-fetched', totalFetched )
+                .attr( 'data-saved', totalSaved )
+                .attr( 'title', totalFetched + ' fetched, ' + ignored + " ignored by the account's filters, " + totalSaved + ' saved, ' + Math.max( 0, totalSaved - current ) + ' since removed.' )
+                .text( totalFetched + ' fetched' + ( ignored > 0 ? ' · ' + ignored + ' ignored' : '' ) );
+        }
+    }
+
     // Per-account check ("Check now" / "Check since…"). A success updates the row in place; a failure
     // swaps in the re-rendered accounts table the server sends, so the row's last-failure time and
     // login-failure badge reflect the check.
@@ -36,9 +71,8 @@
             var count = data.new_email_count;
             $row.find( '[data-field="last-fetched"]' ).text( data.last_fetched );
             $row.find( '.bh-mailboxes-login-failure' ).remove();
+            updateEmailCounts( $row, count || 0, data.ignored_email_count || 0 );
             if ( count > 0 ) {
-                var $countEl = $row.find( '[data-field="email-count"]' );
-                $countEl.text( parseInt( $countEl.text(), 10 ) + count );
                 refreshTable( data.new_email_ids );
             }
             var msg = count > 0

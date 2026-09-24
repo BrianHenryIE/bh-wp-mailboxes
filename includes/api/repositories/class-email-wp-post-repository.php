@@ -10,6 +10,7 @@ namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Email_Status_Counts;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Queries\BH_Email_Query;
@@ -199,6 +200,46 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 			: ( function () {
 				throw new Exception( 'count was no numeric.' );
 			} )();
+	}
+
+	/**
+	 * Counts the account's non-trashed emails in each local status with one grouped query.
+	 *
+	 * @param BH_Email_Account $email_account The mailbox account.
+	 */
+	public function count_by_status_for_account_email( BH_Email_Account $email_account ): Email_Status_Counts {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT post_status, COUNT(*) AS count FROM %i WHERE post_type = %s AND post_status != \'trash\' AND post_parent = %d GROUP BY post_status',
+				$wpdb->posts,
+				$this->post_type,
+				$email_account->get_post_id()
+			),
+			ARRAY_A
+		);
+
+		$counts = array(
+			'bh_email_new'       => 0,
+			'bh_email_processed' => 0,
+			'bh_email_saved'     => 0,
+			'other'              => 0,
+		);
+		foreach ( (array) $rows as $row ) {
+			if ( ! is_array( $row ) || ! isset( $row['post_status'], $row['count'] ) || ! is_string( $row['post_status'] ) || ! is_numeric( $row['count'] ) ) {
+				continue;
+			}
+			$key             = isset( $counts[ $row['post_status'] ] ) ? $row['post_status'] : 'other';
+			$counts[ $key ] += (int) $row['count'];
+		}
+
+		return new Email_Status_Counts(
+			new_count: $counts['bh_email_new'],
+			processed_count: $counts['bh_email_processed'],
+			saved_count: $counts['bh_email_saved'],
+			other_count: $counts['other'],
+		);
 	}
 
 	/**
