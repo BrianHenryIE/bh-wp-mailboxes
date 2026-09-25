@@ -178,38 +178,57 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 	}
 
 	/**
-	 * Returns the number of saved emails for a given account email address.
+	 * Returns the number of saved (non-trashed) emails for a given account.
 	 *
-	 * Emails record their account as the post_parent (an indexed column), so this counts directly by it.
-	 *
-	 * @param BH_Email_Account $email_account The mailbox, e.g. "contact@example.com".
+	 * @param BH_Email_Account $email_account The mailbox account.
 	 */
 	public function count_for_account_email( BH_Email_Account $email_account ): int {
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$count = $wpdb->get_var(
-			$wpdb->prepare(
-				'SELECT COUNT(*) FROM %i WHERE post_type = %s AND post_status != \'trash\' AND post_parent = %s',
-				$wpdb->posts,
-				$this->post_type,
-				$email_account->get_post_id()
-			)
-		);
-		return is_numeric( $count )
-			? (int) $count
-			: ( function () {
-				throw new Exception( 'count was no numeric.' );
-			} )();
+		return $this->count_by_status_for_account_email( $email_account )->total();
+	}
+
+	/**
+	 * The object-cache key for an account's per-status email counts.
+	 *
+	 * Mirrors core's `_count_posts_cache_key()`; the `counts` group is the one `wp_count_posts()` uses.
+	 *
+	 * @param string $post_type       The emails CPT.
+	 * @param int    $account_post_id The account's post ID (the emails' post_parent).
+	 */
+	protected static function status_counts_cache_key( string $post_type, int $account_post_id ): string {
+		return 'bh_email_status_counts:' . $post_type . ':' . $account_post_id;
+	}
+
+	/**
+	 * Forget an account's cached per-status counts, e.g. when one of its emails changes status or is deleted.
+	 *
+	 * Static so the CPT hooks can call it without a repository instance, as core's
+	 * `_transition_post_status()` clears `wp_count_posts()`'s cache.
+	 *
+	 * @param string $post_type       The emails CPT.
+	 * @param int    $account_post_id The account's post ID (the emails' post_parent).
+	 */
+	public static function clear_status_counts_cache( string $post_type, int $account_post_id ): void {
+		wp_cache_delete( self::status_counts_cache_key( $post_type, $account_post_id ), 'counts' );
 	}
 
 	/**
 	 * Counts the account's non-trashed emails in each local status with one grouped query.
 	 *
+	 * Cached in the `counts` object-cache group like core's `wp_count_posts()` (which runs the same
+	 * GROUP BY but cannot be scoped to one account); {@see self::clear_status_counts_cache()} is called
+	 * from the CPT's status-transition and deletion hooks.
+	 *
 	 * @param BH_Email_Account $email_account The mailbox account.
 	 */
 	public function count_by_status_for_account_email( BH_Email_Account $email_account ): Email_Status_Counts {
+		$cache_key = self::status_counts_cache_key( $this->post_type, $email_account->get_post_id() );
+		$cached    = wp_cache_get( $cache_key, 'counts' );
+		if ( $cached instanceof Email_Status_Counts ) {
+			return $cached;
+		}
+
 		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Cached below in the `counts` group.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				'SELECT post_status, COUNT(*) AS count FROM %i WHERE post_type = %s AND post_status != \'trash\' AND post_parent = %d GROUP BY post_status',
@@ -234,12 +253,16 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 			$counts[ $key ] += (int) $row['count'];
 		}
 
-		return new Email_Status_Counts(
+		$status_counts = new Email_Status_Counts(
 			new_count: $counts['bh_email_new'],
 			processed_count: $counts['bh_email_processed'],
 			saved_count: $counts['bh_email_saved'],
 			other_count: $counts['other'],
 		);
+
+		wp_cache_set( $cache_key, $status_counts, 'counts' );
+
+		return $status_counts;
 	}
 
 	/**

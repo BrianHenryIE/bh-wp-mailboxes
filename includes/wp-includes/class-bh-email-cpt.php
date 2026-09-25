@@ -10,6 +10,7 @@
 
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
@@ -127,6 +128,48 @@ class BH_Email_CPT {
 			 */
 			$this->logger->error( $registered_post_type->get_error_message() );
 		}
+	}
+
+	/**
+	 * Forget the account's cached per-status email counts when one of its emails changes status
+	 * (including to/from trash), as core's `_transition_post_status()` does for `wp_count_posts()`.
+	 *
+	 * @hooked transition_post_status
+	 * @see Email_WP_Post_Repository::count_by_status_for_account_email()
+	 *
+	 * @param string  $new_status The status the post is moving to.
+	 * @param string  $old_status The status it had.
+	 * @param WP_Post $post       The post.
+	 */
+	public function clear_account_counts_cache_on_status_change( string $new_status, string $old_status, WP_Post $post ): void {
+		if ( $new_status === $old_status ) {
+			return;
+		}
+		$this->clear_account_counts_cache( $post );
+	}
+
+	/**
+	 * Forget the account's cached per-status email counts when one of its emails is permanently deleted.
+	 *
+	 * @hooked deleted_post
+	 *
+	 * @param int     $post_id The deleted post's ID.
+	 * @param WP_Post $post    The deleted post.
+	 */
+	public function clear_account_counts_cache_on_delete( int $post_id, WP_Post $post ): void {
+		$this->clear_account_counts_cache( $post );
+	}
+
+	/**
+	 * Clear the counts cache for the post's account, if the post is one of this mailbox's emails.
+	 *
+	 * @param WP_Post $post The post.
+	 */
+	protected function clear_account_counts_cache( WP_Post $post ): void {
+		if ( $post->post_type !== $this->settings->get_emails_cpt_underscored_20() ) {
+			return;
+		}
+		Email_WP_Post_Repository::clear_status_counts_cache( $post->post_type, (int) $post->post_parent );
 	}
 
 	/**

@@ -532,4 +532,46 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$none = $sut->count_by_status_for_account_email( BH_Email_Account_Fixture::make( post_id: 502, post_type: 'test_accounts' ) );
 		$this->assertSame( 0, $none->total() );
 	}
+
+	/**
+	 * The per-status counts are cached in the `counts` group (like wp_count_posts()) until cleared, and
+	 * the plain count is derived from them.
+	 *
+	 * @covers ::count_by_status_for_account_email
+	 * @covers ::clear_status_counts_cache
+	 * @covers ::count_for_account_email
+	 */
+	public function test_count_by_status_is_cached_until_cleared(): void {
+
+		$post_type = 'test_post_type';
+		$sut       = new Email_WP_Post_Repository( $post_type, new BH_Email_Factory( $this->logger ), $this->logger );
+		$account   = BH_Email_Account_Fixture::make( post_id: 600, post_type: 'test_accounts' );
+
+		$make = fn( string $status ) => $this->factory()->post->create(
+			array(
+				'post_type'   => $post_type,
+				'post_status' => $status,
+				'post_parent' => 600,
+			)
+		);
+
+		$make( 'bh_email_new' );
+
+		$first = $sut->count_by_status_for_account_email( $account );
+		$this->assertSame( 1, $first->total() );
+		// The in-memory object cache clones objects on set and get, so compare by value.
+		$this->assertEquals( $first, wp_cache_get( 'bh_email_status_counts:test_post_type:600', 'counts' ), 'The result is stored in the counts group.' );
+
+		// No hooks are registered in this test, so a new email is not seen until the cache is cleared.
+		$make( 'bh_email_processed' );
+		$this->assertEquals( $first, $sut->count_by_status_for_account_email( $account ), 'The cached counts are returned.' );
+		$this->assertSame( 1, $sut->count_for_account_email( $account ), 'The plain count is the cached total.' );
+
+		Email_WP_Post_Repository::clear_status_counts_cache( $post_type, 600 );
+
+		$second = $sut->count_by_status_for_account_email( $account );
+		$this->assertSame( 2, $second->total() );
+		$this->assertSame( 1, $second->processed_count );
+		$this->assertSame( 2, $sut->count_for_account_email( $account ) );
+	}
 }
