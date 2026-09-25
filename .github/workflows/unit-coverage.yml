@@ -76,7 +76,17 @@ jobs:
       # NB: how would that affect tj-actions/changed-files?
 
       - name: Install PHP dependencies
+        if: ${{ matrix.php == env.COVERAGE_PHP_VERSION }}
         run: composer install --verbose
+
+      - name: Update PHP dependencies
+        if: ${{ matrix.php != env.COVERAGE_PHP_VERSION }}
+        run: |
+          omposer config platform.php ${{ matrix.php }}
+          composer update --verbose
+
+      - name: Print installed PHP packages
+        run: composer show
 
       - name: Install php-codecoverage-markdown for markdown report generation
         if: ${{ matrix.php == env.COVERAGE_PHP_VERSION }}
@@ -208,7 +218,7 @@ jobs:
       # This outputs `steps.pr_diff.outputs.diff_filename` and `steps.pr_diff.outputs.diff_contents`.
       - name: Get the PR diff
         id: pr_diff
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ matrix.php == env.COVERAGE_PHP_VERSION && github.event_name == 'pull_request' }}
         run: |
           # The base branch name may contain slashes (e.g. a stacked PR based on `feature/step-1`), which
           # would make the filename a path into a directory that does not exist.
