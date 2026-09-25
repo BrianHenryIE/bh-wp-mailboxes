@@ -127,25 +127,6 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( 0, $account->total_emails_saved_count );
 	}
 
-	/**
-	 * Garbage in the totals meta reads as zero rather than throwing.
-	 *
-	 * @covers ::from_wp_post
-	 */
-	public function test_from_wp_post_treats_non_numeric_totals_as_zero(): void {
-
-		$account = ( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post(
-			$this->make_account_post(
-				$this->required_meta() + array(
-					'total_emails_downloaded_count' => 'lots',
-					'total_emails_saved_count'      => '-3',
-				)
-			)
-		);
-
-		$this->assertSame( 0, $account->total_emails_downloaded_count );
-		$this->assertSame( 0, $account->total_emails_saved_count );
-	}
 
 	/**
 	 * With only the required meta present, the optional fields default to null.
@@ -243,7 +224,85 @@ class BH_Email_Account_Factory_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertNull( $account->last_successful_login_time );
 		$this->assertInstanceOf( DateTimeInterface::class, $account->last_checked_time, 'Other timestamps are unaffected.' );
-		$this->assertTrue( $this->logger->hasWarningThatContains( 'Ignoring unparseable last_successful_login_time "not-a-valid-datetime"' ) );
+		$this->assertTrue( $this->logger->hasWarningThatContains( 'Discarding unusable last_successful_login_time "not-a-valid-datetime"' ) );
+		$this->assertSame( '', get_post_meta( $post->ID, 'last_successful_login_time', true ), 'The bad meta is deleted.' );
+
+		$this->logger->reset();
+		( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post( $post );
+		$this->assertFalse( $this->logger->hasWarningRecords(), 'The warning does not repeat on the next load.' );
+	}
+
+	/**
+	 * A non-numeric integer meta is logged, deleted from the database and read as null; the next load is silent.
+	 *
+	 * @covers ::from_wp_post
+	 * @covers ::replace_unusable_meta
+	 */
+	public function test_from_wp_post_discards_non_numeric_int_meta(): void {
+
+		$post = $this->make_account_post( $this->required_meta() + array( 'delete_local_emails_after_n_days' => 'seven' ) );
+
+		$account = ( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post( $post );
+
+		$this->assertNull( $account->delete_local_emails_after_n_days );
+		$this->assertTrue( $this->logger->hasWarningThatContains( 'Discarding unusable delete_local_emails_after_n_days "seven" on email account post ' . $post->ID . '; the meta has been deleted.' ) );
+		$this->assertSame( '', get_post_meta( $post->ID, 'delete_local_emails_after_n_days', true ) );
+
+		$this->logger->reset();
+		( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post( $post );
+		$this->assertFalse( $this->logger->hasWarningRecords() );
+	}
+
+	/**
+	 * Non-numeric or negative lifetime totals are logged, overwritten with zero and read as zero; the next load is silent.
+	 *
+	 * @covers ::from_wp_post
+	 * @covers ::replace_unusable_meta
+	 */
+	public function test_from_wp_post_replaces_unusable_totals_with_zero(): void {
+
+		$post = $this->make_account_post(
+			$this->required_meta() + array(
+				'total_emails_downloaded_count' => 'lots',
+				'total_emails_saved_count'      => '-3',
+			)
+		);
+
+		$account = ( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post( $post );
+
+		$this->assertSame( 0, $account->total_emails_downloaded_count );
+		$this->assertSame( 0, $account->total_emails_saved_count );
+		$this->assertTrue( $this->logger->hasWarningThatContains( 'Discarding unusable total_emails_downloaded_count "lots"' ) );
+		$this->assertTrue( $this->logger->hasWarningThatContains( 'Discarding unusable total_emails_saved_count "-3" on email account post ' . $post->ID . '; replaced with 0.' ) );
+		$this->assertSame( '0', get_post_meta( $post->ID, 'total_emails_downloaded_count', true ) );
+		$this->assertSame( '0', get_post_meta( $post->ID, 'total_emails_saved_count', true ) );
+
+		$this->logger->reset();
+		( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post( $post );
+		$this->assertFalse( $this->logger->hasWarningRecords() );
+	}
+
+	/**
+	 * Valid numbers and absent meta are never rewritten or logged.
+	 *
+	 * @covers ::from_wp_post
+	 */
+	public function test_from_wp_post_leaves_valid_numbers_alone(): void {
+
+		$post = $this->make_account_post(
+			$this->required_meta() + array(
+				'delete_local_emails_after_n_days' => '14',
+				'total_emails_downloaded_count'    => '250',
+			)
+		);
+
+		$account = ( new BH_Email_Account_Factory( $this->logger ) )->from_wp_post( $post );
+
+		$this->assertSame( 14, $account->delete_local_emails_after_n_days );
+		$this->assertSame( 250, $account->total_emails_downloaded_count );
+		$this->assertSame( 0, $account->total_emails_saved_count, 'Absent meta reads as zero.' );
+		$this->assertSame( '', get_post_meta( $post->ID, 'total_emails_saved_count', true ), 'Absent meta is not written.' );
+		$this->assertFalse( $this->logger->hasWarningRecords() );
 	}
 
 	/**

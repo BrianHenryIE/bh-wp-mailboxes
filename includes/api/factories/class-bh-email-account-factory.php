@@ -149,15 +149,35 @@ class BH_Email_Account_Factory {
 			}
 		}
 
+		// A value that should be a number but is not is logged, replaced in the database (so the warning
+		// does not repeat on every load) and treated as unset, rather than making the account unusable.
 		foreach ( $int_keys as $int_key ) {
-			$args[ $int_key ] = is_numeric( $args[ $int_key ] ) ? ( (int) $args[ $int_key ] ?: null ) : null;
+			if ( is_null( $args[ $int_key ] ) ) {
+				continue;
+			}
+			if ( ! is_numeric( $args[ $int_key ] ) ) {
+				$this->replace_unusable_meta( $post, $int_key, $args[ $int_key ], null );
+				$args[ $int_key ] = null;
+				continue;
+			}
+			$args[ $int_key ] = (int) $args[ $int_key ] ?: null;
 		}
 
+		// Lifetime counters are never negative; anything else stored there is replaced with zero.
 		foreach ( $count_keys as $count_key ) {
-			$args[ $count_key ] = is_numeric( $args[ $count_key ] ) ? max( 0, (int) $args[ $count_key ] ) : 0;
+			if ( is_null( $args[ $count_key ] ) ) {
+				$args[ $count_key ] = 0;
+				continue;
+			}
+			if ( ! is_numeric( $args[ $count_key ] ) || (int) $args[ $count_key ] < 0 ) {
+				$this->replace_unusable_meta( $post, $count_key, $args[ $count_key ], 0 );
+				$args[ $count_key ] = 0;
+				continue;
+			}
+			$args[ $count_key ] = (int) $args[ $count_key ];
 		}
 
-		// A timestamp that does not parse is dropped (with a warning) rather than making the whole account unusable.
+		// A timestamp that does not parse is likewise logged, removed and treated as unset.
 		foreach ( $datetime_keys as $datetime_key ) {
 			if ( is_null( $args[ $datetime_key ] ) ) {
 				continue;
@@ -169,13 +189,7 @@ class BH_Email_Account_Factory {
 				$parsed = false;
 			}
 			if ( false === $parsed ) {
-				$this->logger->warning(
-					'Ignoring unparseable ' . $datetime_key . ' "' . $raw . '" on email account post ' . $post->ID . '.',
-					array(
-						'key'     => $datetime_key,
-						'post_id' => $post->ID,
-					)
-				);
+				$this->replace_unusable_meta( $post, $datetime_key, $args[ $datetime_key ], null );
 				$parsed = null;
 			}
 			$args[ $datetime_key ] = $parsed;
@@ -206,6 +220,35 @@ class BH_Email_Account_Factory {
 		 * @phpstan-ignore return.type
 		 */
 		return $args;
+	}
+
+	/**
+	 * Log a stored meta value that cannot be used, and overwrite it (or delete it, for null) so the
+	 * account hydrates cleanly, and silently, from the next load on.
+	 *
+	 * @param WP_Post  $post        The account post.
+	 * @param string   $meta_key    The meta key.
+	 * @param mixed    $value       The unusable stored value.
+	 * @param int|null $replacement What to store instead; null deletes the meta.
+	 */
+	protected function replace_unusable_meta( WP_Post $post, string $meta_key, mixed $value, ?int $replacement ): void {
+		$printable = is_scalar( $value ) ? (string) $value : get_debug_type( $value );
+
+		$this->logger->warning(
+			'Discarding unusable ' . $meta_key . ' "' . $printable . '" on email account post ' . $post->ID
+			. ( is_null( $replacement ) ? '; the meta has been deleted.' : '; replaced with ' . $replacement . '.' ),
+			array(
+				'key'     => $meta_key,
+				'value'   => $value,
+				'post_id' => $post->ID,
+			)
+		);
+
+		if ( is_null( $replacement ) ) {
+			delete_post_meta( $post->ID, $meta_key );
+		} else {
+			update_post_meta( $post->ID, $meta_key, $replacement );
+		}
 	}
 
 	/**
