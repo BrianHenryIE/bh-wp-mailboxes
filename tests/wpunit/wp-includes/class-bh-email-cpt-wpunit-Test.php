@@ -136,4 +136,71 @@ class BH_Email_CPT_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertTrue( wp_script_is( 'autosave', 'enqueued' ) );
 	}
+
+	/**
+	 * With the CPT's hooks registered, every way an email's status can change (save, status update,
+	 * trash, untrash, permanent delete) is reflected in the next per-account count, i.e. the counts
+	 * cache is invalidated exactly as wp_count_posts()'s is.
+	 *
+	 * @covers ::clear_account_counts_cache_on_status_change
+	 * @covers ::clear_account_counts_cache_on_delete
+	 * @covers ::clear_account_counts_cache
+	 */
+	public function test_status_changes_invalidate_the_account_counts_cache(): void {
+
+		$post_type = 'my_emails_cpt';
+		$settings  = $this->make_settings( emails_cpt_underscored_20: $post_type );
+		$sut       = new BH_Email_CPT( $settings, $this->logger );
+		$sut->register_cpt();
+		$sut->register_post_statuses();
+
+		add_action( 'transition_post_status', $sut->clear_account_counts_cache_on_status_change( ... ), 10, 3 );
+		add_action( 'deleted_post', $sut->clear_account_counts_cache_on_delete( ... ), 10, 2 );
+		// As in production, an untrashed email returns to its previous status rather than WordPress's default draft.
+		add_filter( 'wp_untrash_post_status', $sut->restore_status_on_untrash( ... ), 10, 3 );
+
+		$repository = new \BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository( $post_type, new \BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory( $this->logger ), $this->logger );
+		$account    = \BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture::make( post_id: 700, post_type: 'my_accounts' );
+
+		$this->assertSame( 0, $repository->count_by_status_for_account_email( $account )->total(), 'Primes the cache.' );
+
+		$email_id = $this->factory()->post->create(
+			array(
+				'post_type'   => $post_type,
+				'post_status' => 'bh_email_new',
+				'post_parent' => 700,
+			)
+		);
+		$this->assertSame( 1, $repository->count_by_status_for_account_email( $account )->new_count, 'A saved email is counted.' );
+
+		wp_update_post(
+			array(
+				'ID'          => $email_id,
+				'post_status' => 'bh_email_processed',
+			)
+		);
+		$counts = $repository->count_by_status_for_account_email( $account );
+		$this->assertSame( 0, $counts->new_count );
+		$this->assertSame( 1, $counts->processed_count, 'A status change is counted.' );
+
+		wp_trash_post( $email_id );
+		$this->assertSame( 0, $repository->count_by_status_for_account_email( $account )->total(), 'A trashed email is not counted.' );
+
+		wp_untrash_post( $email_id );
+		$this->assertSame( 1, $repository->count_by_status_for_account_email( $account )->processed_count, 'An untrashed email is counted again, in its restored status.' );
+
+		wp_delete_post( $email_id, true );
+		$this->assertSame( 0, $repository->count_by_status_for_account_email( $account )->total(), 'A deleted email is not counted.' );
+
+		// A post of another type parented to the same ID must not touch this cache.
+		$before = $repository->count_by_status_for_account_email( $account );
+		$this->factory()->post->create(
+			array(
+				'post_type'   => 'post',
+				'post_status' => 'publish',
+				'post_parent' => 700,
+			)
+		);
+		$this->assertEquals( $before, $repository->count_by_status_for_account_email( $account ), 'Other post types leave the cache alone.' );
+	}
 }

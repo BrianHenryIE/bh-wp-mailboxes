@@ -128,4 +128,67 @@ class BH_Email_CPT_Unit_Test extends Unit_Testcase {
 
 		$sut->register_post_statuses();
 	}
+
+	/**
+	 * The counts cache is cleared for the email's account only when the status actually changed.
+	 *
+	 * @covers ::clear_account_counts_cache_on_status_change
+	 * @covers ::clear_account_counts_cache
+	 */
+	public function test_clear_counts_cache_on_status_change(): void {
+
+		$sut = $this->make_sut( post_type: 'my_email_cpt' );
+
+		$post              = Mockery::mock( \WP_Post::class );
+		$post->post_type   = 'my_email_cpt';
+		$post->post_parent = 42;
+
+		\WP_Mock::userFunction( 'wp_cache_delete' )
+			->once()
+			->with( 'bh_email_status_counts:my_email_cpt:42', 'counts' );
+
+		$sut->clear_account_counts_cache_on_status_change( 'bh_email_processed', 'bh_email_new', $post );
+		$sut->clear_account_counts_cache_on_status_change( 'bh_email_new', 'bh_email_new', $post );
+	}
+
+	/**
+	 * Posts of other types never touch the cache, on status change or on delete.
+	 *
+	 * @covers ::clear_account_counts_cache_on_status_change
+	 * @covers ::clear_account_counts_cache_on_delete
+	 * @covers ::clear_account_counts_cache
+	 */
+	public function test_clear_counts_cache_ignores_other_post_types(): void {
+
+		$sut = $this->make_sut( post_type: 'my_email_cpt' );
+
+		$post              = Mockery::mock( \WP_Post::class );
+		$post->post_type   = 'post';
+		$post->post_parent = 42;
+
+		\WP_Mock::userFunction( 'wp_cache_delete' )->never();
+
+		$sut->clear_account_counts_cache_on_status_change( 'publish', 'draft', $post );
+		$sut->clear_account_counts_cache_on_delete( 7, $post );
+	}
+
+	/**
+	 * Permanently deleting an email clears its account's counts cache.
+	 *
+	 * @covers ::clear_account_counts_cache_on_delete
+	 */
+	public function test_clear_counts_cache_on_delete(): void {
+
+		$sut = $this->make_sut( post_type: 'my_email_cpt' );
+
+		$post              = Mockery::mock( \WP_Post::class );
+		$post->post_type   = 'my_email_cpt';
+		$post->post_parent = '42';
+
+		\WP_Mock::userFunction( 'wp_cache_delete' )
+			->once()
+			->with( 'bh_email_status_counts:my_email_cpt:42', 'counts' );
+
+		$sut->clear_account_counts_cache_on_delete( 7, $post );
+	}
 }

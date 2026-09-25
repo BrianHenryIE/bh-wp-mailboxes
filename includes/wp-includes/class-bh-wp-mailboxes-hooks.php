@@ -132,6 +132,10 @@ class BH_WP_Mailboxes_Hooks {
 		add_filter( 'wp_insert_post_data', $email_cpt->prevent_content_edits( ... ), 10, 2 );
 		add_filter( 'wp_untrash_post_status', $email_cpt->restore_status_on_untrash( ... ), 10, 3 );
 
+		// Keep the accounts table's per-account email counts (cached like wp_count_posts()) current.
+		add_action( 'transition_post_status', $email_cpt->clear_account_counts_cache_on_status_change( ... ), 10, 3 );
+		add_action( 'deleted_post', $email_cpt->clear_account_counts_cache_on_delete( ... ), 10, 2 );
+
 		add_action( 'admin_enqueue_scripts', $email_cpt->disable_autosave( ... ) );
 	}
 
