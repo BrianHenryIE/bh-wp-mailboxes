@@ -11,4 +11,5 @@
 * Do not add property types in PhpDoc when they are clear from the PHP code itself.
 * Before pushing, test under WordPress Playground (`composer playground-serve`, then exercise the changed behavior at http://127.0.0.1:9400) — the self-contained build nests the library in the plugin's vendor directory, so wp-env's mapped layout masks path/bootstrap bugs.
 * Prefer underscores in option names
+* When we introduce new properties to typed classes, we generally need a default so old versions don't fail entirely
 * 
