@@ -82,7 +82,7 @@ jobs:
       - name: Update PHP dependencies
         if: ${{ matrix.php != env.COVERAGE_PHP_VERSION }}
         run: |
-          omposer config platform.php ${{ matrix.php }}
+          composer config platform.php ${{ matrix.php }}
           composer update --verbose
 
       - name: Print installed PHP packages
