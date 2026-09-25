@@ -130,6 +130,8 @@ class BH_Email_Account_Factory {
 			$args[ $meta_key ] = get_post_meta( $post->ID, $meta_key, true ) ?: null;
 		}
 
+		$this->backfill_identity_meta( $post, $args );
+
 		$errors = array();
 
 		foreach ( $string_keys as $string_key ) {
@@ -147,25 +149,50 @@ class BH_Email_Account_Factory {
 			}
 		}
 
+		// A value that should be a number but is not is logged, replaced in the database (so the warning
+		// does not repeat on every load) and treated as unset, rather than making the account unusable.
 		foreach ( $int_keys as $int_key ) {
+			if ( is_null( $args[ $int_key ] ) ) {
+				continue;
+			}
+			if ( ! is_numeric( $args[ $int_key ] ) ) {
+				$this->replace_unusable_meta( $post, $int_key, $args[ $int_key ], null );
+				$args[ $int_key ] = null;
+				continue;
+			}
 			$args[ $int_key ] = (int) $args[ $int_key ] ?: null;
 		}
 
+		// Lifetime counters are never negative; anything else stored there is replaced with zero.
 		foreach ( $count_keys as $count_key ) {
-			$args[ $count_key ] = is_numeric( $args[ $count_key ] ) ? max( 0, (int) $args[ $count_key ] ) : 0;
+			if ( is_null( $args[ $count_key ] ) ) {
+				$args[ $count_key ] = 0;
+				continue;
+			}
+			if ( ! is_numeric( $args[ $count_key ] ) || (int) $args[ $count_key ] < 0 ) {
+				$this->replace_unusable_meta( $post, $count_key, $args[ $count_key ], 0 );
+				$args[ $count_key ] = 0;
+				continue;
+			}
+			$args[ $count_key ] = (int) $args[ $count_key ];
 		}
 
+		// A timestamp that does not parse is likewise logged, removed and treated as unset.
 		foreach ( $datetime_keys as $datetime_key ) {
-			if ( ! is_null( $args[ $datetime_key ] ) ) {
-				try {
-					$args[ $datetime_key ] = DateTime::createFromFormat( DateTimeInterface::ATOM, $args[ $datetime_key ] );
-				} catch ( Throwable $throwable ) {
-					$errors[ $datetime_key ] = $throwable;
-				}
-				if ( false === $args[ $datetime_key ] ) {
-					$errors[ $datetime_key ] = 'Failed to parse date/time: ' . $args[ $datetime_key ];
-				}
+			if ( is_null( $args[ $datetime_key ] ) ) {
+				continue;
 			}
+			$raw = is_string( $args[ $datetime_key ] ) ? $args[ $datetime_key ] : '';
+			try {
+				$parsed = DateTime::createFromFormat( DateTimeInterface::ATOM, $raw );
+			} catch ( Throwable $throwable ) {
+				$parsed = false;
+			}
+			if ( false === $parsed ) {
+				$this->replace_unusable_meta( $post, $datetime_key, $args[ $datetime_key ], null );
+				$parsed = null;
+			}
+			$args[ $datetime_key ] = $parsed;
 		}
 
 		foreach ( $required_keys as $required_key ) {
@@ -193,5 +220,57 @@ class BH_Email_Account_Factory {
 		 * @phpstan-ignore return.type
 		 */
 		return $args;
+	}
+
+	/**
+	 * Log a stored meta value that cannot be used, and overwrite it (or delete it, for null) so the
+	 * account hydrates cleanly, and silently, from the next load on.
+	 *
+	 * @param WP_Post  $post        The account post.
+	 * @param string   $meta_key    The meta key.
+	 * @param mixed    $value       The unusable stored value.
+	 * @param int|null $replacement What to store instead; null deletes the meta.
+	 */
+	protected function replace_unusable_meta( WP_Post $post, string $meta_key, mixed $value, ?int $replacement ): void {
+		$printable = is_scalar( $value ) ? (string) $value : get_debug_type( $value );
+
+		$this->logger->warning(
+			'Discarding unusable ' . $meta_key . ' "' . $printable . '" on email account post ' . $post->ID
+			. ( is_null( $replacement ) ? '; the meta has been deleted.' : '; replaced with ' . $replacement . '.' ),
+			array(
+				'key'     => $meta_key,
+				'value'   => $value,
+				'post_id' => $post->ID,
+			)
+		);
+
+		if ( is_null( $replacement ) ) {
+			delete_post_meta( $post->ID, $meta_key );
+		} else {
+			update_post_meta( $post->ID, $meta_key, $replacement );
+		}
+	}
+
+	/**
+	 * Default a missing display name to the email address, and write it back so the account is whole
+	 * from then on. A missing email address cannot be defaulted here: the slug is a lossy encoding of
+	 * it ({@see BH_Email_Account_Query::get_wp_post_fields()}), but
+	 * {@see \BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository::find_by_email_address()}
+	 * knows the address it looked up and heals that meta before hydrating.
+	 *
+	 * @param WP_Post              $post The account post.
+	 * @param array<string, mixed> $args The hydration args, updated in place.
+	 */
+	protected function backfill_identity_meta( WP_Post $post, array &$args ): void {
+		if ( ! empty( $args['display_name'] ) || empty( $args['email_address'] ) || ! is_string( $args['email_address'] ) ) {
+			return;
+		}
+
+		$args['display_name'] = $args['email_address'];
+		update_post_meta( $post->ID, 'display_name', $args['email_address'] );
+		$this->logger->warning(
+			'Email account post ' . $post->ID . ' had no display_name meta; defaulted to its email address.',
+			array( 'post_id' => $post->ID )
+		);
 	}
 }

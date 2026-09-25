@@ -130,6 +130,18 @@ class Email_Account_WP_Post_Repository extends WP_Post_Repository_Abstract {
 			return null;
 		}
 
+		// The slug matched this exact address, so a post missing its email_address meta can be made whole
+		// here rather than failing to hydrate (which would surface as a fatal in a consumer configuring
+		// its account on every request).
+		$stored_address = get_post_meta( $post->ID, 'email_address', true );
+		if ( ! is_string( $stored_address ) || '' === $stored_address ) {
+			update_post_meta( $post->ID, 'email_address', $email_address );
+			$this->logger->warning(
+				'Email account post ' . $post->ID . ' had no email_address meta; restored "' . $email_address . '" from the lookup.',
+				array( 'post_id' => $post->ID )
+			);
+		}
+
 		return $this->bh_email_account_factory->from_wp_post( $post );
 	}
 
