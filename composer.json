@@ -88,7 +88,7 @@
         "brianhenryie/bh-wp-private-uploads": ">=0.5.1",
         "brianhenryie/color-logger": "*",
         "dealerdirect/phpcodesniffer-composer-installer": "*",
-        "google/apiclient": "^2.19",
+        "google/apiclient": "^2.20",
         "johnpbloch/wordpress": "*",
         "lucatume/wp-browser": "*",
         "phpcompatibility/phpcompatibility-wp": "*",

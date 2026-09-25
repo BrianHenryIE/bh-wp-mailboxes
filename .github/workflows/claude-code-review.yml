@@ -1,0 +1,120 @@
+name: Claude Code Review
+
+# Runs an automatic Claude review of a pull request, but only once the "Code Coverage Report
+# Comment" workflow (unit + wpunit tests) has passed for that commit, so review usage is not spent
+# on PRs whose tests fail.
+#
+# NB: `workflow_run` workflows only run from the copy of this file on the *default* branch, so
+# this will not run on the pull request that introduces it.
+
+on:
+  workflow_run:
+    workflows: ["Code Coverage Report Comment"]
+    types: [completed]
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+
+    # Only for pull requests whose test run passed.
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    env:
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+
+    steps:
+      # `workflow_run` runs against the default branch, so check out the commit that was tested.
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 1
+
+      # `github.event.workflow_run.pull_requests` is empty for pull requests from forks, so look
+      # the number up from the head SHA instead. Only open PRs count: the coverage workflow also
+      # runs (and self-skips) when a PR is closed.
+      - name: Find the pull request number
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh api "repos/${{ github.repository }}/commits/${HEAD_SHA}/pulls" \
+            --jq '[.[] | select(.state == "open")][0].number // empty')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No open pull request found for ${HEAD_SHA}; nothing to review."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Claude writes the review to a file rather than posting it: with a `prompt` the action runs
+      # in "agent mode", which creates no tracking comment, so its `use_sticky_comment` input has
+      # no effect and a `gh pr comment` from Claude would add a new comment on every run. The file
+      # is posted below as one sticky comment that is updated in place.
+      - name: Run Claude Code Review
+        if: steps.pr.outputs.found == 'true'
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ steps.pr.outputs.number }}
+
+            Please review this pull request and provide feedback on:
+            - Code quality and best practices
+            - Potential bugs or issues
+            - Performance considerations
+            - Security concerns
+            - Test coverage
+
+            Be constructive and helpful in your feedback.
+
+            Write your complete review as Markdown to the file `claude-review.md` in the current
+            directory using your Write tool. Do not post any comment on the pull request yourself:
+            the workflow posts the file's contents as a single comment that is updated on each run.
+
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # or https://docs.claude.com/en/docs/claude-code/cli-reference for available options
+          claude_args: '--allowed-tools "Write,Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
+        env:
+          # Fix: Either ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN is required when using direct Anthropic API. (although `claude_code_oauth_token` is set above)
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+      # The comment is edited in place with no new-activity indicator, so date it and name the commit.
+      - name: Assemble the comment
+        if: steps.pr.outputs.found == 'true'
+        id: comment
+        run: |
+          if [ ! -s claude-review.md ]; then
+            echo "Claude did not write claude-review.md; nothing to post."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          {
+            echo "### 🤖 Claude Code Review"
+            echo
+            cat claude-review.md
+            echo
+            echo "<sub>Reviewed commit [\`${HEAD_SHA:0:7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${HEAD_SHA}) on $(date -u '+%Y-%m-%d %H:%M UTC'), after [Code Coverage Report Comment #${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }}) passed. Updated in place on each run.</sub>"
+          } > "$RUNNER_TEMP/claude-review-comment.md"
+          echo "found=true" >> "$GITHUB_OUTPUT"
+
+      - name: Post the review as a sticky comment
+        if: steps.comment.outputs.found == 'true'
+        uses: mshick/add-pr-comment@v3
+        continue-on-error: true # Pull requests opened by non-members have no write permissions.
+        with:
+          issue: ${{ steps.pr.outputs.number }}
+          message-id: claude-code-review
+          message-path: ${{ runner.temp }}/claude-review-comment.md
+          refresh-message-position: true
