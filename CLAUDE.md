@@ -4,7 +4,7 @@
 * UI changes should have Playwright tests
 * Do not auto-commit unless explicitly requested by the user
 * Run `composer dump-autoload` after creating new classes or changing namespaces
-* Use `declare(strict_types=1);` in all PHP files
+* Use `declare(strict_types=1);` in all PHP files – add it when absent in a file being edited
 * API methods should return simple objects and not arrays unless the array is a simple list of items
 * When a bug is discovered outside the scope of a plan, open a GitHub issue for it if it is not a blocker, fix it if necessary
 * Sign GitHub comments as `🤖 Generated with Claude Code`
@@ -12,4 +12,5 @@
 * Before pushing, test under WordPress Playground (`composer playground-serve`, then exercise the changed behavior at http://127.0.0.1:9400) — the self-contained build nests the library in the plugin's vendor directory, so wp-env's mapped layout masks path/bootstrap bugs.
 * Prefer underscores in option names
 * When we introduce new properties to typed classes, we generally need a default so old versions don't fail entirely
+* Use PSR-3 placeholders in log messages (not string concatenation)
 * 
