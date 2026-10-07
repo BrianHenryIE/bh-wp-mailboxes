@@ -187,41 +187,23 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 	}
 
 	/**
-	 * The object-cache key for an account's per-status email counts.
-	 *
-	 * Mirrors core's `_count_posts_cache_key()`; the `counts` group is the one `wp_count_posts()` uses.
-	 *
-	 * @param string $post_type       The emails CPT.
-	 * @param int    $account_post_id The account's post ID (the emails' post_parent).
-	 */
-	protected static function status_counts_cache_key( string $post_type, int $account_post_id ): string {
-		return 'bh_email_status_counts:' . $post_type . ':' . $account_post_id;
-	}
-
-	/**
-	 * Forget an account's cached per-status counts, e.g. when one of its emails changes status or is deleted.
-	 *
-	 * Static so the CPT hooks can call it without a repository instance, as core's
-	 * `_transition_post_status()` clears `wp_count_posts()`'s cache.
-	 *
-	 * @param string $post_type       The emails CPT.
-	 * @param int    $account_post_id The account's post ID (the emails' post_parent).
-	 */
-	public static function clear_status_counts_cache( string $post_type, int $account_post_id ): void {
-		wp_cache_delete( self::status_counts_cache_key( $post_type, $account_post_id ), 'counts' );
-	}
-
-	/**
 	 * Counts the account's non-trashed emails in each local status with one grouped query.
 	 *
 	 * Cached in the `counts` object-cache group like core's `wp_count_posts()` (which runs the same
-	 * GROUP BY but cannot be scoped to one account); {@see self::clear_status_counts_cache()} is called
-	 * from the CPT's status-transition and deletion hooks.
+	 * GROUP BY but cannot be scoped to one account). Rather than registering invalidation hooks, the key
+	 * carries `wp_cache_get_last_changed( 'posts' )`, as WP_Query's own query cache does: core bumps that
+	 * token from `clean_post_cache()` on every post insert, update, trash and delete, so a stale entry is
+	 * simply never looked up again.
 	 *
 	 * @param BH_Email_Account $email_account The mailbox account.
 	 */
 	public function count_by_status_for_account_email( BH_Email_Account $email_account ): Email_Status_Counts {
-		$cache_key = self::status_counts_cache_key( $this->post_type, $email_account->get_post_id() );
+		$cache_key = sprintf(
+			'bh_email_status_counts:%s:%d:%s',
+			$this->post_type,
+			$email_account->get_post_id(),
+			wp_cache_get_last_changed( 'posts' )
+		);
 		$cached    = wp_cache_get( $cache_key, 'counts' );
 		if ( $cached instanceof Email_Status_Counts ) {
 			return $cached;

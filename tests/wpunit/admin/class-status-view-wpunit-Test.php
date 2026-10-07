@@ -505,4 +505,56 @@ class Status_View_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertStringNotContainsString( 'ignored</span>', $html );
 		$this->assertStringContainsString( '7 fetched, 0 ignored by the account&#039;s filters, 7 saved, 7 since removed.', $html );
 	}
+
+	/**
+	 * Within a single request, the rendered Emails column tracks every change to the account's emails:
+	 * a trash, a status change and a permanent delete each show in the very next render. Asserts only
+	 * the HTML a user sees, so it holds regardless of how (or whether) the counts are cached.
+	 *
+	 * @covers ::display
+	 * @covers ::render_table
+	 */
+	public function test_rendered_email_counts_follow_changes_within_one_request(): void {
+		$account = BH_Email_Account_Fixture::make( post_id: 330, email_address: 'live@example.com' );
+
+		$ids = array();
+		foreach ( range( 1, 3 ) as $i ) {
+			$ids[] = $this->factory()->post->create(
+				array(
+					'post_type'   => $this->post_type,
+					'post_status' => 'bh_email_new',
+					'post_parent' => 330,
+				)
+			);
+		}
+
+		/** @var API_Interface $api */
+		$api = Mockery::mock( API_Interface::class );
+		$api->allows( 'get_email_accounts' )->andReturn( array( $account ) );
+		$api->allows( 'get_connection_for_email_account' )->andReturn( $this->fetching_connection() );
+		$sut = $this->make_sut( $api );
+
+		$this->assertStringContainsString( '<span data-field="email-count">3</span>', $this->capture_display( $sut ) );
+		$this->assertStringContainsString( '> (3 new)</span>', $this->capture_display( $sut ) );
+
+		wp_trash_post( $ids[0] );
+		$html = $this->capture_display( $sut );
+		$this->assertStringContainsString( '<span data-field="email-count">2</span>', $html, 'A trashed email leaves the count.' );
+		$this->assertStringContainsString( '> (2 new)</span>', $html );
+
+		wp_update_post(
+			array(
+				'ID'          => $ids[1],
+				'post_status' => 'bh_email_processed',
+			)
+		);
+		$html = $this->capture_display( $sut );
+		$this->assertStringContainsString( '<span data-field="email-count">2</span>', $html, 'A status change keeps the total.' );
+		$this->assertStringContainsString( '> (1 new)</span>', $html, 'But lowers the unprocessed count.' );
+
+		wp_delete_post( $ids[2], true );
+		$html = $this->capture_display( $sut );
+		$this->assertStringContainsString( '<span data-field="email-count">1</span>', $html, 'A deleted email leaves the count.' );
+		$this->assertStringNotContainsString( 'data-field="email-count-new"', $html, 'No unprocessed emails remain.' );
+	}
 }
