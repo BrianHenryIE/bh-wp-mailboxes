@@ -127,7 +127,7 @@ mailbox's accounts (see Capabilities below), so your screen needs no check of it
 
 The result is reported in an admin notice inserted after your page's `<hr class="wp-header-end">`
 (or after its first heading when there is none). The development plugin's settings page
-(`development-plugin/admin/class-settings.php`) is a working example, including saving credentials
+(`development-plugin/admin/class-settings-page.php`) is a working example, including saving credentials
 from its own forms with `API::save_account_credentials()`.
 
 ## REST API

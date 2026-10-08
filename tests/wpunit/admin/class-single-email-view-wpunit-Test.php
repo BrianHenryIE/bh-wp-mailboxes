@@ -5,6 +5,8 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
@@ -748,5 +750,118 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		}
 
 		$this->assertSame( $before, wp_scripts()->get_data( 'post', 'after' ), 'Nothing added on the list screen.' );
+	}
+	// -------------------------------------------------------------------------
+	// Thread metabox
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Save a thread of two emails (root + reply) into the test CPT and return them.
+	 *
+	 * @return array{0: \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email, 1: \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email}
+	 */
+	private function make_thread(): array {
+		$repository = $this->make_repository();
+		$settings   = BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type );
+
+		$root_raw  = "From: customer@example.org\r\nSubject: Order 123\r\nDate: Mon, 01 Sep 2025 10:00:00 +0000\r\nMessage-ID: <root@example.org>\r\nContent-Type: text/plain\r\n\r\nHello";
+		$reply_raw = "From: customer@example.org\r\nSubject: Re: Order 123\r\nDate: Mon, 01 Sep 2025 11:00:00 +0000\r\nMessage-ID: <reply@example.org>\r\nIn-Reply-To: <root@example.org>\r\nReferences: <root@example.org>\r\nContent-Type: text/plain\r\n\r\nFollowing up";
+
+		$root  = BH_Email_Fixture::make_from_string( $root_raw, $settings, null, $repository );
+		$reply = BH_Email_Fixture::make_from_string( $reply_raw, $settings, null, $repository );
+
+		return array( $root, $reply );
+	}
+
+	/**
+	 * @covers ::add_meta_boxes
+	 */
+	public function test_thread_metabox_absent_for_a_lone_email(): void {
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+		$this->register_cpt();
+
+		$email = BH_Email_Fixture::make_from_file( null, BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ), null, $this->make_repository() );
+		$post  = get_post( $email->post_id );
+
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
+
+		global $wp_meta_boxes;
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting before assertion is intentional in tests.
+		$wp_meta_boxes = array();
+		$sut->add_meta_boxes( $post );
+
+		$side_ids = array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['default'] ?? array() );
+		$this->assertNotContains( 'bh-email-thread', $side_ids, 'A single email has no thread worth showing.' );
+	}
+
+	/**
+	 * @covers ::add_meta_boxes
+	 */
+	public function test_thread_metabox_registered_when_email_has_related_emails(): void {
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
+		$this->register_cpt();
+
+		[ $root, $reply ] = $this->make_thread();
+		$post             = get_post( $reply->post_id );
+
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
+
+		global $wp_meta_boxes;
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting before assertion is intentional in tests.
+		$wp_meta_boxes = array();
+		$sut->add_meta_boxes( $post );
+
+		$side_ids = array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['default'] ?? array() );
+		$this->assertContains( 'bh-email-thread', $side_ids );
+	}
+
+	/**
+	 * @covers ::render_thread_metabox
+	 */
+	public function test_thread_metabox_lists_emails_oldest_first_linking_the_others(): void {
+		$this->register_cpt();
+		// get_edit_post_link() returns nothing for a user who cannot edit the post.
+		wp_set_current_user( $this->factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		[ $root, $reply ] = $this->make_thread();
+		$post             = get_post( $reply->post_id );
+
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
+
+		ob_start();
+		$sut->render_thread_metabox( $post );
+		$html = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'bh-email-thread-list', $html );
+		// Oldest first: the root precedes the reply.
+		$this->assertLessThan( strpos( $html, 'data-post-id="' . $reply->post_id . '"' ), strpos( $html, 'data-post-id="' . $root->post_id . '"' ) );
+		// The other email links to its edit screen; the current one is bold and unlinked.
+		$this->assertStringContainsString( 'post=' . $root->post_id . '&#038;action=edit', $html );
+		$this->assertStringContainsString( '<strong class="bh-email-thread-list__subject">Re: Order 123</strong>', $html );
+		$this->assertStringNotContainsString( 'post=' . $reply->post_id . '&#038;action=edit', $html );
+		$this->assertStringContainsString( 'bh-email-thread-list__item--current', $html );
+	}
+	/**
+	 * A user who cannot edit the other emails sees them listed but not linked.
+	 *
+	 * @covers ::render_thread_metabox
+	 */
+	public function test_thread_metabox_does_not_link_emails_the_user_cannot_edit(): void {
+		$this->register_cpt();
+		wp_set_current_user( 0 );
+
+		[ $root, $reply ] = $this->make_thread();
+
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
+
+		ob_start();
+		$sut->render_thread_metabox( get_post( $reply->post_id ) );
+		$html = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'data-post-id="' . $root->post_id . '"', $html );
+		$this->assertStringContainsString( '<strong class="bh-email-thread-list__subject">Order 123</strong>', $html );
+		$this->assertStringNotContainsString( '<a ', $html );
 	}
 }

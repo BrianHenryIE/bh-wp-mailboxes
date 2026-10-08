@@ -1,0 +1,40 @@
+From: "Acme Supplies" <billing@acme-supplies.example>
+To: support@example-shop.test
+Subject: Your invoice INV-2026-0412 from Acme Supplies
+Date: Wed, 30 Sep 2026 08:02:00 +0000
+Message-ID: <demo-html-invoice-0412@acme-supplies.example>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="demo-alt-boundary"
+
+--demo-alt-boundary
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Hello Example Shop,
+
+Your invoice INV-2026-0412 for EUR 486.20 is ready.
+Payment is due by 30 October 2026.
+
+View it online: https://acme-supplies.example/invoices/INV-2026-0412
+
+Acme Supplies
+
+--demo-alt-boundary
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; color: #1d2327;">
+<h2 style="color: #2271b1;">Acme Supplies</h2>
+<p>Hello Example Shop,</p>
+<p>Your invoice <strong>INV-2026-0412</strong> is ready.</p>
+<table style="border-collapse: collapse;">
+<tr><td style="padding: 4px 12px 4px 0;">Amount</td><td><strong>EUR 486.20</strong></td></tr>
+<tr><td style="padding: 4px 12px 4px 0;">Due</td><td>30 October 2026</td></tr>
+</table>
+<p><a href="https://acme-supplies.example/invoices/INV-2026-0412" style="background: #2271b1; color: #fff; padding: 6px 12px; text-decoration: none;">View invoice</a></p>
+</body>
+</html>
+
+--demo-alt-boundary--

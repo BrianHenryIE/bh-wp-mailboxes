@@ -5,6 +5,8 @@
  * @package brianhenryie/bh-wp-mailboxes-development-plugin
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
@@ -18,10 +20,10 @@ class Menu {
 	/**
 	 * Constructor.
 	 *
-	 * @param Settings $settings_page The settings page (the menu's top-level target and first submenu).
+	 * @param Settings_Page $settings_page The settings page (the menu's top-level target and first submenu).
 	 */
 	public function __construct(
-		protected Settings $settings_page,
+		protected Settings_Page $settings_page,
 	) {
 	}
 
@@ -47,7 +49,7 @@ class Menu {
 	public function add_menu_style(): void {
 
 		// The top-level "Mailboxes" link points at the settings page.
-		$href = 'admin.php?page=' . Settings::MENU_SLUG;
+		$href = 'admin.php?page=' . Settings_Page::MENU_SLUG;
 
 		// !important so the rules win over the admin colour scheme's current/hover menu states.
 		echo '<style id="bh-wp-mailboxes-dev-menu-style">'
@@ -72,7 +74,7 @@ class Menu {
 	 */
 	public function add_menus(): void {
 
-		$parent_slug = Settings::MENU_SLUG;
+		$parent_slug = Settings_Page::MENU_SLUG;
 
 		// Position 3 places "Mailboxes" between Dashboard (2) and Posts (5); WordPress's core separator (4)
 		// sits below it, and the custom separator added below (2.5) sits above it.

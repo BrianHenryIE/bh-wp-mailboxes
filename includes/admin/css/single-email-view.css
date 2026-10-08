@@ -319,3 +319,53 @@
 #bh-email-remote-status-box .clear {
 	clear: both;
 }
+
+/* Thread list: the other emails in this conversation, oldest first; the current email is bold and unlinked. */
+.bh-email-thread-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	counter-reset: bh-email-thread;
+}
+
+.bh-email-thread-list__item {
+	position: relative;
+	padding: 6px 0 6px 20px;
+	border-bottom: 1px solid #f0f0f1;
+	counter-increment: bh-email-thread;
+}
+
+.bh-email-thread-list__item::before {
+	content: counter(bh-email-thread);
+	position: absolute;
+	left: 0;
+	top: 7px;
+	color: #a7aaad;
+	font-size: 0.85em;
+}
+
+.bh-email-thread-list__item:last-child {
+	border-bottom: none;
+}
+
+.bh-email-thread-list__item--current {
+	background: #f6f7f7;
+	margin: 0 -12px;
+	padding-left: 32px;
+	padding-right: 12px;
+}
+
+.bh-email-thread-list__item--current::before {
+	left: 12px;
+}
+
+.bh-email-thread-list__subject {
+	display: block;
+	word-break: break-word;
+}
+
+.bh-email-thread-list__meta {
+	display: block;
+	color: #646970;
+	font-size: 0.9em;
+}

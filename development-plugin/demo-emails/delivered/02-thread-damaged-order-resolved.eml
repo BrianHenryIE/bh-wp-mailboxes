@@ -1,0 +1,18 @@
+From: "Niamh Walsh" <niamh.walsh@customer.example>
+To: orders@example-shop.test
+Subject: Re: Order #1042 arrived damaged
+Date: Tue, 06 Oct 2026 16:20:00 +0100
+Message-ID: <demo-thread-1042-e@customer.example>
+In-Reply-To: <demo-thread-1042-d@example-shop.test>
+References: <demo-thread-1042-a@customer.example> <demo-thread-1042-b@example-shop.test> <demo-thread-1042-c@customer.example> <demo-thread-1042-d@example-shop.test>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+The replacement mug arrived today and it's perfect. Thanks for sorting
+it out so quickly!
+
+Niamh
+
+On Mon, 5 Oct 2026 at 09:02, Example Shop Orders <orders@example-shop.test> wrote:
+> Your replacement for order #1042 has shipped and should arrive tomorrow.

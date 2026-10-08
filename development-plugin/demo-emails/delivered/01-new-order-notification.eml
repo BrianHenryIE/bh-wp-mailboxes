@@ -1,0 +1,35 @@
+From: "Example Shop" <noreply@example-shop.test>
+To: orders@example-shop.test
+Subject: New order #1043 received
+Date: Sat, 03 Oct 2026 11:05:00 +0000
+Message-ID: <demo-delivered-order-1043@example-shop.test>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="demo-order-boundary"
+
+--demo-order-boundary
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+New order #1043 from Ciaran Doyle.
+
+1 x Cork coasters (set of 4)  EUR 18.00
+Shipping                      EUR  4.50
+Total                         EUR 22.50
+
+--demo-order-boundary
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif;">
+<p>New order <strong>#1043</strong> from Ciaran Doyle.</p>
+<table style="border-collapse: collapse;">
+<tr><td style="padding: 2px 16px 2px 0;">1 &times; Cork coasters (set of 4)</td><td>EUR 18.00</td></tr>
+<tr><td style="padding: 2px 16px 2px 0;">Shipping</td><td>EUR 4.50</td></tr>
+<tr><td style="padding: 2px 16px 2px 0;"><strong>Total</strong></td><td><strong>EUR 22.50</strong></td></tr>
+</table>
+</body>
+</html>
+
+--demo-order-boundary--

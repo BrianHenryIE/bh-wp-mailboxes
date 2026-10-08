@@ -20,6 +20,8 @@
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin;
 
 use Alley_Interactive\Autoloader\Autoloader;
@@ -28,10 +30,11 @@ use BrianHenryIE\WP_Logger\Logger_Settings_Interface;
 use BrianHenryIE\WP_Logger\Logger_Settings_Trait;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Menu;
-use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Settings;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin\Settings_Page;
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
+use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Demo_Mailbox;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Dev_Mailboxes;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Fixtures_Account_Settings;
 use BrianHenryIE\WP_Mailboxes_Development_Plugin\Mailboxes\Gmail_API;
@@ -100,7 +103,7 @@ new Mailboxes( $e2e_mailboxes_settings )->register_hooks();
 // project proves the screens show only the controls a user may use).
 new Editor_Access( Mock_Mailbox_E2E_Connection::EMAILS_CPT, Mock_Mailbox_E2E_Connection::ACCOUNTS_CPT )->register_hooks();
 
-$development_settings_page = new Settings();
+$development_settings_page = new Settings_Page();
 $development_settings_page->register_hooks();
 new Menu( $development_settings_page )->register_hooks();
 
@@ -144,6 +147,10 @@ $on_plugins_loaded = function () use ( $e2e_mailboxes_settings ) {
 
 	// Example parent-plugin integration: log each newly downloaded email (see Example_Integration).
 	new Example_Integration( $logger )->register_hooks();
+
+	// The Demo mailbox: example accounts (one fetching, one receive-only) and example emails for people
+	// trying the plugin. Registered first so it heads the menu. Tests never use it.
+	new Demo_Mailbox( $logger )->register();
 
 	// Load test-credentials/.env.secret into $_ENV when present (side effect), so the settings page can
 	// offer its IMAP account and lock the matching form fields.

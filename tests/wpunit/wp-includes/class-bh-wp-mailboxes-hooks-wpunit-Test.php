@@ -5,6 +5,8 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
@@ -48,6 +50,39 @@ class BH_WP_Mailboxes_Hooks_WPUnit_Test extends WPUnit_Testcase {
 
 		$this->assertTrue( post_type_exists( $emails_cpt ), 'The emails CPT should be registered.' );
 		$this->assertTrue( post_type_exists( $accounts_cpt ), 'The accounts CPT should be registered.' );
+	}
+
+	/**
+	 * The thread taxonomy is registered for the emails CPT on `init`, and emptied threads are cleaned up when
+	 * term relationships are deleted.
+	 *
+	 * @covers ::define_cpt_hooks
+	 */
+	public function test_thread_taxonomy_is_registered_on_init(): void {
+
+		$emails_cpt = 'test_hooks_tx_email';
+
+		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class )->shouldIgnoreMissing();
+		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $emails_cpt );
+		$settings->allows( 'get_emails_cpt_friendly_name' )->andReturn( 'Test Hooks Tx Emails' );
+		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( 'test_hooks_tx_acct' );
+		$settings->allows( 'get_email_accounts_cpt_friendly_name' )->andReturn( 'Test Hooks Tx Accounts' );
+
+		remove_all_actions( 'init' );
+		remove_all_actions( 'deleted_term_relationships' );
+
+		new BH_WP_Mailboxes_Hooks( Mockery::mock( API_Interface::class )->shouldIgnoreMissing(), $settings, $this->logger );
+
+		do_action( 'init' );
+
+		$taxonomy = "{$emails_cpt}_thread";
+		try {
+			$this->assertTrue( taxonomy_exists( $taxonomy ), 'The thread taxonomy should be registered.' );
+			$this->assertSame( array( $emails_cpt ), get_taxonomy( $taxonomy )->object_type ?? null );
+			$this->assertTrue( has_action( 'deleted_term_relationships' ), 'Emptied threads should be cleaned up.' );
+		} finally {
+			unregister_taxonomy( $taxonomy );
+		}
 	}
 
 	/**

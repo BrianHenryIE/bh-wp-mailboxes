@@ -5,6 +5,8 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes;
 
 use BrianHenryIE\WP_Mailboxes\API\API;
@@ -14,6 +16,8 @@ use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Controller\Email_Controller_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Email_Thread_Linker;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_Thread_Taxonomy;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_WP_Mailboxes_Hooks;
 use BrianHenryIE\WP_Private_Uploads\BH_WP_Private_Uploads_Hooks;
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Interface;
@@ -95,20 +99,27 @@ class BH_WP_Mailboxes extends API {
 		self::validate_settings( $settings );
 		$logger ??= new NullLogger();
 
-		$emails_post_type = $settings->get_emails_cpt_underscored_20();
-		$bh_email_factory = new BH_Email_Factory( $logger );
-		$email_repository = new Email_WP_Post_Repository(
-			$emails_post_type,
-			$bh_email_factory,
-			$logger
-		);
-
 		$email_accounts_post_type = $settings->get_email_accounts_cpt_underscored_20();
 		$bh_email_account_factory = new BH_Email_Account_Factory( $logger );
 		$email_account_repository = new Email_Account_WP_Post_Repository(
 			$email_accounts_post_type,
 			$bh_email_account_factory,
 			$logger,
+		);
+
+		$emails_post_type = $settings->get_emails_cpt_underscored_20();
+		$bh_email_factory = new BH_Email_Factory( $logger );
+		$email_repository = new Email_WP_Post_Repository(
+			$emails_post_type,
+			$bh_email_factory,
+			$logger,
+			// Threads may span the mailbox's accounts, so the linker needs the account repository.
+			new Email_Thread_Linker(
+				$emails_post_type,
+				new BH_Email_Thread_Taxonomy( $emails_post_type, $logger ),
+				$email_account_repository,
+				$logger
+			)
 		);
 
 		$private_uploads = self::make_private_uploads( $settings, $logger );

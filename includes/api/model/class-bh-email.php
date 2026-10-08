@@ -9,6 +9,8 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes\API\Model;
 
 use BrianHenryIE\WP_Mailboxes\API\Repositories\Saved_Post;
@@ -43,6 +45,9 @@ readonly class BH_Email implements Saved_Post {
 	 * @param ?bool                     $is_remote_read         Whether the email has been read on the remote server (null = unknown).
 	 * @param ?bool                     $is_remote_deleted      Whether the email has been deleted on the remote server (null = unknown).
 	 * @param ?Remote_Email_Coordinates $remote_coordinates     How to locate this email on the remote server (null = unknown).
+	 * @param string[]                  $in_reply_to            Message-IDs from the `In-Reply-To` header (angle brackets stripped).
+	 * @param string[]                  $references             Message-IDs from the `References` header, oldest first (angle brackets stripped).
+	 * @param ?int                      $thread_term_id         The thread taxonomy term the email belongs to (null = not threaded, e.g. stored before threading existed).
 	 */
 	public function __construct(
 		public int $post_id,
@@ -65,6 +70,9 @@ readonly class BH_Email implements Saved_Post {
 		public ?bool $is_remote_read = null,
 		public ?bool $is_remote_deleted = null,
 		public ?Remote_Email_Coordinates $remote_coordinates = null,
+		public array $in_reply_to = array(),
+		public array $references = array(),
+		public ?int $thread_term_id = null,
 	) {}
 
 	/**

@@ -15,6 +15,7 @@ namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Email_Status_Counts;
+use BrianHenryIE\WP_Mailboxes\API\Model\Email_Thread;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
 use BrianHenryIE\WP_Private_Uploads\API_Interface as Private_Uploads_API_Interface;
@@ -43,6 +44,15 @@ interface Email_Repository_Interface {
 	 * @return BH_Email[]
 	 */
 	public function find_recent( int $limit = 200 ): array;
+
+	/**
+	 * Returns the conversation thread an email belongs to, including the email itself, oldest first.
+	 *
+	 * An email stored before threading existed has no thread; it is returned alone with a term id of 0.
+	 *
+	 * @param BH_Email $email The email whose thread to load.
+	 */
+	public function find_thread( BH_Email $email ): Email_Thread;
 
 	/**
 	 * Delete all emails stored before the given cutoff.

@@ -5,10 +5,14 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes\API\Factories;
 
+use BrianHenryIE\WP_Mailboxes\API\Email_Thread_Linker;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_Thread_Taxonomy;
 use DateTime;
 use DateTimeInterface;
 use DateTimeZone;
@@ -16,6 +20,7 @@ use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerInterface;
 use WP_Post;
 use ZBateson\MailMimeParser\Header\AddressHeader;
+use ZBateson\MailMimeParser\Header\HeaderConsts;
 use ZBateson\MailMimeParser\MailMimeParser;
 
 /**
@@ -111,6 +116,16 @@ class BH_Email_Factory {
 			uid_validity: is_numeric( $remote_uid_validity ) ? (int) $remote_uid_validity : null,
 		);
 
+		// The thread term is absent for emails stored before threading existed (there is no backfill).
+		$thread_term_id = null;
+		$taxonomy       = BH_Email_Thread_Taxonomy::taxonomy_name_for_post_type( $post->post_type );
+		if ( taxonomy_exists( $taxonomy ) ) {
+			$term_ids = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'ids' ) );
+			if ( is_array( $term_ids ) && isset( $term_ids[0] ) ) {
+				$thread_term_id = (int) $term_ids[0];
+			}
+		}
+
 		return new BH_Email(
 			post_id: $post_id,
 			post_type: $post->post_type,
@@ -131,6 +146,9 @@ class BH_Email_Factory {
 			is_remote_read: $is_remote_read,
 			is_remote_deleted: $is_remote_deleted,
 			remote_coordinates: $remote_coordinates,
+			in_reply_to: Email_Thread_Linker::get_header_ids( $message, HeaderConsts::IN_REPLY_TO ),
+			references: Email_Thread_Linker::get_header_ids( $message, HeaderConsts::REFERENCES ),
+			thread_term_id: $thread_term_id,
 		);
 	}
 }
