@@ -11,6 +11,9 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
@@ -20,9 +23,11 @@ use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Fixture;
 use BrianHenryIE\WP_Mailboxes\Models\BH_WP_Mailboxes_Settings_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\Private_Uploads_Fixture;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
+use ZBateson\MailMimeParser\MailMimeParser;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View
@@ -306,66 +311,204 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	}
 
 	// -------------------------------------------------------------------------
-	// Attachments metabox registration
+	// Attachments metabox
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Requirement 14: attachments metabox is added to the side column when attachments exist.
+	 * Save an email through the repository, with attachments saved by a real private-uploads API (files on
+	 * disk), or with attachments disabled.
 	 *
-	 * @covers ::add_meta_boxes
+	 * @param string $eml_file             The fixture under tests/_data/wpunit/.
+	 * @param bool   $attachments_enabled  Whether to save attachments (private uploads present).
 	 */
-	public function test_attachments_metabox_added_to_side_column_when_attachment_exists(): void {
-
-		$this->markTestSkipped( 'Attachments metabox registration is commented out in Single_Email_View::add_meta_boxes().' );
-
+	private function save_email_with_attachments( string $eml_file, bool $attachments_enabled = true ): BH_Email {
 		$this->register_cpt();
 
-		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
-		$this->factory()->attachment->create( array( 'post_parent' => $post_id ) );
-		$post = get_post( $post_id );
+		$parser  = new MailMimeParser();
+		$message = $parser->parse( (string) file_get_contents( (string) codecept_root_dir( "tests/_data/wpunit/{$eml_file}" ) ), true );
 
-		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
-
-		global $wp_meta_boxes;
-		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting before assertion is intentional in tests.
-		$wp_meta_boxes = array();
-		$sut->add_meta_boxes( $post );
-
-		$side_ids = array_merge(
-			array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['high'] ?? array() ),
-			array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['default'] ?? array() ),
-			array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['low'] ?? array() )
+		$email = $this->make_repository()->save_new(
+			new Fetched_Email(
+				$message,
+				new Remote_Email_Coordinates( message_id: $message->getMessageId() ?? '' )
+			),
+			BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ),
+			BH_Email_Account_Fixture::make(),
+			$attachments_enabled ? Private_Uploads_Fixture::make( $this->logger ) : null,
 		);
-		$this->assertContains( 'bh-email-attachments', $side_ids, 'Attachments metabox should be in the side column' );
+
+		$this->attachment_ids_to_clean_up = array_merge( $this->attachment_ids_to_clean_up, $email->attachment_ids ?? array() );
+
+		return $email;
 	}
 
 	/**
-	 * Attachments metabox should not be registered when no attachments exist.
+	 * Attachment post ids whose files the test created; deleted in tearDown (files outlive the DB rollback).
+	 *
+	 * @var int[]
+	 */
+	private array $attachment_ids_to_clean_up = array();
+
+	protected function tearDown(): void {
+		Private_Uploads_Fixture::delete_files( $this->attachment_ids_to_clean_up );
+		$this->attachment_ids_to_clean_up = array();
+		parent::tearDown();
+	}
+
+	/**
+	 * Render the attachments metabox for an email.
+	 *
+	 * @param int $post_id The email post id.
+	 */
+	private function render_attachments_metabox( int $post_id ): string {
+		$sut  = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
+		$post = get_post( $post_id );
+		$this->assertInstanceOf( \WP_Post::class, $post );
+
+		ob_start();
+		$sut->render_attachments_metabox( $post );
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * The ids of the metaboxes registered for this post type's screen in a context and priority.
+	 *
+	 * @param string $context  E.g. `side`.
+	 * @param string $priority E.g. `default`.
+	 *
+	 * @return array<int|string>
+	 */
+	private function get_registered_metabox_ids( string $context, string $priority ): array {
+		/**
+		 * The registered metaboxes, by screen, context and priority.
+		 *
+		 * @var array<string, array<string, array<string, array<string, mixed>>>> $wp_meta_boxes
+		 */
+		global $wp_meta_boxes;
+
+		return array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ][ $context ][ $priority ] ?? array() );
+	}
+
+	/**
+	 * The attachments metabox is always registered, in the side column, so an email with no attachments says so.
 	 *
 	 * @covers ::add_meta_boxes
 	 */
-	public function test_attachments_metabox_absent_when_no_attachments(): void {
-
-		$this->markTestSkipped( 'Attachments metabox registration is commented out in Single_Email_View::add_meta_boxes().' );
-
+	public function test_attachments_metabox_is_registered_in_the_side_column(): void {
+		global $current_screen;
+		$current_screen = \WP_Screen::get( 'edit-' . $this->post_type );
 		$this->register_cpt();
 
-		$post_id = $this->factory()->post->create( array( 'post_type' => $this->post_type ) );
-		$post    = get_post( $post_id );
+		$email = BH_Email_Fixture::make_from_file( null, BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ), null, $this->make_repository() );
 
 		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
+
+		$post = get_post( $email->post_id );
+		$this->assertInstanceOf( \WP_Post::class, $post );
 
 		global $wp_meta_boxes;
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting before assertion is intentional in tests.
 		$wp_meta_boxes = array();
 		$sut->add_meta_boxes( $post );
 
-		$all_side_ids = array_merge(
-			array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['high'] ?? array() ),
-			array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['default'] ?? array() ),
-			array_keys( $wp_meta_boxes[ 'edit-' . $this->post_type ]['side']['low'] ?? array() )
+		$this->assertContains( 'bh-email-attachments', $this->get_registered_metabox_ids( 'side', 'default' ) );
+	}
+
+	/**
+	 * A saved attachment is listed as a download link to its file, which the private-uploads rewrite serves to
+	 * permitted users.
+	 *
+	 * Regression: `wp_get_attachment_url()` returns false for the private-uploads post type, so only the
+	 * filename was shown, with no link (#147).
+	 *
+	 * @covers ::render_attachments_metabox
+	 * @covers ::get_attachment_download_url
+	 */
+	public function test_attachments_metabox_links_each_attachment_for_download(): void {
+		$email = $this->save_email_with_attachments( 'with-attachment.eml' );
+		$this->assertCount( 1, $email->attachment_ids ?? array(), 'Sanity check: the attachment was saved.' );
+
+		$attachment_id = ( $email->attachment_ids ?? array() )[0];
+		$relative_path = get_post_meta( $attachment_id, '_wp_attached_file', true );
+		$this->assertIsString( $relative_path );
+		$expected_url = wp_upload_dir( null, false )['baseurl'] . '/' . $relative_path;
+
+		$html = $this->render_attachments_metabox( $email->post_id );
+
+		$this->assertStringContainsString(
+			'<a href="' . esc_url( $expected_url ) . '" download>' . basename( $relative_path ) . '</a>',
+			$html
 		);
-		$this->assertNotContains( 'bh-email-attachments', $all_side_ids );
+	}
+
+	/**
+	 * Each segment of the link's path is URL-encoded, so a filename with non-Latin characters (which WordPress keeps) still links
+	 * correctly; the filename is shown as is.
+	 *
+	 * @covers ::get_attachment_download_url
+	 */
+	public function test_attachments_metabox_link_encodes_the_filename(): void {
+		$email         = $this->save_email_with_attachments( 'attachment-non-latin-filename.eml' );
+		$attachment_id = ( $email->attachment_ids ?? array() )[0] ?? 0;
+
+		$relative_path = get_post_meta( $attachment_id, '_wp_attached_file', true );
+		$this->assertIsString( $relative_path );
+		$filename = basename( $relative_path );
+		$this->assertStringStartsWith( 'отчёт', $filename, 'Sanity check: WordPress keeps non-Latin letters in the stored filename.' );
+
+		$html = $this->render_attachments_metabox( $email->post_id );
+
+		$this->assertStringContainsString( '/' . rawurlencode( $filename ) . '" download>' . esc_html( $filename ) . '</a>', $html );
+		$this->assertStringContainsString( '%D0%BE%D1%82%D1%87%D1%91%D1%82', $html );
+	}
+
+	/**
+	 * With attachments disabled, an email that had attachments says they were discarded.
+	 *
+	 * @covers ::render_attachments_metabox
+	 */
+	public function test_attachments_metabox_says_discarded_when_attachments_were_not_saved(): void {
+		$email = $this->save_email_with_attachments( 'with-attachment.eml', false );
+		$this->assertNull( $email->attachment_ids, 'Sanity check: attachments disabled.' );
+
+		$html = $this->render_attachments_metabox( $email->post_id );
+
+		$this->assertStringContainsString( '<p class="bh-email-attachments--empty">Attachments discarded.</p>', $html );
+	}
+
+	/**
+	 * An email with no attachments says so, whether attachments are enabled or not.
+	 *
+	 * @covers ::render_attachments_metabox
+	 */
+	public function test_attachments_metabox_says_none_when_there_are_none(): void {
+		$enabled  = $this->save_email_with_attachments( 'html-and-plaintext.eml' );
+		$disabled = $this->save_email_with_attachments( 'non-multipart.eml', false );
+
+		$this->assertSame( array(), $enabled->attachment_ids, 'Sanity check: enabled, none saved.' );
+		$this->assertNull( $disabled->attachment_ids, 'Sanity check: disabled.' );
+
+		$this->assertStringContainsString( '<p class="bh-email-attachments--empty">No attachments.</p>', $this->render_attachments_metabox( $enabled->post_id ) );
+		$this->assertStringContainsString( '<p class="bh-email-attachments--empty">No attachments.</p>', $this->render_attachments_metabox( $disabled->post_id ) );
+	}
+
+	/**
+	 * An attachment whose file record is gone is listed by its post title, without a link.
+	 *
+	 * @covers ::render_attachments_metabox
+	 * @covers ::get_attachment_download_url
+	 */
+	public function test_attachments_metabox_lists_an_attachment_without_a_file_by_title(): void {
+		$email         = $this->save_email_with_attachments( 'with-attachment.eml' );
+		$attachment_id = ( $email->attachment_ids ?? array() )[0];
+
+		Private_Uploads_Fixture::delete_files( array( $attachment_id ) );
+		delete_post_meta( $attachment_id, '_wp_attached_file' );
+
+		$html = $this->render_attachments_metabox( $email->post_id );
+
+		$this->assertStringContainsString( '<li>' . esc_html( get_the_title( $attachment_id ) ) . '</li>', $html );
+		$this->assertStringNotContainsString( '<a ', $html );
 	}
 
 	// -------------------------------------------------------------------------
@@ -758,7 +901,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Save a thread of two emails (root + reply) into the test CPT and return them.
 	 *
-	 * @return array{0: \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email, 1: \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email}
+	 * @return array{0: BH_Email, 1: BH_Email}
 	 */
 	private function make_thread(): array {
 		$repository = $this->make_repository();

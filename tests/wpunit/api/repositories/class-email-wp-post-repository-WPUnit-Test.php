@@ -5,6 +5,8 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
 use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
@@ -17,6 +19,9 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Email_Status_Counts;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\Private_Uploads_Fixture;
+use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Private_Uploads\API_Interface as Private_Uploads_API_Interface;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Private_Uploads\API\API as Private_Uploads_API;
 use BrianHenryIE\WP_Private_Uploads\Private_Uploads_Settings_Interface;
@@ -101,7 +106,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 
 		$parser = new MailMimeParser();
 		/** @var IMessage $email */
-		$email = $parser->parse( (string) file_get_contents( codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' ) ), true );
+		$email = $parser->parse( (string) file_get_contents( (string) codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' ) ), true );
 
 		$result = $sut->save_new(
 			$this->make_fetched_email( $email ),
@@ -136,7 +141,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 
 		$parser = new MailMimeParser();
 		/** @var IMessage $email */
-		$email = $parser->parse( (string) file_get_contents( codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' ) ), true );
+		$email = $parser->parse( (string) file_get_contents( (string) codecept_root_dir( 'tests/_data/wpunit/test_save_new.eml' ) ), true );
 
 		$saved = $sut->save_new(
 			$this->make_fetched_email( $email ),
@@ -596,5 +601,213 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 
 			wp_delete_post( $email_id, true );
 			$this->assertSame( 0, $sut->count_by_status_for_account_email( $account )->total(), 'A deleted email is not counted.' );
+	}
+	/**
+	 * Attachment post ids whose files a test created; deleted in tearDown (files outlive the DB rollback).
+	 *
+	 * @var int[]
+	 */
+	private array $attachment_ids_to_clean_up = array();
+
+	protected function tearDown(): void {
+		Private_Uploads_Fixture::delete_files( $this->attachment_ids_to_clean_up );
+		$this->attachment_ids_to_clean_up = array();
+		parent::tearDown();
+	}
+
+	/**
+	 * Save a tests/_data/wpunit fixture through the repository.
+	 *
+	 * @param string                         $eml_file        The fixture filename.
+	 * @param ?Private_Uploads_API_Interface $private_uploads Where attachments are saved; null disables them.
+	 */
+	private function save_fixture( string $eml_file, ?Private_Uploads_API_Interface $private_uploads ): BH_Email {
+		$sut = new Email_WP_Post_Repository( 'test_post_type', new BH_Email_Factory( $this->logger ), $this->logger );
+
+		/** @var IMessage $message */
+		$message = ( new MailMimeParser() )->parse( (string) file_get_contents( (string) codecept_root_dir( "tests/_data/wpunit/{$eml_file}" ) ), true );
+
+		$email = $sut->save_new(
+			$this->make_fetched_email( $message ),
+			$this->settings,
+			BH_Email_Account_Fixture::make( post_type: 'test_post_type' ),
+			$private_uploads,
+		);
+
+		$this->attachment_ids_to_clean_up = array_merge( $this->attachment_ids_to_clean_up, $email->attachment_ids ?? array() );
+
+		return $email;
+	}
+
+	/**
+	 * Every attachment of an email is saved, in MIME order, each file byte for byte (text and binary) under its
+	 * own filename and mime type.
+	 *
+	 * @covers ::save_new
+	 * @covers ::save_attachments
+	 */
+	public function test_save_new_saves_every_attachment_byte_for_byte(): void {
+		$email = $this->save_fixture( 'with-two-attachments.eml', Private_Uploads_Fixture::make( $this->logger ) );
+
+		$ids = $email->attachment_ids;
+		$this->assertIsArray( $ids );
+		$this->assertCount( 2, $ids );
+
+		$expected = array(
+			array( 'notes.txt', 'text/plain', base64_decode( 'Rmlyc3QgbGluZQpTZWNvbmQgbGluZQo=' ) ), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- The fixture's attachment bytes.
+			array( 'pixel.png', 'image/png', base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' ) ), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- The fixture's attachment bytes.
+		);
+
+		foreach ( $expected as $index => list( $filename, $mime_type, $bytes ) ) {
+			$file = get_attached_file( $ids[ $index ] );
+			$this->assertIsString( $file );
+			$this->assertSame( $filename, basename( $file ), "Attachment {$index} keeps its filename, in MIME order." );
+			$this->assertSame( $bytes, file_get_contents( $file ), "Attachment {$index} is saved byte for byte." );
+			$this->assertSame( $mime_type, get_post_mime_type( $ids[ $index ] ) );
+			$this->assertSame( $email->post_id, get_post( $ids[ $index ] )?->post_parent );
+		}
+	}
+
+	/**
+	 * The stored original message excludes the attachments, which are saved separately.
+	 *
+	 * @covers ::save_new
+	 */
+	public function test_save_new_stores_the_message_without_its_attachments(): void {
+		$this->markTestSkipped( 'The stored message still contains every attachment: https://github.com/BrianHenryIE/bh-wp-mailboxes/issues/152' );
+
+		$email = $this->save_fixture( 'with-attachment.eml', Private_Uploads_Fixture::make( $this->logger ) );
+
+		$stored = (string) get_post_field( 'post_content', $email->post_id );
+
+		$this->assertStringContainsString( 'This email has an attachment.', $stored );
+		$this->assertStringNotContainsString( 'aGVsbG8gd29ybGQK', $stored, 'The attachment body is not stored in the email post.' );
+		$this->assertStringNotContainsString( 'aGVsbG8gd29ybGQK', $email->original_mime_message );
+	}
+
+	/**
+	 * With attachments enabled, an email without attachments records an empty list, distinct from "disabled".
+	 *
+	 * @covers ::save_new
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory::from_wp_post
+	 */
+	public function test_save_new_records_no_attachments_as_an_empty_list(): void {
+		$email = $this->save_fixture( 'html-and-plaintext.eml', Private_Uploads_Fixture::make( $this->logger ) );
+
+		$this->assertSame( array(), $email->attachment_ids );
+		$this->assertSame( '[]', get_post_meta( $email->post_id, 'attachment_ids', true ) );
+	}
+
+	/**
+	 * One attachment failing to save is logged; the email and its other attachments are still saved, and the
+	 * temporary file is removed.
+	 *
+	 * @covers ::save_attachments
+	 */
+	public function test_save_new_keeps_the_email_when_an_attachment_fails(): void {
+		$real_private_uploads = Private_Uploads_Fixture::make( $this->logger );
+
+		$temp_files      = array();
+		$private_uploads = Mockery::mock( Private_Uploads_API_Interface::class );
+		$private_uploads->allows( 'move_file_to_private_uploads_and_create_post' )->andReturnUsing(
+			function ( string $tmp_file, string $filename, ?int $post_author_id = null, ?int $post_parent_id = null ) use ( &$temp_files, $real_private_uploads ) {
+				$temp_files[] = $tmp_file;
+				if ( 'notes.txt' === $filename ) {
+					throw new \RuntimeException( 'Disk full.' );
+				}
+				return $real_private_uploads->move_file_to_private_uploads_and_create_post( tmp_file: $tmp_file, filename: $filename, post_parent_id: $post_parent_id );
+			}
+		);
+
+		$email = $this->save_fixture( 'with-two-attachments.eml', $private_uploads );
+
+		$this->assertGreaterThan( 0, $email->post_id, 'The email is saved.' );
+		$this->assertCount( 1, $email->attachment_ids ?? array(), 'The other attachment is saved.' );
+		$this->assertSame( 'pixel.png', basename( (string) get_attached_file( ( $email->attachment_ids ?? array() )[0] ) ) );
+		$this->assertTrue( $this->logger->hasErrorThatContains( 'Failed to save email attachment.' ) );
+
+		$this->assertCount( 2, $temp_files );
+		foreach ( $temp_files as $temp_file ) {
+			$this->assertFileDoesNotExist( $temp_file, 'No temporary file is left behind.' );
+		}
+	}
+
+	/**
+	 * An attachment part with no filename is saved as "attachment".
+	 *
+	 * @covers ::save_attachments
+	 */
+	public function test_save_new_names_an_unnamed_attachment(): void {
+		$email = $this->save_fixture( 'attachment-without-filename.eml', Private_Uploads_Fixture::make( $this->logger ) );
+
+		$this->assertCount( 1, $email->attachment_ids ?? array() );
+		$file = get_attached_file( ( $email->attachment_ids ?? array() )[0] );
+		$this->assertIsString( $file );
+		$this->assertStringStartsWith( 'attachment', basename( $file ) );
+		$this->assertSame( "hello world\n", file_get_contents( $file ) );
+	}
+
+	/**
+	 * A filename that tries to leave the directory is saved inside the private uploads directory.
+	 *
+	 * @covers ::save_attachments
+	 */
+	public function test_save_new_keeps_an_unsafe_filename_inside_the_private_uploads_directory(): void {
+		$email = $this->save_fixture( 'attachment-unsafe-filename.eml', Private_Uploads_Fixture::make( $this->logger ) );
+
+		$this->assertCount( 1, $email->attachment_ids ?? array() );
+		$file = get_attached_file( ( $email->attachment_ids ?? array() )[0] );
+		$this->assertIsString( $file );
+
+		$private_uploads_directory = wp_upload_dir( null, false )['basedir'] . '/bh-wp-mailboxes-test-attachments/';
+		$this->assertStringStartsWith( $private_uploads_directory, $file );
+		$this->assertStringNotContainsString( '..', $file );
+		$this->assertStringEndsWith( 'evil.txt', $file );
+	}
+
+	/**
+	 * Saving the same email again (a re-fetch) does not save its attachments again.
+	 *
+	 * @covers ::save_new
+	 */
+	public function test_save_new_does_not_duplicate_attachments_of_a_refetched_email(): void {
+		$first  = $this->save_fixture( 'with-attachment.eml', Private_Uploads_Fixture::make( $this->logger ) );
+		$second = $this->save_fixture( 'with-attachment.eml', Private_Uploads_Fixture::make( $this->logger ) );
+
+		$this->assertSame( $first->post_id, $second->post_id );
+		$this->assertSame( $first->attachment_ids, $second->attachment_ids );
+
+		$attachment_post_type = get_post_type( ( $first->attachment_ids ?? array() )[0] );
+		$this->assertIsString( $attachment_post_type );
+		$this->assertCount(
+			1,
+			get_posts(
+				array(
+					'post_type'   => $attachment_post_type,
+					'post_parent' => $first->post_id,
+					'post_status' => 'any',
+					'fields'      => 'ids',
+				)
+			)
+		);
+	}
+	/**
+	 * An unnamed attachment whose content type WordPress has no extension for is named "attachment"; the upload's
+	 * file type check then rejects it. That is logged, and the email is still saved.
+	 *
+	 * @covers ::save_attachments
+	 */
+	public function test_save_new_logs_an_unnamed_attachment_of_unknown_type(): void {
+		$email = $this->save_fixture( 'attachment-unknown-type.eml', Private_Uploads_Fixture::make( $this->logger ) );
+
+		$this->assertGreaterThan( 0, $email->post_id, 'The email is saved.' );
+		$this->assertSame( array(), $email->attachment_ids );
+		$this->assertTrue(
+			$this->logger->hasErrorThatPasses(
+				fn( array $record ): bool => 'Failed to save email attachment.' === $record['message']
+					&& 'attachment' === ( $record['context']['filename'] ?? null )
+			),
+			'The failure is logged with the fallback filename.'
+		);
 	}
 }

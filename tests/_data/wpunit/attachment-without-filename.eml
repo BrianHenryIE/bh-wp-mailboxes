@@ -1,0 +1,21 @@
+From: Sender <sender@example.com>
+To: recipient@example.com
+Subject: Email with an attachment that has no filename
+Date: Wed, 30 Jul 2025 03:38:07 +0000
+Message-ID: <attachment-without-filename-123@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="BOUNDARY"
+
+--BOUNDARY
+Content-Type: text/plain; charset=UTF-8
+
+The attachment below has no filename.
+
+--BOUNDARY
+Content-Type: text/plain
+Content-Disposition: attachment
+Content-Transfer-Encoding: base64
+
+aGVsbG8gd29ybGQK
+
+--BOUNDARY--
