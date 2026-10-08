@@ -4,8 +4,8 @@
  *
  * ImapEngine reports e.g. "Unable to connect to tls://host:993 ()" — the server address and PHP's
  * `$errstr`, which is empty when PHP could not even try (no sockets, as in WordPress Playground).
- * The wrapper appends the server settings used, the PHP warning ImapEngine suppressed, the error
- * code, and a hint when there was no reason at all.
+ * The wrapper says which server could not be reached, what that most likely means and what to change,
+ * then the details: ImapEngine's message or the fuller PHP warning it suppressed, and the error code.
  *
  * @package brianhenryie/bh-wp-mailboxes
  */
@@ -74,35 +74,149 @@ class ImapEngine_Imap_Email_Connection_Failure_Unit_Test extends Unit_Testcase {
 	}
 
 	/**
-	 * With no reason from PHP (the Playground case), the message explains that PHP could not open a socket.
+	 * Run the connection test and return the failure message.
+	 *
+	 * @param ImapEngine_Imap_Email_Connection $sut The connection, whose mailbox fails.
+	 */
+	private function get_failure( ImapEngine_Imap_Email_Connection $sut ): ImapConnectionFailedException {
+		try {
+			$sut->test_connection();
+		} catch ( ImapConnectionFailedException $exception ) {
+			return $exception;
+		}
+		$this->fail( 'Expected an ImapConnectionFailedException.' );
+	}
+
+	/**
+	 * Run a callback with PHP's `SERVER_SOFTWARE` set, as WordPress Playground ("PHP.wasm") or a normal server reports it.
+	 *
+	 * @param string   $server_software The value to set.
+	 * @param callable $callback        What to run.
+	 */
+	private function with_server_software( string $server_software, callable $callback ): void {
+		// phpcs:disable WordPress.Security.ValidatedSanitizedInput -- Arranging the superglobal the code reads.
+		$previous                   = $_SERVER['SERVER_SOFTWARE'] ?? null;
+		$_SERVER['SERVER_SOFTWARE'] = $server_software;
+		try {
+			$callback();
+		} finally {
+			if ( is_null( $previous ) ) {
+				unset( $_SERVER['SERVER_SOFTWARE'] );
+			} else {
+				$_SERVER['SERVER_SOFTWARE'] = $previous;
+			}
+		}
+		// phpcs:enable WordPress.Security.ValidatedSanitizedInput
+	}
+
+	/**
+	 * With no reason from PHP, the message says which server could not be reached and that PHP could not open a
+	 * socket, then gives ImapEngine's message as the details.
 	 *
 	 * @covers ::connect
 	 * @covers ::describe_connection_failure
+	 * @covers ::get_failure_details
+	 * @covers ::get_failure_hint
 	 * @covers ::test_connection
 	 */
 	public function test_no_reason_from_php_explains_no_socket(): void {
 		$original = 'Unable to connect to tls://mail.example.com:993 ()';
-		$sut      = $this->make_sut( $this->failing_mailbox( $original ) );
 
-		try {
-			$sut->test_connection();
-			$this->fail( 'Expected an ImapConnectionFailedException.' );
-		} catch ( ImapConnectionFailedException $exception ) {
-			$this->assertStringStartsWith( $original . '.', $exception->getMessage() );
-			$this->assertStringContainsString( 'Server: mail.example.com:993, encryption: TLS.', $exception->getMessage() );
-			$this->assertStringContainsString( 'PHP could not open a network socket', $exception->getMessage() );
-			$this->assertStringContainsString( 'WordPress Playground', $exception->getMessage() );
-			$this->assertStringNotContainsString( 'PHP:', $exception->getMessage() );
-			$this->assertStringNotContainsString( 'Error code', $exception->getMessage() );
-			$this->assertSame( $original, $exception->getPrevious()?->getMessage(), 'The original is kept as the previous exception.' );
-		}
+		$this->with_server_software(
+			'Apache/2.4',
+			function () use ( $original ): void {
+				$exception = $this->get_failure( $this->make_sut( $this->failing_mailbox( $original ) ) );
+
+				$this->assertSame(
+					'Could not connect to mail.example.com on port 993 (TLS). PHP could not open a network socket and gave no reason. This environment may not allow outbound connections, or a firewall may be blocking the port. Details: Unable to connect to tls://mail.example.com:993 ().',
+					$exception->getMessage()
+				);
+				$this->assertSame( $original, $exception->getPrevious()?->getMessage(), 'The original is kept as the previous exception.' );
+			}
+		);
 	}
 
 	/**
-	 * The warning PHP raised (which ImapEngine silences with `@`) is recovered and shown instead of the hint.
+	 * In WordPress Playground PHP reports "Unknown error": the message still explains Playground, and PHP's
+	 * warning (the same message with the reason filled in) replaces ImapEngine's rather than repeating it.
+	 *
+	 * Regression: the Playground explanation was only given when PHP gave no reason at all (#150).
+	 *
+	 * @covers ::describe_connection_failure
+	 * @covers ::get_failure_details
+	 * @covers ::get_failure_hint
+	 */
+	public function test_wordpress_playground_is_explained_whatever_php_reports(): void {
+		$this->with_server_software(
+			'PHP.wasm',
+			function (): void {
+				$sut = $this->make_sut(
+					$this->failing_mailbox(
+						'Unable to connect to tls://imap.example.com:993 ()',
+						0,
+						'stream_socket_client(): Unable to connect to tls://imap.example.com:993 (Unknown error)'
+					),
+					'imap.example.com:993'
+				);
+
+				$message = $this->get_failure( $sut )->getMessage();
+
+				$this->assertSame(
+					'Could not connect to imap.example.com on port 993 (TLS). This site is running in WordPress Playground (PHP as WebAssembly in the browser), which cannot connect to mail servers. The account will work on a normal WordPress install. Details: Unable to connect to tls://imap.example.com:993 (Unknown error).',
+					$message
+				);
+				$this->assertSame( 1, substr_count( $message, 'Unable to connect to' ), 'The address is not repeated.' );
+			}
+		);
+	}
+
+	/**
+	 * In WordPress Playground with no warning at all, the Playground explanation is given too.
+	 *
+	 * @covers ::get_failure_hint
+	 */
+	public function test_wordpress_playground_is_explained_without_a_warning(): void {
+		$this->with_server_software(
+			'PHP.wasm',
+			function (): void {
+				$message = $this->get_failure( $this->make_sut( $this->failing_mailbox( 'Unable to connect to tls://mail.example.com:993 ()' ) ) )->getMessage();
+
+				$this->assertStringContainsString( 'This site is running in WordPress Playground', $message );
+				$this->assertStringNotContainsString( 'PHP could not open a network socket', $message );
+			}
+		);
+	}
+
+	/**
+	 * Outside Playground, "Unknown error" is treated like no reason at all.
+	 *
+	 * @covers ::get_failure_hint
+	 */
+	public function test_unknown_error_outside_playground_explains_no_socket(): void {
+		$this->with_server_software(
+			'Apache/2.4',
+			function (): void {
+				$sut = $this->make_sut(
+					$this->failing_mailbox(
+						'Unable to connect to tls://mail.example.com:993 ()',
+						0,
+						'stream_socket_client(): Unable to connect to tls://mail.example.com:993 (Unknown error)'
+					)
+				);
+
+				$message = $this->get_failure( $sut )->getMessage();
+
+				$this->assertStringContainsString( 'PHP could not open a network socket and gave no reason.', $message );
+				$this->assertStringNotContainsString( 'WordPress Playground', $message );
+			}
+		);
+	}
+
+	/**
+	 * A suppressed PHP warning that says something different is added after ImapEngine's message.
 	 *
 	 * @covers ::connect
-	 * @covers ::describe_connection_failure
+	 * @covers ::get_failure_details
 	 */
 	public function test_suppressed_php_warning_is_recovered(): void {
 		$sut = $this->make_sut(
@@ -113,35 +227,62 @@ class ImapEngine_Imap_Email_Connection_Failure_Unit_Test extends Unit_Testcase {
 			)
 		);
 
-		try {
-			$sut->test_connection();
-			$this->fail( 'Expected an ImapConnectionFailedException.' );
-		} catch ( ImapConnectionFailedException $exception ) {
-			$this->assertStringContainsString( 'PHP: Unable to find the socket transport "tls" - did you forget to enable it when you configured PHP?.', $exception->getMessage() );
-			$this->assertStringNotContainsString( 'stream_socket_client():', $exception->getMessage(), 'The function-name prefix is trimmed.' );
-			$this->assertStringNotContainsString( 'PHP could not open a network socket', $exception->getMessage() );
-		}
+		$message = $this->get_failure( $sut )->getMessage();
+
+		$this->assertStringContainsString( 'Details: Unable to connect to tls://mail.example.com:993 (). PHP: Unable to find the socket transport "tls" - did you forget to enable it when you configured PHP?.', $message );
+		$this->assertStringNotContainsString( 'stream_socket_client():', $message, 'The function-name prefix is trimmed.' );
+		$this->assertStringNotContainsString( 'PHP could not open a network socket', $message, 'PHP gave a reason.' );
 	}
 
 	/**
-	 * A refused connection carries PHP's reason and the errno, which ImapEngine only puts in the code.
+	 * A refused connection says what to check, with PHP's reason and the errno (which ImapEngine only puts in the code).
 	 *
 	 * @covers ::connect
 	 * @covers ::describe_connection_failure
+	 * @covers ::get_failure_hint
 	 */
-	public function test_refused_connection_shows_reason_and_error_code(): void {
-		$sut = $this->make_sut( $this->failing_mailbox( 'Unable to connect to tcp://127.0.0.1:1 (Connection refused)', 111 ), '127.0.0.1:1', '' );
+	public function test_refused_connection_shows_hint_reason_and_error_code(): void {
+		$exception = $this->get_failure( $this->make_sut( $this->failing_mailbox( 'Unable to connect to tcp://127.0.0.1:1 (Connection refused)', 111 ), '127.0.0.1:1', '' ) );
 
-		try {
-			$sut->test_connection();
-			$this->fail( 'Expected an ImapConnectionFailedException.' );
-		} catch ( ImapConnectionFailedException $exception ) {
-			$this->assertSame(
-				'Unable to connect to tcp://127.0.0.1:1 (Connection refused). Server: 127.0.0.1:1, encryption: none. Error code 111.',
-				$exception->getMessage()
-			);
-			$this->assertSame( 111, $exception->getCode() );
-		}
+		$this->assertSame(
+			'Could not connect to 127.0.0.1 on port 1 (no encryption). The server refused the connection. Check the server name and port, and that IMAP access is enabled for the account. Details: Unable to connect to tcp://127.0.0.1:1 (Connection refused). Error code 111.',
+			$exception->getMessage()
+		);
+		$this->assertSame( 111, $exception->getCode() );
+	}
+
+	/**
+	 * Common failures and what the message suggests.
+	 *
+	 * @return array<string, array{0: string, 1: ?string, 2: string}> ImapEngine's message, PHP's warning, and the expected hint.
+	 */
+	public static function hint_provider(): array {
+		return array(
+			'timeout'          => array( 'Unable to connect to tls://mail.example.com:993 (Connection timed out)', null, 'The connection timed out. Check the server name and port; a firewall may be blocking the connection.' ),
+			'unknown host'     => array( 'Unable to connect to tls://mial.example.com:993 ()', 'stream_socket_client(): php_network_getaddresses: getaddrinfo for mial.example.com failed: Name or service not known', 'The server name could not be found. Check it is spelled correctly.' ),
+			'certificate'      => array( 'Unable to connect to tls://mail.example.com:993 ()', 'stream_socket_client(): SSL operation failed with code 1. OpenSSL Error messages: error:0A000086:SSL routines::certificate verify failed', 'The server\'s certificate could not be verified. If the server uses a self-signed certificate, untick "Validate the server\'s certificate".' ),
+			'encryption, port' => array( 'Unable to connect to tls://mail.example.com:143 ()', 'stream_socket_client(): SSL operation failed with code 1. OpenSSL Error messages: error:0A00010B:SSL routines::wrong version number', 'The encryption setting may not match the port: port 993 normally uses TLS, and port 143 uses STARTTLS or no encryption.' ),
+		);
+	}
+
+	/**
+	 * @dataProvider hint_provider
+	 *
+	 * @covers ::get_failure_hint
+	 *
+	 * @param string  $message     ImapEngine's message.
+	 * @param ?string $php_warning The warning PHP raised.
+	 * @param string  $hint        The expected hint.
+	 */
+	public function test_common_failures_say_what_to_check( string $message, ?string $php_warning, string $hint ): void {
+		$this->with_server_software(
+			'Apache/2.4',
+			function () use ( $message, $php_warning, $hint ): void {
+				$failure = $this->get_failure( $this->make_sut( $this->failing_mailbox( $message, 0, $php_warning ) ) )->getMessage();
+
+				$this->assertStringContainsString( " {$hint} Details: ", $failure );
+			}
+		);
 	}
 
 	/**
@@ -171,11 +312,7 @@ class ImapEngine_Imap_Email_Connection_Failure_Unit_Test extends Unit_Testcase {
 		$ok->allows( 'connect' );
 		$this->assertTrue( $this->make_sut( $ok )->test_connection() );
 
-		try {
-			$this->make_sut( $this->failing_mailbox( 'Unable to connect to tls://mail.example.com:993 ()' ) )->test_connection();
-		} catch ( ImapConnectionFailedException $exception ) {
-			$this->assertStringContainsString( 'Server:', $exception->getMessage() );
-		}
+		$this->assertStringContainsString( 'Details:', $this->get_failure( $this->make_sut( $this->failing_mailbox( 'Unable to connect to tls://mail.example.com:993 ()' ) ) )->getMessage() );
 
 		$after = set_error_handler( null ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- Reading the current handler.
 		restore_error_handler();
@@ -192,7 +329,7 @@ class ImapEngine_Imap_Email_Connection_Failure_Unit_Test extends Unit_Testcase {
 		$sut = $this->make_sut( $this->failing_mailbox( 'Unable to connect to tls://mail.example.com:993 ()' ) );
 
 		$this->expectException( ImapConnectionFailedException::class );
-		$this->expectExceptionMessage( 'Server: mail.example.com:993, encryption: TLS.' );
+		$this->expectExceptionMessage( 'Could not connect to mail.example.com on port 993 (TLS).' );
 		$sut->retrieve_emails( new DateTimeImmutable( '-1 day' ) );
 	}
 

@@ -178,9 +178,8 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 	 * ImapEngine opens the socket with `@stream_socket_client()` and reports only the (often empty)
 	 * `$errstr`, e.g. "Unable to connect to tls://host:993 ()". PHP still passes the suppressed warning
 	 * to a user error handler, so one is installed for the duration of the connect to recover the real
-	 * reason, which {@see self::describe_connection_failure()} appends along with the server settings
-	 * used, the error code, and, when PHP gives no reason at all, a hint that the environment may not
-	 * allow outbound connections.
+	 * reason, which {@see self::describe_connection_failure()} uses to say which server could not be
+	 * reached, what that most likely means, and the technical details.
 	 *
 	 * @throws ImapConnectionFailedException When the connection or login fails (same class as ImapEngine throws; the original is the previous exception).
 	 */
@@ -211,33 +210,39 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 	}
 
 	/**
-	 * A user-facing description of a connection failure: ImapEngine's message, the server settings
-	 * used, the PHP warning (if any) ImapEngine suppressed, the error code, and a hint when PHP gave
-	 * no reason at all.
+	 * A user-facing description of a connection failure, for the account notices, "Test connection" and the logs.
 	 *
-	 * @param ImapConnectionFailedException $exception   The failure ImapEngine threw.
+	 * Three parts: which server could not be reached; what that most likely means and what to change; and the
+	 * technical details (ImapEngine's message, or the fuller PHP warning it suppressed, and the error code).
+	 *
+	 * @param ImapConnectionFailedException $exception   The failure ImapEngine threw, e.g. "Unable to connect to tls://host:993 ()".
 	 * @param ?string                       $php_warning The warning PHP raised while connecting, if any.
 	 */
 	protected function describe_connection_failure( ImapConnectionFailedException $exception, ?string $php_warning ): string {
-		$parts = array( rtrim( $exception->getMessage(), '.' ) . '.' );
+		$details = $this->get_failure_details( $exception, $php_warning );
+
+		$parts = array();
 
 		if ( ! is_null( $this->server_settings ) ) {
 			$parts[] = sprintf(
-				/* translators: 1: IMAP host, 2: port, 3: encryption, TLS or none */
-				__( 'Server: %1$s:%2$d, encryption: %3$s.', 'bh-wp-mailboxes' ),
+				/* translators: 1: IMAP host, 2: port, 3: encryption, e.g. "TLS" or "no encryption" */
+				__( 'Could not connect to %1$s on port %2$d (%3$s).', 'bh-wp-mailboxes' ),
 				$this->server_settings['host'],
 				$this->server_settings['port'],
-				'' === $this->server_settings['encryption'] ? __( 'none', 'bh-wp-mailboxes' ) : $this->server_settings['encryption']
+				'' === $this->server_settings['encryption'] ? __( 'no encryption', 'bh-wp-mailboxes' ) : $this->server_settings['encryption']
 			);
 		}
 
-		if ( ! is_null( $php_warning ) && '' !== trim( $php_warning ) ) {
-			$parts[] = sprintf(
-				/* translators: %s: the warning message PHP raised, e.g. "Connection refused" */
-				__( 'PHP: %s.', 'bh-wp-mailboxes' ),
-				rtrim( (string) preg_replace( '/^[\w\\\\]+\(\): /', '', trim( $php_warning ) ), '.' )
-			);
+		$hint = $this->get_failure_hint( $details );
+		if ( ! is_null( $hint ) ) {
+			$parts[] = $hint;
 		}
+
+		$parts[] = sprintf(
+			/* translators: %s: the technical error, e.g. "Unable to connect to tls://mail.example.com:993 (Connection refused)." */
+			__( 'Details: %s', 'bh-wp-mailboxes' ),
+			rtrim( $details, '.' ) . '.'
+		);
 
 		if ( 0 !== $exception->getCode() ) {
 			$parts[] = sprintf(
@@ -247,21 +252,79 @@ class ImapEngine_Imap_Email_Connection implements Email_Connection_Interface, Re
 			);
 		}
 
-		// "Unable to connect to tls://host:993 ()" with no warning: PHP could not even try. Explain why that happens.
-		$no_reason_given = str_ends_with( trim( $exception->getMessage() ), '()' ) && ( is_null( $php_warning ) || '' === trim( $php_warning ) );
-		if ( $no_reason_given ) {
-			$wants_tls  = ! is_null( $this->server_settings ) && '' !== $this->server_settings['encryption'];
-			$transports = stream_get_transports();
-			if ( $wants_tls && ! in_array( 'tls', $transports, true ) && ! in_array( 'ssl', $transports, true ) ) {
-				$parts[] = __( 'The "tls" stream transport is not available in this PHP (the openssl extension is missing), so encrypted connections cannot be made.', 'bh-wp-mailboxes' );
-			} elseif ( self::is_php_wasm() ) {
-				$parts[] = __( 'PHP could not open a network socket. This is WordPress Playground (PHP running as WebAssembly), which cannot make IMAP or other TCP connections when it runs in the browser; test the account on a normal WordPress install instead.', 'bh-wp-mailboxes' );
-			} else {
-				$parts[] = __( 'PHP could not open a network socket and gave no reason. This environment may not allow outbound connections (for example WordPress Playground running in the browser cannot connect to IMAP servers), or a firewall may be blocking the port.', 'bh-wp-mailboxes' );
+		return implode( ' ', $parts );
+	}
+
+	/**
+	 * The technical description of the failure, without repetition.
+	 *
+	 * ImapEngine's message carries only PHP's (often empty) reason: "Unable to connect to tls://host:993 ()". When
+	 * the warning PHP raised is that same message with the reason filled in, the warning replaces it; any other
+	 * warning is added after it.
+	 *
+	 * @param ImapConnectionFailedException $exception   The failure ImapEngine threw.
+	 * @param ?string                       $php_warning The warning PHP raised while connecting, if any.
+	 */
+	protected function get_failure_details( ImapConnectionFailedException $exception, ?string $php_warning ): string {
+		$message = rtrim( trim( $exception->getMessage() ), '.' );
+
+		// Without the "stream_socket_client(): " prefix.
+		$warning = is_null( $php_warning ) ? '' : rtrim( trim( (string) preg_replace( '/^[\w\\\\]+\(\): /', '', trim( $php_warning ) ) ), '.' );
+
+		if ( '' === $warning || $warning === $message ) {
+			return $message;
+		}
+
+		$message_without_reason = (string) preg_replace( '/\s*\(\s*\)$/', '', $message );
+		if ( str_starts_with( $warning, $message_without_reason ) ) {
+			return $warning;
+		}
+
+		return sprintf(
+			/* translators: 1: ImapEngine's error message, 2: the warning PHP raised */
+			__( '%1$s. PHP: %2$s', 'bh-wp-mailboxes' ),
+			$message,
+			$warning
+		);
+	}
+
+	/**
+	 * What the failure most likely means and what to change, or null when there is nothing useful to add.
+	 *
+	 * @param string $details The technical description, see {@see self::get_failure_details()}.
+	 */
+	protected function get_failure_hint( string $details ): ?string {
+
+		// WordPress Playground fails every connection, with no reason or "Unknown error".
+		if ( self::is_php_wasm() ) {
+			return __( 'This site is running in WordPress Playground (PHP as WebAssembly in the browser), which cannot connect to mail servers. The account will work on a normal WordPress install.', 'bh-wp-mailboxes' );
+		}
+
+		$wants_tls  = ! is_null( $this->server_settings ) && '' !== $this->server_settings['encryption'];
+		$transports = stream_get_transports();
+		if ( $wants_tls && ! in_array( 'tls', $transports, true ) && ! in_array( 'ssl', $transports, true ) ) {
+			return __( 'The "tls" stream transport is not available in this PHP (the openssl extension is missing), so encrypted connections cannot be made.', 'bh-wp-mailboxes' );
+		}
+
+		$hints = array(
+			'/connection refused/i' => __( 'The server refused the connection. Check the server name and port, and that IMAP access is enabled for the account.', 'bh-wp-mailboxes' ),
+			'/timed out/i'          => __( 'The connection timed out. Check the server name and port; a firewall may be blocking the connection.', 'bh-wp-mailboxes' ),
+			'/getaddrinfo|name or service not known|nodename nor servname|no such host|name resolution/i' => __( 'The server name could not be found. Check it is spelled correctly.', 'bh-wp-mailboxes' ),
+			'/certificate/i'        => __( 'The server\'s certificate could not be verified. If the server uses a self-signed certificate, untick "Validate the server\'s certificate".', 'bh-wp-mailboxes' ),
+			'/wrong version number|unknown protocol|ssl routines|handshake/i' => __( 'The encryption setting may not match the port: port 993 normally uses TLS, and port 143 uses STARTTLS or no encryption.', 'bh-wp-mailboxes' ),
+		);
+		foreach ( $hints as $pattern => $hint ) {
+			if ( 1 === preg_match( $pattern, $details ) ) {
+				return $hint;
 			}
 		}
 
-		return implode( ' ', $parts );
+		// PHP could not even try: "Unable to connect to tls://host:993 ()", or "(Unknown error)".
+		if ( 1 === preg_match( '/\(\s*(unknown error)?\s*\)$/i', rtrim( $details, '.' ) ) ) {
+			return __( 'PHP could not open a network socket and gave no reason. This environment may not allow outbound connections, or a firewall may be blocking the port.', 'bh-wp-mailboxes' );
+		}
+
+		return null;
 	}
 
 	/**
