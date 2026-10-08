@@ -11,6 +11,9 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Connection_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Supports_Fetching;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
@@ -24,6 +27,7 @@ use BrianHenryIE\WP_Mailboxes\Models\Private_Uploads_Fixture;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
+use ZBateson\MailMimeParser\MailMimeParser;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View
@@ -317,16 +321,16 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	 * @param string $eml_file             The fixture under tests/_data/wpunit/.
 	 * @param bool   $attachments_enabled  Whether to save attachments (private uploads present).
 	 */
-	private function save_email_with_attachments( string $eml_file, bool $attachments_enabled = true ): \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email {
+	private function save_email_with_attachments( string $eml_file, bool $attachments_enabled = true ): BH_Email {
 		$this->register_cpt();
 
-		$parser  = new \ZBateson\MailMimeParser\MailMimeParser();
+		$parser  = new MailMimeParser();
 		$message = $parser->parse( (string) file_get_contents( (string) codecept_root_dir( "tests/_data/wpunit/{$eml_file}" ) ), true );
 
 		$email = $this->make_repository()->save_new(
-			new \BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email(
+			new Fetched_Email(
 				$message,
-				new \BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates( message_id: $message->getMessageId() ?? '' )
+				new Remote_Email_Coordinates( message_id: $message->getMessageId() ?? '' )
 			),
 			BH_WP_Mailboxes_Settings_Fixture::make( email_cpt: $this->post_type ),
 			BH_Email_Account_Fixture::make(),
@@ -435,6 +439,27 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 			'<a href="' . esc_url( $expected_url ) . '" download>' . basename( $relative_path ) . '</a>',
 			$html
 		);
+	}
+
+	/**
+	 * Each segment of the link's path is URL-encoded, so a filename with non-Latin characters (which WordPress keeps) still links
+	 * correctly; the filename is shown as is.
+	 *
+	 * @covers ::get_attachment_download_url
+	 */
+	public function test_attachments_metabox_link_encodes_the_filename(): void {
+		$email         = $this->save_email_with_attachments( 'attachment-non-latin-filename.eml' );
+		$attachment_id = ( $email->attachment_ids ?? array() )[0] ?? 0;
+
+		$relative_path = get_post_meta( $attachment_id, '_wp_attached_file', true );
+		$this->assertIsString( $relative_path );
+		$filename = basename( $relative_path );
+		$this->assertStringStartsWith( 'отчёт', $filename, 'Sanity check: WordPress keeps non-Latin letters in the stored filename.' );
+
+		$html = $this->render_attachments_metabox( $email->post_id );
+
+		$this->assertStringContainsString( '/' . rawurlencode( $filename ) . '" download>' . esc_html( $filename ) . '</a>', $html );
+		$this->assertStringContainsString( '%D0%BE%D1%82%D1%87%D1%91%D1%82', $html );
 	}
 
 	/**
@@ -876,7 +901,7 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 	/**
 	 * Save a thread of two emails (root + reply) into the test CPT and return them.
 	 *
-	 * @return array{0: \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email, 1: \BrianHenryIE\WP_Mailboxes\API\Model\BH_Email}
+	 * @return array{0: BH_Email, 1: BH_Email}
 	 */
 	private function make_thread(): array {
 		$repository = $this->make_repository();

@@ -791,4 +791,23 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 			)
 		);
 	}
+	/**
+	 * An unnamed attachment whose content type WordPress has no extension for is named "attachment"; the upload's
+	 * file type check then rejects it. That is logged, and the email is still saved.
+	 *
+	 * @covers ::save_attachments
+	 */
+	public function test_save_new_logs_an_unnamed_attachment_of_unknown_type(): void {
+		$email = $this->save_fixture( 'attachment-unknown-type.eml', Private_Uploads_Fixture::make( $this->logger ) );
+
+		$this->assertGreaterThan( 0, $email->post_id, 'The email is saved.' );
+		$this->assertSame( array(), $email->attachment_ids );
+		$this->assertTrue(
+			$this->logger->hasErrorThatPasses(
+				fn( array $record ): bool => 'Failed to save email attachment.' === $record['message']
+					&& 'attachment' === ( $record['context']['filename'] ?? null )
+			),
+			'The failure is logged with the fallback filename.'
+		);
+	}
 }

@@ -3,8 +3,8 @@
  *
  * Delivers a multipart email with an attachment through the REST ingress (the same path the Cloudflare
  * worker uses), then proves: the attachment is saved as a private-uploads post with its file on disk and
- * listed on the single email view as a link the administrator can download and a logged-out visitor
- * cannot; trashing the email (wp-admin's "Trash locally" row action) trashes
+ * listed on the single email view as a link the administrator can download, and a logged-out visitor or a
+ * logged-in subscriber cannot; trashing the email (wp-admin's "Trash locally" row action) trashes
  * the attachment post and keeps the file; restoring the email restores the attachment to its previous
  * status; permanently deleting the email deletes the attachment post and its file.
  *
@@ -97,6 +97,7 @@ test.describe( 'Email attachments — save, trash, restore, delete', () => {
 		admin,
 		page,
 		request,
+		playwright,
 	} ) => {
 		// Eight admin page loads in one test: allow three times the default timeout under a loaded parallel run.
 		test.slow();
@@ -133,6 +134,24 @@ test.describe( 'Email attachments — save, trash, restore, delete', () => {
 		const anonymous = await fetch( href!, { redirect: 'manual' } );
 		expect( anonymous.status ).not.toBe( 200 );
 		expect( await anonymous.text() ).not.toContain( 'Brian,chair' );
+
+		// Nor does a logged-in user without `manage_options` (the private-uploads default): a 403.
+		expect( ( await request.post( `${ DEV_REST }/users`, { data: { role: 'subscriber' } } ) ).ok(), 'The subscriber is created (or reset).' ).toBe( true );
+		const subscriber = await playwright.request.newContext( { baseURL: BASE_URL, storageState: { cookies: [], origins: [] } } );
+		try {
+			const login = await subscriber.post( '/wp-login.php', {
+				form: { log: 'e2e-subscriber', pwd: 'password', 'wp-submit': 'Log In', testcookie: '1' },
+				headers: { Cookie: 'wordpress_test_cookie=WP%20Cookie%20check' },
+				maxRedirects: 0,
+			} );
+			expect( login.status(), 'The subscriber logs in.' ).toBe( 302 );
+
+			const forbidden = await subscriber.get( href!, { maxRedirects: 0 } );
+			expect( forbidden.status() ).toBe( 403 );
+			expect( await forbidden.text() ).not.toContain( 'Brian,chair' );
+		} finally {
+			await subscriber.dispose();
+		}
 
 		// Trash locally, from the list's row action (a core link).
 		await admin.visitAdminPage( 'edit.php', `post_type=${ POST_TYPE }&s=${ encodeURIComponent( fixture.subject ) }` );

@@ -600,19 +600,25 @@ class Single_Email_View {
 	 * The URL of a saved attachment's file, or null when the post records no file.
 	 *
 	 * `wp_get_attachment_url()` cannot be used: it returns false for any post type other than `attachment`, and
-	 * email attachments are posts of the private-uploads post type. The URL is built the same way, from the
-	 * uploads base URL and the file's uploads-relative path. Requests to it are routed by the private-uploads
-	 * rewrite rule, which serves the file only to permitted users (by default those who can `manage_options`).
+	 * email attachments are posts of the private-uploads post type. The URL is built as core builds it, from
+	 * `wp_get_upload_dir()`'s base URL and the file's uploads-relative path (the private-uploads library has no
+	 * public URL helper; its own metabox calls `wp_get_attachment_url()` on the post cast to `attachment`).
+	 * Each path segment is URL-encoded, so a filename with e.g. accented characters still links correctly.
+	 *
+	 * Requests to the URL are routed by the private-uploads rewrite rule, which serves the file only to permitted
+	 * users (by default those who can `manage_options`; see the `bh_wp_private_uploads_allow` filter).
 	 *
 	 * @param int $attachment_post_id The private-uploads post recording the attachment.
 	 */
 	protected function get_attachment_download_url( int $attachment_post_id ): ?string {
 		$relative_path = get_post_meta( $attachment_post_id, '_wp_attached_file', true );
-		if ( ! is_string( $relative_path ) || '' === $relative_path ) {
+		if ( ! is_string( $relative_path ) || '' === trim( $relative_path, '/' ) ) {
 			return null;
 		}
 
-		return wp_upload_dir( null, false )['baseurl'] . '/' . ltrim( $relative_path, '/' );
+		$encoded_path = implode( '/', array_map( 'rawurlencode', explode( '/', trim( $relative_path, '/' ) ) ) );
+
+		return wp_get_upload_dir()['baseurl'] . '/' . $encoded_path;
 	}
 
 	/**
