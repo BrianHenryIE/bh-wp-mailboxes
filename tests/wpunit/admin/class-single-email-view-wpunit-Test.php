@@ -5,6 +5,8 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
@@ -840,5 +842,26 @@ class Single_Email_View_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertStringContainsString( '<strong class="bh-email-thread-list__subject">Re: Order 123</strong>', $html );
 		$this->assertStringNotContainsString( 'post=' . $reply->post_id . '&#038;action=edit', $html );
 		$this->assertStringContainsString( 'bh-email-thread-list__item--current', $html );
+	}
+	/**
+	 * A user who cannot edit the other emails sees them listed but not linked.
+	 *
+	 * @covers ::render_thread_metabox
+	 */
+	public function test_thread_metabox_does_not_link_emails_the_user_cannot_edit(): void {
+		$this->register_cpt();
+		wp_set_current_user( 0 );
+
+		[ $root, $reply ] = $this->make_thread();
+
+		$sut = new Single_Email_View( $this->make_settings(), $this->make_api(), $this->make_repository(), $this->logger, $this->all_capabilities() );
+
+		ob_start();
+		$sut->render_thread_metabox( get_post( $reply->post_id ) );
+		$html = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'data-post-id="' . $root->post_id . '"', $html );
+		$this->assertStringContainsString( '<strong class="bh-email-thread-list__subject">Order 123</strong>', $html );
+		$this->assertStringNotContainsString( '<a ', $html );
 	}
 }

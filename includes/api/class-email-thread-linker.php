@@ -284,6 +284,10 @@ class Email_Thread_Linker {
 	/**
 	 * Create the thread term, or reuse it if the root id has already produced one.
 	 *
+	 * The existing term is looked up by slug first. Relying on `wp_insert_term()`'s `term_exists` error is not
+	 * enough: WordPress only reports it when the name (the subject) also matches, and otherwise silently creates
+	 * a second term with a `-2` slug, so threading would depend on the subject line.
+	 *
 	 * @param string $root_id  The id believed to be the thread's root; hashed into the slug.
 	 * @param string $subject  The first email's subject, used as the display name only.
 	 * @param string $taxonomy The thread taxonomy.
@@ -292,6 +296,12 @@ class Email_Thread_Linker {
 	 */
 	protected function create_term( string $root_id, string $subject, string $taxonomy ): int {
 		$slug = sha1( $root_id );
+
+		$existing_term = get_term_by( 'slug', $slug, $taxonomy );
+		if ( $existing_term instanceof \WP_Term ) {
+			return $existing_term->term_id;
+		}
+
 		$name = trim( $subject );
 		if ( '' === $name ) {
 			$name = $root_id;

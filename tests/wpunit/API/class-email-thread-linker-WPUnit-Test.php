@@ -287,7 +287,7 @@ class Email_Thread_Linker_WPUnit_Test extends WPUnit_Testcase {
 
 		wp_delete_post( $email->post_id, true );
 
-		$this->assertEmpty( term_exists( $term_id, $this->taxonomy->get_taxonomy_name() ) );
+		$this->assertNotInstanceOf( \WP_Term::class, get_term( $term_id, $this->taxonomy->get_taxonomy_name() ) );
 	}
 
 	/**
@@ -297,13 +297,7 @@ class Email_Thread_Linker_WPUnit_Test extends WPUnit_Testcase {
 	 * @covers ::get_account_email_addresses
 	 */
 	public function test_threads_span_accounts_when_account_repository_is_available(): void {
-		$other_account = BH_Email_Account_Fixture::make(
-			post_id: 457,
-			post_type: 'thread_test_account',
-			connection_type_class: 'SomeConnection',
-			email_address: 'sales@example.com',
-			display_name: 'Sales',
-		);
+		$other_account = $this->make_other_account();
 
 		$account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
 		$account_repository->allows( 'get_all' )->andReturn( array( $this->account, $other_account ) );
@@ -311,31 +305,211 @@ class Email_Thread_Linker_WPUnit_Test extends WPUnit_Testcase {
 		$linker     = new Email_Thread_Linker( self::POST_TYPE, $this->taxonomy, $account_repository, $this->logger );
 		$repository = $this->make_repository( $linker );
 
-		$root  = $this->save( $repository, $this->eml( 'root@example.org', 'Order 123' ), $this->account );
-		$reply = $this->save( $repository, $this->eml( 'reply@example.org', 'Re: Order 123', 'root@example.org' ), $other_account );
+		[ $parent, $truncated_reply ] = $this->save_truncated_reply_in_other_account( $repository, $other_account );
 
-		$this->assertSame( $root->thread_term_id, $reply->thread_term_id );
+		$this->assertSame( $parent->thread_term_id, $truncated_reply->thread_term_id );
 	}
 
 	/**
-	 * Without the account repository, only the saving account's emails are matched by Message-ID.
+	 * Without the account repository, a parent is only found by its Message-ID within the saving account.
+	 *
+	 * The reply's References was truncated to its direct parent, so the parent's Message-ID is the only link.
 	 *
 	 * @covers ::link
 	 */
 	public function test_without_account_repository_message_id_match_is_scoped_to_the_account(): void {
-		$other_account = BH_Email_Account_Fixture::make(
+		$repository = $this->make_repository();
+
+		[ $parent, $truncated_reply ] = $this->save_truncated_reply_in_other_account( $repository, $this->make_other_account() );
+
+		$this->assertNotSame( $parent->thread_term_id, $truncated_reply->thread_term_id );
+	}
+
+	/**
+	 * A second account in the mailbox.
+	 */
+	protected function make_other_account(): BH_Email_Account {
+		return BH_Email_Account_Fixture::make(
 			post_id: 457,
 			post_type: 'thread_test_account',
 			connection_type_class: 'SomeConnection',
 			email_address: 'sales@example.com',
 			display_name: 'Sales',
 		);
-		$repository    = $this->make_repository();
+	}
+
+	/**
+	 * Save a parent (part of a longer thread) under the default account, then a reply to it under another
+	 * account whose References lists only the parent, so the parent's Message-ID is the only shared id.
+	 *
+	 * @param Email_WP_Post_Repository $repository    The repository to save through.
+	 * @param BH_Email_Account         $other_account The account the reply is filed under.
+	 *
+	 * @return array{0: BH_Email, 1: BH_Email}
+	 */
+	protected function save_truncated_reply_in_other_account( Email_WP_Post_Repository $repository, BH_Email_Account $other_account ): array {
+		$parent = $this->save( $repository, $this->eml( 'parent@example.org', 'Re: Order 123', 'root@example.org', array( 'root@example.org' ) ), $this->account );
+		$reply  = $this->save( $repository, $this->eml( 'reply@example.org', 'Re: Order 123', 'parent@example.org', array( 'parent@example.org' ) ), $other_account );
+
+		return array( $parent, $reply );
+	}
+
+	/**
+	 * A reply that starts its own thread reuses the term already created for the same root Message-ID,
+	 * whatever its subject.
+	 *
+	 * Regression: `wp_insert_term()` only reports an existing term when the name also matches, so a reply
+	 * with a different subject ("Re: …") silently got a second term with a `-2` slug.
+	 *
+	 * @covers ::link
+	 * @covers ::create_term
+	 */
+	public function test_new_thread_reuses_the_term_for_the_same_root_whatever_the_subject(): void {
+		// Without the account repository the reply, filed under another account, cannot find the root by its
+		// Message-ID; the shared root id in the slug is what joins them.
+		$repository = $this->make_repository();
 
 		$root  = $this->save( $repository, $this->eml( 'root@example.org', 'Order 123' ), $this->account );
-		$reply = $this->save( $repository, $this->eml( 'reply@example.org', 'Re: Order 123', 'root@example.org' ), $other_account );
+		$reply = $this->save( $repository, $this->eml( 'reply@example.org', 'Re: Order 123', 'root@example.org' ), $this->make_other_account() );
 
-		$this->assertNotSame( $root->thread_term_id, $reply->thread_term_id );
+		$this->assertSame( $root->thread_term_id, $reply->thread_term_id );
+
+		$thread_terms = get_terms(
+			array(
+				'taxonomy'   => $this->taxonomy->get_taxonomy_name(),
+				'hide_empty' => false,
+				'fields'     => 'ids',
+			)
+		);
+		$this->assertIsArray( $thread_terms );
+		$this->assertCount( 1, $thread_terms, 'No second, `-2` term was created.' );
+	}
+
+	/**
+	 * Store an email post the way the repository does (MIME aside), without linking it, so link() can be
+	 * called on it directly.
+	 *
+	 * @param string   $message_id  The Message-ID (without angle brackets).
+	 * @param string[] $references  The References ids (without angle brackets).
+	 *
+	 * @return array{0: int, 1: IMessage}
+	 */
+	protected function insert_unlinked_email( string $message_id, array $references = array() ): array {
+		/** @var IMessage $message */
+		$message = ( new MailMimeParser() )->parse( $this->eml( $message_id, "Subject {$message_id}", $references[ count( $references ) - 1 ] ?? null, $references ), true );
+
+		$post_id = wp_insert_post(
+			array(
+				'post_type'   => self::POST_TYPE,
+				'post_status' => 'bh_email_new',
+				'post_title'  => "Subject {$message_id}",
+				'post_name'   => Email_WP_Post_Repository::message_id_slug( $this->account->get_account_email_address(), $message_id ),
+			)
+		);
+		$this->assertGreaterThan( 0, $post_id );
+		foreach ( $references as $reference ) {
+			add_post_meta( $post_id, Email_Thread_Linker::META_KEY_REFERENCES, $reference );
+		}
+
+		return array( $post_id, $message );
+	}
+
+	/**
+	 * Linking reports whether it started a new thread, and which emails it moved when merging.
+	 *
+	 * @covers ::link
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Model\Email_Thread_Link_Result::__construct
+	 */
+	public function test_link_reports_new_threads_and_merged_emails(): void {
+		$linker = new Email_Thread_Linker( self::POST_TYPE, $this->taxonomy, null, $this->logger );
+
+		[ $a_post_id, $a_message ] = $this->insert_unlinked_email( 'a@example.org' );
+		$a_result                  = $linker->link( $a_post_id, 'a@example.org', $a_message, $this->account );
+		$this->assertTrue( $a_result->is_new_thread );
+		$this->assertSame( array(), $a_result->merged_post_ids );
+
+		[ $b_post_id, $b_message ] = $this->insert_unlinked_email( 'b@example.org' );
+		$b_result                  = $linker->link( $b_post_id, 'b@example.org', $b_message, $this->account );
+		$this->assertTrue( $b_result->is_new_thread );
+		$this->assertNotSame( $a_result->term_id, $b_result->term_id );
+
+		// References both: bridges the two threads into the older one.
+		[ $c_post_id, $c_message ] = $this->insert_unlinked_email( 'c@example.org', array( 'a@example.org', 'b@example.org' ) );
+		$c_result                  = $linker->link( $c_post_id, 'c@example.org', $c_message, $this->account );
+		$this->assertFalse( $c_result->is_new_thread );
+		$this->assertSame( $a_result->term_id, $c_result->term_id );
+		$this->assertSame( array( $b_post_id ), $c_result->merged_post_ids );
+	}
+
+	/**
+	 * When the mailbox's accounts cannot be listed, linking still works for the saving account, with a warning.
+	 *
+	 * @covers ::get_account_email_addresses
+	 */
+	public function test_account_listing_failure_falls_back_to_the_saving_account(): void {
+		$account_repository = Mockery::mock( Email_Account_WP_Post_Repository::class );
+		$account_repository->allows( 'get_all' )->andThrow( new \RuntimeException( 'Database unavailable.' ) );
+
+		$linker     = new Email_Thread_Linker( self::POST_TYPE, $this->taxonomy, $account_repository, $this->logger );
+		$repository = $this->make_repository( $linker );
+
+		$root  = $this->save( $repository, $this->eml( 'root@example.org', 'Order 123' ) );
+		$reply = $this->save( $repository, $this->eml( 'reply@example.org', 'Re: Order 123', 'root@example.org', array( 'root@example.org' ) ) );
+
+		$this->assertSame( $root->thread_term_id, $reply->thread_term_id );
+		$this->assertTrue( $this->logger->hasWarningThatContains( 'Failed to list mailbox accounts for thread linking' ) );
+	}
+
+	/**
+	 * A failure while threading never stops the email itself being saved.
+	 *
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::save_new
+	 */
+	public function test_email_is_saved_when_linking_fails(): void {
+		$linker = Mockery::mock( Email_Thread_Linker::class );
+		$linker->allows( 'link' )->andThrow( new \RuntimeException( 'Taxonomy unavailable.' ) );
+
+		$email = $this->save( $this->make_repository( $linker ), $this->eml( 'root@example.org', 'Order 123' ) );
+
+		$this->assertGreaterThan( 0, $email->post_id );
+		$this->assertNull( $email->thread_term_id );
+		$this->assertTrue( $this->logger->hasErrorThatContains( 'Failed to link email {post_id} into a thread' ) );
+	}
+
+	/**
+	 * An email without a thread (stored before threading existed) is its own one-email thread.
+	 *
+	 * @covers \BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository::find_thread
+	 */
+	public function test_find_thread_for_an_unthreaded_email_returns_it_alone(): void {
+		$repository = $this->make_repository();
+
+		$email = $this->save( $repository, $this->eml( 'legacy@example.org', 'Old email' ) );
+		wp_delete_object_term_relationships( $email->post_id, $this->taxonomy->get_taxonomy_name() );
+		$email = $repository->find_by_post_id( $email->post_id );
+
+		$thread = $repository->find_thread( $email );
+
+		$this->assertSame( 0, $thread->term_id );
+		$this->assertSame( array( $email ), $thread->emails );
+		$this->assertFalse( $thread->has_related_emails() );
+	}
+
+	/**
+	 * Deleting one email of a thread keeps the thread for the others.
+	 *
+	 * @covers \BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_Thread_Taxonomy::delete_empty_terms
+	 */
+	public function test_deleting_one_email_keeps_the_thread_for_the_rest(): void {
+		$repository = $this->make_repository();
+
+		$root  = $this->save( $repository, $this->eml( 'root@example.org', 'Order 123' ) );
+		$reply = $this->save( $repository, $this->eml( 'reply@example.org', 'Re: Order 123', 'root@example.org', array( 'root@example.org' ) ) );
+
+		wp_delete_post( $reply->post_id, true );
+
+		$this->assertNotEmpty( term_exists( (int) $root->thread_term_id, $this->taxonomy->get_taxonomy_name() ) );
+		$this->assertSame( array( $root->post_id ), $this->thread_post_ids( $root ) );
 	}
 
 	/**
