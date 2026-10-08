@@ -61,6 +61,11 @@ class Email_Thread_Linker {
 	public const META_KEY_REFERENCES = 'references';
 
 	/**
+	 * How many References ids are matched on: the first plus the most recent. See {@see self::bound_references()}.
+	 */
+	public const MAX_MATCHED_REFERENCES = 20;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param string                            $post_type          The emails CPT slug.
@@ -135,7 +140,7 @@ class Email_Thread_Linker {
 		$ids = array_values(
 			array_unique(
 				array_filter(
-					array_merge( array( $own_id ), $in_reply_to, $references ),
+					array_merge( array( $own_id ), $in_reply_to, self::bound_references( $references ) ),
 					fn( string $id ): bool => '' !== $id
 				)
 			)
@@ -181,7 +186,8 @@ class Email_Thread_Linker {
 			$root_id = $references[0] ?? $in_reply_to[0] ?? $own_id;
 			$term_id = $this->create_term( $root_id, $message->getSubject() ?? '', $taxonomy );
 		} else {
-			// Keep the oldest thread; the email bridges the others into it.
+			// Keep the oldest thread; the email bridges the others into it. Term ids are auto-increment, so the
+			// lowest id is the earliest-created thread (not necessarily the one holding the earliest-sent email).
 			$term_id = min( $term_ids );
 			foreach ( $term_ids as $other_term_id ) {
 				if ( $other_term_id === $term_id ) {
@@ -205,7 +211,33 @@ class Email_Thread_Linker {
 	}
 
 	/**
+	 * Keep the References ids worth matching on: the first (normally the thread root) and the last few (the
+	 * nearest ancestors), so a very long thread cannot make the lookup query arbitrarily large.
+	 *
+	 * The full header is still stored and still seeds the thread's root; only the matching is bounded. An email
+	 * whose own id falls in the dropped middle stays reachable through its neighbours in the chain.
+	 *
+	 * @param string[] $references Normalized References ids, oldest first.
+	 *
+	 * @return string[]
+	 */
+	public static function bound_references( array $references ): array {
+		if ( count( $references ) <= self::MAX_MATCHED_REFERENCES ) {
+			return $references;
+		}
+
+		return array_merge(
+			array_slice( $references, 0, 1 ),
+			array_slice( $references, -( self::MAX_MATCHED_REFERENCES - 1 ) )
+		);
+	}
+
+	/**
 	 * Stored emails connected to any of the given ids, in either direction.
+	 *
+	 * Two halves joined by UNION, so each can use an index: `post_name` for the emails the ids name, and
+	 * `meta_key` for the emails whose In-Reply-To or References contain one of the ids. (`meta_value` is a
+	 * LONGTEXT column without an index, so the second half filters the reference rows rather than seeking.)
 	 *
 	 * @param string[] $ids                     Normalized Message-IDs: the email's own, its In-Reply-To and its References.
 	 * @param string[] $account_email_addresses Accounts whose emails may hold one of those ids (for the post_name slug lookup).
@@ -234,16 +266,25 @@ class Email_Thread_Linker {
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- The interpolated strings are only `%s` placeholder lists; every value is passed to prepare() in one array, which phpcs cannot count.
 		$sql = $wpdb->prepare(
-			"SELECT DISTINCT p.ID
+			"SELECT p.ID
 			FROM %i p
-			LEFT JOIN %i pm ON pm.post_id = p.ID AND pm.meta_key IN (%s, %s)
-			WHERE p.post_type = %s
+			WHERE p.post_name IN ({$slug_placeholders})
+			AND p.post_type = %s
 			AND p.ID != %d
-			AND ( p.post_name IN ({$slug_placeholders}) OR pm.meta_value IN ({$id_placeholders}) )",
+			UNION
+			SELECT p.ID
+			FROM %i pm
+			INNER JOIN %i p ON p.ID = pm.post_id
+			WHERE pm.meta_key IN (%s, %s)
+			AND pm.meta_value IN ({$id_placeholders})
+			AND p.post_type = %s
+			AND p.ID != %d",
 			array_merge(
-				array( $wpdb->posts, $wpdb->postmeta, self::META_KEY_IN_REPLY_TO, self::META_KEY_REFERENCES, $this->post_type, $exclude_post_id ),
+				array( $wpdb->posts ),
 				$slugs,
-				$ids
+				array( $this->post_type, $exclude_post_id, $wpdb->postmeta, $wpdb->posts, self::META_KEY_IN_REPLY_TO, self::META_KEY_REFERENCES ),
+				$ids,
+				array( $this->post_type, $exclude_post_id )
 			)
 		);
 		// phpcs:enable
@@ -288,9 +329,13 @@ class Email_Thread_Linker {
 	 * enough: WordPress only reports it when the name (the subject) also matches, and otherwise silently creates
 	 * a second term with a `-2` slug, so threading would depend on the subject line.
 	 *
-	 * @param string $root_id  The id believed to be the thread's root; hashed into the slug.
-	 * @param string $subject  The first email's subject, used as the display name only.
-	 * @param string $taxonomy The thread taxonomy.
+	 * The lookup and the insert are not atomic: two emails of a new thread saved at the same moment (e.g. parallel
+	 * fetches) can both miss the lookup. The second insert then gets the `-2` slug, so it is checked afterwards:
+	 * the duplicate is deleted and the email joins the term the other request created.
+	 *
+	 * @param string           $root_id  The id believed to be the thread's root; hashed into the slug.
+	 * @param string           $subject  The first email's subject, used as the display name only.
+	 * @param non-empty-string $taxonomy The thread taxonomy.
 	 *
 	 * @throws \RuntimeException When WordPress refuses to create the term.
 	 */
@@ -311,7 +356,7 @@ class Email_Thread_Linker {
 		$result = wp_insert_term( $name, $taxonomy, array( 'slug' => $slug ) );
 
 		if ( $result instanceof WP_Error ) {
-			// The slug is already a thread (same root id): join it.
+			// The slug is already a thread (same root id and name): join it.
 			$existing = $result->get_error_data( 'term_exists' );
 			if ( is_numeric( $existing ) ) {
 				return (int) $existing;
@@ -323,10 +368,32 @@ class Email_Thread_Linker {
 					'slug'  => $slug,
 				)
 			);
-			throw new \RuntimeException( 'Failed to create email thread term: ' . esc_html( $result->get_error_message() ) );
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Not output: the message is for logs and callers, which escape on display.
+			throw new \RuntimeException( 'Failed to create email thread term: ' . $result->get_error_message() );
 		}
 
-		return (int) $result['term_id'];
+		$term_id = (int) $result['term_id'];
+
+		$created_term = get_term( $term_id, $taxonomy );
+		if ( $created_term instanceof \WP_Term && $created_term->slug !== $slug ) {
+			// Another request created the thread between the lookup and the insert; WordPress gave this one a
+			// unique `-2` slug. Use theirs.
+			$concurrent_term = get_term_by( 'slug', $slug, $taxonomy );
+			if ( $concurrent_term instanceof \WP_Term ) {
+				wp_delete_term( $term_id, $taxonomy );
+				$this->logger->info(
+					'Email thread {slug} was created concurrently; joined it rather than keeping duplicate term {duplicate_term_id}.',
+					array(
+						'slug'              => $slug,
+						'duplicate_term_id' => $term_id,
+						'term_id'           => $concurrent_term->term_id,
+					)
+				);
+				return $concurrent_term->term_id;
+			}
+		}
+
+		return $term_id;
 	}
 
 	/**
@@ -337,7 +404,7 @@ class Email_Thread_Linker {
 	 * @param int    $into_term_id The thread being kept.
 	 * @param string $taxonomy     The thread taxonomy.
 	 *
-	 * @return int[] The post ids moved.
+	 * @return int[] The post ids moved; an email that could not be moved is logged and left out.
 	 */
 	protected function move_thread( int $from_term_id, int $into_term_id, string $taxonomy ): array {
 		$post_ids = get_objects_in_term( $from_term_id, $taxonomy );
@@ -355,16 +422,18 @@ class Email_Thread_Linker {
 		$moved = array();
 		foreach ( $post_ids as $post_id ) {
 			$post_id = (int) $post_id;
-			$this->set_thread( $post_id, $into_term_id, $taxonomy );
-			$moved[] = $post_id;
+			if ( $this->set_thread( $post_id, $into_term_id, $taxonomy ) ) {
+				$moved[] = $post_id;
+			}
 		}
 
 		$this->logger->info(
-			'Merged email thread {from_term_id} into {into_term_id} ({count} emails).',
+			'Merged email thread {from_term_id} into {into_term_id} ({count} of {total} emails).',
 			array(
 				'from_term_id' => $from_term_id,
 				'into_term_id' => $into_term_id,
 				'count'        => count( $moved ),
+				'total'        => count( $post_ids ),
 			)
 		);
 
@@ -377,8 +446,10 @@ class Email_Thread_Linker {
 	 * @param int    $post_id  The email.
 	 * @param int    $term_id  Its thread.
 	 * @param string $taxonomy The thread taxonomy.
+	 *
+	 * @return bool Whether the email is now in the thread.
 	 */
-	protected function set_thread( int $post_id, int $term_id, string $taxonomy ): void {
+	protected function set_thread( int $post_id, int $term_id, string $taxonomy ): bool {
 		$result = wp_set_object_terms( $post_id, $term_id, $taxonomy, false );
 		if ( $result instanceof WP_Error ) {
 			$this->logger->warning(
@@ -389,6 +460,8 @@ class Email_Thread_Linker {
 					'error'   => $result->get_error_message(),
 				)
 			);
+			return false;
 		}
+		return true;
 	}
 }

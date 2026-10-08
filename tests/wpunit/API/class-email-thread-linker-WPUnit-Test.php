@@ -539,4 +539,88 @@ class Email_Thread_Linker_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertSame( array( 'ancestor@example.org', 'root@example.org' ), get_post_meta( $reply->post_id, Email_Thread_Linker::META_KEY_REFERENCES, false ) );
 		$this->assertSame( array( 'root@example.org' ), get_post_meta( $reply->post_id, Email_Thread_Linker::META_KEY_IN_REPLY_TO, false ) );
 	}
+	/**
+	 * Two emails of a new thread saved at the same moment both miss the slug lookup; the second insert then gets
+	 * a `-2` slug. It must join the thread the other request created rather than keep a duplicate.
+	 *
+	 * The concurrent request is simulated by inserting the thread term from inside the lookup and reporting it
+	 * missing, as if the other request inserted it just after this one looked. (`get_term_by()` suppresses the
+	 * `get_terms` filter, so the lookup is intercepted on `terms_pre_query`, which short-circuits the query.)
+	 *
+	 * @covers ::create_term
+	 */
+	public function test_concurrently_created_thread_is_joined_not_duplicated(): void {
+		$taxonomy = $this->taxonomy->get_taxonomy_name();
+		$slug     = sha1( 'root@example.org' );
+
+		$concurrent_term_id = 0;
+		$simulate_race      = function ( $terms, \WP_Term_Query $term_query ) use ( &$simulate_race, &$concurrent_term_id, $taxonomy, $slug ) {
+			if ( ! in_array( $slug, (array) ( $term_query->query_vars['slug'] ?? array() ), true ) ) {
+				return $terms;
+			}
+			remove_filter( 'terms_pre_query', $simulate_race );
+
+			$inserted = wp_insert_term( 'Order 123 (saved by the other request)', $taxonomy, array( 'slug' => $slug ) );
+			$this->assertIsArray( $inserted );
+			$concurrent_term_id = (int) $inserted['term_id'];
+
+			return array();
+		};
+		add_filter( 'terms_pre_query', $simulate_race, 10, 2 );
+
+		$email = $this->save( $this->make_repository(), $this->eml( 'root@example.org', 'Order 123' ) );
+
+		$this->assertGreaterThan( 0, $concurrent_term_id, 'Sanity check: the race was simulated.' );
+		$this->assertSame( $concurrent_term_id, $email->thread_term_id );
+
+		$thread_terms = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'fields'     => 'ids',
+			)
+		);
+		$this->assertSame( array( $concurrent_term_id ), $thread_terms, 'The duplicate `-2` term was deleted.' );
+		$this->assertTrue( $this->logger->hasInfoThatContains( 'was created concurrently' ) );
+	}
+
+	/**
+	 * A long thread's References header is matched on its first id and most recent ids, so the lookup stays
+	 * bounded; the whole header is still stored.
+	 *
+	 * @covers ::link
+	 * @covers ::bound_references
+	 */
+	public function test_long_references_header_links_root_and_parent(): void {
+		$repository = $this->make_repository();
+
+		$references = array_map( fn( int $number ): string => "ref-{$number}@example.org", range( 1, 60 ) );
+
+		$root   = $this->save( $repository, $this->eml( 'ref-1@example.org', 'Order 123' ) );
+		$parent = $this->save( $repository, $this->eml( 'ref-60@example.org', 'Re: Order 123', 'ref-59@example.org' ) );
+		$this->assertNotSame( $root->thread_term_id, $parent->thread_term_id, 'Sanity check: two threads until the reply arrives.' );
+
+		$reply = $this->save( $repository, $this->eml( 'reply@example.org', 'Re: Order 123', 'ref-60@example.org', $references ) );
+
+		$this->assertSame( array( $root->post_id, $parent->post_id, $reply->post_id ), $this->thread_post_ids( $reply ) );
+		$stored_references = get_post_meta( $reply->post_id, Email_Thread_Linker::META_KEY_REFERENCES, false );
+		$this->assertIsArray( $stored_references );
+		$this->assertCount( 60, $stored_references, 'The whole header is stored.' );
+	}
+
+	/**
+	 * A reply whose References was truncated to its parent, arriving before both the parent and the root, ends up
+	 * in one thread with them once the parent (which references the root) arrives.
+	 *
+	 * @covers ::link
+	 */
+	public function test_truncated_reply_arriving_first_joins_once_its_parent_arrives(): void {
+		$repository = $this->make_repository();
+
+		$reply  = $this->save( $repository, $this->eml( 'reply@example.org', 'Re: Re: Order 123', 'parent@example.org', array( 'parent@example.org' ) ) );
+		$root   = $this->save( $repository, $this->eml( 'root@example.org', 'Order 123' ) );
+		$parent = $this->save( $repository, $this->eml( 'parent@example.org', 'Re: Order 123', 'root@example.org', array( 'root@example.org' ) ) );
+
+		$this->assertSame( array( $reply->post_id, $root->post_id, $parent->post_id ), $this->thread_post_ids( $parent ) );
+	}
 }
