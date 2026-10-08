@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest;
 
+use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Modal;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Account_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
@@ -42,6 +43,7 @@ use ZBateson\MailMimeParser\MailMimeParser;
  * `POST   /wp-json/bh-wp-mailboxes-dev/v2/fetch`    — run the fetch for the registered mailboxes.
  * `POST   /wp-json/bh-wp-mailboxes-dev/v2/users`    — create (or reset) a test user with a role and a known password.
  * `POST   /wp-json/bh-wp-mailboxes-dev/v2/editor-access` — set the level at which editors may use the e2e mailbox.
+ * `POST   /wp-json/bh-wp-mailboxes-dev/v2/simulate-playground` — treat the site as WordPress Playground (or stop).
  *
  * Fixtures are stored through the library's own repositories (the same code the production fetch and
  * REST-ingress paths use), so what the tests arrange is byte-for-byte what production would store; only
@@ -63,6 +65,12 @@ class Mailboxes {
 	 * remote-status badges, no "Connection:" line), as when they were parented to no account at all.
 	 */
 	const NO_CONNECTION_TYPE_CLASS = 'BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest\No_Connection';
+
+	/**
+	 * When set, the site is treated as WordPress Playground, so Playwright (which runs on wp-env) can check the
+	 * Playground-only UI.
+	 */
+	const SIMULATE_PLAYGROUND_OPTION = 'bh_wp_mailboxes_dev_simulate_playground';
 
 	/**
 	 * Constructor.
@@ -95,6 +103,38 @@ class Mailboxes {
 	 */
 	public function register_hooks(): void {
 		add_action( 'rest_api_init', $this->register_routes( ... ) );
+		add_filter( Email_Account_Modal::IS_WORDPRESS_PLAYGROUND_FILTER, $this->simulate_playground( ... ) );
+	}
+
+	/**
+	 * Treat the site as WordPress Playground while the simulate-playground option is set.
+	 *
+	 * @hooked bh_wp_mailboxes_is_wordpress_playground
+	 * @see Email_Account_Modal::is_wordpress_playground()
+	 *
+	 * @param bool $is_playground Whether the site was detected as WordPress Playground.
+	 */
+	public function simulate_playground( bool $is_playground ): bool {
+		return $is_playground || (bool) get_option( self::SIMULATE_PLAYGROUND_OPTION, false );
+	}
+
+	/**
+	 * Turn the simulated WordPress Playground on (`enabled` true, the default) or off. Returns
+	 * { enabled: bool } with HTTP 200.
+	 *
+	 * @param WP_REST_Request $request The REST request object.
+	 */
+	public function set_simulate_playground( WP_REST_Request $request ): WP_REST_Response {
+
+		$enabled = false !== $request->get_param( 'enabled' );
+
+		if ( $enabled ) {
+			update_option( self::SIMULATE_PLAYGROUND_OPTION, true, false );
+		} else {
+			delete_option( self::SIMULATE_PLAYGROUND_OPTION );
+		}
+
+		return new WP_REST_Response( array( 'enabled' => $enabled ), 200 );
 	}
 
 	/**
@@ -242,6 +282,22 @@ class Mailboxes {
 				'args'                => array(
 					'file' => array(
 						'type'     => 'string',
+						'required' => false,
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/simulate-playground',
+			array(
+				'methods'             => 'POST',
+				'callback'            => $this->set_simulate_playground( ... ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'enabled' => array(
+						'type'     => 'boolean',
 						'required' => false,
 					),
 				),

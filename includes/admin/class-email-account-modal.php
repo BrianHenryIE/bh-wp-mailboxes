@@ -33,6 +33,7 @@ namespace BrianHenryIE\WP_Mailboxes\Admin;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Connections\Imap\ImapEngine_Imap_Email_Connection;
 use BrianHenryIE\WP_Mailboxes\REST\REST_Namespace;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 
@@ -115,6 +116,33 @@ class Email_Account_Modal {
 	const PRINTED_ACTION = 'bh_wp_mailboxes_account_modal_printed';
 
 	/**
+	 * Filter: whether the site is treated as WordPress Playground, where the dialog warns that email cannot be checked.
+	 */
+	const IS_WORDPRESS_PLAYGROUND_FILTER = 'bh_wp_mailboxes_is_wordpress_playground';
+
+	/**
+	 * Whether the site is running in WordPress Playground. PHP there runs as WebAssembly in the browser and cannot
+	 * open network sockets, so an IMAP account can be saved but cannot connect to its server.
+	 */
+	public function is_wordpress_playground(): bool {
+		/**
+		 * Whether the site is treated as WordPress Playground (no outbound network connections).
+		 *
+		 * E.g. return true to preview the dialog's Playground warning on a normal install.
+		 *
+		 * @param bool   $is_playground    Detected from PHP's `SERVER_SOFTWARE` ("PHP.wasm").
+		 * @param string $plugin_slug      The plugin the library instance belongs to.
+		 * @param string $emails_post_type The emails post type, identifying the mailbox.
+		 */
+		return (bool) apply_filters(
+			self::IS_WORDPRESS_PLAYGROUND_FILTER,
+			ImapEngine_Imap_Email_Connection::is_php_wasm(),
+			$this->settings->get_plugin_slug(),
+			$this->settings->get_emails_cpt_underscored_20()
+		);
+	}
+
+	/**
 	 * Print the add/edit modal (IMAP fields only) and the delete
 	 * confirmation dialog. Printed once per page: by {@see Status_View::display()} on the emails list
 	 * screen, or by a consumer on `admin_footer` on their own screen; a second call is a no-op, as is any
@@ -143,6 +171,11 @@ class Email_Account_Modal {
 					<h2 id="bh-mailboxes-account-dialog-title" data-add-title="<?php esc_attr_e( 'Add IMAP account', 'bh-wp-mailboxes' ); ?>" data-edit-title="<?php esc_attr_e( 'Edit IMAP account', 'bh-wp-mailboxes' ); ?>"><?php esc_html_e( 'Add IMAP account', 'bh-wp-mailboxes' ); ?></h2>
 					<button type="button" class="bh-mailboxes-account-dialog__close" aria-label="<?php esc_attr_e( 'Close', 'bh-wp-mailboxes' ); ?>"><span class="dashicons dashicons-no-alt" aria-hidden="true"></span></button>
 				</div>
+				<?php if ( $this->is_wordpress_playground() ) : ?>
+					<div class="bh-mailboxes-account-form__playground-notice notice notice-warning inline">
+						<p><?php esc_html_e( 'This site is running in WordPress Playground, which cannot connect to mail servers. You can save this account, but it will not be able to check for email, and "Test connection" will fail.', 'bh-wp-mailboxes' ); ?></p>
+					</div>
+				<?php endif; ?>
 				<div class="bh-mailboxes-account-form__notice notice inline" hidden role="status"><p></p></div>
 				<input type="hidden" name="account_post_id" value="" />
 				<table class="form-table" role="presentation">
