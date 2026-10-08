@@ -1,0 +1,26 @@
+From: "Warehouse Team" <warehouse@logistics.example>
+To: support@example-shop.test
+Subject: Packing list for shipment 7781
+Date: Thu, 01 Oct 2026 15:40:00 +0000
+Message-ID: <demo-attachment-7781@logistics.example>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="demo-mixed-boundary"
+
+--demo-mixed-boundary
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Hi,
+
+Shipment 7781 left the warehouse this afternoon. The packing list is attached.
+
+Warehouse Team
+
+--demo-mixed-boundary
+Content-Type: text/csv; name="packing-list-7781.csv"
+Content-Disposition: attachment; filename="packing-list-7781.csv"
+Content-Transfer-Encoding: base64
+
+c2t1LGRlc2NyaXB0aW9uLHF1YW50aXR5Ck1VRy1SRUQsUmVkIGVuYW1lbCBtdWcsMgpURUEtRUIsRW5nbGlzaCBicmVha2Zhc3QgdGVhIDEwMGcsMQpDT0FTVC00LENvcmsgY29hc3RlcnMgc2V0IG9mIDQsMQo=
+
+--demo-mixed-boundary--
