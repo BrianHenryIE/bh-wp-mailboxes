@@ -5,6 +5,8 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
 use BrianHenryIE\WP_Mailboxes\Admin\Admin_Notices;
@@ -14,6 +16,7 @@ use BrianHenryIE\WP_Mailboxes\Admin\Single_Email_View;
 use BrianHenryIE\WP_Mailboxes\Admin\Status_View;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
 use BrianHenryIE\WP_Mailboxes\API\Email_Post_Deletion_Handler;
+use BrianHenryIE\WP_Mailboxes\API\Email_Thread_Linker;
 use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Manager;
 use BrianHenryIE\WP_Mailboxes\REST\Email_Accounts_REST_Controller;
 use BrianHenryIE\WP_Mailboxes\REST\Emails_REST_Controller;
@@ -63,6 +66,13 @@ class BH_WP_Mailboxes_Hooks {
 	protected BH_Email_Account_Factory $bh_email_account_factory;
 
 	/**
+	 * The taxonomy grouping this mailbox's emails into threads.
+	 *
+	 * @var BH_Email_Thread_Taxonomy
+	 */
+	protected BH_Email_Thread_Taxonomy $email_thread_taxonomy;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param API_Interface                      $api             Main API / BH_WP_Mailboxes instance.
@@ -76,10 +86,19 @@ class BH_WP_Mailboxes_Hooks {
 		protected LoggerInterface $logger,
 		protected ?Private_Uploads_API_Interface $private_uploads = null,
 	) {
-		$this->bh_email_factory                 = new BH_Email_Factory( $this->logger );
-		$this->email_wp_post_repository         = new Email_WP_Post_Repository( $this->settings->get_emails_cpt_underscored_20(), $this->bh_email_factory, $this->logger );
 		$this->bh_email_account_factory         = new BH_Email_Account_Factory( $this->logger );
 		$this->email_account_wp_post_repository = new Email_Account_WP_Post_Repository( $this->settings->get_email_accounts_cpt_underscored_20(), $this->bh_email_account_factory, $this->logger );
+
+		$emails_post_type               = $this->settings->get_emails_cpt_underscored_20();
+		$this->email_thread_taxonomy    = new BH_Email_Thread_Taxonomy( $emails_post_type, $this->logger );
+		$this->bh_email_factory         = new BH_Email_Factory( $this->logger );
+		$this->email_wp_post_repository = new Email_WP_Post_Repository(
+			$emails_post_type,
+			$this->bh_email_factory,
+			$this->logger,
+			// The account repository lets a thread span the mailbox's accounts.
+			new Email_Thread_Linker( $emails_post_type, $this->email_thread_taxonomy, $this->email_account_wp_post_repository, $this->logger )
+		);
 
 		$this->define_cpt_hooks();
 		$this->define_deletion_hooks();
@@ -128,6 +147,10 @@ class BH_WP_Mailboxes_Hooks {
 
 		add_action( 'init', $email_cpt->register_cpt( ... ) );
 		add_action( 'init', $email_cpt->register_post_statuses( ... ) );
+
+		// Threads: registered after the post type it attaches to; emptied threads (deleted or merged away) are removed.
+		add_action( 'init', $this->email_thread_taxonomy->register_taxonomy( ... ), 11 );
+		add_action( 'deleted_term_relationships', $this->email_thread_taxonomy->delete_empty_terms( ... ), 10, 3 );
 
 		add_filter( 'wp_insert_post_data', $email_cpt->prevent_content_edits( ... ), 10, 2 );
 		add_filter( 'wp_untrash_post_status', $email_cpt->restore_status_on_untrash( ... ), 10, 3 );

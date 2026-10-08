@@ -5,15 +5,20 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes\API\Repositories;
 
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Email_Thread_Linker;
 use BrianHenryIE\WP_Mailboxes\API\Model\BH_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Email_Status_Counts;
+use BrianHenryIE\WP_Mailboxes\API\Model\Email_Thread;
 use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\API\Queries\BH_Email_Query;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_Thread_Taxonomy;
 use BrianHenryIE\WP_Private_Uploads\API_Interface as Private_Uploads_API_Interface;
 use DateTimeInterface;
 use Exception;
@@ -25,6 +30,7 @@ use Psr\Log\NullLogger;
 use Throwable;
 use WP_Post;
 use ZBateson\MailMimeParser\Header\AddressHeader;
+use ZBateson\MailMimeParser\Header\HeaderConsts;
 use ZBateson\MailMimeParser\Message\IMessagePart;
 
 /**
@@ -37,18 +43,34 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 	use LoggerAwareTrait;
 
 	/**
+	 * Groups saved emails into conversation threads.
+	 *
+	 * @var Email_Thread_Linker
+	 */
+	protected Email_Thread_Linker $thread_linker;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param string           $post_type        The CPT slug, e.g. "my_plugin_emails".
-	 * @param BH_Email_Factory $bh_email_factory Factory for creating BH_Email instances.
-	 * @param ?LoggerInterface $logger           PSR-3 logger.
+	 * @param string               $post_type        The CPT slug, e.g. "my_plugin_emails".
+	 * @param BH_Email_Factory     $bh_email_factory Factory for creating BH_Email instances.
+	 * @param ?LoggerInterface     $logger           PSR-3 logger.
+	 * @param ?Email_Thread_Linker $thread_linker    Thread linker; built for this post type when omitted (then threads
+	 *                                               are matched within the saving account only).
 	 */
 	public function __construct(
 		protected string $post_type,
 		protected BH_Email_Factory $bh_email_factory,
-		?LoggerInterface $logger = null
+		?LoggerInterface $logger = null,
+		?Email_Thread_Linker $thread_linker = null,
 	) {
-		$this->logger = $logger ?? new NullLogger();
+		$this->logger        = $logger ?? new NullLogger();
+		$this->thread_linker = $thread_linker ?? new Email_Thread_Linker(
+			$post_type,
+			new BH_Email_Thread_Taxonomy( $post_type, $this->logger ),
+			null,
+			$this->logger
+		);
 	}
 
 	/**
@@ -91,6 +113,63 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 			}
 		}
 		return $emails;
+	}
+
+	/**
+	 * Load the conversation thread an email belongs to: every email sharing its thread term, oldest first.
+	 *
+	 * Trashed emails are left out (WP_Query's `any` status excludes `trash`), as are emails stored before
+	 * threading existed, which have no term.
+	 *
+	 * @param BH_Email $email The email whose thread to load.
+	 */
+	public function find_thread( BH_Email $email ): Email_Thread {
+
+		$term_id = $email->thread_term_id;
+		if ( is_null( $term_id ) ) {
+			return new Email_Thread( term_id: 0, slug: '', emails: array( $email ) );
+		}
+
+		$taxonomy = $this->thread_linker->get_taxonomy()->get_taxonomy_name();
+		$term     = get_term( $term_id, $taxonomy );
+		$slug     = $term instanceof \WP_Term ? $term->slug : '';
+
+		$query = new \WP_Query(
+			array(
+				'post_type'              => $this->post_type,
+				'post_status'            => 'any',
+				'posts_per_page'         => -1,
+				'update_post_meta_cache' => true,
+				'update_post_term_cache' => true,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query -- Threads are small; the term relationship table is indexed.
+				'tax_query'              => array(
+					array(
+						'taxonomy' => $taxonomy,
+						'field'    => 'term_id',
+						'terms'    => $term_id,
+					),
+				),
+			)
+		);
+
+		$emails = array();
+		foreach ( $query->get_posts() as $post ) {
+			if ( $post instanceof WP_Post ) {
+				$emails[] = $post->ID === $email->post_id ? $email : $this->bh_email_factory->from_wp_post( $post );
+			}
+		}
+
+		// Oldest first by sent date; emails whose Date header could not be parsed fall back to download time.
+		usort(
+			$emails,
+			function ( BH_Email $a, BH_Email $b ): int {
+				$a_time = ( $a->sent_at ?? $a->downloaded_at )?->getTimestamp() ?? 0;
+				$b_time = ( $b->sent_at ?? $b->downloaded_at )?->getTimestamp() ?? 0;
+				return $a_time <=> $b_time ?: $a->post_id <=> $b->post_id;
+			}
+		);
+
+		return new Email_Thread( term_id: $term_id, slug: $slug, emails: $emails );
 	}
 
 	/**
@@ -323,10 +402,65 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 			update_post_meta( $post_id, 'attachment_ids', (string) wp_json_encode( $attachment_ids ) );
 		}
 
+		// One meta row per referenced id (meta_input cannot write repeated keys), so later emails can find this one.
+		foreach ( Email_Thread_Linker::get_header_ids( $email, HeaderConsts::IN_REPLY_TO ) as $id ) {
+			add_post_meta( $post_id, Email_Thread_Linker::META_KEY_IN_REPLY_TO, $id );
+		}
+		foreach ( Email_Thread_Linker::get_header_ids( $email, HeaderConsts::REFERENCES ) as $id ) {
+			add_post_meta( $post_id, Email_Thread_Linker::META_KEY_REFERENCES, $id );
+		}
+
+		// Threading never blocks saving the email itself.
+		try {
+			$thread_result = $this->thread_linker->link( $post_id, $message_id, $email, $email_account );
+		} catch ( Throwable $exception ) {
+			$thread_result = null;
+			$this->logger->error(
+				'Failed to link email {post_id} into a thread: {error}',
+				array(
+					'post_id'   => $post_id,
+					'error'     => $exception->getMessage(),
+					'exception' => $exception,
+				)
+			);
+		}
+
 		$bh_email = $this->find_by_post_id( $post_id );
 
 		// Record the download in the email's log.
 		$this->log( $bh_email, 'Email downloaded.', false, array(), 'info' );
+
+		// Merging is irreversible, so note it on every email that was moved.
+		if ( ! is_null( $thread_result ) && array() !== $thread_result->merged_post_ids ) {
+			$this->log(
+				$bh_email,
+				sprintf(
+					/* translators: %d: number of emails */
+					_n( 'Bridged %d email from another thread into this one.', 'Bridged %d emails from another thread into this one.', count( $thread_result->merged_post_ids ), 'bh-wp-mailboxes' ),
+					count( $thread_result->merged_post_ids )
+				),
+				false,
+				array( 'merged_post_ids' => $thread_result->merged_post_ids ),
+				'notice'
+			);
+			foreach ( $thread_result->merged_post_ids as $merged_post_id ) {
+				try {
+					$this->log(
+						$this->find_by_post_id( $merged_post_id ),
+						sprintf(
+							/* translators: %s: email subject */
+							__( 'Merged into the thread of "%s".', 'bh-wp-mailboxes' ),
+							$bh_email->get_subject()
+						),
+						false,
+						array( 'thread_term_id' => $thread_result->term_id ),
+						'notice'
+					);
+				} catch ( InvalidArgumentException $exception ) {
+					$this->logger->debug( 'Merged email {post_id} no longer exists.', array( 'post_id' => $merged_post_id ) );
+				}
+			}
+		}
 
 		return $bh_email;
 	}

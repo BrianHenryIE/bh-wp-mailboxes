@@ -186,6 +186,18 @@ class Single_Email_View {
 			'default'
 		);
 
+		// Only when there is something to link to: a lone email has no thread worth showing.
+		if ( $this->email_wp_post_repository->find_thread( $email )->has_related_emails() ) {
+			add_meta_box(
+				'bh-email-thread',
+				__( 'Thread', 'bh-wp-mailboxes' ),
+				$this->render_thread_metabox( ... ),
+				$this->post_type,
+				'side',
+				'default'
+			);
+		}
+
 		add_meta_box(
 			'bh-email-log-notes',
 			__( 'Email Log', 'bh-wp-mailboxes' ),
@@ -582,6 +594,46 @@ class Single_Email_View {
 			echo '</li>';
 		}
 		echo '</ul>';
+	}
+
+	/**
+	 * Render the Thread metabox: the other emails in this conversation, oldest first, linking to each.
+	 *
+	 * The current email is listed in place (bold, unlinked) so the reader can see where it sits.
+	 *
+	 * @param WP_Post $post The email post being edited.
+	 */
+	public function render_thread_metabox( WP_Post $post ): void {
+
+		$email = $this->get_email_for_post( $post );
+		unset( $post );
+
+		$thread      = $this->email_wp_post_repository->find_thread( $email );
+		$date_option = get_option( 'date_format' );
+		$time_option = get_option( 'time_format' );
+		$date_format = ( is_string( $date_option ) ? $date_option : 'Y-m-d' ) . ' ' . ( is_string( $time_option ) ? $time_option : 'H:i' );
+
+		echo '<ol class="bh-email-thread-list">';
+		foreach ( $thread->emails as $thread_email ) {
+			$is_current = $thread_email->post_id === $email->post_id;
+			$sent_at    = $thread_email->sent_at ? wp_date( $date_format, $thread_email->sent_at->getTimestamp() ) : '';
+			$sender     = $thread_email->from_name ?? $thread_email->from_email;
+			$edit_link  = get_edit_post_link( $thread_email->post_id, 'raw' );
+
+			echo '<li class="bh-email-thread-list__item' . ( $is_current ? ' bh-email-thread-list__item--current' : '' ) . '" data-post-id="' . esc_attr( (string) $thread_email->post_id ) . '">';
+			if ( $is_current || ! is_string( $edit_link ) ) {
+				echo '<strong class="bh-email-thread-list__subject">' . esc_html( $thread_email->subject ) . '</strong>';
+			} else {
+				echo '<a class="bh-email-thread-list__subject" href="' . esc_url( $edit_link ) . '">' . esc_html( $thread_email->subject ) . '</a>';
+			}
+			echo '<span class="bh-email-thread-list__meta">' . esc_html( $sender );
+			if ( '' !== $sent_at ) {
+				echo ' &middot; ' . esc_html( (string) $sent_at );
+			}
+			echo '</span>';
+			echo '</li>';
+		}
+		echo '</ol>';
 	}
 
 	/**

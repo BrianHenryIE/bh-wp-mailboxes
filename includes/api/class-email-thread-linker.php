@@ -1,0 +1,384 @@
+<?php
+/**
+ * Assigns each newly saved email to a conversation thread.
+ *
+ * Threads are discovered from the RFC 5322 reference headers alone:
+ * - `Message-ID`: this email's id.
+ * - `In-Reply-To`: the id of the email replied to (the immediate parent).
+ * - `References`: the parent's `References` plus the parent's id, i.e. the ancestor chain, oldest first.
+ *
+ * No header is guaranteed to name the thread root (clients truncate `References`, or send only
+ * `In-Reply-To`), so, as in JWZ threading, an email joins every thread that shares *any* id with it,
+ * in either direction:
+ * - an existing email whose `Message-ID` is among this email's ids (an ancestor or sibling we hold), found
+ *   through the indexed `post_name` slug the repository already stores; and
+ * - an existing email whose `In-Reply-To`/`References` include one of this email's ids (a descendant, or a
+ *   sibling that shares an ancestor we never stored), found through the `in_reply_to`/`references` post meta.
+ *
+ * Matching on all of `References` (not just `In-Reply-To`) is what makes an inbox-only store work: two
+ * customer replies to our (unstored) outgoing mail still share the customer's original id. Emails may
+ * arrive out of order, so when an email bridges two existing threads they are merged.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc5322#section-3.6.4
+ * @see https://www.jwz.org/doc/threading.html
+ *
+ * @package brianhenryie/bh-wp-mailboxes
+ */
+
+declare(strict_types=1);
+
+namespace BrianHenryIE\WP_Mailboxes\API;
+
+use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
+use BrianHenryIE\WP_Mailboxes\API\Model\Email_Thread_Link_Result;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_Account_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_Thread_Taxonomy;
+use Psr\Log\LoggerAwareTrait;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
+use Throwable;
+use WP_Error;
+use ZBateson\MailMimeParser\Header\HeaderConsts;
+use ZBateson\MailMimeParser\Header\IdHeader;
+use ZBateson\MailMimeParser\IMessage;
+
+/**
+ * Links emails into thread taxonomy terms, merging threads when a late-arriving email bridges them.
+ */
+class Email_Thread_Linker {
+
+	use LoggerAwareTrait;
+
+	/**
+	 * Post meta key holding each `In-Reply-To` id (one row per id).
+	 */
+	public const META_KEY_IN_REPLY_TO = 'in_reply_to';
+
+	/**
+	 * Post meta key holding each `References` id (one row per id).
+	 */
+	public const META_KEY_REFERENCES = 'references';
+
+	/**
+	 * Constructor.
+	 *
+	 * @param string                            $post_type          The emails CPT slug.
+	 * @param BH_Email_Thread_Taxonomy          $taxonomy           The thread taxonomy for that post type.
+	 * @param ?Email_Account_WP_Post_Repository $account_repository Lists the mailbox's accounts so a thread can span accounts;
+	 *                                                              when omitted only the saving account's emails are matched by Message-ID.
+	 * @param ?LoggerInterface                  $logger             PSR-3 logger.
+	 */
+	public function __construct(
+		protected string $post_type,
+		protected BH_Email_Thread_Taxonomy $taxonomy,
+		protected ?Email_Account_WP_Post_Repository $account_repository = null,
+		?LoggerInterface $logger = null,
+	) {
+		$this->setLogger( $logger ?? new NullLogger() );
+	}
+
+	/**
+	 * The thread taxonomy this linker writes to.
+	 */
+	public function get_taxonomy(): BH_Email_Thread_Taxonomy {
+		return $this->taxonomy;
+	}
+
+	/**
+	 * Strip the angle brackets and whitespace from a Message-ID so ids compare equal however a client wrote them.
+	 *
+	 * @param string $message_id A raw header id, e.g. `<abc@example.com>`.
+	 */
+	public static function normalize_message_id( string $message_id ): string {
+		return trim( $message_id, " \t\n\r\0\x0B<>" );
+	}
+
+	/**
+	 * The normalized, de-duplicated ids in an id header (`In-Reply-To` or `References`), in header order.
+	 *
+	 * @param IMessage $message     The parsed email.
+	 * @param string   $header_name `HeaderConsts::IN_REPLY_TO` or `HeaderConsts::REFERENCES`.
+	 *
+	 * @return string[]
+	 */
+	public static function get_header_ids( IMessage $message, string $header_name ): array {
+		$header = $message->getHeader( $header_name );
+		if ( ! ( $header instanceof IdHeader ) ) {
+			return array();
+		}
+
+		$ids = array_map( self::normalize_message_id( ... ), $header->getIds() );
+
+		return array_values( array_unique( array_filter( $ids, fn( string $id ): bool => '' !== $id ) ) );
+	}
+
+	/**
+	 * Assign a just-saved email to its thread, creating or merging threads as needed.
+	 *
+	 * Call after the email's `in_reply_to`/`references` meta has been written, so later emails can find it.
+	 *
+	 * @param int              $post_id    The saved email's post id.
+	 * @param string           $message_id The email's Message-ID (or the connection's stable fallback id).
+	 * @param IMessage         $message    The parsed email, for its `In-Reply-To` and `References` headers.
+	 * @param BH_Email_Account $account    The account the email was filed under.
+	 */
+	public function link( int $post_id, string $message_id, IMessage $message, BH_Email_Account $account ): Email_Thread_Link_Result {
+
+		$this->taxonomy->register_taxonomy();
+		$taxonomy = $this->taxonomy->get_taxonomy_name();
+
+		$own_id      = self::normalize_message_id( $message_id );
+		$in_reply_to = self::get_header_ids( $message, HeaderConsts::IN_REPLY_TO );
+		$references  = self::get_header_ids( $message, HeaderConsts::REFERENCES );
+
+		$ids = array_values(
+			array_unique(
+				array_filter(
+					array_merge( array( $own_id ), $in_reply_to, $references ),
+					fn( string $id ): bool => '' !== $id
+				)
+			)
+		);
+
+		$related_post_ids = array() === $ids
+			? array()
+			: $this->find_related_post_ids( $ids, $this->get_account_email_addresses( $account ), $post_id );
+
+		// One query: which thread terms do the related emails already belong to, and which related emails have none
+		// (emails stored before threading existed, since there is no backfill).
+		$term_ids            = array();
+		$related_with_a_term = array();
+		if ( array() !== $related_post_ids ) {
+			$relationships = wp_get_object_terms( $related_post_ids, $taxonomy, array( 'fields' => 'all_with_object_id' ) );
+			if ( $relationships instanceof WP_Error ) {
+				$this->logger->warning(
+					'Failed to read thread terms for related emails: {error}',
+					array(
+						'error'   => $relationships->get_error_message(),
+						'post_id' => $post_id,
+					)
+				);
+			} else {
+				foreach ( $relationships as $term ) {
+					// `all_with_object_id` adds a dynamic `object_id` to each WP_Term.
+					$object_id = get_object_vars( $term )['object_id'] ?? null;
+					if ( ! is_numeric( $object_id ) ) {
+						continue;
+					}
+					$term_ids[]            = $term->term_id;
+					$related_with_a_term[] = (int) $object_id;
+				}
+			}
+		}
+		$term_ids = array_values( array_unique( $term_ids ) );
+
+		$is_new_thread   = array() === $term_ids;
+		$merged_post_ids = array();
+
+		if ( $is_new_thread ) {
+			// The oldest id we know of is the best guess at the root; it only seeds the slug.
+			$root_id = $references[0] ?? $in_reply_to[0] ?? $own_id;
+			$term_id = $this->create_term( $root_id, $message->getSubject() ?? '', $taxonomy );
+		} else {
+			// Keep the oldest thread; the email bridges the others into it.
+			$term_id = min( $term_ids );
+			foreach ( $term_ids as $other_term_id ) {
+				if ( $other_term_id === $term_id ) {
+					continue;
+				}
+				$merged_post_ids = array_merge( $merged_post_ids, $this->move_thread( $other_term_id, $term_id, $taxonomy ) );
+			}
+		}
+
+		$this->set_thread( $post_id, $term_id, $taxonomy );
+
+		foreach ( array_diff( $related_post_ids, $related_with_a_term ) as $unthreaded_post_id ) {
+			$this->set_thread( $unthreaded_post_id, $term_id, $taxonomy );
+		}
+
+		return new Email_Thread_Link_Result(
+			term_id: $term_id,
+			is_new_thread: $is_new_thread,
+			merged_post_ids: array_values( array_unique( $merged_post_ids ) ),
+		);
+	}
+
+	/**
+	 * Stored emails connected to any of the given ids, in either direction.
+	 *
+	 * @param string[] $ids                     Normalized Message-IDs: the email's own, its In-Reply-To and its References.
+	 * @param string[] $account_email_addresses Accounts whose emails may hold one of those ids (for the post_name slug lookup).
+	 * @param int      $exclude_post_id         The email being linked.
+	 *
+	 * @return int[] Post ids.
+	 */
+	protected function find_related_post_ids( array $ids, array $account_email_addresses, int $exclude_post_id ): array {
+		/**
+		 * The WordPress database ORM.
+		 *
+		 * @var \wpdb $wpdb
+		 */
+		global $wpdb;
+
+		$slugs = array();
+		foreach ( $account_email_addresses as $account_email_address ) {
+			foreach ( $ids as $id ) {
+				$slugs[] = Email_WP_Post_Repository::message_id_slug( $account_email_address, $id );
+			}
+		}
+		$slugs = array_values( array_unique( $slugs ) );
+
+		$id_placeholders   = implode( ',', array_fill( 0, count( $ids ), '%s' ) );
+		$slug_placeholders = implode( ',', array_fill( 0, count( $slugs ), '%s' ) );
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- The interpolated strings are only `%s` placeholder lists; every value is passed to prepare() in one array, which phpcs cannot count.
+		$sql = $wpdb->prepare(
+			"SELECT DISTINCT p.ID
+			FROM %i p
+			LEFT JOIN %i pm ON pm.post_id = p.ID AND pm.meta_key IN (%s, %s)
+			WHERE p.post_type = %s
+			AND p.ID != %d
+			AND ( p.post_name IN ({$slug_placeholders}) OR pm.meta_value IN ({$id_placeholders}) )",
+			array_merge(
+				array( $wpdb->posts, $wpdb->postmeta, self::META_KEY_IN_REPLY_TO, self::META_KEY_REFERENCES, $this->post_type, $exclude_post_id ),
+				$slugs,
+				$ids
+			)
+		);
+		// phpcs:enable
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Prepared above; a one-off lookup at save time.
+		$results = $wpdb->get_col( $sql );
+
+		return array_values( array_map( 'intval', array_filter( $results, 'is_numeric' ) ) );
+	}
+
+	/**
+	 * The email addresses whose stored emails may be part of the thread: every account in the mailbox when the
+	 * account repository is available, otherwise just the saving account.
+	 *
+	 * @param BH_Email_Account $account The account the email was filed under.
+	 *
+	 * @return string[]
+	 */
+	protected function get_account_email_addresses( BH_Email_Account $account ): array {
+		$addresses = array( $account->get_account_email_address() );
+
+		if ( ! is_null( $this->account_repository ) ) {
+			try {
+				foreach ( $this->account_repository->get_all() as $mailbox_account ) {
+					$addresses[] = $mailbox_account->get_account_email_address();
+				}
+			} catch ( Throwable $exception ) {
+				$this->logger->warning(
+					'Failed to list mailbox accounts for thread linking; matching only the saving account: {error}',
+					array( 'error' => $exception->getMessage() )
+				);
+			}
+		}
+
+		return array_values( array_unique( array_filter( $addresses, fn( string $address ): bool => '' !== $address ) ) );
+	}
+
+	/**
+	 * Create the thread term, or reuse it if the root id has already produced one.
+	 *
+	 * @param string $root_id  The id believed to be the thread's root; hashed into the slug.
+	 * @param string $subject  The first email's subject, used as the display name only.
+	 * @param string $taxonomy The thread taxonomy.
+	 *
+	 * @throws \RuntimeException When WordPress refuses to create the term.
+	 */
+	protected function create_term( string $root_id, string $subject, string $taxonomy ): int {
+		$slug = sha1( $root_id );
+		$name = trim( $subject );
+		if ( '' === $name ) {
+			$name = $root_id;
+		}
+		$name = mb_substr( $name, 0, 200 );
+
+		$result = wp_insert_term( $name, $taxonomy, array( 'slug' => $slug ) );
+
+		if ( $result instanceof WP_Error ) {
+			// The slug is already a thread (same root id): join it.
+			$existing = $result->get_error_data( 'term_exists' );
+			if ( is_numeric( $existing ) ) {
+				return (int) $existing;
+			}
+			$this->logger->error(
+				'Failed to create email thread term: {error}',
+				array(
+					'error' => $result->get_error_message(),
+					'slug'  => $slug,
+				)
+			);
+			throw new \RuntimeException( 'Failed to create email thread term: ' . esc_html( $result->get_error_message() ) );
+		}
+
+		return (int) $result['term_id'];
+	}
+
+	/**
+	 * Move every email in one thread into another. The emptied term is deleted by
+	 * {@see BH_Email_Thread_Taxonomy::delete_empty_terms()} when its last relationship is removed.
+	 *
+	 * @param int    $from_term_id The thread being merged away.
+	 * @param int    $into_term_id The thread being kept.
+	 * @param string $taxonomy     The thread taxonomy.
+	 *
+	 * @return int[] The post ids moved.
+	 */
+	protected function move_thread( int $from_term_id, int $into_term_id, string $taxonomy ): array {
+		$post_ids = get_objects_in_term( $from_term_id, $taxonomy );
+		if ( $post_ids instanceof WP_Error ) {
+			$this->logger->warning(
+				'Failed to list emails in thread {term_id} for merging: {error}',
+				array(
+					'term_id' => $from_term_id,
+					'error'   => $post_ids->get_error_message(),
+				)
+			);
+			return array();
+		}
+
+		$moved = array();
+		foreach ( $post_ids as $post_id ) {
+			$post_id = (int) $post_id;
+			$this->set_thread( $post_id, $into_term_id, $taxonomy );
+			$moved[] = $post_id;
+		}
+
+		$this->logger->info(
+			'Merged email thread {from_term_id} into {into_term_id} ({count} emails).',
+			array(
+				'from_term_id' => $from_term_id,
+				'into_term_id' => $into_term_id,
+				'count'        => count( $moved ),
+			)
+		);
+
+		return $moved;
+	}
+
+	/**
+	 * Replace an email's thread term.
+	 *
+	 * @param int    $post_id  The email.
+	 * @param int    $term_id  Its thread.
+	 * @param string $taxonomy The thread taxonomy.
+	 */
+	protected function set_thread( int $post_id, int $term_id, string $taxonomy ): void {
+		$result = wp_set_object_terms( $post_id, $term_id, $taxonomy, false );
+		if ( $result instanceof WP_Error ) {
+			$this->logger->warning(
+				'Failed to assign email {post_id} to thread {term_id}: {error}',
+				array(
+					'post_id' => $post_id,
+					'term_id' => $term_id,
+					'error'   => $result->get_error_message(),
+				)
+			);
+		}
+	}
+}

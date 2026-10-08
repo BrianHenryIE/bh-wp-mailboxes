@@ -9,6 +9,8 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Rest;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
@@ -195,6 +197,14 @@ class Mailboxes {
 						'required' => false,
 					),
 					'date_header'       => array(
+						'type'     => 'string',
+						'required' => false,
+					),
+					'in_reply_to'       => array(
+						'type'     => 'string',
+						'required' => false,
+					),
+					'references'        => array(
 						'type'     => 'string',
 						'required' => false,
 					),
@@ -514,7 +524,12 @@ class Mailboxes {
 		// A unique Message-ID keeps the repository's dedupe from matching an earlier fixture email.
 		$message_id = sprintf( '<e2e-fixture-%s@bh-wp-mailboxes.test>', wp_generate_uuid4() );
 
-		$raw_mime = $this->build_mime( $subject, $message_id, $body_plain, $body_html, $date_header );
+		// Threading headers (e.g. `<id-1@example.com> <id-2@example.com>`), so a test can build a conversation.
+		// Not sanitize_text_field(): it strips the angle-bracketed ids as though they were HTML tags.
+		$in_reply_to = is_string( $request->get_param( 'in_reply_to' ) ) ? $this->sanitize_message_id_list( $request->get_param( 'in_reply_to' ) ) : null;
+		$references  = is_string( $request->get_param( 'references' ) ) ? $this->sanitize_message_id_list( $request->get_param( 'references' ) ) : null;
+
+		$raw_mime = $this->build_mime( $subject, $message_id, $body_plain, $body_html, $date_header, $in_reply_to, $references );
 
 		try {
 			$message = new MailMimeParser()->parse( $raw_mime, true );
@@ -522,7 +537,8 @@ class Mailboxes {
 			$bh_email = $this->email_repository()->save_new(
 				new Fetched_Email(
 					$message,
-					new Remote_Email_Coordinates( $message_id ),
+					// The parsed id (no angle brackets), as the real connections store it; the dedupe slug and thread linking key on it.
+					new Remote_Email_Coordinates( $message->getMessageId() ?? $message_id ),
 					is_remote_read: true === $is_read,
 				),
 				$this->e2e_mailbox_settings,
@@ -567,7 +583,28 @@ class Mailboxes {
 			);
 		}
 
-		return new WP_REST_Response( array( 'post_id' => $post_id ), 201 );
+		return new WP_REST_Response(
+			array(
+				'post_id'    => $post_id,
+				'message_id' => $message_id,
+			),
+			201
+		);
+	}
+
+	/**
+	 * Reduce a Message-ID list header value to its ids, each re-wrapped in angle brackets: anything that is
+	 * not an `local@domain` token is dropped, which also rules out header injection via line breaks.
+	 *
+	 * @param string $value e.g. `<a@example.com> <b@example.com>`.
+	 *
+	 * @return ?string The cleaned header value, or null when it holds no ids.
+	 */
+	private function sanitize_message_id_list( string $value ): ?string {
+		if ( 1 > preg_match_all( '/<?([^\s<>@]+@[^\s<>@]+)>?/', $value, $matches ) ) {
+			return null;
+		}
+		return implode( ' ', array_map( fn( string $id ): string => "<{$id}>", $matches[1] ) );
 	}
 
 	/**
@@ -841,14 +878,22 @@ class Mailboxes {
 	 * @param string  $plain       Plain-text body (may be empty).
 	 * @param string  $html        HTML body (may be empty).
 	 * @param ?string $date_header RFC2822 Date header value, or null for no Date header.
+	 * @param ?string $in_reply_to In-Reply-To header value (angle-bracketed ids), or null for none.
+	 * @param ?string $references  References header value (space-separated angle-bracketed ids), or null for none.
 	 */
-	protected function build_mime( string $subject, string $message_id, string $plain, string $html, ?string $date_header ): string {
+	protected function build_mime( string $subject, string $message_id, string $plain, string $html, ?string $date_header, ?string $in_reply_to = null, ?string $references = null ): string {
 
 		$headers  = "From: fixture@bh-wp-mailboxes.test\r\n";
 		$headers .= "Subject: $subject\r\n";
 		$headers .= "Message-ID: $message_id\r\n";
 		if ( null !== $date_header && '' !== $date_header ) {
 			$headers .= "Date: $date_header\r\n";
+		}
+		if ( null !== $in_reply_to && '' !== $in_reply_to ) {
+			$headers .= "In-Reply-To: $in_reply_to\r\n";
+		}
+		if ( null !== $references && '' !== $references ) {
+			$headers .= "References: $references\r\n";
 		}
 		$headers .= "MIME-Version: 1.0\r\n";
 

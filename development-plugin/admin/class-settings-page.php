@@ -11,9 +11,12 @@
  * @package brianhenryie/bh-wp-mailboxes-development-plugin
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes_Development_Plugin\Admin;
 
 use BrianHenryIE\WP_Mailboxes\Admin\Email_Account_Modal;
+use BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_Thread_Taxonomy;
 use BrianHenryIE\WP_Mailboxes\WP_Includes\Mailbox_Capabilities;
 use BrianHenryIE\WP_Mailboxes\Account_Credentials_Interface;
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
@@ -38,7 +41,7 @@ use Throwable;
 /**
  * Renders and handles the development plugin's settings page.
  */
-class Settings {
+class Settings_Page {
 
 	public const MENU_SLUG                 = 'development-plugin-settings';
 	public const SAVE_ACTION               = 'bh_wp_mailboxes_dev_save_imap';
@@ -975,6 +978,17 @@ class Settings {
 
 			echo '<h3>' . esc_html( $settings->get_emails_cpt_friendly_name() ) . '</h3>';
 			$this->render_cpt_statuses( $settings->get_emails_cpt_underscored_20(), self::EMAIL_STATUSES );
+
+			$thread_taxonomy = BH_Email_Thread_Taxonomy::taxonomy_name_for_post_type( $settings->get_emails_cpt_underscored_20() );
+			$thread_count    = taxonomy_exists( $thread_taxonomy ) ? wp_count_terms(
+				array(
+					'taxonomy'   => $thread_taxonomy,
+					'hide_empty' => false,
+				)
+			) : 0;
+			echo '<p>Thread taxonomy: <code>' . esc_html( $thread_taxonomy ) . '</code>'
+				. ( taxonomy_exists( $thread_taxonomy ) ? ' (' . esc_html( (string) ( is_numeric( $thread_count ) ? (int) $thread_count : 0 ) ) . ' threads)' : ' (not registered)' )
+				. '</p>';
 
 			echo '<h3>' . esc_html( $settings->get_email_accounts_cpt_friendly_name() ) . '</h3>';
 			$this->render_cpt_statuses( $settings->get_email_accounts_cpt_underscored_20(), self::ACCOUNT_STATUSES );
