@@ -220,7 +220,7 @@ class BH_WP_Mailboxes_Hooks {
 
 		$cron = new Cron( $this->api, $this->settings, $this->logger );
 
-		add_action( 'plugins_loaded', $cron->add_cron_jobs( ... ), 20 );
+		add_action( 'init', $cron->add_cron_jobs( ... ), 20 );
 
 		// {cpt_name}_fetch_emails_job.
 		add_action( $cron->get_fetch_emails_cron_hook_name(), $cron->background_fetch_emails( ... ) );

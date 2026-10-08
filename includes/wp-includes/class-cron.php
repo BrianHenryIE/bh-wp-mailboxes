@@ -58,7 +58,7 @@ class Cron {
 	/**
 	 * Schedules or deletes the cron as per the settings.
 	 *
-	 * @hooked plugins_loaded
+	 * @hooked init
 	 */
 	public function add_cron_jobs(): void {
 
@@ -86,6 +86,7 @@ class Cron {
 			$next_scheduled_event = wp_next_scheduled( $hook );
 			if ( false === $next_scheduled_event ) {
 				$schedule = $scheduled_jobs_settings[ $name ];
+				// Calling this on `plugins_loaded` was calling `WC_Install::cron_schedules()` which was calling `_load_textdomain_just_in_time()` too early.
 				wp_schedule_event( time(), $schedule, $hook );
 			}
 		}
