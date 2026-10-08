@@ -416,16 +416,17 @@ test.describe( 'Single email view', () => {
 	// Requirement 14: Attachments metabox in side column
 	// -------------------------------------------------------------------------
 
-	// Attachments metabox registration is commented out in class-single-email-view.php pending
-	// a decision on how attachment file paths are stored. Skip until re-enabled.
-	test.skip( 'Attachments metabox appears inside the side-sortables column', async ( { admin, page, request } ) => {
-		const postId = await createEmail( request, { has_attachment: true } );
+	// The metabox is shown for every email, so one without attachments says "No attachments.". Saving and
+	// downloading attachments is covered by email-attachments-lifecycle.spec.ts.
+	test( 'Attachments metabox appears inside the side-sortables column', async ( { admin, page, request } ) => {
+		const postId = await createEmail( request );
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
 
-		// #side-sortables is the WordPress container for all side-column metaboxes.
-		await expect(
-			page.locator( '#side-sortables #bh-email-attachments' )
-		).toBeVisible();
+		// #side-sortables is the WordPress container for all side-column metaboxes. toBeAttached (not
+		// toBeVisible): postbox collapse state is shared per-user across parallel tests.
+		const metabox = page.locator( '#side-sortables #bh-email-attachments' );
+		await expect( metabox ).toBeAttached();
+		await expect( metabox.locator( '.bh-email-attachments--empty' ) ).toHaveText( 'No attachments.' );
 	} );
 
 	// -------------------------------------------------------------------------

@@ -6,6 +6,8 @@
  * @package brianhenryie/bh-wp-mailboxes
  */
 
+declare(strict_types=1);
+
 namespace BrianHenryIE\WP_Mailboxes\API\Factories;
 
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
@@ -150,5 +152,43 @@ class BH_Email_Factory_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WPUnit_Tes
 		$this->assertSame( '2025-07-30 03:38:07', $sent_at->format( 'Y-m-d H:i:s' ) );
 		$this->assertNotNull( $result->body_html, 'HTML body should be present' );
 		$this->assertNull( $result->body_plain_text, 'Plain-text body should be absent' );
+	}
+	/**
+	 * How the `attachment_ids` post meta hydrates: missing or empty means attachments were disabled (null);
+	 * otherwise enabled, so an unreadable or non-list value is no attachments; only integer ids are kept, as a list.
+	 *
+	 * @return array<string, array{0: ?string, 1: ?array<int>}> The stored meta value (null: none), and the expected hydration.
+	 */
+	public static function attachment_ids_provider(): array {
+		return array(
+			'missing: disabled'           => array( null, null ),
+			'empty list: none'            => array( '[]', array() ),
+			'two ids'                     => array( '[12,34]', array( 12, 34 ) ),
+			'non-integers are filtered'   => array( '[12,"34",null,5.5,56]', array( 12, 56 ) ),
+			'malformed JSON: none'        => array( '[12,', array() ),
+			'not a list: treated as none' => array( '"text"', array() ),
+		);
+	}
+
+	/**
+	 * @dataProvider attachment_ids_provider
+	 *
+	 * @covers ::from_wp_post
+	 *
+	 * @param ?string     $stored   The `attachment_ids` meta value, or null for no meta.
+	 * @param ?array<int> $expected The hydrated `BH_Email::$attachment_ids`.
+	 */
+	public function test_from_wp_post_hydrates_attachment_ids( ?string $stored, ?array $expected ): void {
+		$bh_email = BH_Email_Fixture::make_from_file( (string) codecept_root_dir( 'tests/_data/wpunit/non-multipart.eml' ) );
+
+		delete_post_meta( $bh_email->post_id, 'attachment_ids' );
+		if ( ! is_null( $stored ) ) {
+			update_post_meta( $bh_email->post_id, 'attachment_ids', $stored );
+		}
+
+		$post = get_post( $bh_email->post_id );
+		$this->assertInstanceOf( WP_Post::class, $post );
+
+		$this->assertSame( $expected, ( new BH_Email_Factory( $this->logger ) )->from_wp_post( $post )->attachment_ids );
 	}
 }

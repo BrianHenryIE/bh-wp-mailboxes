@@ -581,7 +581,7 @@ class Single_Email_View {
 
 		echo '<ul class="bh-email-attachments-list">';
 		foreach ( $attachment_ids as $attachment_id ) {
-			$url           = wp_get_attachment_url( $attachment_id );
+			$url           = $this->get_attachment_download_url( $attachment_id );
 			$attached_file = get_attached_file( $attachment_id );
 			$attachment    = get_post( $attachment_id );
 			$filename      = basename( $attached_file ?: ( $attachment ? $attachment->post_title : '' ) );
@@ -594,6 +594,25 @@ class Single_Email_View {
 			echo '</li>';
 		}
 		echo '</ul>';
+	}
+
+	/**
+	 * The URL of a saved attachment's file, or null when the post records no file.
+	 *
+	 * `wp_get_attachment_url()` cannot be used: it returns false for any post type other than `attachment`, and
+	 * email attachments are posts of the private-uploads post type. The URL is built the same way, from the
+	 * uploads base URL and the file's uploads-relative path. Requests to it are routed by the private-uploads
+	 * rewrite rule, which serves the file only to permitted users (by default those who can `manage_options`).
+	 *
+	 * @param int $attachment_post_id The private-uploads post recording the attachment.
+	 */
+	protected function get_attachment_download_url( int $attachment_post_id ): ?string {
+		$relative_path = get_post_meta( $attachment_post_id, '_wp_attached_file', true );
+		if ( ! is_string( $relative_path ) || '' === $relative_path ) {
+			return null;
+		}
+
+		return wp_upload_dir( null, false )['baseurl'] . '/' . ltrim( $relative_path, '/' );
 	}
 
 	/**

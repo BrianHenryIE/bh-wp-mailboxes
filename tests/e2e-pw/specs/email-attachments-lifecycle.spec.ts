@@ -3,7 +3,8 @@
  *
  * Delivers a multipart email with an attachment through the REST ingress (the same path the Cloudflare
  * worker uses), then proves: the attachment is saved as a private-uploads post with its file on disk and
- * listed on the single email view; trashing the email (wp-admin's "Trash locally" row action) trashes
+ * listed on the single email view as a link the administrator can download and a logged-out visitor
+ * cannot; trashing the email (wp-admin's "Trash locally" row action) trashes
  * the attachment post and keeps the file; restoring the email restores the attachment to its previous
  * status; permanently deleting the email deletes the attachment post and its file.
  *
@@ -113,9 +114,25 @@ test.describe( 'Email attachments — save, trash, restore, delete', () => {
 		expect( attachment.file ).toMatch( /\/minutes(-\d+)?\.csv$/ ); // WordPress uniquifies repeated filenames.
 		expect( attachment.file_exists ).toBe( true );
 
-		// Listed on the single email view.
+		// Listed on the single email view, as a download link.
 		await admin.visitAdminPage( 'post.php', `post=${ postId }&action=edit` );
-		await expect( page.locator( '#bh-email-attachments .bh-email-attachments-list' ) ).toContainText( /minutes(-\d+)?\.csv/ );
+		const link = page.locator( '#bh-email-attachments .bh-email-attachments-list a[download]' );
+		await expect( link ).toHaveText( /minutes(-\d+)?\.csv/ );
+		const href = await link.getAttribute( 'href' );
+		expect( href ).toBeTruthy();
+
+		// The administrator downloads the file's content (fetched in the page, with their cookies). (#147)
+		const download = await page.evaluate( async ( url ) => {
+			const response = await fetch( url, { credentials: 'same-origin' } );
+			return { status: response.status, body: await response.text() };
+		}, href! );
+		expect( download.status ).toBe( 200 );
+		expect( download.body ).toBe( 'name,role\nBrian,chair\n' );
+
+		// Private: a logged-out request does not get the file.
+		const anonymous = await fetch( href!, { redirect: 'manual' } );
+		expect( anonymous.status ).not.toBe( 200 );
+		expect( await anonymous.text() ).not.toContain( 'Brian,chair' );
 
 		// Trash locally, from the list's row action (a core link).
 		await admin.visitAdminPage( 'edit.php', `post_type=${ POST_TYPE }&s=${ encodeURIComponent( fixture.subject ) }` );

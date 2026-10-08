@@ -466,6 +466,18 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 	}
 
 	/**
+	 * A filename for an attachment part that has none, with an extension from its content type, e.g.
+	 * `attachment.txt`, so the upload's file type check can accept it.
+	 *
+	 * @param IMessagePart $part The attachment part.
+	 */
+	private function get_unnamed_attachment_filename( IMessagePart $part ): string {
+		$extension = wp_get_default_extension_for_mime_type( $part->getContentType() );
+
+		return is_string( $extension ) && '' !== $extension ? "attachment.{$extension}" : 'attachment';
+	}
+
+	/**
 	 * Save each email attachment into the private uploads directory, returning the created post ids.
 	 *
 	 * Each attachment is independent: a failure is logged and the others still save, so one bad
@@ -489,7 +501,7 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 		}
 
 		foreach ( $attachment_parts as $part ) {
-			$filename = $part->getFilename() ?? 'attachment';
+			$filename = $part->getFilename() ?? $this->get_unnamed_attachment_filename( $part );
 			$tmp_file = wp_tempnam( $filename );
 
 			try {
