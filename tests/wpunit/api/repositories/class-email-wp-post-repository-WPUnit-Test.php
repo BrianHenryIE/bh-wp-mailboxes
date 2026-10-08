@@ -13,6 +13,7 @@ use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
 use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
 use BrianHenryIE\WP_Mailboxes\API\Queries\WP_Post_Query_Abstract;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Model\Email_Status_Counts;
 use BrianHenryIE\WP_Mailboxes\BH_Email_Account;
 use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
 use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
@@ -531,5 +532,69 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 
 		$none = $sut->count_by_status_for_account_email( BH_Email_Account_Fixture::make( post_id: 502, post_type: 'test_accounts' ) );
 		$this->assertSame( 0, $none->total() );
+	}
+
+	/**
+	 * The per-status counts are cached in the `counts` group, keyed on the posts "last changed" token
+	 * as WP_Query's cache is, so without registering any hooks every way an email can change (save,
+	 * status update, trash, untrash, permanent delete) is reflected in the next count, and a repeat
+	 * call with nothing changed is served from the cache. The plain count is derived from the same
+	 * cached counts.
+	 *
+	 * @covers ::count_by_status_for_account_email
+	 * @covers ::count_for_account_email
+	 */
+	public function test_count_by_status_is_cached_on_posts_last_changed(): void {
+
+		$post_type = 'test_post_type';
+		$sut       = new Email_WP_Post_Repository( $post_type, new BH_Email_Factory( $this->logger ), $this->logger );
+		$account   = BH_Email_Account_Fixture::make( post_id: 600, post_type: 'test_accounts' );
+
+		// Register the custom statuses so wp_update_post()/untrash keep them; restore-on-untrash as in production.
+		$settings = Mockery::mock( \BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface::class );
+		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $post_type );
+		$settings->allows( 'get_emails_cpt_friendly_name' )->andReturn( 'Test Emails' );
+		$cpt = new \BrianHenryIE\WP_Mailboxes\WP_Includes\BH_Email_CPT( $settings, $this->logger );
+		$cpt->register_post_statuses();
+			add_filter( 'wp_untrash_post_status', $cpt->restore_status_on_untrash( ... ), 10, 3 );
+
+			$this->assertSame( 0, $sut->count_by_status_for_account_email( $account )->total(), 'Primes the cache.' );
+
+			$key_for = fn(): string => 'bh_email_status_counts:test_post_type:600:' . wp_cache_get_last_changed( 'posts' );
+			$this->assertInstanceOf( Email_Status_Counts::class, wp_cache_get( $key_for(), 'counts' ), 'The result is stored in the counts group under the last-changed key.' );
+
+			$email_id = $this->factory()->post->create(
+				array(
+					'post_type'   => $post_type,
+					'post_status' => 'bh_email_new',
+					'post_parent' => 600,
+				)
+			);
+			$this->assertSame( 1, $sut->count_by_status_for_account_email( $account )->new_count, 'A saved email is counted.' );
+
+			// A repeat call with nothing changed is a cache hit: the SQL is not re-run.
+			global $wpdb;
+			$queries_before = $wpdb->num_queries;
+			$this->assertSame( 1, $sut->count_for_account_email( $account ), 'The plain count is the cached total.' );
+			$this->assertSame( $queries_before, $wpdb->num_queries, 'Served from the cache.' );
+
+			wp_update_post(
+				array(
+					'ID'          => $email_id,
+					'post_status' => 'bh_email_processed',
+				)
+			);
+			$counts = $sut->count_by_status_for_account_email( $account );
+			$this->assertSame( 0, $counts->new_count );
+			$this->assertSame( 1, $counts->processed_count, 'A status change is counted.' );
+
+			wp_trash_post( $email_id );
+			$this->assertSame( 0, $sut->count_by_status_for_account_email( $account )->total(), 'A trashed email is not counted.' );
+
+			wp_untrash_post( $email_id );
+			$this->assertSame( 1, $sut->count_by_status_for_account_email( $account )->processed_count, 'An untrashed email is counted again, in its restored status.' );
+
+			wp_delete_post( $email_id, true );
+			$this->assertSame( 0, $sut->count_by_status_for_account_email( $account )->total(), 'A deleted email is not counted.' );
 	}
 }

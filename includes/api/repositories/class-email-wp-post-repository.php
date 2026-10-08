@@ -178,38 +178,39 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 	}
 
 	/**
-	 * Returns the number of saved emails for a given account email address.
+	 * Returns the number of saved (non-trashed) emails for a given account.
 	 *
-	 * Emails record their account as the post_parent (an indexed column), so this counts directly by it.
-	 *
-	 * @param BH_Email_Account $email_account The mailbox, e.g. "contact@example.com".
+	 * @param BH_Email_Account $email_account The mailbox account.
 	 */
 	public function count_for_account_email( BH_Email_Account $email_account ): int {
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$count = $wpdb->get_var(
-			$wpdb->prepare(
-				'SELECT COUNT(*) FROM %i WHERE post_type = %s AND post_status != \'trash\' AND post_parent = %s',
-				$wpdb->posts,
-				$this->post_type,
-				$email_account->get_post_id()
-			)
-		);
-		return is_numeric( $count )
-			? (int) $count
-			: ( function () {
-				throw new Exception( 'count was no numeric.' );
-			} )();
+		return $this->count_by_status_for_account_email( $email_account )->total();
 	}
 
 	/**
 	 * Counts the account's non-trashed emails in each local status with one grouped query.
 	 *
+	 * Cached in the `counts` object-cache group like core's `wp_count_posts()` (which runs the same
+	 * GROUP BY but cannot be scoped to one account). Rather than registering invalidation hooks, the key
+	 * carries `wp_cache_get_last_changed( 'posts' )`, as WP_Query's own query cache does: core bumps that
+	 * token from `clean_post_cache()` on every post insert, update, trash and delete, so a stale entry is
+	 * simply never looked up again.
+	 *
 	 * @param BH_Email_Account $email_account The mailbox account.
 	 */
 	public function count_by_status_for_account_email( BH_Email_Account $email_account ): Email_Status_Counts {
+		$cache_key = sprintf(
+			'bh_email_status_counts:%s:%d:%s',
+			$this->post_type,
+			$email_account->get_post_id(),
+			wp_cache_get_last_changed( 'posts' )
+		);
+		$cached    = wp_cache_get( $cache_key, 'counts' );
+		if ( $cached instanceof Email_Status_Counts ) {
+			return $cached;
+		}
+
 		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Cached below in the `counts` group.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				'SELECT post_status, COUNT(*) AS count FROM %i WHERE post_type = %s AND post_status != \'trash\' AND post_parent = %d GROUP BY post_status',
@@ -234,12 +235,16 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 			$counts[ $key ] += (int) $row['count'];
 		}
 
-		return new Email_Status_Counts(
+		$status_counts = new Email_Status_Counts(
 			new_count: $counts['bh_email_new'],
 			processed_count: $counts['bh_email_processed'],
 			saved_count: $counts['bh_email_saved'],
 			other_count: $counts['other'],
 		);
+
+		wp_cache_set( $cache_key, $status_counts, 'counts' );
+
+		return $status_counts;
 	}
 
 	/**
