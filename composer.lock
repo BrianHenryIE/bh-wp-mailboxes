@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1dc3c9e2b58475022317d3e721a2e543",
+    "content-hash": "d4ae7ad607510ce00c7218151dc7ffbe",
     "packages": [
         {
             "name": "carbonphp/carbon-doctrine-types",
@@ -9823,15 +9823,15 @@
         },
         {
             "name": "wpackagist-plugin/wp-crontrol",
-            "version": "1.21.2",
+            "version": "1.22.0",
             "source": {
                 "type": "svn",
                 "url": "https://plugins.svn.wordpress.org/wp-crontrol/",
-                "reference": "tags/1.21.2"
+                "reference": "tags/1.22.0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://downloads.wordpress.org/plugin/wp-crontrol.1.21.2.zip"
+                "url": "https://downloads.wordpress.org/plugin/wp-crontrol.1.22.0.zip"
             },
             "require": {
                 "composer/installers": "^1.0 || ^2.0"

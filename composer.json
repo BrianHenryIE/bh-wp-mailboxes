@@ -102,7 +102,7 @@
         "vlucas/phpdotenv": "*",
         "wordpress/wordpress": "7.1.0",
         "wp-coding-standards/wpcs": "*",
-        "wpackagist-plugin/wp-crontrol": "^1.21",
+        "wpackagist-plugin/wp-crontrol": "^1.22",
         "wpackagist-theme/twentytwenty": "*"
     },
     "scripts": {
