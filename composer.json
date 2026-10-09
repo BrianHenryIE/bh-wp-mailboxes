@@ -94,7 +94,7 @@
         "phpcompatibility/phpcompatibility-wp": "*",
         "phpstan/extension-installer": "*",
         "phpstan/phpstan-mockery": "^2.0",
-        "phpstan/phpstan-phpunit": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.1",
         "phpunit/phpcov": "*",
         "rector/rector": "^2.6",
         "squizlabs/php_codesniffer": "*",
