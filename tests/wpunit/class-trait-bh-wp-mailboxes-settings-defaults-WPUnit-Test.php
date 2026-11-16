@@ -130,6 +130,15 @@ class BH_WP_Mailboxes_Settings_Defaults_Trait_WPUnit_Test extends WPUnit_Testcas
 	}
 
 	/**
+	 * Attachments up to 10 MB are saved by default.
+	 *
+	 * @covers ::get_max_attachment_size_bytes
+	 */
+	public function test_get_max_attachment_size_bytes(): void {
+		$this->assertSame( 10 * 1024 * 1024, $this->make_settings()->get_max_attachment_size_bytes() );
+	}
+
+	/**
 	 * The default cron schedules: hourly fetch, daily local delete.
 	 *
 	 * @covers ::get_cron_schedules

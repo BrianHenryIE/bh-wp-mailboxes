@@ -1,0 +1,21 @@
+From: Sender <sender@example.com>
+To: recipient@example.com
+Subject: Email with an attachment whose filename has non-Latin characters
+Date: Wed, 30 Jul 2025 03:38:07 +0000
+Message-ID: <attachment-non-latin-filename-123@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="BOUNDARY"
+
+--BOUNDARY
+Content-Type: text/plain; charset=UTF-8
+
+The attachment below has non-Latin characters in its filename.
+
+--BOUNDARY
+Content-Type: text/plain; name*=UTF-8''%D0%BE%D1%82%D1%87%D1%91%D1%82.txt
+Content-Disposition: attachment; filename*=UTF-8''%D0%BE%D1%82%D1%87%D1%91%D1%82.txt
+Content-Transfer-Encoding: base64
+
+aGVsbG8gd29ybGQK
+
+--BOUNDARY--

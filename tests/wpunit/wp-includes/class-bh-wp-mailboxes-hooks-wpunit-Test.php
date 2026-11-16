@@ -10,9 +10,17 @@ declare(strict_types=1);
 namespace BrianHenryIE\WP_Mailboxes\WP_Includes;
 
 use BrianHenryIE\WP_Mailboxes\API\API_Interface;
+use BrianHenryIE\WP_Mailboxes\API\Factories\BH_Email_Factory;
+use BrianHenryIE\WP_Mailboxes\API\Model\Fetched_Email;
+use BrianHenryIE\WP_Mailboxes\API\Model\Remote_Email_Coordinates;
+use BrianHenryIE\WP_Mailboxes\API\Repositories\Email_WP_Post_Repository;
 use BrianHenryIE\WP_Mailboxes\BH_WP_Mailboxes_Settings_Interface;
+use BrianHenryIE\WP_Mailboxes\Models\BH_Email_Account_Fixture;
+use BrianHenryIE\WP_Mailboxes\Models\Private_Uploads_Fixture;
 use BrianHenryIE\WP_Mailboxes\WPUnit_Testcase;
 use Mockery;
+use ZBateson\MailMimeParser\IMessage;
+use ZBateson\MailMimeParser\MailMimeParser;
 
 /**
  * @coversDefaultClass \BrianHenryIE\WP_Mailboxes\WP_Includes\BH_WP_Mailboxes_Hooks
@@ -125,5 +133,62 @@ class BH_WP_Mailboxes_Hooks_WPUnit_Test extends WPUnit_Testcase {
 		$this->assertArrayHasKey( '/test-hooks/v2/test-hooks-email/check', $routes );
 		$this->assertArrayHasKey( '/test-hooks/v2/test-hooks-account', $routes );
 		$this->assertArrayHasKey( '/test-hooks/v2/test-hooks-account/test-connection', $routes );
+	}
+	/**
+	 * The hooks wire the deletion handler, so trashing, restoring and deleting an email cascades to its saved
+	 * attachments whatever path does it (here, core's own functions).
+	 *
+	 * @covers ::define_deletion_hooks
+	 */
+	public function test_email_deletion_cascades_to_attachments(): void {
+
+		$emails_cpt = 'test_hooks_del_email';
+
+		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class )->shouldIgnoreMissing();
+		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( $emails_cpt );
+		$settings->allows( 'get_emails_cpt_friendly_name' )->andReturn( 'Test Hooks Del Emails' );
+		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( 'test_hooks_del_acct' );
+		$settings->allows( 'get_email_accounts_cpt_friendly_name' )->andReturn( 'Test Hooks Del Accounts' );
+		$settings->allows( 'get_rest_namespace' )->andReturn( null );
+
+		foreach ( array( 'trashed_post', 'untrashed_post', 'wp_untrash_post_status', 'before_delete_post', 'init' ) as $hook ) {
+			remove_all_actions( $hook );
+		}
+
+		new BH_WP_Mailboxes_Hooks( Mockery::mock( API_Interface::class )->shouldIgnoreMissing(), $settings, $this->logger );
+
+		$this->assertTrue( has_action( 'trashed_post' ), 'Trashing cascades.' );
+		$this->assertTrue( has_action( 'untrashed_post' ), 'Restoring cascades.' );
+		$this->assertTrue( has_filter( 'wp_untrash_post_status' ), 'Restored attachments keep their status.' );
+		$this->assertTrue( has_action( 'before_delete_post' ), 'Deleting cascades.' );
+
+		do_action( 'init' );
+
+		/** @var IMessage $message */
+		$message = ( new MailMimeParser() )->parse( (string) file_get_contents( (string) codecept_root_dir( 'tests/_data/wpunit/with-attachment.eml' ) ), true );
+		$email   = ( new Email_WP_Post_Repository( $emails_cpt, new BH_Email_Factory( $this->logger ), $this->logger ) )->save_new(
+			new Fetched_Email( $message, new Remote_Email_Coordinates( message_id: $message->getMessageId() ?? '' ) ),
+			$settings,
+			BH_Email_Account_Fixture::make(),
+			Private_Uploads_Fixture::make( $this->logger ),
+		);
+
+		$attachment_id = ( $email->attachment_ids ?? array() )[0] ?? 0;
+		$file          = get_attached_file( $attachment_id );
+		$this->assertIsString( $file );
+
+		try {
+			wp_trash_post( $email->post_id );
+			$this->assertSame( 'trash', get_post_status( $attachment_id ) );
+
+			wp_untrash_post( $email->post_id );
+			$this->assertSame( 'inherit', get_post_status( $attachment_id ) );
+
+			wp_delete_post( $email->post_id, true );
+			$this->assertNull( get_post( $attachment_id ) );
+			$this->assertFileDoesNotExist( $file );
+		} finally {
+			Private_Uploads_Fixture::delete_files( array( $attachment_id ) );
+		}
 	}
 }

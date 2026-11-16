@@ -101,9 +101,11 @@ class BH_Email_Factory {
 		$attachment_ids_raw = get_post_meta( $post_id, 'attachment_ids', true );
 		$attachment_ids     = ! is_string( $attachment_ids_raw ) || empty( $attachment_ids_raw )
 			? null
-			: array_filter(
-				(array) json_decode( $attachment_ids_raw ),
-				fn( $value ) => is_int( $value )
+			: array_values(
+				array_filter(
+					(array) json_decode( $attachment_ids_raw ),
+					fn( $value ) => is_int( $value )
+				)
 			);
 
 		$remote_uid          = get_post_meta( $post_id, 'remote_uid', true );

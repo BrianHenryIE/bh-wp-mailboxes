@@ -1,0 +1,21 @@
+From: Sender <sender@example.com>
+To: recipient@example.com
+Subject: Email with an unnamed attachment of an unknown type
+Date: Wed, 30 Jul 2025 03:38:07 +0000
+Message-ID: <attachment-unknown-type-123@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="BOUNDARY"
+
+--BOUNDARY
+Content-Type: text/plain; charset=UTF-8
+
+The attachment below has no filename and a content type WordPress has no extension for.
+
+--BOUNDARY
+Content-Type: application/x-unknown-thing
+Content-Disposition: attachment
+Content-Transfer-Encoding: base64
+
+aGVsbG8gd29ybGQK
+
+--BOUNDARY--

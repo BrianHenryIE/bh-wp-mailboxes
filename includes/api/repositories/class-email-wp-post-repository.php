@@ -397,9 +397,17 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 
 		$post_id = $this->insert( $query );
 
+		$rejected_attachments = array();
 		if ( ! is_null( $private_uploads ) ) {
-			$attachment_ids = $this->save_attachments( $attachment_parts, $post_id, $private_uploads );
-			update_post_meta( $post_id, 'attachment_ids', (string) wp_json_encode( $attachment_ids ) );
+			$max_size_bytes = array() === $attachment_parts ? null : $mailbox_settings->get_max_attachment_size_bytes();
+
+			$saved                = $this->save_attachments( $attachment_parts, $post_id, $private_uploads, $max_size_bytes );
+			$rejected_attachments = $saved['rejected'];
+
+			update_post_meta( $post_id, 'attachment_ids', (string) wp_json_encode( $saved['attachment_ids'] ) );
+			if ( array() !== $rejected_attachments ) {
+				update_post_meta( $post_id, 'rejected_attachments', (string) wp_json_encode( $rejected_attachments ) );
+			}
 		}
 
 		// One meta row per referenced id (meta_input cannot write repeated keys), so later emails can find this one.
@@ -429,6 +437,22 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 
 		// Record the download in the email's log.
 		$this->log( $bh_email, 'Email downloaded.', false, array(), 'info' );
+
+		foreach ( $rejected_attachments as $rejected ) {
+			$this->log(
+				$bh_email,
+				sprintf(
+					/* translators: 1: attachment filename, 2: its size, e.g. "12 MB", 3: the limit, e.g. "10 MB" */
+					__( 'Attachment "%1$s" (%2$s) was not saved: it is larger than the %3$s limit.', 'bh-wp-mailboxes' ),
+					$rejected['filename'],
+					size_format( $rejected['size_bytes'] ),
+					size_format( $rejected['max_size_bytes'] )
+				),
+				false,
+				$rejected,
+				'notice'
+			);
+		}
 
 		// Merging is irreversible, so note it on every email that was moved.
 		if ( ! is_null( $thread_result ) && array() !== $thread_result->merged_post_ids ) {
@@ -466,20 +490,35 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 	}
 
 	/**
+	 * A filename for an attachment part that has none, with an extension from its content type, e.g.
+	 * `attachment.txt`, so the upload's file type check can accept it.
+	 *
+	 * @param IMessagePart $part The attachment part.
+	 */
+	private function get_unnamed_attachment_filename( IMessagePart $part ): string {
+		$extension = wp_get_default_extension_for_mime_type( $part->getContentType() );
+
+		return is_string( $extension ) && '' !== $extension ? "attachment.{$extension}" : 'attachment';
+	}
+
+	/**
 	 * Save each email attachment into the private uploads directory, returning the created post ids.
 	 *
 	 * Each attachment is independent: a failure is logged and the others still save, so one bad
-	 * attachment never costs us the email.
+	 * attachment never costs us the email. One larger than the limit is not saved and is returned
+	 * as rejected; its decoded size is measured from the temporary file, which is then deleted.
 	 *
 	 * @param IMessagePart[]                $attachment_parts The email's attachment parts.
 	 * @param int                           $email_post_id    The saved email's post id, used as the attachments' parent.
 	 * @param Private_Uploads_API_Interface $private_uploads  The private uploads API.
+	 * @param ?int                          $max_size_bytes   The largest attachment saved; null for no limit.
 	 *
-	 * @return int[] The post ids of the saved attachments.
+	 * @return array{attachment_ids: int[], rejected: list<array{filename: string, size_bytes: int, max_size_bytes: int}>} The saved attachments' post ids, and those too large to save.
 	 */
-	private function save_attachments( array $attachment_parts, int $email_post_id, Private_Uploads_API_Interface $private_uploads ): array {
+	private function save_attachments( array $attachment_parts, int $email_post_id, Private_Uploads_API_Interface $private_uploads, ?int $max_size_bytes = null ): array {
 
 		$attachment_ids = array();
+		$rejected       = array();
 
 		// wp_tempnam() and move_file_to_private_uploads_and_create_post() live in wp-admin/includes/file.php,
 		// which is not loaded during wp-cron or REST requests — the two contexts a fetch usually runs in.
@@ -489,11 +528,30 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 		}
 
 		foreach ( $attachment_parts as $part ) {
-			$filename = $part->getFilename() ?? 'attachment';
+			$filename = $part->getFilename() ?? $this->get_unnamed_attachment_filename( $part );
 			$tmp_file = wp_tempnam( $filename );
 
 			try {
 				$part->saveContent( $tmp_file );
+
+				$size_bytes = (int) filesize( $tmp_file );
+				if ( ! is_null( $max_size_bytes ) && $size_bytes > $max_size_bytes ) {
+					$rejected[] = array(
+						'filename'       => $filename,
+						'size_bytes'     => $size_bytes,
+						'max_size_bytes' => $max_size_bytes,
+					);
+					$this->logger->warning(
+						'Email {post_id} attachment {filename} ({size_bytes} bytes) not saved: larger than {max_size_bytes} bytes.',
+						array(
+							'post_id'        => $email_post_id,
+							'filename'       => $filename,
+							'size_bytes'     => $size_bytes,
+							'max_size_bytes' => $max_size_bytes,
+						)
+					);
+					continue;
+				}
 
 				$result = $private_uploads->move_file_to_private_uploads_and_create_post(
 					tmp_file: $tmp_file,
@@ -519,7 +577,10 @@ class Email_WP_Post_Repository extends WP_Post_Repository_Abstract implements Em
 			}
 		}
 
-		return $attachment_ids;
+		return array(
+			'attachment_ids' => $attachment_ids,
+			'rejected'       => $rejected,
+		);
 	}
 
 	/**

@@ -104,6 +104,16 @@ trait BH_WP_Mailboxes_Settings_Defaults_Trait {
 	}
 
 	/**
+	 * The largest attachment saved: 10 MB. Large enough for documents and phone photos, small
+	 * enough that a mailbox cannot fill the disk with a few emails.
+	 *
+	 * @see BH_WP_Mailboxes_Settings_Interface::get_max_attachment_size_bytes()
+	 */
+	public function get_max_attachment_size_bytes(): ?int {
+		return 10 * 1024 * 1024;
+	}
+
+	/**
 	 * Returns the default cron schedules for fetching and deleting emails.
 	 *
 	 * @see wp_get_schedules()

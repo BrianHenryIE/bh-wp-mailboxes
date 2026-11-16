@@ -53,6 +53,18 @@ interface BH_WP_Mailboxes_Settings_Interface {
 	public function get_private_uploads_directory_name(): ?string;
 
 	/**
+	 * The largest attachment, in bytes, that is saved. A larger one is not saved: the email is,
+	 * with a note on it naming the attachment, and the attachment is listed in the email's
+	 * `rejected_attachments` meta. Null saves attachments of any size.
+	 *
+	 * Trait default: 10 MB.
+	 *
+	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_max_attachment_size_bytes()
+	 * @used-by Email_WP_Post_Repository::save_new()
+	 */
+	public function get_max_attachment_size_bytes(): ?int;
+
+	/**
 	 * The custom post type name used when registering the email post type.
 	 *
 	 * @see BH_WP_Mailboxes_Settings_Defaults_Trait::get_cpt_underscored(
