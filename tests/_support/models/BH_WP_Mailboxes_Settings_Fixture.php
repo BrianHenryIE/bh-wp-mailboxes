@@ -21,6 +21,8 @@ class BH_WP_Mailboxes_Settings_Fixture  {
 		$settings->allows( 'get_email_accounts_cpt_underscored_20' )->andReturn( $accounts_cpt );
 		$settings->allows( 'get_emails_cpt_friendly_name' )->andReturn( $email_cpt_display );
 		$settings->allows( 'get_email_accounts_cpt_friendly_name' )->andReturn( $email_accounts_cpt_display );
+		// No attachment size limit, so fixtures' attachments always save.
+		$settings->allows( 'get_max_attachment_size_bytes' )->andReturn( null );
 
 		return $settings;
 	}

@@ -73,6 +73,7 @@ class Email_Post_Deletion_Handler_WPUnit_Test extends WPUnit_Testcase {
 		$this->settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( self::POST_TYPE );
 		$this->settings->allows( 'get_emails_cpt_friendly_name' )->andReturn( 'Deletion Test Emails' );
 		$this->settings->allows( 'get_rest_namespace' )->andReturn( null );
+		$this->settings->allows( 'get_max_attachment_size_bytes' )->andReturn( null );
 
 		$cpt = new BH_Email_CPT( $this->settings, $this->logger );
 		$cpt->register_cpt();

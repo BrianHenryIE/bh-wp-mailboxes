@@ -40,6 +40,9 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 	/** @var BH_WP_Mailboxes_Settings_Interface Mocked settings used across the suite. */
 	protected BH_WP_Mailboxes_Settings_Interface $settings;
 
+	/** @var ?int What the mocked settings answer for the largest attachment saved; null for no limit. */
+	protected ?int $max_attachment_size_bytes = null;
+
 	protected function setUp(): void {
 		parent::setUp();
 
@@ -47,6 +50,7 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$this->settings->expects( 'get_emails_cpt_underscored_20' )->andReturn( 'test_post_type' );
 		$this->settings->expects( 'get_emails_cpt_friendly_name' )->andReturn( 'Test Post Type' );
 		$this->settings->allows( 'get_rest_namespace' )->andReturn( null );
+		$this->settings->allows( 'get_max_attachment_size_bytes' )->andReturnUsing( fn() => $this->max_attachment_size_bytes );
 
 		$cpt = new BH_Email_CPT( $this->settings, $this->logger );
 		$cpt->register_cpt();
@@ -637,6 +641,66 @@ class Email_WP_Post_Repository_WPUnit_Test extends \BrianHenryIE\WP_Mailboxes\WP
 		$this->attachment_ids_to_clean_up = array_merge( $this->attachment_ids_to_clean_up, $email->attachment_ids ?? array() );
 
 		return $email;
+	}
+
+	/**
+	 * An attachment larger than the limit is not saved, while a smaller one in the same email is:
+	 * the email lists the rejected one in its `rejected_attachments` meta and its log notes it.
+	 *
+	 * The fixture's notes.txt is 23 bytes and pixel.png 70.
+	 *
+	 * @covers ::save_new
+	 * @covers ::save_attachments
+	 */
+	public function test_save_new_rejects_attachments_larger_than_the_limit(): void {
+		$this->max_attachment_size_bytes = 50;
+
+		$email = $this->save_fixture( 'with-two-attachments.eml', Private_Uploads_Fixture::make( $this->logger ) );
+
+		$ids = $email->attachment_ids;
+		$this->assertIsArray( $ids );
+		$this->assertCount( 1, $ids, 'Only the attachment within the limit is saved.' );
+		$this->assertStringEndsWith( 'notes.txt', (string) get_attached_file( $ids[0] ) );
+
+		$rejected = json_decode( (string) get_post_meta( $email->get_post_id(), 'rejected_attachments', true ), true );
+		$this->assertSame(
+			array(
+				array(
+					'filename'       => 'pixel.png',
+					'size_bytes'     => 70,
+					'max_size_bytes' => 50,
+				),
+			),
+			$rejected,
+		);
+
+		$notes = get_comments(
+			array(
+				'post_id' => $email->get_post_id(),
+				'type'    => 'bh_email_log',
+				'fields'  => 'all',
+			)
+		);
+		$this->assertNotEmpty(
+			array_filter(
+				$notes,
+				fn( $note ) => str_contains( $note->comment_content, 'Attachment "pixel.png" (70 B) was not saved' ),
+			),
+			'The email\'s log notes the rejected attachment.',
+		);
+		$this->assertTrue( $this->logger->hasWarningThatContains( 'not saved: larger than' ) );
+	}
+
+	/**
+	 * With no limit, an email with no rejected attachment gets no `rejected_attachments` meta.
+	 *
+	 * @covers ::save_new
+	 */
+	public function test_save_new_records_no_rejections_without_a_limit(): void {
+		$email = $this->save_fixture( 'with-two-attachments.eml', Private_Uploads_Fixture::make( $this->logger ) );
+
+		$this->assertCount( 2, (array) $email->attachment_ids );
+		$this->assertSame( '', get_post_meta( $email->get_post_id(), 'rejected_attachments', true ) );
 	}
 
 	/**
