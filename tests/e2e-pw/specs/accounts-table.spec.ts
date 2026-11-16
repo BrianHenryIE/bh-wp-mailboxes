@@ -440,9 +440,11 @@ test.describe( 'accounts table — add / edit / enable / delete', () => {
 		// The notice is an error (red), says the check failed, and carries the connection's own message.
 		const notice = page.locator( `.bh-check-notice[data-account-id="${ await row.getAttribute( 'data-account-id' ) }"]` );
 		await expect( notice ).toContainText( 'Unreachable inbox: Check failed. Could not fetch emails:' );
-		// The failure names the server settings that were tried, and what to check.
+		// The failure names the server settings that were tried, and the technical details. Which hint comes
+		// between them depends on how this environment fails the connection (refused, timed out, dropped by a
+		// firewall), so it is not asserted here; the unit tests cover the hint for each reason.
 		await expect( notice ).toContainText( 'Could not connect to 127.0.0.1 on port 1 (no encryption).' );
-		await expect( notice ).toContainText( 'The server refused the connection. Check the server name and port' );
+		await expect( notice ).toContainText( 'Details: Unable to connect to tcp://127.0.0.1:1' );
 		await expect( notice.locator( '.spinner' ) ).not.toBeAttached();
 		await expect( notice ).toHaveCSS( 'border-left-color', 'rgb(214, 54, 56)' ); // #d63638
 

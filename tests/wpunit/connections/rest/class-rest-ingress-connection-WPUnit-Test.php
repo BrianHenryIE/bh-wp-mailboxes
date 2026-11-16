@@ -108,6 +108,7 @@ class REST_Ingress_Connection_WPUnit_Test extends WPUnit_Testcase {
 		$settings = Mockery::mock( BH_WP_Mailboxes_Settings_Interface::class );
 		$settings->allows( 'get_plugin_slug' )->andReturn( 'test-plugin' );
 		$settings->allows( 'get_rest_namespace' )->andReturn( $rest_namespace );
+		$settings->allows( 'get_max_attachment_size_bytes' )->andReturn( null );
 		$settings->allows( 'get_emails_cpt_dashed' )->andReturn( 'test-email' );
 		$settings->allows( 'get_emails_cpt_underscored_20' )->andReturn( 'test_email' );
 		$settings->allows( 'get_emails_cpt_friendly_name' )->andReturn( 'Test Email' );
